@@ -1,0 +1,40 @@
+import { DataTypes, Model, Optional } from "sequelize";
+import { sequelize } from "../../../config/db";
+
+export interface ArInvoiceAttrs {
+  id: number;
+  order_id?: number;
+  invoice_no: string;
+  invoice_date?: Date;
+  total_before_tax?: number;
+  total_tax?: number;
+  total_after_tax?: number;
+  status: "draft" | "posted" | "paid" | "cancelled";
+}
+
+type ArInvoiceCreation = Optional<ArInvoiceAttrs, "id" | "status">;
+
+export class ArInvoice extends Model<ArInvoiceAttrs, ArInvoiceCreation> implements ArInvoiceAttrs {
+  public id!: number;
+  public order_id?: number;
+  public invoice_no!: string;
+  public invoice_date?: Date;
+  public total_before_tax?: number;
+  public total_tax?: number;
+  public total_after_tax?: number;
+  public status!: "draft" | "posted" | "paid" | "cancelled";
+}
+
+ArInvoice.init(
+  {
+    id: { type: DataTypes.BIGINT, autoIncrement: true, primaryKey: true },
+    order_id: { type: DataTypes.BIGINT },
+    invoice_no: { type: DataTypes.STRING(50), allowNull: false, unique: true },
+    invoice_date: { type: DataTypes.DATE },
+    total_before_tax: { type: DataTypes.DECIMAL(18,2) },
+    total_tax: { type: DataTypes.DECIMAL(18,2) },
+    total_after_tax: { type: DataTypes.DECIMAL(18,2) },
+    status: { type: DataTypes.ENUM("draft","posted","paid","cancelled"), defaultValue: "draft" },
+  },
+  { sequelize, tableName: "ar_invoices", timestamps: true, createdAt: "created_at", updatedAt: "updated_at" }
+);
