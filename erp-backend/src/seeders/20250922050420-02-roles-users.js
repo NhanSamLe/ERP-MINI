@@ -16,7 +16,8 @@ module.exports = {
       { code: "CHACC", name: "Chief Accountant", created_at: now, updated_at: now },
       { code: "ACCOUNT", name: "Accountant", created_at: now, updated_at: now },
       { code: "HRMANAGER", name: "HR Manager", created_at: now, updated_at: now },
-      { code: "EMPLOYEE", name: "Employee", created_at: now, updated_at: now },
+      { code: "PURCHASE", name: "Purchasing Staff", created_at: now, updated_at: now },
+
     ]);
 
     // 2. Lấy id branch để gán user
@@ -24,7 +25,9 @@ module.exports = {
       `SELECT id FROM branches WHERE code = 'BR01';`
     );
     const branchId = branches[0].id;
-
+    // 3. Lấy role id từ DB
+    const [roles] = await queryInterface.sequelize.query(`SELECT id, code FROM roles;`);
+    const getRoleId = (code) => roles.find((r) => r.code === code).id;
     // 3. Tạo users tương ứng với roles
     await queryInterface.bulkInsert("users", [
       {
@@ -34,6 +37,7 @@ module.exports = {
         full_name: "System Admin",
         email: "admin@uteerp.com",
         phone: "0909000001",
+        role_id: getRoleId("ADMIN"),
         is_active: true,
         reset_token: null,
         reset_expires_at: null,
@@ -47,6 +51,7 @@ module.exports = {
         full_name: "CEO Nguyen Van A",
         email: "ceo@uteerp.com",
         phone: "0909000002",
+        role_id: getRoleId("CEO"),
         is_active: true,
         reset_token: null,
         reset_expires_at: null,
@@ -60,6 +65,7 @@ module.exports = {
         full_name: "Sales Manager Tran Van B",
         email: "smanager@uteerp.com",
         phone: "0909000003",
+        role_id: getRoleId("SALESMANAGER"),
         is_active: true,
         reset_token: null,
         reset_expires_at: null,
@@ -73,6 +79,7 @@ module.exports = {
         full_name: "Sales Staff 1",
         email: "sales01@uteerp.com",
         phone: "0909000004",
+        role_id: getRoleId("SALES"),
         is_active: true,
         reset_token: null,
         reset_expires_at: null,
@@ -86,6 +93,7 @@ module.exports = {
         full_name: "Warehouse Manager Le Thi C",
         email: "whmanager@uteerp.com",
         phone: "0909000005",
+        role_id: getRoleId("WHMANAGER"),
         is_active: true,
         reset_token: null,
         reset_expires_at: null,
@@ -99,6 +107,7 @@ module.exports = {
         full_name: "Warehouse Staff 1",
         email: "whstaff01@uteerp.com",
         phone: "0909000006",
+        role_id: getRoleId("WHSTAFF"),
         is_active: true,
         reset_token: null,
         reset_expires_at: null,
@@ -112,6 +121,7 @@ module.exports = {
         full_name: "Chief Accountant Pham Van D",
         email: "chiefacc@uteerp.com",
         phone: "0909000007",
+        role_id: getRoleId("CHACC"),
         is_active: true,
         reset_token: null,
         reset_expires_at: null,
@@ -125,6 +135,7 @@ module.exports = {
         full_name: "Accountant 1",
         email: "account01@uteerp.com",
         phone: "0909000008",
+        role_id: getRoleId("ACCOUNT"),
         is_active: true,
         reset_token: null,
         reset_expires_at: null,
@@ -138,6 +149,7 @@ module.exports = {
         full_name: "HR Manager Ngo Thi E",
         email: "hrmanager@uteerp.com",
         phone: "0909000009",
+        role_id: getRoleId("HRMANAGER"),
         is_active: true,
         reset_token: null,
         reset_expires_at: null,
@@ -146,11 +158,12 @@ module.exports = {
       },
       {
         branch_id: branchId,
-        username: "employee01",
-        password_hash: "hash_employee01",
-        full_name: "Employee 1",
-        email: "employee01@uteerp.com",
+        username: "purchase01",
+        password_hash: "hash_purchase01",
+        full_name: "Purchasing Staff 1",
+        email: "purchase01@uteerp.com",
         phone: "0909000010",
+        role_id: getRoleId("PURCHASE"),
         is_active: true,
         reset_token: null,
         reset_expires_at: null,
@@ -158,34 +171,9 @@ module.exports = {
         updated_at: now,
       },
     ]);
-
-    // 4. Map user <-> role
-    const [roles] = await queryInterface.sequelize.query(`SELECT id, code FROM roles;`);
-    const [users] = await queryInterface.sequelize.query(`SELECT id, username FROM users;`);
-
-    function getRoleId(code) {
-      return roles.find((r) => r.code === code).id;
-    }
-    function getUserId(username) {
-      return users.find((u) => u.username === username).id;
-    }
-
-    await queryInterface.bulkInsert("user_roles", [
-      { user_id: getUserId("admin"), role_id: getRoleId("ADMIN"), created_at: now, updated_at: now },
-      { user_id: getUserId("ceo01"), role_id: getRoleId("CEO"), created_at: now, updated_at: now },
-      { user_id: getUserId("salesmanager01"), role_id: getRoleId("SALESMANAGER"), created_at: now, updated_at: now },
-      { user_id: getUserId("sales01"), role_id: getRoleId("SALES"), created_at: now, updated_at: now },
-      { user_id: getUserId("whmanager01"), role_id: getRoleId("WHMANAGER"), created_at: now, updated_at: now },
-      { user_id: getUserId("whstaff01"), role_id: getRoleId("WHSTAFF"), created_at: now, updated_at: now },
-      { user_id: getUserId("chiefacc01"), role_id: getRoleId("CHACC"), created_at: now, updated_at: now },
-      { user_id: getUserId("account01"), role_id: getRoleId("ACCOUNT"), created_at: now, updated_at: now },
-      { user_id: getUserId("hrmanager01"), role_id: getRoleId("HRMANAGER"), created_at: now, updated_at: now },
-      { user_id: getUserId("employee01"), role_id: getRoleId("EMPLOYEE"), created_at: now, updated_at: now },
-    ]);
   },
 
-  async down(queryInterface) {
-    await queryInterface.bulkDelete("user_roles", null, {});
+ async down(queryInterface) {
     await queryInterface.bulkDelete("users", null, {});
     await queryInterface.bulkDelete("roles", null, {});
   },

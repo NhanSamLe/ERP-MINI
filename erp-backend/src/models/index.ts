@@ -2,7 +2,6 @@ import {sequelize} from "../config/db";
 // Auth
 import { User } from "../modules/auth/models/user.model";
 import { Role } from "../modules/auth/models/role.model";
-import { UserRole } from "../modules/auth/models/userRole.model";
 // Company
 import { Company } from "../modules/company/models/company.model";
 import { Branch } from "../modules/company/models/branch.model";
@@ -57,7 +56,7 @@ applyAssociations();
 
 export {
   sequelize,
-  User, Role, UserRole,
+  User, Role,
   Company, Branch,
   Product, ProductCategory,
   Uom, UomConversion,

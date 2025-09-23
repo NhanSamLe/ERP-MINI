@@ -9,6 +9,7 @@ export interface UserAttrs {
   full_name?: string;
   email?: string;
   phone?: string;
+  role_id?: number | null;
   is_active: boolean;
   reset_token?: string;
   reset_expires_at?: Date;
@@ -24,6 +25,7 @@ export class User extends Model<UserAttrs, UserCreation> implements UserAttrs {
   public full_name?: string;
   public email?: string;
   public phone?: string;
+  public role_id?: number | null;
   public is_active!: boolean;
   public reset_token?: string;
   public reset_expires_at?: Date;
@@ -38,6 +40,7 @@ User.init(
     full_name: { type: DataTypes.STRING(100) },
     email: { type: DataTypes.STRING(100) },
     phone: { type: DataTypes.STRING(20) },
+    role_id: { type: DataTypes.BIGINT, allowNull: true },
     is_active: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
     reset_token: { type: DataTypes.STRING(255) },
     reset_expires_at: { type: DataTypes.DATE },

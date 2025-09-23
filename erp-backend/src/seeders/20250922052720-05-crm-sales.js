@@ -9,8 +9,7 @@ module.exports = {
     const [salesUsers] = await queryInterface.sequelize.query(`
       SELECT u.id, u.username 
       FROM users u
-      JOIN user_roles ur ON ur.user_id = u.id
-      JOIN roles r ON r.id = ur.role_id
+      JOIN roles r ON r.id = u.role_id
       WHERE r.code = 'SALES'
     `);
     const salesUserId = salesUsers.length > 0 ? salesUsers[0].id : null;

@@ -1,6 +1,5 @@
 import { User } from "../modules/auth/models/user.model";
 import { Role } from "../modules/auth/models/role.model";
-import { UserRole } from "../modules/auth/models/userRole.model";
 import { Company } from "../modules/company/models/company.model";
 import { Branch } from "../modules/company/models/branch.model";
 import { Product } from "../modules/product/models/product.model";
@@ -47,8 +46,10 @@ export function applyAssociations() {
 // =====================
 // Một User có thể có nhiều Role, và một Role cũng có thể gán cho nhiều User (quan hệ N-N)
 
-User.belongsToMany(Role, { through: UserRole, foreignKey: "user_id" });
-Role.belongsToMany(User, { through: UserRole, foreignKey: "role_id" });
+// Một User thuộc về 1 Role
+User.belongsTo(Role, { foreignKey: "role_id", as: "role", onDelete: "SET NULL" });
+// Một Role có nhiều User
+Role.hasMany(User, { foreignKey: "role_id", as: "users" });
 
 // Một User thuộc về một Branch
 User.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });

@@ -10,6 +10,7 @@ module.exports = {
       full_name: { type: Sequelize.STRING(100) },
       email: { type: Sequelize.STRING(100) },
       phone: { type: Sequelize.STRING(20) },
+      role_id: { type: Sequelize.BIGINT, allowNull: true },
       is_active: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: true },
       reset_token: { type: Sequelize.STRING(255) },
       reset_expires_at: { type: Sequelize.DATE },
@@ -23,6 +24,14 @@ module.exports = {
       name: 'fk_users_branch',
       references: { table: 'branches', field: 'id' },
       onDelete: 'SET NULL',
+    });
+     await queryInterface.addConstraint('users', {
+      fields: ['role_id'],
+      type: 'foreign key',
+      name: 'fk_users_role',
+      references: { table: 'roles', field: 'id' },
+      onDelete: 'SET NULL',
+      onUpdate: 'CASCADE',
     });
   },
 
