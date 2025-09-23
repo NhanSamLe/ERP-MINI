@@ -28,8 +28,8 @@ UomConversion.init(
   { sequelize, tableName: "uom_conversions", timestamps: true, createdAt: "created_at", updatedAt: "updated_at" }
 );
 
-// Quan hệ
-Uom.hasMany(UomConversion, { foreignKey: "from_uom_id", as: "fromConversions" });
-Uom.hasMany(UomConversion, { foreignKey: "to_uom_id", as: "toConversions" });
-UomConversion.belongsTo(Uom, { foreignKey: "from_uom_id", as: "fromUom" });
-UomConversion.belongsTo(Uom, { foreignKey: "to_uom_id", as: "toUom" });
+// // Quan hệ
+// Uom.hasMany(UomConversion, { foreignKey: "from_uom_id", as: "fromConversions" });
+// Uom.hasMany(UomConversion, { foreignKey: "to_uom_id", as: "toConversions" });
+// UomConversion.belongsTo(Uom, { foreignKey: "from_uom_id", as: "fromUom" });
+// UomConversion.belongsTo(Uom, { foreignKey: "to_uom_id", as: "toUom" });

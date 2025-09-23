@@ -31,8 +31,8 @@ ExchangeRate.init(
   { sequelize, tableName: "exchange_rates", timestamps: true, createdAt: "created_at", updatedAt: "updated_at" }
 );
 
-// Quan hệ
-Currency.hasMany(ExchangeRate, { foreignKey: "base_currency_id", as: "baseRates" });
-Currency.hasMany(ExchangeRate, { foreignKey: "quote_currency_id", as: "quoteRates" });
-ExchangeRate.belongsTo(Currency, { foreignKey: "base_currency_id", as: "baseCurrency" });
-ExchangeRate.belongsTo(Currency, { foreignKey: "quote_currency_id", as: "quoteCurrency" });
+// // Quan hệ
+// Currency.hasMany(ExchangeRate, { foreignKey: "base_currency_id", as: "baseRates" });
+// Currency.hasMany(ExchangeRate, { foreignKey: "quote_currency_id", as: "quoteRates" });
+// ExchangeRate.belongsTo(Currency, { foreignKey: "base_currency_id", as: "baseCurrency" });
+// ExchangeRate.belongsTo(Currency, { foreignKey: "quote_currency_id", as: "quoteCurrency" });

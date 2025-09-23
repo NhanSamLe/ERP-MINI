@@ -15,6 +15,14 @@ export const env = {
 
   jwt: {
     secret: process.env.JWT_SECRET || "defaultsecret",
-    expiresIn: "1d",
+    expiresIn: process.env.JWT_EXPIRES_IN ?? "1h",
+    refreshTokenExpiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN ?? "7d",
+  },
+
+  mail:{
+    host: process.env.SMTP_HOST || "smtp.gmail.com",
+    port: Number(process.env.SMTP_PORT) || 587,
+    user: process.env.SMTP_USER || "",
+    pass: process.env.SMTP_PASS || "",
   },
 };

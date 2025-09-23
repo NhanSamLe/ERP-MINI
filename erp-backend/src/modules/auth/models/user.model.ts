@@ -11,8 +11,8 @@ export interface UserAttrs {
   phone?: string;
   role_id?: number | null;
   is_active: boolean;
-  reset_token?: string;
-  reset_expires_at?: Date;
+  reset_token?: string| null;
+  reset_expires_at?: Date| null;
 }
 
 type UserCreation = Optional<UserAttrs, "id">;
@@ -27,8 +27,8 @@ export class User extends Model<UserAttrs, UserCreation> implements UserAttrs {
   public phone?: string;
   public role_id?: number | null;
   public is_active!: boolean;
-  public reset_token?: string;
-  public reset_expires_at?: Date;
+  public reset_token?: string | null;
+  public reset_expires_at?: Date | null;
 }
 
 User.init(
