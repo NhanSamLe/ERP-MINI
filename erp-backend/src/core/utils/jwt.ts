@@ -1,7 +1,7 @@
 import { JwtPayload } from "../types/jwt";
 import jwt, { SignOptions } from "jsonwebtoken";
 import { env } from "../../config/env";
-
+import ms, { StringValue } from "ms";
 export function generateAccessToken(payload: JwtPayload): string {
 const options: jwt.SignOptions = {   expiresIn: env.jwt.expiresIn as any};
   return jwt.sign(payload, env.jwt.secret, options);
@@ -10,7 +10,7 @@ const options: jwt.SignOptions = {   expiresIn: env.jwt.expiresIn as any};
 // Sinh refresh token
 export function generateRefreshToken(payload: JwtPayload): string {
   const options: jwt.SignOptions = { expiresIn: env.jwt.refreshTokenExpiresIn as any || '7d' };
-  return jwt.sign(payload, env.jwt.secret, options);
+  return jwt.sign(payload, env.jwt.refreshSecret, options);
 }
 
 // Verify token bất kỳ (access hoặc refresh)
@@ -26,7 +26,7 @@ export function verifyToken(token: string): JwtPayload | null {
 // Làm mới access token từ refresh token
 export function refreshAccessToken(refreshToken: string): string | null {
   try {
-    const decoded = jwt.verify(refreshToken, env.jwt.secret) as JwtPayload;
+    const decoded = jwt.verify(refreshToken, env.jwt.refreshSecret) as JwtPayload;
     return generateAccessToken({
       id: decoded.id,
       username: decoded.username,
@@ -38,4 +38,13 @@ export function refreshAccessToken(refreshToken: string): string | null {
   } catch (err) {
     return null;
   }
+}
+
+export function getCookieMaxAge(): number {
+  const value = env.jwt.refreshTokenExpiresIn as StringValue;
+  const result = ms(value);
+  if (typeof result !== "number") {
+    throw new Error("Invalid REFRESH_TOKEN_EXPIRES_IN in .env");
+  }
+  return result;
 }

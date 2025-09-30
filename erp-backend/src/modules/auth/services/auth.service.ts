@@ -93,6 +93,17 @@ export async function resetPassword(token: string, newPassword: string) {
   return { message: "Password updated successfully" };
 }
 
+export async function getInforUser(userId: number) {
+ const user = await model.User.findByPk(userId, {
+      include: [{ model: model.Role, as: "role" }],
+      attributes: ["id", "username", "full_name", "email", "phone", "branch_id"],
+    });
+  if (!user) {
+    throw new Error("User not found");
+  }
+  return user ; 
+}
+
 
 
 

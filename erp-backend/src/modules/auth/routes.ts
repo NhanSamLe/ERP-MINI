@@ -11,4 +11,5 @@ router.post("/refresh", authController.refresh);
 router.post("/request-password-reset", authController.requestPasswordReset);
 router.get("/validate-reset-token", authController.validateResetToken);
 router.post("/reset-password", authController.resetPassword);
+router.get("/me",authMiddleware([]), authController.getInforUser);
 export default router;
