@@ -13,13 +13,13 @@ export const createUser = async (req: Request, res: Response) => {
 };
 export const login = async (req: Request, res: Response) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, rememberMe} = req.body;
     const result = await authService.login(username, password);
     res.cookie("refreshToken", result.refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // chỉ gửi qua HTTPS khi production
       sameSite: "strict",
-      maxAge: getCookieMaxAge(), 
+      ...(rememberMe ? { maxAge: getCookieMaxAge() } : {}),
     });
     return res.status(200).json({
       message: "Login successful",
@@ -41,6 +41,20 @@ export const refresh = (req: Request, res: Response) => {
     return res.status(401).json({ message: "Invalid or expired refresh token" });
   }
 };
+
+export const clearRefreshToken =(req: Request, res: Response) => {
+  try {
+      res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      
+    });
+    return res.status(200).json({ message: "Logged out successfully" });
+  } catch (error) {
+     return res.status(500).json({ message: "Logout failed" });
+  }
+}
 
 export const requestPasswordReset = async (req: Request, res: Response) => {
   try {

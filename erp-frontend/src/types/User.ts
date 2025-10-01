@@ -19,4 +19,5 @@ export interface User {
 export interface LoginPayload {
   username: string;
   password: string;
+  rememberMe: boolean;
 }

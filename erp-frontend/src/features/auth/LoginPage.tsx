@@ -7,6 +7,10 @@ import { AxiosError } from "axios";
 import { roleRoutes } from "../../routes/roleRoutes";
 import { User, Eye, EyeOff } from "lucide-react";
 import AuthLayout from "./AuthLayout";
+import { useSelector } from "react-redux";
+import { RootState } from "../../store/store";
+import { Navigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -14,16 +18,24 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const location = useLocation();
+  const message = (location.state as { message?: string })?.message;
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  // check  auth neu co chuyen trang k vao login 
+  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+  if (isAuthenticated && user) {
+    const rolePath = roleRoutes[user.role.code] || "/profile";
+    return <Navigate to={rolePath} replace />;
+  }
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
     try {
       // 1. gọi API login → lấy access token
-      const { token } = await authService.login({ username, password });
+      const { token } = await authService.login({ username, password , rememberMe});
       dispatch(setToken(token));
       // 2. gọi API /auth/me → lấy thông tin user
       const user = await authService.getProfile();
@@ -38,6 +50,11 @@ export default function LoginPage() {
 
   return (
     <AuthLayout>
+      {message && (
+          <div className="p-3 bg-green-50 border border-green-200 rounded-lg mb-4">
+            <p className="text-green-600 text-sm">{message}</p>
+          </div>
+      )}
       <div>
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Đăng nhập</h1>
         <p className="text-gray-600 mb-6">

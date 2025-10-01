@@ -27,7 +27,11 @@ axiosClient.interceptors.response.use(
       originalConfig._retry = true;
       try {
         // gọi API refresh (cookie HttpOnly tự gửi kèm)
-        const res = await axiosClient.post("/auth/refresh");
+        const res = await axios.post(
+          `${import.meta.env.VITE_API_URL || "http://localhost:8888/api"}/auth/refresh`,
+          {},
+          { withCredentials: true }
+        );
         const newAccessToken = res.data.accessToken;
 
         // cập nhật Redux store với access token mới

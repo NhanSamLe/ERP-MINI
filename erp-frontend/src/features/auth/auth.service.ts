@@ -27,3 +27,7 @@ export async function resetPassword(token: string, newPassword: string) {
   const res = await api.resetPassword(token, newPassword);
   return res.data; 
 }
+export async function logout() {
+  const res = await api.logout();
+  return res.data;
+}

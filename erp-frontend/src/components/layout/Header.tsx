@@ -1,6 +1,19 @@
 import { Bell, Mail, Settings, ChevronDown, Maximize2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import UserMenu from "./UserMenu";
 
 export default function Header() {
+  const [openMenu, setOpenMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpenMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
   return (
     <header className="h-16 bg-white border-b border-gray-200 px-6 flex items-center justify-between">
       {/* Left - Logo */}
@@ -70,12 +83,14 @@ export default function Header() {
         </button>
 
         {/* User Avatar */}
-        <div className="ml-2">
-          <img 
-            src="https://ui-avatars.com/api/?name=Admin&background=f97316&color=fff" 
-            alt="User" 
+        <div className="ml-2 relative" ref={menuRef}>
+          <img
+            src="https://ui-avatars.com/api/?name=Admin&background=f97316&color=fff"
+            alt="User"
             className="w-9 h-9 rounded-full cursor-pointer ring-2 ring-gray-200"
+            onClick={() => setOpenMenu(!openMenu)}
           />
+          {openMenu && <UserMenu onClose={() => setOpenMenu(false)} />}
         </div>
       </div>
     </header>

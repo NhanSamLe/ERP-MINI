@@ -77,12 +77,12 @@ const menuItems: MenuItem[] = [
   {
     name: "HR & Payroll",
     icon: UserCheck,
-    path: "/hr",
+    path: "/hrm",
     subItems: [
-      { name: "Employees", path: "/hr/employees" },
-      { name: "Attendance", path: "/hr/attendance" },
-      { name: "Payroll", path: "/hr/payroll" },
-      { name: "Leave Management", path: "/hr/leave" }
+      { name: "Employees", path: "/hrm/employees" },
+      { name: "Attendance", path: "/hrm/attendance" },
+      { name: "Payroll", path: "/hrm/payroll" },
+      { name: "Leave Management", path: "/hrm/leave" }
     ]
   },
   {
