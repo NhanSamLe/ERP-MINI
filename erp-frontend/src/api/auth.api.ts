@@ -10,4 +10,14 @@ export function profile() {
 export function refresh(){
     return axiosClient.post("/auth/refresh");
 }
+export function requestPasswordReset(username: string) {
+  return axiosClient.post("/auth/request-password-reset", { username });
+}
 
+export function validateResetToken(token: string) {
+  return axiosClient.get(`/auth/validate-reset-token?token=${token}`);
+}
+
+export function resetPassword(token: string, newPassword: string) {
+  return axiosClient.post("/auth/reset-password", { token, newPassword });
+}

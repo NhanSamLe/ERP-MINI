@@ -10,8 +10,9 @@ function App() {
   useAuthInitializer();
   return (
     <BrowserRouter>
-      <AppRoutes />
+        <AppRoutes />
     </BrowserRouter>
+  
   );
 }
 export default App;

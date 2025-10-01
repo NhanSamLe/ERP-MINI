@@ -55,7 +55,6 @@ export async function login(username: string, password: string) {
   const refreshToken = generateRefreshToken(payload);
   return { token, refreshToken };
 }
-
 // Tạo và gửi token để reset
 export async function requestPasswordReset(username: string) {
   const user = await model.User.findOne({
@@ -66,7 +65,7 @@ export async function requestPasswordReset(username: string) {
   user.reset_token = token;
   user.reset_expires_at = new Date(Date.now() + 10 * 60 * 1000); // 10 phút
   await user.save();
-  const resetLink = `https://yourapp.com/reset-password?token=${token}`;
+  const resetLink = `http://localhost:3000/reset-password?token=${token}`;
   await sendEmail(user.email!, "Password Reset", `Click here to reset: ${resetLink}`);
   return { message: "Reset link sent to email" };
 }
