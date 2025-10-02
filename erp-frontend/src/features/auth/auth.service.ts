@@ -12,7 +12,7 @@ export async function getProfile() {
 
 export async function refresh() {
     const res = await api.refresh();
-    return res.data;
+    return res;
 }
 export async function requestPasswordReset(username: string) {
   const res = await api.requestPasswordReset(username);

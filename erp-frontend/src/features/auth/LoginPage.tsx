@@ -24,7 +24,10 @@ export default function LoginPage() {
   const navigate = useNavigate();
 
   // check  auth neu co chuyen trang k vao login 
-  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+  const { isAuthenticated, user , loading} = useSelector((state: RootState) => state.auth);
+  if (loading) {
+    return <div>Loading...</div>;
+  }
   if (isAuthenticated && user) {
     const rolePath = roleRoutes[user.role.code] || "/profile";
     return <Navigate to={rolePath} replace />;
