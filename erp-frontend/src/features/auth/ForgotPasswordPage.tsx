@@ -4,7 +4,9 @@ import * as authService from "./auth.service";
 import { getErrorMessage } from "../../utils/ErrorHelper";
 import AuthLayout from "./AuthLayout";
 import { Link } from "react-router-dom";
-
+import { Alert } from "../../components/ui/Alert";
+import { FormInput } from "../../components/ui/FormInput";
+import { Button } from "../../components/ui/Button";
 export default function ForgotPasswordPage() {
   const [username, setUsername] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -36,53 +38,32 @@ export default function ForgotPasswordPage() {
 
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Username/Email Input */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Username <span className="text-red-500">*</span>
-          </label>
-          <div className="relative">
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-4 py-3 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none"
-              placeholder="Nhập username "
-              required
-            />
-            <Mail className="absolute right-3 top-3.5 w-5 h-5 text-gray-400" />
-          </div>
-        </div>
+         <FormInput
+          label="Username"
+          value={username}
+          onChange={setUsername}
+          placeholder="Nhập username"
+          required
+          disabled={loading || !!message}
+          icon={<Mail className="w-5 h-5 text-gray-400" />}
+        />
 
         {/* Error Message */}
-        {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-600 text-sm">{error}</p>
-          </div>
-        )}
+        {error && <Alert type="error" message={error} />}
 
         {/* Success Message */}
-        {message && (
-          <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-green-600 text-sm">{message}</p>
-          </div>
-        )}
+        {message && <Alert type="success" message={message} />}
+
 
         {/* Submit Button */}
-        <button
-            type="submit"
-            disabled={loading || !!message}
-            className={`w-full py-3 rounded-lg font-semibold transition duration-200 ${
-              loading || !!message
-                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                : "bg-orange-400 hover:bg-orange-500 text-white"
-            }`}
-          >
-            {loading
-              ? "Đang gửi..."
-              : message
-              ? "Đã gửi Email"
-              : "Xác thực Email"}
-          </button>
+        <Button
+          type="submit"
+          fullWidth
+          disabled={loading || !!message}
+          loading={loading}
+        >
+          {loading ? "Đang gửi..." : message ? "Đã gửi Email" : "Xác thực Email"}
+        </Button>
 
         {/* Back to Login */}
         <div className="text-center">

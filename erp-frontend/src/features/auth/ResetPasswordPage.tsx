@@ -4,7 +4,6 @@ import { Eye, EyeOff } from "lucide-react";
 import { getErrorMessage } from "../../utils/ErrorHelper";
 import * as authService from "./auth.service";
 import AuthLayout from "./AuthLayout";
-
 export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
