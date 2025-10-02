@@ -1,8 +1,10 @@
 import { Bell, Mail, Settings, ChevronDown, Maximize2 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import UserMenu from "./UserMenu";
-
+import { useSelector } from "react-redux";
+import { RootState } from "../../store/store";
 export default function Header() {
+  const avatar_url = useSelector((state: RootState) => state.auth.user?.avatar_url);
   const [openMenu, setOpenMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -85,7 +87,7 @@ export default function Header() {
         {/* User Avatar */}
         <div className="ml-2 relative" ref={menuRef}>
           <img
-            src="https://ui-avatars.com/api/?name=Admin&background=f97316&color=fff"
+            src={avatar_url}
             alt="User"
             className="w-9 h-9 rounded-full cursor-pointer ring-2 ring-gray-200"
             onClick={() => setOpenMenu(!openMenu)}

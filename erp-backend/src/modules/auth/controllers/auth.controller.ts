@@ -100,3 +100,32 @@ export const getInforUser =async  (req: Request, res: Response) => {
     return res.status(400).json({ message: err.message });
   }
 }
+
+export const updateUserAvatar= async(req: Request, res: Response) =>{
+  try {
+    const userJwt = (req as any).user;
+    if (!userJwt) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+    const result = await authService.updateUserAvatar(userJwt.id, req.file.buffer);
+    return res.json(result);
+  } catch (error: any) {
+      return res.status(500).json({ error: error.message || "Update avatar failed" });
+  }
+}
+export const updateUserInfo = async(req: Request, res: Response)=> {
+  try {
+    const user = (req as any).user;
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const { full_name, email, phone } = req.body;
+    const result = await authService.updateUserInfo(user.id, { full_name, email, phone });
+    res.status(200).json(result);
+  } catch (error: any) {
+     return res.status(500).json({ error: error.message || "Update info failed" });
+  }
+}

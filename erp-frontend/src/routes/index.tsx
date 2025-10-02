@@ -11,7 +11,6 @@ import productRoutes from "./productRoutes";
 import Layout from "../components/layout/Layout";
 import MainPage from "../pages/MainPage";
 import UnauthorizedPage from "../pages/UnauthorizedPage";
-
 // const routes = [
 //   ...authRoutes,
 //   ...salesRoutes,

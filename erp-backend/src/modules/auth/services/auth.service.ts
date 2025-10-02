@@ -4,7 +4,8 @@ import { JwtPayload } from "../../../core/types/jwt";
 import { generateAccessToken, generateRefreshToken } from "../../../core/utils/jwt";  
 import { UserWithRole } from "../../../core/types/User";
 import crypto from "crypto";
-import { sendEmail } from "../../../core/utils/email";
+import { sendEmail , resetPasswordTemplate} from "../../../core/utils/email";
+import { uploadBufferToCloudinary, deleteFromCloudinary } from "../../../core/utils/uploadCloudinary";
 
 export async function createUser(data: {
   branch_id: number;
@@ -66,7 +67,8 @@ export async function requestPasswordReset(username: string) {
   user.reset_expires_at = new Date(Date.now() + 10 * 60 * 1000); // 10 phút
   await user.save();
   const resetLink = `http://localhost:3000/reset-password?token=${token}`;
-  await sendEmail(user.email!, "Password Reset", `Click here to reset: ${resetLink}`);
+  const template = resetPasswordTemplate(user.username, resetLink);
+  await sendEmail(user.email!, template.subject, template.text, template.html);
   return { message: "Reset link sent to email" };
 }
 
@@ -94,8 +96,8 @@ export async function resetPassword(token: string, newPassword: string) {
 
 export async function getInforUser(userId: number) {
  const user = await model.User.findByPk(userId, {
-      include: [{ model: model.Role, as: "role" }],
-      attributes: ["id", "username", "full_name", "email", "phone", "branch_id"],
+      include: [{ model: model.Role, as: "role" } ,{ model: model.Branch, as: "branch" ,attributes: ["id","code","name","address"],},],
+      attributes: ["id", "username", "full_name", "email", "phone","avatar_url"],
     });
   if (!user) {
     throw new Error("User not found");
@@ -103,6 +105,40 @@ export async function getInforUser(userId: number) {
   return user ; 
 }
 
+export async function updateUserAvatar(userId: number, buffer: Buffer) {
+  const user = await model.User.findByPk(userId);
+  if (!user) {
+    throw new Error("User not found");
+  }
+  if (user.avatar_public_id) {
+  try {
+    await deleteFromCloudinary(user.avatar_public_id);
+  } catch (err) {
+    console.warn("Old avatar not found in Cloudinary", err);
+  }
+}
+  const result = await uploadBufferToCloudinary(buffer, "avatars");
+  user.avatar_url = result.url;
+  user.avatar_public_id = result.public_id;
+  await user.save();
+
+  return { message: "Avatar updated successfully", avatar_url: user.avatar_url };
+}
+
+export async function updateUserInfo(
+  userId: number,
+  data: { full_name?: string; email?: string; phone?: string }
+) {
+  const user = await model.User.findByPk(userId);
+  if (!user) throw new Error("User not found");
+
+  if (data.full_name !== undefined) user.full_name = data.full_name;
+  if (data.email !== undefined) user.email = data.email;
+  if (data.phone !== undefined) user.phone = data.phone;
+
+  await user.save();
+  return { message: "User info updated successfully", user };
+}
 
 
 

@@ -69,12 +69,20 @@ export default function ForgotPasswordPage() {
 
         {/* Submit Button */}
         <button
-          type="submit"
-          disabled={loading || !!message}
-          className="w-full bg-orange-400 hover:bg-orange-500 text-white font-semibold py-3 rounded-lg transition duration-200"
-        >
-            Xác thực Email
-        </button>
+            type="submit"
+            disabled={loading || !!message}
+            className={`w-full py-3 rounded-lg font-semibold transition duration-200 ${
+              loading || !!message
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-orange-400 hover:bg-orange-500 text-white"
+            }`}
+          >
+            {loading
+              ? "Đang gửi..."
+              : message
+              ? "Đã gửi Email"
+              : "Xác thực Email"}
+          </button>
 
         {/* Back to Login */}
         <div className="text-center">

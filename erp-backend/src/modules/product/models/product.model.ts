@@ -15,6 +15,8 @@ export interface ProductAttrs {
   sale_price?: number;
   tax_rate_id?: number;
   status: "active" | "inactive";
+  image_url?: string | null;    
+  image_public_id?: string | null;
 }
 
 type ProductCreation = Optional<ProductAttrs, "id" | "status">;
@@ -31,6 +33,8 @@ export class Product extends Model<ProductAttrs, ProductCreation> implements Pro
   public sale_price?: number;
   public tax_rate_id?: number;
   public status!: "active" | "inactive";
+  public image_url?: string | null;
+  public image_public_id?: string | null;
 }
 
 Product.init(
@@ -46,6 +50,8 @@ Product.init(
     sale_price: { type: DataTypes.DECIMAL(18, 2) },
     tax_rate_id: { type: DataTypes.BIGINT },
     status: { type: DataTypes.ENUM("active", "inactive"), defaultValue: "active" },
+    image_url: { type: DataTypes.STRING(255), allowNull: true },
+    image_public_id: { type: DataTypes.STRING(255), allowNull: true },
   },
   { sequelize, tableName: "products", timestamps: true, createdAt: "created_at", updatedAt: "updated_at" }
 );

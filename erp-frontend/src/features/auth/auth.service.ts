@@ -31,3 +31,13 @@ export async function logout() {
   const res = await api.logout();
   return res.data;
 }
+export async function updateUserAvatar(formData: FormData)
+{
+  const res =await api.updateUserAvatar(formData);
+  return res.data;
+}
+export async function updateUserInfo(data: { full_name?: string; email?: string; phone?: string })
+{
+  const res =await api.updateUserInfo(data);
+  return res.data;
+}

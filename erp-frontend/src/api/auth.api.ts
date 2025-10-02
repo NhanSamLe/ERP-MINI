@@ -53,3 +53,22 @@ export function resetPassword(token: string, newPassword: string) {
 export function logout(){
   return axiosClient.post("/auth/logout");
 }
+export async function updateUserAvatar(formData: FormData) {
+  const token = store.getState().auth.accessToken; 
+
+  const res = await axios.put(
+    `${API}/auth/update-avt`,
+    formData,
+    {
+      withCredentials: true,
+      headers: {
+        "Content-Type": "multipart/form-data",
+        Authorization: token ? `Bearer ${token}` : "",
+      },
+    }
+  );
+  return res;
+}
+export function updateUserInfo(data: { full_name?: string; email?: string; phone?: string }){
+  return axiosClient.put("/auth/update-me",data)
+}

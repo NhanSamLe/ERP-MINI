@@ -5,14 +5,20 @@ export interface Role {
   created_at?: string;
   updated_at?: string;
 }
-
+export interface Branch {
+  id: number;
+  address: string;
+  code: string;
+  name: string;
+}
 export interface User {
   id: number;
   username: string;
   full_name?: string; 
   email?: string;
   phone?: string;
-  branch_id?: number;
+  avatar_url?: string;
+  branch: Branch;
   role: Role;
 }
 

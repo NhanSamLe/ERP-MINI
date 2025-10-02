@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+import cloudinary from "./cloudinary";
 
 dotenv.config(); 
 
@@ -26,4 +27,9 @@ export const env = {
     user: process.env.SMTP_USER || "",
     pass: process.env.SMTP_PASS || "",
   },
+  cloudinary:{
+    name: process.env.CLOUDINARY_CLOUD_NAME!,
+    key: process.env.CLOUDINARY_API_KEY!,
+    secret: process.env.CLOUDINARY_API_SECRET!,
+  }
 };
