@@ -1,6 +1,7 @@
+import { ReactNode } from "react";
 interface AlertProps {
   type: 'success' | 'error' | 'info' | 'warning';
-  message: string;
+  message: ReactNode;
   onClose?: () => void;
 }
 

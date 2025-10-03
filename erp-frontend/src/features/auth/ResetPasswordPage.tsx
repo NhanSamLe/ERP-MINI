@@ -1,16 +1,16 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
-import { Eye, EyeOff } from "lucide-react";
 import { getErrorMessage } from "../../utils/ErrorHelper";
 import * as authService from "./auth.service";
 import AuthLayout from "./AuthLayout";
+import { PasswordInput } from "../../components/ui/PasswordInput";
+import { Alert } from "../../components/ui/Alert";
+import { Button } from "../../components/ui/Button";
 export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isValidToken, setIsValidToken] = useState(false);
@@ -66,106 +66,72 @@ export default function ResetPasswordPage() {
       </div>
 
       {!isValidToken && !success ? (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-600 text-sm">{error}</p>
+        <Alert type="error" message ={
+            <div>
+          <p className="text-sm">{error}</p>
           <Link
             to="/forgot-password"
             className="text-sm text-orange-500 hover:text-orange-600 font-medium mt-2 inline-block"
           >
             Yêu cầu link reset mới →
           </Link>
-        </div>
+          </div>
+        }/>   
       ) : (
         <form onSubmit={handleReset} className="space-y-5">
-          {/* New Password Input */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Mật khẩu mới <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-4 py-3 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none"
-                placeholder="Nhập mật khẩu mới"
-                required
-                disabled={!!success}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3.5"
-              >
-                {showPassword ? (
-                  <EyeOff className="w-5 h-5 text-gray-400" />
-                ) : (
-                  <Eye className="w-5 h-5 text-gray-400" />
-                )}
-              </button>
-            </div>
-          </div>
 
-          {/* Confirm Password Input */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Xác nhận mật khẩu <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <input
-                type={showConfirmPassword ? "text" : "password"}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-3 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none"
-                placeholder="Nhập lại mật khẩu mới"
-                required
-                disabled={!!success}
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-3.5"
-              >
-                {showConfirmPassword ? (
-                  <EyeOff className="w-5 h-5 text-gray-400" />
-                ) : (
-                  <Eye className="w-5 h-5 text-gray-400" />
-                )}
-              </button>
-            </div>
-          </div>
+          <PasswordInput 
+           label="Mật khẩu mới"
+           value={newPassword}
+          onChange={setNewPassword}
+          placeholder="Nhập mật khẩu mới"
+          required
+          disabled={!!success}
+           error={error ?? undefined}
+          />
+
+          <PasswordInput
+          label="Xác nhận mật khẩu"
+          value={confirmPassword}
+          onChange={setConfirmPassword}
+          placeholder="Nhập lại mật khẩu"
+          required
+          disabled={!!success}
+          error={
+            confirmPassword && confirmPassword !== newPassword
+              ? "Mật khẩu không khớp"
+              : undefined
+        }
+        />
 
           {/* Password Requirements */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p className="text-blue-800 text-xs font-medium mb-1">Yêu cầu mật khẩu:</p>
-            <ul className="text-blue-700 text-xs space-y-1 ml-4 list-disc">
-              <li>Tối thiểu 6 ký tự</li>
-              <li>Nên bao gồm chữ hoa, chữ thường và số</li>
-            </ul>
-          </div>
+          <Alert type="info"message={
+              <div>
+                <p className="text-xs font-medium mb-1">Yêu cầu mật khẩu:</p>
+                <ul className="text-xs space-y-1 ml-4 list-disc">
+                  <li>Tối thiểu 6 ký tự</li>
+                  <li>Nên bao gồm chữ hoa, chữ thường và số</li>
+                </ul>
+              </div>
+            }
+          />
 
           {/* Error Message */}
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-600 text-sm">{error}</p>
-            </div>
-          )}
+          {error && <Alert type="error" message={error}/>}
 
           {/* Success Message */}
-          {success && (
-            <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-green-600 text-sm">{success}</p>
-            </div>
-          )}
+          {success && <Alert type="success" message={success}/>}
 
           {/* Submit Button */}
-          <button
-            type="submit"
-            className="w-full bg-orange-400 hover:bg-orange-500 text-white font-semibold py-3 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={!!success}
+          <Button 
+            type="submit" 
+            variant="primary" 
+            fullWidth 
+            loading={!!success}
           >
             {success ? "Đang chuyển hướng..." : "Đặt lại mật khẩu"}
-          </button>
+          </Button>
+
 
           {/* Back to Login */}
           {!success && (
