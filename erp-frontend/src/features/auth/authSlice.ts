@@ -67,7 +67,7 @@ const authSlice = createSlice({
         }
       })
       .addCase(updateUserInfoThunk.fulfilled, (state, action) => {
-        state.user = action.payload;
+        state.user = action.payload.user;
       })
       .addCase(updateUserAvatarThunk.rejected, (state, action) => {
         state.error = action.payload as string;

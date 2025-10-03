@@ -129,7 +129,10 @@ export async function updateUserInfo(
   userId: number,
   data: { full_name?: string; email?: string; phone?: string }
 ) {
-  const user = await model.User.findByPk(userId);
+  const user = await model.User.findByPk(userId, {
+      include: [{ model: model.Role, as: "role" } ,{ model: model.Branch, as: "branch" ,attributes: ["id","code","name","address"],},],
+      attributes: ["id", "username", "full_name", "email", "phone","avatar_url"],
+    });
   if (!user) throw new Error("User not found");
 
   if (data.full_name !== undefined) user.full_name = data.full_name;

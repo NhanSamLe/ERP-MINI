@@ -115,10 +115,8 @@ export default function ResetPasswordPage() {
               </div>
             }
           />
-
           {/* Error Message */}
           {error && <Alert type="error" message={error}/>}
-
           {/* Success Message */}
           {success && <Alert type="success" message={success}/>}
 
@@ -131,7 +129,6 @@ export default function ResetPasswordPage() {
           >
             {success ? "Đang chuyển hướng..." : "Đặt lại mật khẩu"}
           </Button>
-
 
           {/* Back to Login */}
           {!success && (
