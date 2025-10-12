@@ -6,12 +6,12 @@ const router = Router();
 
 router.get(
   "/",
-  authMiddleware(["ADMIN"]),
+  authMiddleware(["ADMIN", "SALES", "PURCHASE"]),
   productCategoryController.getCategoryAll
 );
 router.get(
   "/:id",
-  authMiddleware(["ADMIN"]),
+  authMiddleware(["ADMIN", "SALES", "PURCHASE"]),
   productCategoryController.getCategoryById
 );
 router.post(
