@@ -1,4 +1,4 @@
-import { useState} from "react";
+import { useState, useEffect } from "react";
 import { Briefcase } from "lucide-react"; 
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../store/store";
@@ -17,6 +17,15 @@ export default function UserProfile() {
   const [fullName, setFullName] = useState(user?.full_name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
+
+  useEffect(() => {
+  if (user?.avatar_url) {
+    setImagePreview(user.avatar_url);
+  }
+  if (user?.full_name) setFullName(user.full_name);
+  if (user?.email) setEmail(user.email);
+  if (user?.phone) setPhone(user.phone);
+}, [user]);
 
   const handleImageChange = (file: File) => {
   const reader = new FileReader();
