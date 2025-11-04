@@ -20,6 +20,7 @@ export interface User {
   avatar_url?: string;
   branch: Branch;
   role: Role;
+  is_active: boolean;
 }
 
 export interface LoginPayload {

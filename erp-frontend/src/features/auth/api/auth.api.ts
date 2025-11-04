@@ -1,8 +1,8 @@
 import axios from "axios";
-import axiosClient from "./axiosClient";
-import { LoginPayload  } from "../types/User";
-import { store } from "../store/store";
-import { setToken, clearAuth } from "../features/auth/authSlice";
+import axiosClient from "../../../api/axiosClient";
+import { LoginPayload  } from "../../../types/User";
+import { store } from "../../../store/store";
+import { setToken, clearAuth } from "../store";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8888/api";
 export function login(data: LoginPayload) {

@@ -1,7 +1,7 @@
 import axios from "axios";
 import { store } from "../store/store";
-import {  clearAuth } from "../features/auth/authSlice";
-import { refresh } from "../api/auth.api";
+import {  clearAuth } from "../features/auth/store";
+import { refresh } from "../features/auth/api/auth.api";
 
 const axiosClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:8888/api",

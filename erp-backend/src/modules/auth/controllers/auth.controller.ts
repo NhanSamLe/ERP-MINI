@@ -11,6 +11,29 @@ export const createUser = async (req: Request, res: Response) => {
     return res.status(400).json({ message: err.message });
   }
 };
+export const deleteUser = async (req: Request, res: Response) => {
+  try {
+    const userId = parseInt((req.params.id) as string, 10);
+    const userJwt = (req as any).user;
+    if(userId === userJwt.id){  
+      return  res.status(400).json({ message: "You cannot delete your own account" });
+    }
+    await authService.deleteUser(userId);
+    return res.status(204).send();
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message });
+  }
+};
+export const updateUser = async (req: Request, res: Response) => {
+  try {
+    const user = await authService.updateUser(req.body);
+    return res.status(200).json({
+      message: "User updated successfully",
+    });
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message });
+  }
+};
 export const login = async (req: Request, res: Response) => {
   try {
     const { username, password, rememberMe} = req.body;
@@ -129,3 +152,20 @@ export const updateUserInfo = async(req: Request, res: Response)=> {
      return res.status(500).json({ error: error.message || "Update info failed" });
   }
 }
+
+export const getAllUsers = async (req: Request, res: Response) => {
+  try {
+    const users = await authService.getAllUsers();
+    return res.status(200).json(users);
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message });
+  } 
+};
+export const getAllRoles = async (req: Request, res: Response) => {
+  try {
+    const roles = await authService.getAllRoles();
+    return res.status(200).json(roles);
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message });
+  }
+};

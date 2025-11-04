@@ -8,6 +8,7 @@ import companyRoutes from "./companyRoutes";
 import crmRoutes from "./crmRoutes";
 import masterDataRoutes from "./master_dataRoutes";
 import productRoutes from "./productRoutes";
+import userRoutes from "./userRoutes";
 import Layout from "../components/layout/Layout";
 import MainPage from "../pages/MainPage";
 import UnauthorizedPage from "../pages/UnauthorizedPage";
@@ -33,6 +34,7 @@ const appRoutes = [
   ...crmRoutes,
   ...masterDataRoutes,
   ...productRoutes,
+  ...userRoutes,
 ];
 const routes = [
   ...authRoutes,

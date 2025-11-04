@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
-import { getErrorMessage } from "../../utils/ErrorHelper";
-import * as authService from "./auth.service";
-import AuthLayout from "./AuthLayout";
-import { PasswordInput } from "../../components/ui/PasswordInput";
-import { Alert } from "../../components/ui/Alert";
-import { Button } from "../../components/ui/Button";
+import { getErrorMessage } from "../../../utils/ErrorHelper";
+import * as authService from "../auth.service";
+import AuthLayout from "../AuthLayout";
+import { PasswordInput } from "../../../components/ui/PasswordInput";
+import { Alert } from "../../../components/ui/Alert";
+import { Button } from "../../../components/ui/Button";
 export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");

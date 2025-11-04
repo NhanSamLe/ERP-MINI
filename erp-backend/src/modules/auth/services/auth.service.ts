@@ -6,7 +6,8 @@ import { UserWithRole } from "../../../core/types/User";
 import crypto from "crypto";
 import { sendEmail , resetPasswordTemplate} from "../../../core/utils/email";
 import { uploadBufferToCloudinary, deleteFromCloudinary } from "../../../core/utils/uploadCloudinary";
-
+import { Op } from "sequelize";
+import {getRelations, hasLinkedData} from "../../../core/utils/getRelation";
 export async function createUser(data: {
   branch_id: number;
   username: string;
@@ -16,10 +17,18 @@ export async function createUser(data: {
   phone?: string;
   role_id: number;
 }) {
-  const role = await model.Role.findOne({ where: { id: data.role_id } });
-  if (!role) {
-    throw new Error("Invalid role ID  provided");
-  }
+  const [role, checkUser, checkPhone, checkEmail] = await Promise.all([
+    model.Role.findOne({ where: { id: data.role_id } }),
+    model.User.findOne({ where: { username: data.username } }),
+    model.User.findOne({ where: { phone: data.phone } }),
+    model.User.findOne({ where: { email: data.email } }),
+  ]);
+
+  if (!role) throw new Error("Invalid role ID provided");
+  if (checkUser) throw new Error("Username already exists");
+  if (checkEmail) throw new Error("Email already exists");
+  if (checkPhone) throw new Error("Phone number already exists");
+
   const hash = await hashPassword(data.password);
   const user = await model.User.create({
     branch_id: data.branch_id,
@@ -33,6 +42,94 @@ export async function createUser(data: {
   });
   await user.save();
   return user;
+}
+export async function getAllUsers() {
+  const users = await model.User.findAll({include: [
+      {
+        model: model.Role,
+        as: "role",
+        required: true,
+        where: {
+          name: { [Op.ne]: "ADMIN" }
+        },
+        attributes: ["id","code","name"], 
+      },
+      {
+        model: model.Branch,
+        as: "branch",
+        attributes: ["id","code","name","address"],
+      }
+    ]});
+  return users;
+}
+export async function getAllRoles(){
+  const roles = await model.Role.findAll({where: { name: { [Op.ne]: "ADMIN" } }, attributes: ["id","code","name"]});
+  return roles;
+}
+
+export async function updateUser(data: {
+  username?: string;
+  branch_id: number;
+  full_name?: string;
+  email?: string;
+  phone?: string;
+  role_id: number;
+}){
+  const user = await model.User.findByPk(data.username);
+  if (!user) throw new Error("User not found");
+  if (data.role_id) {
+    const role = await model.Role.findByPk(data.role_id);
+    if (!role) throw new Error("Invalid role ID provided");
+  }
+   if (data.phone || data.email) {
+    const existing = await model.User.findOne({
+      where: {
+        [Op.or]: [
+          data.phone ? { phone: data.phone } : {},
+          data.email ? { email: data.email } : {},
+        ],
+        id: { [Op.ne]: user.id }, // bỏ qua chính user đang update
+      },
+    });
+
+    if (existing) {
+      if (existing.phone === data.phone) throw new Error("Phone number already exists");
+      if (existing.email === data.email) throw new Error("Email already exists");
+    }
+    await user.update({
+    ...(data.branch_id ? { branch_id: data.branch_id } : {}),
+    ...(data.full_name ? { full_name: data.full_name } : {}),
+    ...(data.email ? { email: data.email } : {}),
+    ...(data.phone ? { phone: data.phone } : {}),
+    ...(data.role_id ? { role_id: data.role_id } : {}),
+   });
+  }
+  return user;
+}
+
+export async function deleteUser(id: number) {
+  const user = await model.User.findByPk(id);
+  if (!user) {
+    throw new Error("Không tìm thấy tài khoản người dùng.");
+  }
+   const linked = await hasLinkedData(model.User, id);
+  if (linked) {
+    throw new Error(
+      "Tài khoản này đang được liên kết với dữ liệu nghiệp vụ. Hãy sử dụng chức năng ‘Ngưng hoạt động’ thay vì xóa."
+    );
+  }
+  await user.destroy(); 
+}
+
+async function hasUserLinkedData(userId: number) {
+  const linkedCounts = await Promise.all([
+    model.Lead.count({ where: { assigned_to: userId } }),
+    model.Opportunity.count({ where: { owner_id: userId } }),
+    model.Activity.count({ where: { owner_id: userId } }),
+  ]);
+
+  const totalLinked = linkedCounts.reduce((a, b) => a + b, 0);
+  return totalLinked > 0;
 }
 
 export async function login(username: string, password: string) {
@@ -97,7 +194,7 @@ export async function resetPassword(token: string, newPassword: string) {
 export async function getInforUser(userId: number) {
  const user = await model.User.findByPk(userId, {
       include: [{ model: model.Role, as: "role" } ,{ model: model.Branch, as: "branch" ,attributes: ["id","code","name","address"],},],
-      attributes: ["id", "username", "full_name", "email", "phone","avatar_url"],
+      attributes: ["id", "username", "full_name", "email", "phone","avatar_url", "is_active"],
     });
   if (!user) {
     throw new Error("User not found");
