@@ -39,240 +39,365 @@ import { GlAccount } from "../modules/finance/models/glAccount.model";
 import { GlJournal } from "../modules/finance/models/glJournal.model";
 import { GlEntry } from "../modules/finance/models/glEntry.model";
 import { GlEntryLine } from "../modules/finance/models/glEntryLine.model";
+import { ProductImage } from "../modules/product/models/productImage.model";
 
 export function applyAssociations() {
-// =====================
-// AUTH
-// =====================
-// Một User có thể có nhiều Role, và một Role cũng có thể gán cho nhiều User (quan hệ N-N)
+  // =====================
+  // AUTH
+  // =====================
+  // Một User có thể có nhiều Role, và một Role cũng có thể gán cho nhiều User (quan hệ N-N)
 
-// Một User thuộc về 1 Role
-User.belongsTo(Role, { foreignKey: "role_id", as: "role", onDelete: "SET NULL" });
-// Một Role có nhiều User
-Role.hasMany(User, { foreignKey: "role_id", as: "users" });
+  // Một User thuộc về 1 Role
+  User.belongsTo(Role, {
+    foreignKey: "role_id",
+    as: "role",
+    onDelete: "SET NULL",
+  });
+  // Một Role có nhiều User
+  Role.hasMany(User, { foreignKey: "role_id", as: "users" });
 
-// Một User thuộc về một Branch
-User.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
+  // Một User thuộc về một Branch
+  User.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
 
-// Một Branch có nhiều User
-Branch.hasMany(User, { foreignKey: "branch_id", as: "users" });
+  // Một Branch có nhiều User
+  Branch.hasMany(User, { foreignKey: "branch_id", as: "users" });
 
-// =====================
-// COMPANY
-// =====================
-// Một Company có nhiều Branch (chi nhánh)
-Company.hasMany(Branch, { foreignKey: "company_id", as: "branches" });
-// Mỗi Branch thuộc về một Company
-Branch.belongsTo(Company, { foreignKey: "company_id", as: "company" });
+  // =====================
+  // COMPANY
+  // =====================
+  // Một Company có nhiều Branch (chi nhánh)
+  Company.hasMany(Branch, { foreignKey: "company_id", as: "branches" });
+  // Mỗi Branch thuộc về một Company
+  Branch.belongsTo(Company, { foreignKey: "company_id", as: "company" });
 
+  // =====================
+  // PRODUCT
+  // =====================
+  // Mỗi Product thuộc một Category
+  Product.belongsTo(ProductCategory, {
+    foreignKey: "category_id",
+    as: "category",
+  });
+  // Một Category có nhiều Product
+  ProductCategory.hasMany(Product, {
+    foreignKey: "category_id",
+    as: "products",
+  });
 
-// =====================
-// PRODUCT
-// =====================
-// Mỗi Product thuộc một Category
-Product.belongsTo(ProductCategory, { foreignKey: "category_id", as: "category" });
-// Một Category có nhiều Product
-ProductCategory.hasMany(Product, { foreignKey: "category_id", as: "products" });
+  // Mỗi Product có thể gắn 1 TaxRate
+  Product.belongsTo(TaxRate, { foreignKey: "tax_rate_id", as: "taxRate" });
+  // Một TaxRate áp dụng cho nhiều Product
+  TaxRate.hasMany(Product, { foreignKey: "tax_rate_id", as: "products" });
 
-// Mỗi Product có thể gắn 1 TaxRate
-Product.belongsTo(TaxRate, { foreignKey: "tax_rate_id", as: "taxRate" });
-// Một TaxRate áp dụng cho nhiều Product
-TaxRate.hasMany(Product, { foreignKey: "tax_rate_id", as: "products" });
+  // Category có quan hệ cha–con (tree structure)
+  ProductCategory.hasMany(ProductCategory, {
+    foreignKey: "parent_id",
+    as: "children",
+  });
+  ProductCategory.belongsTo(ProductCategory, {
+    foreignKey: "parent_id",
+    as: "parent",
+  });
 
-// Category có quan hệ cha–con (tree structure)
-ProductCategory.hasMany(ProductCategory, { foreignKey: "parent_id", as: "children" });
-ProductCategory.belongsTo(ProductCategory, { foreignKey: "parent_id", as: "parent" });
+  // Mỗi Product có nhiều hình ảnh
+  Product.hasMany(ProductImage, { foreignKey: "product_id", as: "images" });
+  // Mỗi hình ảnh thuộc về một Product
+  ProductImage.belongsTo(Product, { foreignKey: "product_id", as: "product" });
 
+  // =====================
+  // MASTER DATA
+  // =====================
+  // Một Uom có thể convert sang nhiều Uom khác (1-n)
+  Uom.hasMany(UomConversion, {
+    foreignKey: "from_uom_id",
+    as: "fromConversions",
+  });
+  Uom.hasMany(UomConversion, { foreignKey: "to_uom_id", as: "toConversions" });
+  UomConversion.belongsTo(Uom, { foreignKey: "from_uom_id", as: "fromUom" });
+  UomConversion.belongsTo(Uom, { foreignKey: "to_uom_id", as: "toUom" });
 
-// =====================
-// MASTER DATA
-// =====================
-// Một Uom có thể convert sang nhiều Uom khác (1-n)
-Uom.hasMany(UomConversion, { foreignKey: "from_uom_id", as: "fromConversions" });
-Uom.hasMany(UomConversion, { foreignKey: "to_uom_id", as: "toConversions" });
-UomConversion.belongsTo(Uom, { foreignKey: "from_uom_id", as: "fromUom" });
-UomConversion.belongsTo(Uom, { foreignKey: "to_uom_id", as: "toUom" });
+  // Currency liên kết với ExchangeRate (1 currency là base/quote của nhiều rate)
+  Currency.hasMany(ExchangeRate, {
+    foreignKey: "base_currency_id",
+    as: "baseRates",
+  });
+  Currency.hasMany(ExchangeRate, {
+    foreignKey: "quote_currency_id",
+    as: "quoteRates",
+  });
+  ExchangeRate.belongsTo(Currency, {
+    foreignKey: "base_currency_id",
+    as: "baseCurrency",
+  });
+  ExchangeRate.belongsTo(Currency, {
+    foreignKey: "quote_currency_id",
+    as: "quoteCurrency",
+  });
 
-// Currency liên kết với ExchangeRate (1 currency là base/quote của nhiều rate)
-Currency.hasMany(ExchangeRate, { foreignKey: "base_currency_id", as: "baseRates" });
-Currency.hasMany(ExchangeRate, { foreignKey: "quote_currency_id", as: "quoteRates" });
-ExchangeRate.belongsTo(Currency, { foreignKey: "base_currency_id", as: "baseCurrency" });
-ExchangeRate.belongsTo(Currency, { foreignKey: "quote_currency_id", as: "quoteCurrency" });
+  // =====================
+  // CRM
+  // =====================
+  // Lead được gán cho 1 User (nhân viên sale)
+  Lead.belongsTo(User, { foreignKey: "assigned_to", as: "assignedUser" });
+  User.hasMany(Lead, { foreignKey: "assigned_to", as: "leads" });
 
+  // Opportunity được tạo từ 1 Lead
+  Opportunity.belongsTo(Lead, { foreignKey: "lead_id", as: "lead" });
+  Lead.hasMany(Opportunity, { foreignKey: "lead_id", as: "opportunities" });
 
-// =====================
-// CRM
-// =====================
-// Lead được gán cho 1 User (nhân viên sale)
-Lead.belongsTo(User, { foreignKey: "assigned_to", as: "assignedUser" });
-User.hasMany(Lead, { foreignKey: "assigned_to", as: "leads" });
+  // Opportunity thuộc về 1 Partner (khách hàng tiềm năng)
+  Opportunity.belongsTo(Partner, { foreignKey: "customer_id", as: "customer" });
+  Partner.hasMany(Opportunity, {
+    foreignKey: "customer_id",
+    as: "opportunities",
+  });
 
-// Opportunity được tạo từ 1 Lead
-Opportunity.belongsTo(Lead, { foreignKey: "lead_id", as: "lead" });
-Lead.hasMany(Opportunity, { foreignKey: "lead_id", as: "opportunities" });
+  // Opportunity có 1 User làm owner
+  Opportunity.belongsTo(User, { foreignKey: "owner_id", as: "owner" });
+  User.hasMany(Opportunity, {
+    foreignKey: "owner_id",
+    as: "ownedOpportunities",
+  });
 
-// Opportunity thuộc về 1 Partner (khách hàng tiềm năng)
-Opportunity.belongsTo(Partner, { foreignKey: "customer_id", as: "customer" });
-Partner.hasMany(Opportunity, { foreignKey: "customer_id", as: "opportunities" });
+  // Activity do 1 User tạo
+  Activity.belongsTo(User, { foreignKey: "owner_id", as: "owner" });
+  User.hasMany(Activity, { foreignKey: "owner_id", as: "activities" });
 
-// Opportunity có 1 User làm owner
-Opportunity.belongsTo(User, { foreignKey: "owner_id", as: "owner" });
-User.hasMany(Opportunity, { foreignKey: "owner_id", as: "ownedOpportunities" });
+  // =====================
+  // SALES & AR
+  // =====================
+  // SaleOrder thuộc về 1 Branch và 1 Customer (Partner)
+  SaleOrder.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
+  Branch.hasMany(SaleOrder, { foreignKey: "branch_id", as: "saleOrders" });
 
-// Activity do 1 User tạo
-Activity.belongsTo(User, { foreignKey: "owner_id", as: "owner" });
-User.hasMany(Activity, { foreignKey: "owner_id", as: "activities" });
+  SaleOrder.belongsTo(Partner, { foreignKey: "customer_id", as: "customer" });
+  Partner.hasMany(SaleOrder, { foreignKey: "customer_id", as: "saleOrders" });
 
+  // SaleOrder có nhiều dòng (SaleOrderLine)
+  SaleOrder.hasMany(SaleOrderLine, { foreignKey: "order_id", as: "lines" });
+  SaleOrderLine.belongsTo(SaleOrder, { foreignKey: "order_id", as: "order" });
 
-// =====================
-// SALES & AR
-// =====================
-// SaleOrder thuộc về 1 Branch và 1 Customer (Partner)
-SaleOrder.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
-Branch.hasMany(SaleOrder, { foreignKey: "branch_id", as: "saleOrders" });
+  // Mỗi SaleOrderLine gắn Product + TaxRate
+  SaleOrderLine.belongsTo(Product, { foreignKey: "product_id", as: "product" });
+  Product.hasMany(SaleOrderLine, {
+    foreignKey: "product_id",
+    as: "saleOrderLines",
+  });
 
-SaleOrder.belongsTo(Partner, { foreignKey: "customer_id", as: "customer" });
-Partner.hasMany(SaleOrder, { foreignKey: "customer_id", as: "saleOrders" });
+  SaleOrderLine.belongsTo(TaxRate, {
+    foreignKey: "tax_rate_id",
+    as: "taxRate",
+  });
+  TaxRate.hasMany(SaleOrderLine, {
+    foreignKey: "tax_rate_id",
+    as: "saleOrderLines",
+  });
 
-// SaleOrder có nhiều dòng (SaleOrderLine)
-SaleOrder.hasMany(SaleOrderLine, { foreignKey: "order_id", as: "lines" });
-SaleOrderLine.belongsTo(SaleOrder, { foreignKey: "order_id", as: "order" });
+  // Invoice thuộc về SaleOrder
+  ArInvoice.belongsTo(SaleOrder, { foreignKey: "order_id", as: "order" });
+  SaleOrder.hasMany(ArInvoice, { foreignKey: "order_id", as: "invoices" });
 
-// Mỗi SaleOrderLine gắn Product + TaxRate
-SaleOrderLine.belongsTo(Product, { foreignKey: "product_id", as: "product" });
-Product.hasMany(SaleOrderLine, { foreignKey: "product_id", as: "saleOrderLines" });
+  // Invoice có nhiều dòng
+  ArInvoice.hasMany(ArInvoiceLine, { foreignKey: "invoice_id", as: "lines" });
+  ArInvoiceLine.belongsTo(ArInvoice, {
+    foreignKey: "invoice_id",
+    as: "invoice",
+  });
 
-SaleOrderLine.belongsTo(TaxRate, { foreignKey: "tax_rate_id", as: "taxRate" });
-TaxRate.hasMany(SaleOrderLine, { foreignKey: "tax_rate_id", as: "saleOrderLines" });
+  // Mỗi dòng invoice có Product + TaxRate
+  ArInvoiceLine.belongsTo(Product, { foreignKey: "product_id", as: "product" });
+  Product.hasMany(ArInvoiceLine, {
+    foreignKey: "product_id",
+    as: "arInvoiceLines",
+  });
 
-// Invoice thuộc về SaleOrder
-ArInvoice.belongsTo(SaleOrder, { foreignKey: "order_id", as: "order" });
-SaleOrder.hasMany(ArInvoice, { foreignKey: "order_id", as: "invoices" });
+  ArInvoiceLine.belongsTo(TaxRate, {
+    foreignKey: "tax_rate_id",
+    as: "taxRate",
+  });
+  TaxRate.hasMany(ArInvoiceLine, {
+    foreignKey: "tax_rate_id",
+    as: "arInvoiceLines",
+  });
 
-// Invoice có nhiều dòng
-ArInvoice.hasMany(ArInvoiceLine, { foreignKey: "invoice_id", as: "lines" });
-ArInvoiceLine.belongsTo(ArInvoice, { foreignKey: "invoice_id", as: "invoice" });
+  // Receipt thuộc về 1 Customer
+  ArReceipt.belongsTo(Partner, { foreignKey: "customer_id", as: "customer" });
+  Partner.hasMany(ArReceipt, { foreignKey: "customer_id", as: "receipts" });
 
-// Mỗi dòng invoice có Product + TaxRate
-ArInvoiceLine.belongsTo(Product, { foreignKey: "product_id", as: "product" });
-Product.hasMany(ArInvoiceLine, { foreignKey: "product_id", as: "arInvoiceLines" });
+  // ReceiptAllocation liên kết Receipt ↔ Invoice
+  ArReceiptAllocation.belongsTo(ArReceipt, {
+    foreignKey: "receipt_id",
+    as: "receipt",
+  });
+  ArReceipt.hasMany(ArReceiptAllocation, {
+    foreignKey: "receipt_id",
+    as: "allocations",
+  });
 
-ArInvoiceLine.belongsTo(TaxRate, { foreignKey: "tax_rate_id", as: "taxRate" });
-TaxRate.hasMany(ArInvoiceLine, { foreignKey: "tax_rate_id", as: "arInvoiceLines" });
+  ArReceiptAllocation.belongsTo(ArInvoice, {
+    foreignKey: "invoice_id",
+    as: "invoice",
+  });
+  ArInvoice.hasMany(ArReceiptAllocation, {
+    foreignKey: "invoice_id",
+    as: "allocations",
+  });
 
-// Receipt thuộc về 1 Customer
-ArReceipt.belongsTo(Partner, { foreignKey: "customer_id", as: "customer" });
-Partner.hasMany(ArReceipt, { foreignKey: "customer_id", as: "receipts" });
+  // =====================
+  // PURCHASE & AP
+  // =====================
+  // PurchaseOrder ↔ Lines
+  PurchaseOrder.hasMany(PurchaseOrderLine, {
+    foreignKey: "po_id",
+    as: "lines",
+  });
+  PurchaseOrderLine.belongsTo(PurchaseOrder, {
+    foreignKey: "po_id",
+    as: "order",
+  });
 
-// ReceiptAllocation liên kết Receipt ↔ Invoice
-ArReceiptAllocation.belongsTo(ArReceipt, { foreignKey: "receipt_id", as: "receipt" });
-ArReceipt.hasMany(ArReceiptAllocation, { foreignKey: "receipt_id", as: "allocations" });
+  // PurchaseOrder ↔ Invoice
+  PurchaseOrder.hasMany(ApInvoice, { foreignKey: "po_id", as: "invoices" });
+  ApInvoice.belongsTo(PurchaseOrder, { foreignKey: "po_id", as: "order" });
 
-ArReceiptAllocation.belongsTo(ArInvoice, { foreignKey: "invoice_id", as: "invoice" });
-ArInvoice.hasMany(ArReceiptAllocation, { foreignKey: "invoice_id", as: "allocations" });
+  // ApInvoice ↔ Lines
+  ApInvoice.hasMany(ApInvoiceLine, {
+    foreignKey: "ap_invoice_id",
+    as: "lines",
+  });
+  ApInvoiceLine.belongsTo(ApInvoice, {
+    foreignKey: "ap_invoice_id",
+    as: "invoice",
+  });
 
+  // ApPayment ↔ Allocations
+  ApPayment.hasMany(ApPaymentAllocation, {
+    foreignKey: "payment_id",
+    as: "allocations",
+  });
+  ApPaymentAllocation.belongsTo(ApPayment, {
+    foreignKey: "payment_id",
+    as: "payment",
+  });
 
-// =====================
-// PURCHASE & AP
-// =====================
-// PurchaseOrder ↔ Lines
-PurchaseOrder.hasMany(PurchaseOrderLine, { foreignKey: "po_id", as: "lines" });
-PurchaseOrderLine.belongsTo(PurchaseOrder, { foreignKey: "po_id", as: "order" });
+  ApInvoice.hasMany(ApPaymentAllocation, {
+    foreignKey: "ap_invoice_id",
+    as: "allocations",
+  });
+  ApPaymentAllocation.belongsTo(ApInvoice, {
+    foreignKey: "ap_invoice_id",
+    as: "invoice",
+  });
 
-// PurchaseOrder ↔ Invoice
-PurchaseOrder.hasMany(ApInvoice, { foreignKey: "po_id", as: "invoices" });
-ApInvoice.belongsTo(PurchaseOrder, { foreignKey: "po_id", as: "order" });
+  // =====================
+  // INVENTORY
+  // =====================
+  // Warehouse ↔ StockMoves
+  Warehouse.hasMany(StockMove, { foreignKey: "warehouse_id", as: "moves" });
+  StockMove.belongsTo(Warehouse, {
+    foreignKey: "warehouse_id",
+    as: "warehouse",
+  });
 
-// ApInvoice ↔ Lines
-ApInvoice.hasMany(ApInvoiceLine, { foreignKey: "ap_invoice_id", as: "lines" });
-ApInvoiceLine.belongsTo(ApInvoice, { foreignKey: "ap_invoice_id", as: "invoice" });
+  // StockMove ↔ Lines
+  StockMove.hasMany(StockMoveLine, { foreignKey: "move_id", as: "lines" });
+  StockMoveLine.belongsTo(StockMove, { foreignKey: "move_id", as: "move" });
 
-// ApPayment ↔ Allocations
-ApPayment.hasMany(ApPaymentAllocation, { foreignKey: "payment_id", as: "allocations" });
-ApPaymentAllocation.belongsTo(ApPayment, { foreignKey: "payment_id", as: "payment" });
+  // Product ↔ StockMoveLines
+  Product.hasMany(StockMoveLine, {
+    foreignKey: "product_id",
+    as: "stockMoveLines",
+  });
+  StockMoveLine.belongsTo(Product, { foreignKey: "product_id", as: "product" });
 
-ApInvoice.hasMany(ApPaymentAllocation, { foreignKey: "ap_invoice_id", as: "allocations" });
-ApPaymentAllocation.belongsTo(ApInvoice, { foreignKey: "ap_invoice_id", as: "invoice" });
+  // Warehouse ↔ StockBalance
+  Warehouse.hasMany(StockBalance, {
+    foreignKey: "warehouse_id",
+    as: "balances",
+  });
+  StockBalance.belongsTo(Warehouse, {
+    foreignKey: "warehouse_id",
+    as: "warehouse",
+  });
 
+  // Product ↔ StockBalance
+  Product.hasMany(StockBalance, { foreignKey: "product_id", as: "balances" });
+  StockBalance.belongsTo(Product, { foreignKey: "product_id", as: "product" });
 
-// =====================
-// INVENTORY
-// =====================
-// Warehouse ↔ StockMoves
-Warehouse.hasMany(StockMove, { foreignKey: "warehouse_id", as: "moves" });
-StockMove.belongsTo(Warehouse, { foreignKey: "warehouse_id", as: "warehouse" });
+  // =====================
+  // HRM
+  // =====================
+  // Branch ↔ Department, Position, Employee
+  Branch.hasMany(Department, { foreignKey: "branch_id", as: "departments" });
+  Department.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
 
-// StockMove ↔ Lines
-StockMove.hasMany(StockMoveLine, { foreignKey: "move_id", as: "lines" });
-StockMoveLine.belongsTo(StockMove, { foreignKey: "move_id", as: "move" });
+  Branch.hasMany(Position, { foreignKey: "branch_id", as: "positions" });
+  Position.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
 
-// Product ↔ StockMoveLines
-Product.hasMany(StockMoveLine, { foreignKey: "product_id", as: "stockMoveLines" });
-StockMoveLine.belongsTo(Product, { foreignKey: "product_id", as: "product" });
+  Branch.hasMany(Employee, { foreignKey: "branch_id", as: "employees" });
+  Employee.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
 
-// Warehouse ↔ StockBalance
-Warehouse.hasMany(StockBalance, { foreignKey: "warehouse_id", as: "balances" });
-StockBalance.belongsTo(Warehouse, { foreignKey: "warehouse_id", as: "warehouse" });
+  // Department ↔ Employee
+  Department.hasMany(Employee, {
+    foreignKey: "department_id",
+    as: "employees",
+  });
+  Employee.belongsTo(Department, {
+    foreignKey: "department_id",
+    as: "department",
+  });
 
-// Product ↔ StockBalance
-Product.hasMany(StockBalance, { foreignKey: "product_id", as: "balances" });
-StockBalance.belongsTo(Product, { foreignKey: "product_id", as: "product" });
+  // Position ↔ Employee
+  Position.hasMany(Employee, { foreignKey: "position_id", as: "employees" });
+  Employee.belongsTo(Position, { foreignKey: "position_id", as: "position" });
 
+  // PayrollPeriod ↔ Branch
+  Branch.hasMany(PayrollPeriod, {
+    foreignKey: "branch_id",
+    as: "payrollPeriods",
+  });
+  PayrollPeriod.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
 
-// =====================
-// HRM
-// =====================
-// Branch ↔ Department, Position, Employee
-Branch.hasMany(Department, { foreignKey: "branch_id", as: "departments" });
-Department.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
+  // PayrollPeriod ↔ PayrollRun
+  PayrollPeriod.hasMany(PayrollRun, { foreignKey: "period_id", as: "runs" });
+  PayrollRun.belongsTo(PayrollPeriod, {
+    foreignKey: "period_id",
+    as: "period",
+  });
 
-Branch.hasMany(Position, { foreignKey: "branch_id", as: "positions" });
-Position.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
+  // PayrollRun ↔ PayrollRunLine
+  PayrollRun.hasMany(PayrollRunLine, { foreignKey: "run_id", as: "lines" });
+  PayrollRunLine.belongsTo(PayrollRun, { foreignKey: "run_id", as: "run" });
 
-Branch.hasMany(Employee, { foreignKey: "branch_id", as: "employees" });
-Employee.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
+  // Employee ↔ PayrollRunLine
+  Employee.hasMany(PayrollRunLine, {
+    foreignKey: "employee_id",
+    as: "payrollLines",
+  });
+  PayrollRunLine.belongsTo(Employee, {
+    foreignKey: "employee_id",
+    as: "employee",
+  });
 
-// Department ↔ Employee
-Department.hasMany(Employee, { foreignKey: "department_id", as: "employees" });
-Employee.belongsTo(Department, { foreignKey: "department_id", as: "department" });
+  // =====================
+  // FINANCE & GL
+  // =====================
+  // Journal ↔ Entries
+  GlJournal.hasMany(GlEntry, { foreignKey: "journal_id", as: "entries" });
+  GlEntry.belongsTo(GlJournal, { foreignKey: "journal_id", as: "journal" });
 
-// Position ↔ Employee
-Position.hasMany(Employee, { foreignKey: "position_id", as: "employees" });
-Employee.belongsTo(Position, { foreignKey: "position_id", as: "position" });
+  // Entry ↔ EntryLines
+  GlEntry.hasMany(GlEntryLine, { foreignKey: "entry_id", as: "lines" });
+  GlEntryLine.belongsTo(GlEntry, { foreignKey: "entry_id", as: "entry" });
 
-// PayrollPeriod ↔ Branch
-Branch.hasMany(PayrollPeriod, { foreignKey: "branch_id", as: "payrollPeriods" });
-PayrollPeriod.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
+  // Account ↔ EntryLines
+  GlAccount.hasMany(GlEntryLine, {
+    foreignKey: "account_id",
+    as: "entryLines",
+  });
+  GlEntryLine.belongsTo(GlAccount, { foreignKey: "account_id", as: "account" });
 
-// PayrollPeriod ↔ PayrollRun
-PayrollPeriod.hasMany(PayrollRun, { foreignKey: "period_id", as: "runs" });
-PayrollRun.belongsTo(PayrollPeriod, { foreignKey: "period_id", as: "period" });
-
-// PayrollRun ↔ PayrollRunLine
-PayrollRun.hasMany(PayrollRunLine, { foreignKey: "run_id", as: "lines" });
-PayrollRunLine.belongsTo(PayrollRun, { foreignKey: "run_id", as: "run" });
-
-// Employee ↔ PayrollRunLine
-Employee.hasMany(PayrollRunLine, { foreignKey: "employee_id", as: "payrollLines" });
-PayrollRunLine.belongsTo(Employee, { foreignKey: "employee_id", as: "employee" });
-
-
-// =====================
-// FINANCE & GL
-// =====================
-// Journal ↔ Entries
-GlJournal.hasMany(GlEntry, { foreignKey: "journal_id", as: "entries" });
-GlEntry.belongsTo(GlJournal, { foreignKey: "journal_id", as: "journal" });
-
-// Entry ↔ EntryLines
-GlEntry.hasMany(GlEntryLine, { foreignKey: "entry_id", as: "lines" });
-GlEntryLine.belongsTo(GlEntry, { foreignKey: "entry_id", as: "entry" });
-
-// Account ↔ EntryLines
-GlAccount.hasMany(GlEntryLine, { foreignKey: "account_id", as: "entryLines" });
-GlEntryLine.belongsTo(GlAccount, { foreignKey: "account_id", as: "account" });
-
-// Partner ↔ EntryLines (theo dõi công nợ khách hàng/nhà cung cấp)
-Partner.hasMany(GlEntryLine, { foreignKey: "partner_id", as: "glEntries" });
-GlEntryLine.belongsTo(Partner, { foreignKey: "partner_id", as: "partner" });
+  // Partner ↔ EntryLines (theo dõi công nợ khách hàng/nhà cung cấp)
+  Partner.hasMany(GlEntryLine, { foreignKey: "partner_id", as: "glEntries" });
+  GlEntryLine.belongsTo(Partner, { foreignKey: "partner_id", as: "partner" });
 }
