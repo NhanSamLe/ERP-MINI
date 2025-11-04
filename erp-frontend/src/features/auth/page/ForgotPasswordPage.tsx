@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Mail } from "lucide-react";
-import * as authService from "./auth.service";
-import { getErrorMessage } from "../../utils/ErrorHelper";
-import AuthLayout from "./AuthLayout";
+import * as authService from "../auth.service";
+import { getErrorMessage } from "../../../utils/ErrorHelper";
+import AuthLayout from "../AuthLayout";
 import { Link } from "react-router-dom";
-import { Alert } from "../../components/ui/Alert";
-import { FormInput } from "../../components/ui/FormInput";
-import { Button } from "../../components/ui/Button";
+import { Alert } from "../../../components/ui/Alert";
+import { FormInput } from "../../../components/ui/FormInput";
+import { Button } from "../../../components/ui/Button";
 export default function ForgotPasswordPage() {
   const [username, setUsername] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -35,7 +35,6 @@ export default function ForgotPasswordPage() {
           Nhập tên đăng nhập của bạn, hệ thống sẽ hướng dẫn cách đặt lại mật khẩu qua email.
         </p>
       </div>
-
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Username/Email Input */}
          <FormInput
@@ -47,14 +46,10 @@ export default function ForgotPasswordPage() {
           disabled={loading || !!message}
           icon={<Mail className="w-5 h-5 text-gray-400" />}
         />
-
         {/* Error Message */}
         {error && <Alert type="error" message={error} />}
-
         {/* Success Message */}
         {message && <Alert type="success" message={message} />}
-
-
         {/* Submit Button */}
         <Button
           type="submit"
@@ -64,7 +59,6 @@ export default function ForgotPasswordPage() {
         >
           {loading ? "Đang gửi..." : message ? "Đã gửi Email" : "Xác thực Email"}
         </Button>
-
         {/* Back to Login */}
         <div className="text-center">
             <Link

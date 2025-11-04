@@ -8,9 +8,11 @@ import companyRoutes from "./companyRoutes";
 import crmRoutes from "./crmRoutes";
 import masterDataRoutes from "./master_dataRoutes";
 import productRoutes from "./productRoutes";
+import userRoutes from "./userRoutes";
 import Layout from "../components/layout/Layout";
 import MainPage from "../pages/MainPage";
 import UnauthorizedPage from "../pages/UnauthorizedPage";
+import ProductsPage from "../pages/ProductsPage";
 // const routes = [
 //   ...authRoutes,
 //   ...salesRoutes,
@@ -33,23 +35,35 @@ const appRoutes = [
   ...crmRoutes,
   ...masterDataRoutes,
   ...productRoutes,
+  ...userRoutes,
 ];
 const routes = [
   ...authRoutes,
   {
-    path: "/",       
-    element: <MainPage />
+    path: "/",
+    element: <MainPage />,
   },
   {
-    path: "/unauthorized",       
-    element: <UnauthorizedPage />
+    path: "/unauthorized",
+    element: <UnauthorizedPage />,
   },
   {
     path: "/",
-    element: <Layout />,  
+    element: <Layout />,
     children: appRoutes,
   },
-];
 
+  {
+    path: "/",
+    element: <Layout />,
+    children: [
+      ...productRoutes,
+      {
+        path: "/inventory/products",
+        element: <ProductsPage />,
+      },
+    ],
+  },
+];
 
 export default routes;

@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { Briefcase } from "lucide-react"; 
 import { useSelector, useDispatch } from "react-redux";
-import { RootState, AppDispatch } from "../../store/store";
-import { updateUserAvatarThunk, updateUserInfoThunk } from "../../features/auth/authSlice";
+import { RootState, AppDispatch } from "../../../store/store";
+import { updateUserAvatarThunk, updateUserInfoThunk } from "../store";
 import { toast } from "react-toastify";
-import { Button } from "../../components/ui/Button";
-import { FormInput } from "../../components/ui/FormInput";
-import { ImageUpload } from "../../components/ui/ImageUpload";
+import { Button } from "../../../components/ui/Button";
+import { FormInput } from "../../../components/ui/FormInput";
+import { ImageUpload } from "../../../components/ui/ImageUpload";
 
 export default function UserProfile() {
   const { user} = useSelector((state: RootState) => state.auth);
