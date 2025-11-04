@@ -1,9 +1,9 @@
 import { RouteObject } from "react-router-dom";
-import LoginPage from "../features/auth/LoginPage";
+import LoginPage from "../features/auth/page/LoginPage";
 import ProtectedRoute from "../components/ProtectedRoute";
-import ForgotPasswordPage from "../features/auth/ForgotPasswordPage";
-import ResetPasswordPage from "../features/auth/ResetPasswordPage";
-import UserProfile from "../features/auth/UserProfilePage";
+import ForgotPasswordPage from "../features/auth/page/ForgotPasswordPage";
+import ResetPasswordPage from "../features/auth/page/ResetPasswordPage";
+import UserProfile from "../features/auth/page/UserProfilePage";
 import Layout from "../components/layout/Layout";
 // Định nghĩa các route liên quan đến auth
 const authRoutes: RouteObject[] = [

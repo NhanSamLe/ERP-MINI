@@ -1,4 +1,4 @@
-import * as api from "../../api/auth.api";
+import * as api from "./api/auth.api";
 import { LoginPayload } from "../../types/User";
 export async function login(data: LoginPayload) {
   const res = await api.login(data);

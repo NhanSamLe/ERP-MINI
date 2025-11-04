@@ -1,6 +1,6 @@
 import { LogOut, Settings, User, FileText } from "lucide-react";
 import { useDispatch } from "react-redux";
-import { clearAuth } from "../../features/auth/authSlice";
+import { clearAuth } from "../../features/auth/store";
 import { useNavigate } from "react-router-dom";
 import {logout} from   "../../features/auth/auth.service"
 import { useSelector } from "react-redux";

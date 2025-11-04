@@ -170,8 +170,6 @@ ArReceipt.hasMany(ArReceiptAllocation, { foreignKey: "receipt_id", as: "allocati
 
 ArReceiptAllocation.belongsTo(ArInvoice, { foreignKey: "invoice_id", as: "invoice" });
 ArInvoice.hasMany(ArReceiptAllocation, { foreignKey: "invoice_id", as: "allocations" });
-
-
 // =====================
 // PURCHASE & AP
 // =====================

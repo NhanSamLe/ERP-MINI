@@ -15,5 +15,8 @@ router.get("/me",authMiddleware([]), authController.getInforUser);
 router.post("/logout", authMiddleware([]), authController.clearRefreshToken)
 router.put("/update-avt",authMiddleware([]), upload.single("avatar"), authController.updateUserAvatar)
 router.put("/update-me",authMiddleware([]), authController.updateUserInfo)
-
+router.put("/users",authMiddleware(["ADMIN"]), authController.updateUser);
+router.delete("/users/:id",authMiddleware(["ADMIN"]), authController.deleteUser);
+router.get("/users",authMiddleware(["ADMIN"]), authController.getAllUsers);
+router.get("/roles",authMiddleware(["ADMIN"]), authController.getAllRoles);
 export default router;

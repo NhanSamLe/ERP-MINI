@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useDispatch } from "react-redux";
-import { setUser, clearAuth, finishLoading } from "../features/auth/authSlice";
+import { setUser, clearAuth, finishLoading } from "../features/auth/store";
 import {refresh,getProfile} from "../features/auth/auth.service";
 
 export function useAuthInitializer() {
