@@ -288,26 +288,6 @@ export function applyAssociations() {
     foreignKey: "ap_invoice_id",
     as: "invoice",
   });
-  ArReceiptAllocation.belongsTo(ArInvoice, {
-    foreignKey: "invoice_id",
-    as: "invoice",
-  });
-  ArInvoice.hasMany(ArReceiptAllocation, {
-    foreignKey: "invoice_id",
-    as: "allocations",
-  });
-  // =====================
-  // PURCHASE & AP
-  // =====================
-  // PurchaseOrder ↔ Lines
-  PurchaseOrder.hasMany(PurchaseOrderLine, {
-    foreignKey: "po_id",
-    as: "lines",
-  });
-  PurchaseOrderLine.belongsTo(PurchaseOrder, {
-    foreignKey: "po_id",
-    as: "order",
-  });
 
   // =====================
   // INVENTORY

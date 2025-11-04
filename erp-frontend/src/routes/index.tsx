@@ -12,6 +12,7 @@ import userRoutes from "./userRoutes";
 import Layout from "../components/layout/Layout";
 import MainPage from "../pages/MainPage";
 import UnauthorizedPage from "../pages/UnauthorizedPage";
+import ProductsPage from "../pages/ProductsPage";
 // const routes = [
 //   ...authRoutes,
 //   ...salesRoutes,
@@ -39,19 +40,30 @@ const appRoutes = [
 const routes = [
   ...authRoutes,
   {
-    path: "/",       
-    element: <MainPage />
+    path: "/",
+    element: <MainPage />,
   },
   {
-    path: "/unauthorized",       
-    element: <UnauthorizedPage />
+    path: "/unauthorized",
+    element: <UnauthorizedPage />,
   },
   {
     path: "/",
-    element: <Layout />,  
+    element: <Layout />,
     children: appRoutes,
   },
-];
 
+  {
+    path: "/",
+    element: <Layout />,
+    children: [
+      ...productRoutes,
+      {
+        path: "/inventory/products",
+        element: <ProductsPage />,
+      },
+    ],
+  },
+];
 
 export default routes;

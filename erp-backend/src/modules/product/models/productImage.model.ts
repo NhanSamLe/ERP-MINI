@@ -7,10 +7,9 @@ export interface ProductImageAttrs {
   product_id: number;
   image_url: string;
   image_public_id: string;
-  is_main: boolean;
 }
 
-type ProductImageCreation = Optional<ProductImageAttrs, "id" | "is_main">;
+type ProductImageCreation = Optional<ProductImageAttrs, "id">;
 
 export class ProductImage
   extends Model<ProductImageAttrs, ProductImageCreation>
@@ -20,7 +19,6 @@ export class ProductImage
   public product_id!: number;
   public image_url!: string;
   public image_public_id!: string;
-  public is_main!: boolean;
 }
 ProductImage.init(
   {
@@ -28,7 +26,6 @@ ProductImage.init(
     product_id: { type: DataTypes.BIGINT, allowNull: false },
     image_url: { type: DataTypes.STRING(255), allowNull: false },
     image_public_id: { type: DataTypes.STRING(255), allowNull: false },
-    is_main: { type: DataTypes.BOOLEAN, defaultValue: false },
   },
   {
     sequelize,
@@ -38,5 +35,3 @@ ProductImage.init(
     updatedAt: "updated_at",
   }
 );
-
-
