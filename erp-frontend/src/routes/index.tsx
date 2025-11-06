@@ -13,6 +13,7 @@ import Layout from "../components/layout/Layout";
 import MainPage from "../pages/MainPage";
 import UnauthorizedPage from "../pages/UnauthorizedPage";
 import ProductsPage from "../pages/ProductsPage";
+import CreateProductPage from "../pages/CreateProductPage";
 // const routes = [
 //   ...authRoutes,
 //   ...salesRoutes,
@@ -59,8 +60,12 @@ const routes = [
     children: [
       ...productRoutes,
       {
-        path: "/inventory/products",
+        path: "inventory/products",
         element: <ProductsPage />,
+      },
+      {
+        path: "inventory/products/create",
+        element: <CreateProductPage />,
       },
     ],
   },
