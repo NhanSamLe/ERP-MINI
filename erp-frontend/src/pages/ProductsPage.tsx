@@ -2,7 +2,17 @@ import { useEffect, useState } from "react";
 import { productApi } from "../api/product.api";
 import { Product } from "../types/product";
 import { DataTable } from "../components/ui/DataTable";
+import { Link } from "react-router-dom";
 import { Button } from "../components/ui/Button";
+import {
+  Search,
+  FileText,
+  FileSpreadsheet,
+  RotateCw,
+  ChevronUp,
+  Upload,
+  Plus,
+} from "lucide-react";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -61,7 +71,7 @@ export default function ProductsPage() {
       label: "Trạng thái",
       render: (p: Product) => (
         <span
-          className={`px-2 py-1 rounded text-xs ${
+          className={`px-2 py-1 rounded text-xs font-medium ${
             p.status === "active"
               ? "bg-green-100 text-green-700"
               : "bg-gray-100 text-gray-500"
@@ -72,15 +82,75 @@ export default function ProductsPage() {
       ),
     },
   ];
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-800">
-          Danh sách sản phẩm
-        </h1>
-        <Button>Thêm sản phẩm</Button>
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between bg-white px-6 py-4 rounded-xl border shadow-sm">
+        <div>
+          <h1 className="text-xl font-semibold text-gray-800">Product List</h1>
+          <p className="text-sm text-gray-500">Manage your products</p>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* PDF */}
+          <button className="flex items-center gap-1 border border-red-300 bg-red-100 text-red-600 px-3 py-1.5 rounded-lg text-sm hover:bg-red-200 transition">
+            <FileText className="w-4 h-4" />
+          </button>
+
+          {/* Excel */}
+          <button className="flex items-center gap-1 border border-green-300 bg-green-100 text-green-600 px-3 py-1.5 rounded-lg text-sm hover:bg-green-200 transition">
+            <FileSpreadsheet className="w-4 h-4" />
+          </button>
+
+          {/* Refresh */}
+          <button
+            onClick={fetchProducts}
+            className="flex items-center gap-1 border border-gray-300 bg-gray-50 text-gray-600 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-100 transition"
+          >
+            <RotateCw className="w-4 h-4" />
+          </button>
+
+          {/* Toggle */}
+          <button className="flex items-center gap-1 border border-gray-300 bg-gray-50 text-gray-600 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-100 transition">
+            <ChevronUp className="w-4 h-4" />
+          </button>
+
+          {/* Add Product */}
+          <Link to="/inventory/products/create">
+            <Button className="flex items-center gap-1 bg-[#ff8c00] hover:bg-[#ff7700] text-white px-4 py-2 rounded-lg shadow text-sm font-medium transition">
+              <Plus className="w-4 h-4" />
+              Add Product
+            </Button>
+          </Link>
+          {/* Import Products */}
+          <Button className="flex items-center gap-1 bg-[#1a1d29] hover:bg-[#0f111a] text-white px-4 py-2 rounded-lg shadow text-sm font-medium transition">
+            <Upload className="w-4 h-4" />
+            Import Products
+          </Button>
+        </div>
       </div>
 
+      {/* Search & Filter */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative w-72">
+          <Search className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
+          <input
+            type="text"
+            placeholder="Search"
+            className="w-full border rounded-lg pl-9 pr-3 py-2 text-sm focus:ring-1 focus:ring-orange-400"
+          />
+        </div>
+
+        <select className="border rounded-lg px-3 py-2 text-sm text-gray-700">
+          <option>Category</option>
+        </select>
+        <select className="border rounded-lg px-3 py-2 text-sm text-gray-700">
+          <option>Brand</option>
+        </select>
+      </div>
+
+      {/* Table */}
       <DataTable
         data={products}
         columns={columns}

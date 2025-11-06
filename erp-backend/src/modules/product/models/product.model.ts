@@ -15,13 +15,17 @@ export interface ProductAttrs {
   sale_price?: number;
   tax_rate_id?: number;
   status: "active" | "inactive";
-  image_url?: string | null;    
+  image_url?: string | null;
   image_public_id?: string | null;
+  description?: string | null;
 }
 
 type ProductCreation = Optional<ProductAttrs, "id" | "status">;
 
-export class Product extends Model<ProductAttrs, ProductCreation> implements ProductAttrs {
+export class Product
+  extends Model<ProductAttrs, ProductCreation>
+  implements ProductAttrs
+{
   public id!: number;
   public category_id?: number;
   public sku!: string;
@@ -35,6 +39,7 @@ export class Product extends Model<ProductAttrs, ProductCreation> implements Pro
   public status!: "active" | "inactive";
   public image_url?: string | null;
   public image_public_id?: string | null;
+  public description?: string | null;
 }
 
 Product.init(
@@ -49,11 +54,21 @@ Product.init(
     cost_price: { type: DataTypes.DECIMAL(18, 2) },
     sale_price: { type: DataTypes.DECIMAL(18, 2) },
     tax_rate_id: { type: DataTypes.BIGINT },
-    status: { type: DataTypes.ENUM("active", "inactive"), defaultValue: "active" },
+    status: {
+      type: DataTypes.ENUM("active", "inactive"),
+      defaultValue: "active",
+    },
     image_url: { type: DataTypes.STRING(255), allowNull: true },
     image_public_id: { type: DataTypes.STRING(255), allowNull: true },
+    description: { type: DataTypes.TEXT, allowNull: true },
   },
-  { sequelize, tableName: "products", timestamps: true, createdAt: "created_at", updatedAt: "updated_at" }
+  {
+    sequelize,
+    tableName: "products",
+    timestamps: true,
+    createdAt: "created_at",
+    updatedAt: "updated_at",
+  }
 );
 
 // // Quan hệ
