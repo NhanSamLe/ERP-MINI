@@ -27,7 +27,13 @@ export const productController = {
 
   async createProduct(req: Request, res: Response) {
     try {
-      const newProduct = await productService.create(req.body);
+      console.log("🟢 req.body:", req.body);
+      console.log("🟣 req.files:", req.files);
+      const files = req.files as
+        | { [fieldname: string]: Express.Multer.File[] }
+        | undefined;
+
+      const newProduct = await productService.create(req.body, files);
       res.status(201).json(newProduct);
     } catch (err: any) {
       res.status(400).json({ message: err.message });

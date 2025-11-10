@@ -1,4 +1,5 @@
 import { Camera, X } from "lucide-react";
+import { useId } from "react";
 
 interface ImageUploadProps {
   preview: string;
@@ -6,6 +7,7 @@ interface ImageUploadProps {
   onRemove: () => void;
   maxSize?: string;
   acceptedFormats?: string;
+  multiple?: boolean;
 }
 
 export function ImageUpload({
@@ -13,8 +15,10 @@ export function ImageUpload({
   onImageChange,
   onRemove,
   maxSize = "2 MB",
-  acceptedFormats = "JPG, PNG"
+  acceptedFormats = "JPG, PNG",
 }: ImageUploadProps) {
+  const inputId = useId();
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -40,14 +44,14 @@ export function ImageUpload({
       </div>
 
       <div className="flex-1">
-        <label htmlFor="image-upload">
+        <label htmlFor={inputId}>
           <div className="inline-flex items-center px-4 py-2 bg-orange-500 text-white text-xs font-medium rounded-md hover:bg-orange-600 cursor-pointer transition-colors">
             <Camera className="w-4 h-4 mr-2" />
             Change Image
           </div>
         </label>
         <input
-          id="image-upload"
+          id={inputId}
           type="file"
           accept="image/jpeg,image/png"
           onChange={handleFileChange}
