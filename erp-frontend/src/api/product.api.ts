@@ -21,9 +21,10 @@ export const productApi = {
     return res.data;
   },
 
-  updateProduct: async (id: number, data: Product): Promise<Product> => {
-    const res = await axiosClient.put(`/product/${id}`, data);
-    return res.data;
+  updateProduct: async (id: number, data: FormData): Promise<Product> => {
+    return axiosClient.put(`/product/${id}`, data, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
   },
 
   deleteProduct: async (id: number): Promise<void> => {
