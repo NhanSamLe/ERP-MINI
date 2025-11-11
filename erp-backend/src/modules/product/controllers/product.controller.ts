@@ -45,10 +45,20 @@ export const productController = {
       if (!req.params.id) {
         return res.status(400).json({ message: "Missing id parameter" });
       }
+
       const id = parseInt(req.params.id);
-      const update = await productService.update(id, req.body);
-      res.json(update);
+      const files = req.files as
+        | { [fieldname: string]: Express.Multer.File[] }
+        | undefined;
+
+      console.log("🟡 Updating product ID:", id);
+      console.log("🟢 req.body:", req.body);
+      console.log("🟣 req.files:", req.files);
+
+      const updated = await productService.update(id, req.body, files);
+      res.json(updated);
     } catch (err: any) {
+      console.error("❌ Error updating product:", err);
       res.status(400).json({ message: err.message });
     }
   },

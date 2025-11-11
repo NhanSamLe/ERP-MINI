@@ -15,6 +15,7 @@ export interface Product {
   image_public_id?: string | null;
   created_at: string;
   updated_at?: string;
+  images?: ProductImage[];
 }
 
 export interface ProductCategory {
@@ -36,6 +37,22 @@ export interface ProductImage {
 }
 
 export interface ProductCreateInput {
+  category_id: number;
+  sku: string;
+  name: string;
+  barcode?: string;
+  uom?: string;
+  origin?: string;
+  cost_price?: number;
+  sale_price?: number;
+  tax_rate_id?: number;
+  description?: string;
+  status: "active" | "inactive";
+  thumbnail: File | null;
+  gallery: File[];
+}
+
+export interface ProductUpdateInput {
   category_id: number;
   sku: string;
   name: string;

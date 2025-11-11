@@ -1,7 +1,10 @@
 import { Product } from "../models/product.model";
 import { ProductCategory } from "../models/productCategory.model";
 import { ProductImage } from "../models/productImage.model";
-import { uploadBufferToCloudinary } from "../../../core/utils/uploadCloudinary";
+import {
+  uploadBufferToCloudinary,
+  deleteFromCloudinary,
+} from "../../../core/utils/uploadCloudinary";
 
 export const productService = {
   async getAll() {
@@ -79,16 +82,110 @@ export const productService = {
     return createdProduct;
   },
 
-  async update(id: number, data: any) {
+  async update(
+    id: number,
+    data: any,
+    files?: { [fieldname: string]: Express.Multer.File[] }
+  ) {
     const product = await Product.findByPk(id);
     if (!product) throw new Error("Product not found");
-    return await product.update(data);
+
+    if (files?.thumbnail?.[0]) {
+      const result = await uploadBufferToCloudinary(
+        files.thumbnail[0].buffer,
+        "product_images/thumbnails"
+      );
+
+      if (product.image_public_id) {
+        try {
+          await deleteFromCloudinary(product.image_public_id);
+        } catch (e) {
+          console.warn("Không thể xóa thumbnail cũ:", e);
+        }
+      }
+
+      data.image_url = result.url;
+      data.image_public_id = result.public_id;
+    }
+
+    await product.update(data);
+
+    if (data.deleteImageIds) {
+      try {
+        const idsToDelete = JSON.parse(data.deleteImageIds);
+        if (Array.isArray(idsToDelete) && idsToDelete.length > 0) {
+          const images = await ProductImage.findAll({
+            where: { id: idsToDelete },
+          });
+
+          for (const img of images) {
+            try {
+              await deleteFromCloudinary(img.image_public_id);
+              await img.destroy();
+            } catch (err) {
+              console.warn(`Không thể xóa ảnh ${img.image_public_id}:`, err);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Lỗi parse deleteImageIds:", err);
+      }
+    }
+
+    if (files?.gallery?.length) {
+      const uploadedImages = await Promise.all(
+        files.gallery.map(async (file) => {
+          const result = await uploadBufferToCloudinary(
+            file.buffer,
+            "product_images/gallery"
+          );
+          return {
+            product_id: product.id,
+            image_url: result.url,
+            image_public_id: result.public_id,
+          };
+        })
+      );
+      await ProductImage.bulkCreate(uploadedImages);
+    }
+
+    const updatedProduct = await Product.findByPk(product.id, {
+      include: [
+        { model: ProductCategory, as: "category" },
+        {
+          model: ProductImage,
+          as: "images",
+          attributes: ["id", "image_url", "image_public_id"],
+        },
+      ],
+    });
+
+    return updatedProduct;
   },
 
   async delete(id: number) {
-    const product = await Product.findByPk(id);
+    const product = await Product.findByPk(id, {
+      include: [{ model: ProductImage, as: "images" }],
+    });
     if (!product) throw new Error("Product not found");
+    if (product.image_public_id) {
+      try {
+        await deleteFromCloudinary(product.image_public_id);
+      } catch (e) {
+        console.warn("Không thể xóa thumbnail:", e);
+      }
+    }
+
+    if (product.images && product.images.length > 0) {
+      for (const img of product.images) {
+        try {
+          await deleteFromCloudinary(img.image_public_id);
+        } catch (e) {
+          console.warn("Không thể xóa ảnh gallery:", e);
+        }
+      }
+    }
     await product.destroy();
-    return { message: "Product deleted successfully" };
+    return { message: "Product và các hình ảnh đã được xóa thành công" };
   },
 };

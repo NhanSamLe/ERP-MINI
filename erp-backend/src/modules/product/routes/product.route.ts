@@ -24,7 +24,16 @@ router.post(
   ]),
   productController.createProduct
 );
-router.put("/:id", authMiddleware(["ADMIN"]), productController.updateProduct);
+router.put(
+  "/:id",
+  authMiddleware(["ADMIN"]),
+  upload.fields([
+    { name: "thumbnail", maxCount: 1 },
+    { name: "gallery", maxCount: 10 },
+  ]),
+  productController.updateProduct
+);
+
 router.delete(
   "/:id",
   authMiddleware(["ADMIN"]),

@@ -2,6 +2,7 @@ import { DataTypes, Model, Optional } from "sequelize";
 import { sequelize } from "../../../config/db";
 import { ProductCategory } from "./productCategory.model";
 import { TaxRate } from "../../master-data/models/taxRate.model";
+import { ProductImage } from "./productImage.model";
 
 export interface ProductAttrs {
   id: number;
@@ -18,6 +19,7 @@ export interface ProductAttrs {
   image_url?: string | null;
   image_public_id?: string | null;
   description?: string | null;
+  images?: ProductImage[];
 }
 
 type ProductCreation = Optional<ProductAttrs, "id" | "status">;
@@ -40,6 +42,7 @@ export class Product
   public image_url?: string | null;
   public image_public_id?: string | null;
   public description?: string | null;
+  public images?: ProductImage[];
 }
 
 Product.init(
