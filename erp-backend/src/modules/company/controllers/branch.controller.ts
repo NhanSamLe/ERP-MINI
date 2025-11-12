@@ -33,3 +33,15 @@ export const deleteBranch = async (req: Request, res: Response) => {
   const out = await branchService.deleteBranch(Number(req.params.id));
   res.json(out);
 };
+export const activateBranch = async (req: Request, res: Response) => {
+  const out = await branchService.activateBranch(Number(req.params.id));
+  res.json(out);
+};
+
+export const updateStatus = async (req: Request, res: Response) => {
+  const { status } = req.body;
+  if (!["active","inactive"].includes(status))
+    return res.status(400).json({ message: "Invalid status" });
+  const row = await branchService.updateBranchStatus(Number(req.params.id), status);
+  res.json(row);
+};

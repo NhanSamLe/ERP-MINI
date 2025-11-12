@@ -45,7 +45,18 @@ export async function deactivateBranch(id: number) {
   await row.update({ status: "inactive" });
   return { message: "Branch deactivated" };
 }
-
+export async function activateBranch(id: number) {
+  const row = await Branch.findByPk(id);
+  if (!row) throw new Error("Branch not found");
+  await row.update({ status: "active" });
+  return { message: "Branch activated" };
+}
+export async function updateBranchStatus(id: number, status: "active"|"inactive") {
+  const row = await Branch.findByPk(id);
+  if (!row) throw new Error("Branch not found");
+  await row.update({ status });
+  return row; // trả về bản ghi mới
+}
 /** Nếu vẫn muốn có delete cứng thì chặn khi còn dữ liệu liên quan */
 export async function deleteBranch(id: number) {
   // Tùy dự án: ở đây demo check departments/employees/warehouses
