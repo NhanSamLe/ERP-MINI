@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { 
   LayoutDashboard, ShoppingCart, ShoppingBag, Users, 
   DollarSign, FileText, Package, UserCog, UserCheck, 
-  Handshake, ChevronRight, ChevronDown 
+  Handshake, ChevronRight, ChevronDown , Building2   
 } from "lucide-react";
 
 interface MenuItem {
@@ -104,6 +104,15 @@ const menuItems: MenuItem[] = [
       { name: "All Partners", path: "/partners/all" },
       { name: "Customers", path: "/partners/customers" },
       { name: "Vendors", path: "/partners/vendors" }
+    ]
+  },
+  {
+    name: "Branches",
+    icon: Building2,
+    path: "/company/branches",         
+    subItems: [
+      { name: "Branch Management", path: "/company/branches" },
+      { name: "Create Branch",     path: "/company/branches/create" }
     ]
   },
   {
