@@ -67,3 +67,11 @@ export interface ProductUpdateInput {
   thumbnail: File | null;
   gallery: File[];
 }
+
+export interface ProductState {
+  items: Product[];
+  categories: ProductCategory[];
+  selectedProduct?: Product;
+  loading: boolean;
+  error: string | null;
+}
