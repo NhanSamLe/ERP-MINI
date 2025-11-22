@@ -1,9 +1,19 @@
-import { useState , ElementType} from "react";
+import { useState, ElementType } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { 
-  LayoutDashboard, ShoppingCart, ShoppingBag, Users, 
-  DollarSign, FileText, Package, UserCog, UserCheck, 
-  Handshake, ChevronRight, ChevronDown , Building2   
+import {
+  LayoutDashboard,
+  ShoppingCart,
+  ShoppingBag,
+  Users,
+  DollarSign,
+  FileText,
+  Package,
+  UserCog,
+  UserCheck,
+  Handshake,
+  ChevronRight,
+  ChevronDown,
+  Building2,
 } from "lucide-react";
 
 interface MenuItem {
@@ -17,7 +27,7 @@ const menuItems: MenuItem[] = [
   {
     name: "Dashboard",
     icon: LayoutDashboard,
-    path: "/dashboard"
+    path: "/dashboard",
   },
   {
     name: "Sales",
@@ -27,8 +37,8 @@ const menuItems: MenuItem[] = [
       { name: "Orders", path: "/sales/orders" },
       { name: "Invoices", path: "/sales/invoices" },
       { name: "Quotations", path: "/sales/quotations" },
-      { name: "Customers", path: "/sales/customers" }
-    ]
+      { name: "Customers", path: "/sales/customers" },
+    ],
   },
   {
     name: "Purchase",
@@ -38,8 +48,8 @@ const menuItems: MenuItem[] = [
       { name: "Purchase Orders", path: "/purchase/orders" },
       { name: "Bills", path: "/purchase/bills" },
       { name: "Vendors", path: "/purchase/vendors" },
-      { name: "RFQs", path: "/purchase/rfqs" }
-    ]
+      { name: "RFQs", path: "/purchase/rfqs" },
+    ],
   },
   {
     name: "Inventory",
@@ -47,10 +57,11 @@ const menuItems: MenuItem[] = [
     path: "/inventory",
     subItems: [
       { name: "Products", path: "/inventory/products" },
+      { name: "Category", path: "/inventory/categories" },
       { name: "Stock", path: "/inventory/stock" },
       { name: "Transfers", path: "/inventory/transfers" },
-      { name: "Adjustments", path: "/inventory/adjustments" }
-    ]
+      { name: "Adjustments", path: "/inventory/adjustments" },
+    ],
   },
   {
     name: "CRM",
@@ -60,8 +71,8 @@ const menuItems: MenuItem[] = [
       { name: "Leads", path: "/crm/leads" },
       { name: "Opportunities", path: "/crm/opportunities" },
       { name: "Pipeline", path: "/crm/pipeline" },
-      { name: "Activities", path: "/crm/activities" }
-    ]
+      { name: "Activities", path: "/crm/activities" },
+    ],
   },
   {
     name: "Finance & Accounting",
@@ -71,8 +82,8 @@ const menuItems: MenuItem[] = [
       { name: "Chart of Accounts", path: "/finance/accounts" },
       { name: "Journal Entries", path: "/finance/journals" },
       { name: "Bank Reconciliation", path: "/finance/bank" },
-      { name: "Reports", path: "/finance/reports" }
-    ]
+      { name: "Reports", path: "/finance/reports" },
+    ],
   },
   {
     name: "HR & Payroll",
@@ -82,8 +93,8 @@ const menuItems: MenuItem[] = [
       { name: "Employees", path: "/hrm/employees" },
       { name: "Attendance", path: "/hrm/attendance" },
       { name: "Payroll", path: "/hrm/payroll" },
-      { name: "Leave Management", path: "/hrm/leave" }
-    ]
+      { name: "Leave Management", path: "/hrm/leave" },
+    ],
   },
   {
     name: "Reports",
@@ -93,8 +104,8 @@ const menuItems: MenuItem[] = [
       { name: "Sales Report", path: "/reports/sales" },
       { name: "Purchase Report", path: "/reports/purchase" },
       { name: "Inventory Report", path: "/reports/inventory" },
-      { name: "Financial Report", path: "/reports/financial" }
-    ]
+      { name: "Financial Report", path: "/reports/financial" },
+    ],
   },
   {
     name: "Partners",
@@ -103,17 +114,17 @@ const menuItems: MenuItem[] = [
     subItems: [
       { name: "All Partners", path: "/partners/all" },
       { name: "Customers", path: "/partners/customers" },
-      { name: "Vendors", path: "/partners/vendors" }
-    ]
+      { name: "Vendors", path: "/partners/vendors" },
+    ],
   },
   {
     name: "Branches",
     icon: Building2,
-    path: "/company/branches",         
+    path: "/company/branches",
     subItems: [
       { name: "Branch Management", path: "/company/branches" },
-      { name: "Create Branch",     path: "/company/branches/create" }
-    ]
+      { name: "Create Branch", path: "/company/branches/create" },
+    ],
   },
   {
     name: "Admin",
@@ -123,9 +134,9 @@ const menuItems: MenuItem[] = [
       { name: "Users", path: "/admin/users" },
       { name: "Roles & Permissions", path: "/admin/roles" },
       { name: "System Settings", path: "/admin/settings" },
-      { name: "Audit Logs", path: "/admin/logs" }
-    ]
-  }
+      { name: "Audit Logs", path: "/admin/logs" },
+    ],
+  },
 ];
 
 export default function Sidebar() {
@@ -133,9 +144,9 @@ export default function Sidebar() {
   const location = useLocation();
 
   const toggleExpand = (name: string) => {
-    setExpandedItems(prev => 
-      prev.includes(name) 
-        ? prev.filter(item => item !== name)
+    setExpandedItems((prev) =>
+      prev.includes(name)
+        ? prev.filter((item) => item !== name)
         : [...prev, name]
     );
   };
@@ -146,7 +157,9 @@ export default function Sidebar() {
     <aside className="w-64 h-screen bg-white border-r border-gray-200 flex flex-col">
       {/* Main Section */}
       <div className="px-4 py-3 border-b border-gray-200">
-        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Main</span>
+        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          Main
+        </span>
       </div>
 
       {/* Navigation */}
@@ -154,10 +167,14 @@ export default function Sidebar() {
         {menuItems.map((item) => (
           <div key={item.name}>
             <div
-              onClick={() => item.subItems ? toggleExpand(item.name) : null}
+              onClick={() => (item.subItems ? toggleExpand(item.name) : null)}
               className={`
                 flex items-center justify-between px-4 py-2.5 mx-2 rounded-lg cursor-pointer
-                ${isActive(item.path) ? 'bg-orange-50 text-orange-600' : 'text-gray-700 hover:bg-gray-50'}
+                ${
+                  isActive(item.path)
+                    ? "bg-orange-50 text-orange-600"
+                    : "text-gray-700 hover:bg-gray-50"
+                }
                 transition-colors
               `}
             >
@@ -165,11 +182,12 @@ export default function Sidebar() {
                 <item.icon className="w-5 h-5" />
                 <span className="text-sm font-medium">{item.name}</span>
               </Link>
-              {item.subItems && (
-                expandedItems.includes(item.name) 
-                  ? <ChevronDown className="w-4 h-4" />
-                  : <ChevronRight className="w-4 h-4" />
-              )}
+              {item.subItems &&
+                (expandedItems.includes(item.name) ? (
+                  <ChevronDown className="w-4 h-4" />
+                ) : (
+                  <ChevronRight className="w-4 h-4" />
+                ))}
             </div>
 
             {/* Sub Items */}
@@ -181,7 +199,11 @@ export default function Sidebar() {
                     to={subItem.path}
                     className={`
                       block px-4 py-2 text-sm rounded-lg
-                      ${isActive(subItem.path) ? 'bg-orange-50 text-orange-600 font-medium' : 'text-gray-600 hover:bg-gray-50'}
+                      ${
+                        isActive(subItem.path)
+                          ? "bg-orange-50 text-orange-600 font-medium"
+                          : "text-gray-600 hover:bg-gray-50"
+                      }
                       transition-colors
                     `}
                   >
@@ -196,7 +218,9 @@ export default function Sidebar() {
 
       {/* Inventory Section */}
       <div className="px-4 py-3 border-t border-gray-200">
-        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Inventory</span>
+        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          Inventory
+        </span>
       </div>
     </aside>
   );
