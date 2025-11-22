@@ -1,0 +1,28 @@
+export interface ProductCategory {
+  id: number;
+  name: string;
+  parent_id?: number | null;
+  created_at?: string;
+  updated_at?: string;
+  children?: ProductCategory[];
+}
+
+export interface ProductCategoryState {
+  items: ProductCategory[];
+  categories_child: ProductCategory[];
+  selectedCategory?: ProductCategory;
+  loading: boolean;
+  error: string | null;
+}
+
+export interface CategoryCreate {
+  id: number;
+  name: string;
+  parent_id?: number | null;
+}
+
+export interface CategoryUpdate {
+  id: number;
+  name: string;
+  parent_id?: number | null;
+}
