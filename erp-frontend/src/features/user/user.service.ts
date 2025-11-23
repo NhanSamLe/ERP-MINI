@@ -10,7 +10,7 @@ export async function updateUser(data: { username: string; full_name?: string; e
     role_id: data.roleId,
     branch_id: data.branchId,
   });
-  return res.data;
+  return res.data.user;
 }
 export async function deleteUser(id: number) {
     const res = await api.deleteUser(id);
@@ -34,5 +34,5 @@ export async function createUser(data: {
   role_id: number;
 }) {
     const res = await api.createUser(data);
-    return res.data;
+    return res.data.user;
 }

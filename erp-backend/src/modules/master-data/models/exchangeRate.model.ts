@@ -7,7 +7,7 @@ export interface ExchangeRateAttrs {
   base_currency_id: number;
   quote_currency_id: number;
   rate: number;
-  valid_date: Date;
+  valid_date: string;
 }
 
 type ExchangeRateCreation = Optional<ExchangeRateAttrs, "id">;
@@ -17,7 +17,7 @@ export class ExchangeRate extends Model<ExchangeRateAttrs, ExchangeRateCreation>
   public base_currency_id!: number;
   public quote_currency_id!: number;
   public rate!: number;
-  public valid_date!: Date;
+  public valid_date!: string;
 }
 
 ExchangeRate.init(

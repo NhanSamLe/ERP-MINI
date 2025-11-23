@@ -9,7 +9,7 @@ import {
 interface MenuItem {
   name: string;
   icon: ElementType;
-  path: string;
+  path?: string;
   subItems?: { name: string; path: string }[];
 }
 
@@ -109,10 +109,13 @@ const menuItems: MenuItem[] = [
   {
     name: "Admin",
     icon: UserCog,
-    path: "/admin",
     subItems: [
       { name: "Users", path: "/admin/users" },
-      { name: "Roles & Permissions", path: "/admin/roles" },
+      { name: "Currencies", path: "/master-data/currencies" },
+      { name: "Exchange Rates", path: "/master-data/exchange-rates" },
+      { name: "Units of Measure (UOM)", path: "/master-data/uoms" },
+      { name: "UOM Conversions", path: "/master-data/uom-conversions" },
+      { name: "Taxes", path: "/master-data/taxes" },
       { name: "System Settings", path: "/admin/settings" },
       { name: "Audit Logs", path: "/admin/logs" }
     ]
@@ -148,18 +151,30 @@ export default function Sidebar() {
               onClick={() => item.subItems ? toggleExpand(item.name) : null}
               className={`
                 flex items-center justify-between px-4 py-2.5 mx-2 rounded-lg cursor-pointer
-                ${isActive(item.path) ? 'bg-orange-50 text-orange-600' : 'text-gray-700 hover:bg-gray-50'}
+                ${item.path && isActive(item.path)
+                  ? "bg-orange-50 text-orange-600"
+                  : "text-gray-700 hover:bg-gray-50"}
                 transition-colors
               `}
             >
-              <Link to={item.path} className="flex items-center gap-3 flex-1">
-                <item.icon className="w-5 h-5" />
-                <span className="text-sm font-medium">{item.name}</span>
-              </Link>
+              {item.path ? (
+                <Link to={item.path} className="flex items-center gap-3 flex-1">
+                  <item.icon className="w-5 h-5" />
+                  <span className="text-sm font-medium">{item.name}</span>
+                </Link>
+              ) : (
+                <div className="flex items-center gap-3 flex-1">
+                  <item.icon className="w-5 h-5" />
+                  <span className="text-sm font-medium">{item.name}</span>
+                </div>
+              )}
+
               {item.subItems && (
-                expandedItems.includes(item.name) 
-                  ? <ChevronDown className="w-4 h-4" />
-                  : <ChevronRight className="w-4 h-4" />
+                expandedItems.includes(item.name) ? (
+                  <ChevronDown className="w-4 h-4" />
+                ) : (
+                  <ChevronRight className="w-4 h-4" />
+                )
               )}
             </div>
 

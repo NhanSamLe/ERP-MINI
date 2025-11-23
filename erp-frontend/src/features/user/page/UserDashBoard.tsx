@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../../store/store";
-import { fetchAllUsers, fetchAllRoles, createUserThunk, updateUserThunk, deleteUserThunk } from "../store";
+import { fetchAllUsers, fetchAllRoles, createUserThunk, updateUserThunk, deleteUserThunk,  } from "../store";
 import { User } from "../../../types/User";
 import { createUserDTO, updateUserDTO } from "../dto/userDTO";
 import { Column } from "../../../types/common";
@@ -14,6 +14,7 @@ import {
   Settings,
   Plus,
 } from "lucide-react";
+// import { fetchAllBranchesThunk } from "../../company/store";
 
 export default function UserDashboard() {
   const dispatch = useDispatch<AppDispatch>();
@@ -25,6 +26,7 @@ export default function UserDashboard() {
   useEffect(() => {
     dispatch(fetchAllUsers());
     dispatch(fetchAllRoles());
+    // dispatch(fetchAllBranchesThunk());
   }, [dispatch]);
 
   const handleCreate = async (data: createUserDTO) => {

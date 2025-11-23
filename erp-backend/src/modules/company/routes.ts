@@ -4,6 +4,6 @@ import { authMiddleware } from "../../core/middleware/auth";
 
 const router = Router();
 
-router.get("/", authMiddleware, branchController.getAllBranches);
+router.get("/", authMiddleware([]), branchController.getAllBranches);
 
 export default router;

@@ -172,3 +172,21 @@ export enum GlEntryStatus {
   DRAFT = "draft",
   POSTED = "posted",
 }
+
+
+export enum TaxType {
+  VAT = "VAT", // Thuế giá trị gia tăng
+  CIT = "CIT", // Thuế thu nhập doanh nghiệp
+  PIT = "PIT", // Thuế thu nhập cá nhân
+  IMPORT = "IMPORT", // Thuế nhập khẩu
+  EXPORT = "EXPORT", // Thuế xuất khẩu
+  EXCISE = "EXCISE", // Thuế tiêu thụ đặc biệt
+  ENVIRONMENTAL = "ENVIRONMENTAL", // Thuế môi trường
+  OTHER = "OTHER", // Các loại khác
+}
+
+export enum AppliesTo {
+  SALE = "sale", // Thuế áp dụng cho hóa đơn bán hàng
+  PURCHASE = "purchase", // Thuế áp dụng cho hóa đơn mua hàng
+  BOTH = "both", // Áp dụng cho cả hai
+}

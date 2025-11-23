@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import routes from "./routes";
 import {errorHandler} from "./core/middleware/error";
+import "./modules/master-data/services/currency.cron"; 
 const app = express();
 
 app.use( cors({ origin: "http://localhost:3000", credentials: true,}));

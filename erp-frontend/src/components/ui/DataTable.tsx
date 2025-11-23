@@ -11,12 +11,14 @@ export function DataTable<T extends { id: number }>({
   loading = false,
   searchable = true,
   searchKeys = [],
-  itemsPerPage = 10
+  itemsPerPage = 10,
+  showSelection = true, 
+  showActions = true,   
 }: DataTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
-
+  
   const filteredData = data.filter(item => {
     if (!searchTerm) return true;
     return searchKeys.some(key => {
@@ -76,9 +78,11 @@ export function DataTable<T extends { id: number }>({
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="px-6 py-3 text-left">
-                <input type="checkbox" className="rounded" />
-              </th>
+              {showSelection && (
+                <th className="px-6 py-3 text-left">
+                  <input type="checkbox" className="rounded" />
+                </th>
+              )}
               {columns.map((col, idx) => (
                 <th
                   key={idx}
@@ -88,17 +92,21 @@ export function DataTable<T extends { id: number }>({
                   {col.label}
                 </th>
               ))}
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
+              {showActions && (
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {paginatedData.map((item) => (
               <tr key={item.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4">
-                  <input type="checkbox" className="rounded" />
-                </td>
+               {showSelection && (
+                  <td className="px-6 py-4">
+                    <input type="checkbox" className="rounded" />
+                  </td>
+                )}
                 {columns.map((col, idx) => (
                   <td key={idx} className="px-6 py-4 text-sm text-gray-900">
                     {col.render ? col.render(item) : String(item[col.key as keyof T] || '')}
