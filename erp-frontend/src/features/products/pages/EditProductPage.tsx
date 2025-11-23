@@ -1,11 +1,18 @@
 "use client";
 import { useEffect, useState } from "react";
-import { FormInput } from "../components/ui/FormInput";
-import { Button } from "../components/ui/Button";
-import { productApi } from "../api/product.api";
-import { ProductCategory, type ProductCreateInput } from "../types/product";
+import { FormInput } from "../../../components/ui/FormInput";
+import { Button } from "../../../components/ui/Button";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState, AppDispatch } from "../../../store/store";
+import {
+  Product,
+  ProductUpdateInput,
+} from "../../../features/products/store/product.types";
+import {
+  fetchCategoriesThunk,
+  updateProductThunk,
+} from "../../../features/products/store/product.thunks";
 import { toast } from "react-toastify";
-import axios from "axios";
 import {
   RotateCw,
   ChevronUp,
@@ -13,11 +20,19 @@ import {
   ArrowLeft,
   Plus,
 } from "lucide-react";
-import { Link } from "react-router-dom";
-import { ImageUpload } from "../components/ui/ImageUpload";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
-export default function CreateProductPage() {
-  const [product, setProduct] = useState<ProductCreateInput>({
+export default function EditProductPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const dispatch = useDispatch<AppDispatch>();
+
+  const productData: Product | undefined = location.state?.product;
+
+  const { categories } = useSelector((state: RootState) => state.product);
+
+  const [product, setProduct] = useState<ProductUpdateInput>({
     category_id: 0,
     sku: "",
     name: "",
@@ -33,33 +48,62 @@ export default function CreateProductPage() {
     gallery: [],
   });
 
-  const [categories, setCategories] = useState<ProductCategory[]>([]);
-  const [uploadingThumbnail] = useState(false);
-  const [uploadingGallery] = useState(false);
+  const [previewThumbnail, setPreviewThumbnail] = useState<string | null>(
+    productData?.image_url || null
+  );
+
+  const [previewGallery, setPreviewGallery] = useState<string[]>(
+    productData?.images?.map((img) => img.image_url) || []
+  );
+
+  const [deletedImageIds, setDeletedImageIds] = useState<number[]>([]);
+
   const [expanded, setExpanded] = useState({ info: true, images: true });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadingThumbnail] = useState(false);
+  const [uploadingGallery] = useState(false);
 
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const res = await productApi.getProductCategories();
-        console.log("Fetched categories:", res);
-        setCategories(res);
-      } catch (error) {
-        console.error("Error fetching categories:", error);
-      }
+    dispatch(fetchCategoriesThunk());
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (productData) {
+      setProduct({
+        category_id: productData.category_id || 0,
+        sku: productData.sku,
+        name: productData.name,
+        barcode: productData.barcode,
+        uom: productData.uom,
+        origin: productData.origin,
+        cost_price: productData.cost_price,
+        sale_price: productData.sale_price,
+        tax_rate_id: productData.tax_rate_id,
+        description: productData.description,
+        status: productData.status as "active" | "inactive",
+        thumbnail: null,
+        gallery: [],
+      });
+    }
+  }, [productData]);
+
+  useEffect(() => {
+    return () => {
+      previewGallery.forEach((url) => URL.revokeObjectURL(url));
+      if (previewThumbnail) URL.revokeObjectURL(previewThumbnail);
     };
-    fetchCategories();
-  }, []);
+  }, [previewGallery, previewThumbnail]);
 
   const handleChange = (
-    field: keyof ProductCreateInput,
-    value: ProductCreateInput[keyof ProductCreateInput]
+    field: keyof ProductUpdateInput,
+    value: ProductUpdateInput[keyof ProductUpdateInput]
   ) => {
     setProduct((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = async () => {
+  const handleUpdate = async () => {
+    if (!productData) return;
+
     try {
       setIsSubmitting(true);
 
@@ -70,6 +114,7 @@ export default function CreateProductPage() {
       formData.append("category_id", product.category_id?.toString() || "");
       formData.append("uom", product.uom || "");
       formData.append("origin", product.origin || "");
+      formData.append("barcode", product.barcode || "");
       formData.append("cost_price", product.cost_price?.toString() || "0");
       formData.append("sale_price", product.sale_price?.toString() || "0");
       formData.append("status", product.status);
@@ -78,45 +123,31 @@ export default function CreateProductPage() {
         formData.append("tax_rate_id", product.tax_rate_id.toString());
       }
 
-      if (product.thumbnail) {
+      if (product.thumbnail instanceof File) {
         formData.append("thumbnail", product.thumbnail);
       }
 
       if (product.gallery && product.gallery.length > 0) {
         product.gallery.forEach((file) => {
-          formData.append("gallery", file);
+          if (file instanceof File) {
+            formData.append("gallery", file);
+          }
         });
       }
 
-      console.log(
-        "Submitting product:",
-        Object.fromEntries(formData.entries())
+      if (deletedImageIds.length > 0) {
+        formData.append("deleteImageIds", JSON.stringify(deletedImageIds));
+      }
+
+      const result = await dispatch(
+        updateProductThunk({ id: productData.id, formData })
       );
 
-      const res = await productApi.createProduct(formData);
-      console.log("✅ Product created:", res);
-      toast.success("Thêm sản phẩm thành công! 🎉");
-
-      setProduct({
-        category_id: 0,
-        sku: "",
-        name: "",
-        barcode: "",
-        uom: "",
-        origin: "",
-        cost_price: 0,
-        sale_price: 0,
-        tax_rate_id: undefined,
-        description: "",
-        status: "active",
-        thumbnail: null,
-        gallery: [],
-      });
-    } catch (error: unknown) {
-      if (axios.isAxiosError(error)) {
-        console.error("Upload error:", error.response?.data || error.message);
+      if (updateProductThunk.fulfilled.match(result)) {
+        toast.success("Product updated successfully! 🎉");
+        navigate("/inventory/products");
       } else {
-        console.error("Unexpected error:", error);
+        toast.error("Update failed!");
       }
     } finally {
       setIsSubmitting(false);
@@ -129,11 +160,9 @@ export default function CreateProductPage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between bg-white px-6 py-4 rounded-xl border shadow-sm">
         <div>
-          <h1 className="text-xl font-semibold text-gray-800">
-            Create Product
-          </h1>
+          <h1 className="text-xl font-semibold text-gray-800">Edit Product</h1>
           <p className="text-sm text-gray-500">
-            Fill out product details to create a new one
+            Update product details and images
           </p>
         </div>
 
@@ -161,7 +190,7 @@ export default function CreateProductPage() {
           <Link to="/inventory/products">
             <Button className="flex items-center gap-1 bg-[#1a1d29] hover:bg-[#0f111a] text-white px-4 py-2 rounded-lg shadow text-sm font-medium transition">
               <ArrowLeft className="w-4 h-4" />
-              Back to Product
+              Back
             </Button>
           </Link>
         </div>
@@ -210,19 +239,19 @@ export default function CreateProductPage() {
 
             <FormInput
               label="Unit of Measure"
-              value={product.uom?.toString() || ""}
+              value={product.uom || ""}
               onChange={(v) => handleChange("uom", v)}
               placeholder="pcs, box, etc."
             />
             <FormInput
               label="Origin"
-              value={product.origin?.toString() || ""}
+              value={product.origin || ""}
               onChange={(v) => handleChange("origin", v)}
               placeholder="Enter origin"
             />
             <FormInput
               label="Barcode"
-              value={product.barcode?.toString() || ""}
+              value={product.barcode || ""}
               onChange={(v) => handleChange("barcode", v)}
               placeholder="Enter barcode"
             />
@@ -294,21 +323,22 @@ export default function CreateProductPage() {
             <label className="block text-sm font-medium text-gray-700 mb-3">
               Thumbnail Image
             </label>
-            {product.thumbnail ? (
-              <ImageUpload
-                preview={URL.createObjectURL(product.thumbnail)}
-                onImageChange={(file: File | File[]) => {
-                  const thumbnailFile = Array.isArray(file) ? file[0] : file;
-                  setProduct((prev) => ({ ...prev, thumbnail: thumbnailFile }));
-                }}
-                onRemove={() =>
-                  setProduct((prev) => ({
-                    ...prev,
-                    thumbnail: null,
-                  }))
-                }
-                multiple={false}
-              />
+
+            {previewThumbnail ? (
+              <div className="relative w-32 h-32 border rounded-xl overflow-hidden">
+                <img
+                  src={previewThumbnail}
+                  alt="Thumbnail preview"
+                  className="object-cover w-full h-full"
+                />
+                <button
+                  type="button"
+                  onClick={() => setPreviewThumbnail(null)}
+                  className="absolute top-1 right-1 bg-white text-red-500 rounded-full p-1 shadow"
+                >
+                  ✕
+                </button>
+              </div>
             ) : (
               <label className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-orange-400 hover:text-orange-500 cursor-pointer">
                 <Plus className="w-5 h-5 mb-1" />
@@ -321,11 +351,10 @@ export default function CreateProductPage() {
                   className="hidden"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
-                    if (file)
-                      setProduct((prev) => ({
-                        ...prev,
-                        thumbnail: file,
-                      }));
+                    if (file) {
+                      setProduct((prev) => ({ ...prev, thumbnail: file }));
+                      setPreviewThumbnail(URL.createObjectURL(file));
+                    }
                   }}
                 />
               </label>
@@ -339,31 +368,35 @@ export default function CreateProductPage() {
             </label>
 
             <div className="flex flex-wrap gap-4">
-              {product.gallery.map((file, i) => (
-                <ImageUpload
-                  key={`${file.name}-${i}`}
-                  preview={URL.createObjectURL(file)}
-                  onImageChange={(updated: File | File[]) => {
-                    const newFile = Array.isArray(updated)
-                      ? updated[0]
-                      : updated;
-                    setProduct((prev) => {
-                      const updatedGallery = [...prev.gallery];
-                      updatedGallery[i] = newFile;
-                      return { ...prev, gallery: updatedGallery };
-                    });
-                  }}
-                  onRemove={() =>
-                    setProduct((prev) => ({
-                      ...prev,
-                      gallery: prev.gallery.filter((_, idx) => idx !== i),
-                    }))
-                  }
-                  multiple={false}
-                />
+              {previewGallery.map((url, i) => (
+                <div
+                  key={i}
+                  className="relative w-32 h-32 border rounded-xl overflow-hidden"
+                >
+                  <img
+                    src={url}
+                    alt={`Gallery ${i}`}
+                    className="object-cover w-full h-full"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const imgToDelete = productData?.images?.[i];
+                      if (imgToDelete) {
+                        setDeletedImageIds((prev) => [...prev, imgToDelete.id]);
+                      }
+                      setPreviewGallery((prev) =>
+                        prev.filter((_, idx) => idx !== i)
+                      );
+                    }}
+                    className="absolute top-1 right-1 bg-white text-red-500 rounded-full p-1 shadow"
+                  >
+                    ✕
+                  </button>
+                </div>
               ))}
 
-              {/* Add new image */}
+              {/* Nút thêm ảnh mới */}
               <label className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-orange-400 hover:text-orange-500 cursor-pointer">
                 <Plus className="w-5 h-5 mb-1" />
                 <span className="text-xs font-medium">
@@ -378,11 +411,16 @@ export default function CreateProductPage() {
                     const files = e.target.files
                       ? Array.from(e.target.files)
                       : [];
-                    if (files.length > 0)
-                      setProduct((prev) => ({
-                        ...prev,
-                        gallery: [...prev.gallery, ...files],
-                      }));
+                    if (files.length > 0) {
+                      setProduct((prev) => {
+                        const newGallery = [...prev.gallery, ...files];
+                        setPreviewGallery([
+                          ...previewGallery,
+                          ...files.map((f) => URL.createObjectURL(f)),
+                        ]);
+                        return { ...prev, gallery: newGallery };
+                      });
+                    }
                   }}
                 />
               </label>
@@ -394,13 +432,13 @@ export default function CreateProductPage() {
       {/* Submit */}
       <div className="flex justify-end">
         <Button
-          onClick={handleSubmit}
+          onClick={handleUpdate}
           disabled={isSubmitting}
           className={`bg-[#ff8c00] hover:bg-[#ff7700] text-white px-6 py-3 rounded-lg font-medium shadow-md ${
             isSubmitting ? "opacity-70 cursor-not-allowed" : ""
           }`}
         >
-          {isSubmitting ? "Đang tạo..." : "Create Product"}
+          {isSubmitting ? "Đang lưu..." : "Save Changes"}
         </Button>
       </div>
     </div>

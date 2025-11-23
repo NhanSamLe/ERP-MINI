@@ -8,12 +8,12 @@ import companyRoutes from "./companyRoutes";
 import crmRoutes from "./crmRoutes";
 import masterDataRoutes from "./master_dataRoutes";
 import productRoutes from "./productRoutes";
+import categoryRoutes from "./categoryRoutes";
 import userRoutes from "./userRoutes";
 import Layout from "../components/layout/Layout";
 import MainPage from "../pages/MainPage";
 import UnauthorizedPage from "../pages/UnauthorizedPage";
-import ProductsPage from "../pages/ProductsPage";
-import CreateProductPage from "../pages/CreateProductPage";
+
 // const routes = [
 //   ...authRoutes,
 //   ...salesRoutes,
@@ -57,17 +57,13 @@ const routes = [
   {
     path: "/",
     element: <Layout />,
-    children: [
-      ...productRoutes,
-      {
-        path: "inventory/products",
-        element: <ProductsPage />,
-      },
-      {
-        path: "inventory/products/create",
-        element: <CreateProductPage />,
-      },
-    ],
+    children: [...productRoutes],
+  },
+
+  {
+    path: "/",
+    element: <Layout />,
+    children: [...categoryRoutes],
   },
 ];
 

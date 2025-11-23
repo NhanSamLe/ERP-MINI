@@ -1,38 +1,57 @@
 import { useEffect, useState } from "react";
-import { productApi } from "../api/product.api";
-import { Product } from "../types/product";
-import { DataTable } from "../components/ui/DataTable";
+import { Product } from "../../../features/products/store/product.types";
+import { DataTable } from "../../../components/ui/DataTable";
 import { Link } from "react-router-dom";
-import { Button } from "../components/ui/Button";
+import { Button } from "../../../components/ui/Button";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState, AppDispatch } from "../../../store/store";
 import {
-  Search,
+  fetchProductsThunk,
+  deleteProductThunk,
+} from "../store/product.thunks";
+
+import {
   FileText,
   FileSpreadsheet,
   RotateCw,
   ChevronUp,
   Upload,
   Plus,
+  Trash2,
 } from "lucide-react";
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const dispatch = useDispatch<AppDispatch>();
 
-  const fetchProducts = async () => {
-    setLoading(true);
-    try {
-      const data = await productApi.getAllProducts();
-      setProducts(data);
-    } catch (error) {
-      console.error("Failed to fetch products:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { items: products, loading } = useSelector(
+    (state: RootState) => state.product
+  );
+  const [deleting, setDeleting] = useState<boolean>(false);
+  const [confirmOpen, setConfirmOpen] = useState<boolean>(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
-    fetchProducts();
-  }, []);
+    dispatch(fetchProductsThunk());
+  }, [dispatch]);
+
+  const handleDelete = async () => {
+    if (!selectedProduct) return;
+    setDeleting(true);
+    try {
+      await dispatch(deleteProductThunk(selectedProduct.id)).unwrap();
+      toast.success("Product deleted successfully!");
+      setConfirmOpen(false);
+    } catch (error) {
+      console.error("Failed to delete product:", error);
+      toast.error("Failed to delete product!");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const columns = [
     {
@@ -105,7 +124,7 @@ export default function ProductsPage() {
 
           {/* Refresh */}
           <button
-            onClick={fetchProducts}
+            onClick={() => dispatch(fetchProductsThunk())}
             className="flex items-center gap-1 border border-gray-300 bg-gray-50 text-gray-600 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-100 transition"
           >
             <RotateCw className="w-4 h-4" />
@@ -133,15 +152,6 @@ export default function ProductsPage() {
 
       {/* Search & Filter */}
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative w-72">
-          <Search className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
-          <input
-            type="text"
-            placeholder="Search"
-            className="w-full border rounded-lg pl-9 pr-3 py-2 text-sm focus:ring-1 focus:ring-orange-400"
-          />
-        </div>
-
         <select className="border rounded-lg px-3 py-2 text-sm text-gray-700">
           <option>Category</option>
         </select>
@@ -156,10 +166,47 @@ export default function ProductsPage() {
         columns={columns}
         loading={loading}
         onView={(item) => console.log("Xem:", item)}
-        onEdit={(item) => console.log("Sửa:", item)}
-        onDelete={(item) => console.log("Xóa:", item)}
+        onEdit={(item) =>
+          navigate(`/inventory/products/edit/${item.id}`, {
+            state: { product: item },
+          })
+        }
+        onDelete={(item) => {
+          setSelectedProduct(item);
+          setConfirmOpen(true);
+        }}
         searchKeys={["sku", "name"]}
       />
+
+      {confirmOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-lg p-6 w-96 text-center">
+            <Trash2 className="w-10 h-10 text-red-500 mx-auto mb-3" />
+            <h2 className="text-lg font-semibold mb-2">
+              Are you sure you want to delete this product?
+            </h2>
+            <p className="text-sm text-gray-500 mb-5">
+              This action cannot be undone.
+            </p>
+            <div className="flex justify-center gap-3">
+              <Button
+                onClick={() => setConfirmOpen(false)}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm"
+                disabled={deleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleDelete}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm"
+                disabled={deleting}
+              >
+                {deleting ? "Deleting..." : "Yes, Delete"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

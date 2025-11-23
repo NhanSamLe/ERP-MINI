@@ -1,5 +1,5 @@
-import axiosClient from "./axiosClient";
-import { Product, ProductCategory } from "../types/product";
+import axiosClient from "../../../api/axiosClient";
+import { Product, ProductCategory } from "../../products/store/product.types";
 
 export const productApi = {
   getAllProducts: async (): Promise<Product[]> => {
@@ -21,9 +21,10 @@ export const productApi = {
     return res.data;
   },
 
-  updateProduct: async (id: number, data: Product): Promise<Product> => {
-    const res = await axiosClient.put(`/product/${id}`, data);
-    return res.data;
+  updateProduct: async (id: number, data: FormData): Promise<Product> => {
+    return axiosClient.put(`/product/${id}`, data, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
   },
 
   deleteProduct: async (id: number): Promise<void> => {
