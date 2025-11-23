@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { ProductCategory } from "../../../features/categories/store/category.types";
 import { DataTable } from "../../../components/ui/DataTable";
-import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../../../components/ui/Button";
 import { toast } from "react-toastify";
 import { useSelector, useDispatch } from "react-redux";
@@ -10,6 +9,8 @@ import { RootState, AppDispatch } from "../../../store/store";
 import {
   fetchCategoriesThunk,
   deleteCategoryThunk,
+  createCategoryThunk,
+  updateCategoryThunk,
 } from "../store/category.thunks";
 
 import {
@@ -24,7 +25,6 @@ import {
 
 export default function CategoriesPage() {
   const dispatch = useDispatch<AppDispatch>();
-  const navigate = useNavigate();
 
   const { items: categories, loading } = useSelector(
     (state: RootState) => state.category
@@ -33,6 +33,11 @@ export default function CategoriesPage() {
   const [deleting, setDeleting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedCat, setSelectedCat] = useState<ProductCategory | null>(null);
+  const [openAddModal, setOpenAddModal] = useState(false);
+  const [openEditModal, setOpenEditModal] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [parentId, setParentId] = useState<string | null>(null);
 
   useEffect(() => {
     dispatch(fetchCategoriesThunk());
@@ -53,16 +58,74 @@ export default function CategoriesPage() {
     }
   };
 
+  const handleAddCategory = async () => {
+    if (!name.trim()) {
+      alert("Category name is required!");
+      return;
+    }
+
+    try {
+      const newCategory = {
+        name: name.trim(),
+        parent_id: parentId ? Number(parentId) : null,
+      };
+      await dispatch(createCategoryThunk(newCategory)).unwrap();
+      toast.success("Category added successfully!");
+      setName("");
+      setParentId(null);
+      setOpenAddModal(false);
+    } catch (error) {
+      console.error("Failed to add category:", error);
+      toast.error("Failed to add category!");
+    }
+  };
+
+  const openModalEditCategory = async (productCategory: ProductCategory) => {
+    setEditId(productCategory.id.toString());
+    setName(productCategory.name);
+    setParentId(
+      productCategory.parent_id ? productCategory.parent_id.toString() : null
+    );
+    setOpenEditModal(true);
+  };
+
+  const handleEditCategory = async () => {
+    if (!name.trim() || !editId) {
+      alert("Category name is required!");
+      return;
+    }
+    try {
+      const updatedCategory = {
+        name: name.trim(),
+        parent_id: parentId ? Number(parentId) : null,
+      };
+      await dispatch(
+        updateCategoryThunk({
+          id: Number(editId),
+          body: updatedCategory,
+        })
+      ).unwrap();
+      toast.success("Category updated successfully!");
+      setName("");
+      setParentId(null);
+      setEditId(null);
+      setOpenEditModal(false);
+    } catch (error) {
+      console.error("Failed to update category:", error);
+      toast.error("Failed to update category!");
+    }
+  };
   const columns = [
     { key: "name", label: "Category Name" },
 
     {
       key: "parent_id",
       label: "Parent",
-      render: (c: ProductCategory) =>
-        c.parent_id ? `#${c.parent_id}` : "Root",
+      render: (c: ProductCategory) => {
+        const parent = categories.find((x) => x.id === c.parent_id);
+        return parent ? parent.name : "Root";
+      },
     },
-
     {
       key: "created_at",
       label: "Created At",
@@ -106,12 +169,13 @@ export default function CategoriesPage() {
             <ChevronUp className="w-4 h-4" />
           </button>
 
-          <Link to="/inventory/categories/create">
-            <Button className="flex items-center gap-1 bg-[#ff8c00] hover:bg-[#ff7700] text-white px-4 py-2 rounded-lg shadow text-sm font-medium transition">
-              <Plus className="w-4 h-4" />
-              Add Category
-            </Button>
-          </Link>
+          <Button
+            onClick={() => setOpenAddModal(true)}
+            className="flex items-center gap-1 bg-[#ff8c00] hover:bg-[#ff7700] text-white px-4 py-2 rounded-lg shadow text-sm font-medium transition"
+          >
+            <Plus className="w-4 h-4" />
+            Add Category
+          </Button>
 
           <Button className="flex items-center gap-1 bg-[#1a1d29] hover:bg-[#0f111a] text-white px-4 py-2 rounded-lg shadow text-sm font-medium transition">
             <Upload className="w-4 h-4" />
@@ -126,9 +190,9 @@ export default function CategoriesPage() {
         columns={columns}
         loading={loading}
         onView={(item) => console.log("View:", item)}
-        onEdit={(item) =>
-          navigate("/inventory/categories/edit", { state: { category: item } })
-        }
+        onEdit={(item) => {
+          openModalEditCategory(item);
+        }}
         onDelete={(item) => {
           setSelectedCat(item);
           setConfirmOpen(true);
@@ -161,6 +225,148 @@ export default function CategoriesPage() {
                 disabled={deleting}
               >
                 {deleting ? "Deleting..." : "Yes, Delete"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {openAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-lg p-6 w-[500px] relative">
+            {/* Nút đóng */}
+            <button
+              onClick={() => setOpenAddModal(false)}
+              className="absolute top-3 right-3 text-red-500 hover:text-red-600 text-xl"
+            >
+              ✕
+            </button>
+
+            <h2 className="text-xl font-semibold mb-5">Add Category</h2>
+
+            <div className="space-y-4">
+              {/* Category */}
+              <div>
+                <label className="font-medium text-sm">
+                  Category <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  className="w-full mt-1 border rounded-lg px-3 py-2 focus:ring focus:ring-orange-300 outline-none"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter category name"
+                />
+              </div>
+
+              {/* Parent Category (Dropdown) */}
+              <div>
+                <label className="font-medium text-sm">
+                  Select Category Parent <span className="text-red-500">*</span>
+                </label>
+
+                <select
+                  className="w-full mt-1 border rounded-lg px-3 py-2 focus:ring focus:ring-orange-300 outline-none"
+                  value={parentId || ""}
+                  onChange={(e) => setParentId(e.target.value || null)}
+                >
+                  <option value="">Root</option>
+
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-3 mt-6">
+              <Button
+                onClick={() => setOpenAddModal(false)}
+                className="px-4 py-2 bg-[#0f2847] hover:bg-[#071523] text-white rounded-lg text-sm"
+              >
+                Cancel
+              </Button>
+
+              <Button
+                className="px-4 py-2 bg-[#ff8c00] hover:bg-[#ff7700] text-white rounded-lg text-sm"
+                onClick={() => handleAddCategory()}
+              >
+                Add Category
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {openEditModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-lg p-6 w-[500px] relative">
+            {/* Nút đóng */}
+            <button
+              onClick={() => setOpenEditModal(false)}
+              className="absolute top-3 right-3 text-red-500 hover:text-red-600 text-xl"
+            >
+              ✕
+            </button>
+
+            <h2 className="text-xl font-semibold mb-5">Edit Category</h2>
+
+            <div className="space-y-4">
+              {/* Category */}
+              <div>
+                <label className="font-medium text-sm">
+                  Category <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  className="w-full mt-1 border rounded-lg px-3 py-2 focus:ring focus:ring-orange-300 outline-none"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter category name"
+                />
+              </div>
+
+              {/* Parent Category (Dropdown) */}
+              <div>
+                <label className="font-medium text-sm">
+                  Select Category Parent <span className="text-red-500">*</span>
+                </label>
+
+                <select
+                  className="w-full mt-1 border rounded-lg px-3 py-2 focus:ring focus:ring-orange-300 outline-none"
+                  value={parentId || ""}
+                  onChange={(e) => setParentId(e.target.value || null)}
+                >
+                  <option value="">Root</option>
+
+                  {categories
+                    .filter((c) => c.id !== Number(editId))
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-3 mt-6">
+              <Button
+                onClick={() => setOpenEditModal(false)}
+                className="px-4 py-2 bg-[#0f2847] hover:bg-[#071523] text-white rounded-lg text-sm"
+              >
+                Cancel
+              </Button>
+
+              <Button
+                className="px-4 py-2 bg-[#ff8c00] hover:bg-[#ff7700] text-white rounded-lg text-sm"
+                onClick={() => handleEditCategory()}
+              >
+                Save Category
               </Button>
             </div>
           </div>

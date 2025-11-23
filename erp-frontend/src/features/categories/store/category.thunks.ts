@@ -1,6 +1,10 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { categoryService } from "../category.service";
-import { CategoryCreate, ProductCategory } from "./category.types";
+import {
+  CategoryCreate,
+  CategoryUpdate,
+  ProductCategory,
+} from "./category.types";
 
 export const fetchCategoriesThunk = createAsyncThunk(
   "category/fetchAll",
@@ -44,7 +48,7 @@ export const createCategoryThunk = createAsyncThunk(
 export const updateCategoryThunk = createAsyncThunk(
   "category/update",
   async (
-    { id, body }: { id: number; body: CategoryCreate },
+    { id, body }: { id: number; body: CategoryUpdate },
     { rejectWithValue }
   ) => {
     try {

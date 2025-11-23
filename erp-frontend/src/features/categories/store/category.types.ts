@@ -16,13 +16,11 @@ export interface ProductCategoryState {
 }
 
 export interface CategoryCreate {
-  id: number;
   name: string;
   parent_id?: number | null;
 }
 
 export interface CategoryUpdate {
-  id: number;
   name: string;
   parent_id?: number | null;
 }
