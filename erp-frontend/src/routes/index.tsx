@@ -38,6 +38,7 @@ const appRoutes = [
   ...masterDataRoutes,
   ...productRoutes,
   ...userRoutes,
+  ...companyRoutes,
 ];
 const routes = [
   ...authRoutes,
