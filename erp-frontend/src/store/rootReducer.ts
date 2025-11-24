@@ -4,6 +4,7 @@ import userReducer from "../features/user/store";
 import branchReducer from "../features/company/store";
 import productReducer from "../features/products/store";
 import categoryReducer from "../features/categories/store";
+import purchaseOrderReducer from "../features/purchase/store";
 // import masterDataReducer from "../features/master-data/store"
 import {
   currencyReducer,
@@ -21,6 +22,7 @@ const rootReducer = combineReducers({
   tax: taxReducer,
   uom: uomReducer,
   conversion: conversionReducer,
+  purchaseOrder: purchaseOrderReducer,
 });
 
 export default rootReducer;

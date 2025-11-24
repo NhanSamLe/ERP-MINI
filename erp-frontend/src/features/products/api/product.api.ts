@@ -35,4 +35,9 @@ export const productApi = {
     const res = await axiosClient.get("/product-category");
     return res.data;
   },
+
+  search: (keyword: string) => {
+    const res = axiosClient.get(`/product/search?q=${keyword}`);
+    return res;
+  },
 };

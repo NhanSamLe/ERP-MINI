@@ -75,4 +75,22 @@ export const productController = {
       res.status(400).json({ message: err.message });
     }
   },
+
+  async searchProducts(req: Request, res: Response) {
+    try {
+      const keyword = req.query.q?.toString().toLowerCase();
+
+      if (!keyword || keyword.length < 2) {
+        return res.status(400).json({
+          message: "Keyword must be at least 2 characters",
+        });
+      }
+
+      const results = await productService.search(keyword);
+      res.json(results);
+    } catch (err) {
+      console.error("SearchProduct error:", err);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  },
 };
