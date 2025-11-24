@@ -2,14 +2,17 @@
 import { useEffect, useState } from "react";
 import { FormInput } from "../../../components/ui/FormInput";
 import { Button } from "../../../components/ui/Button";
-import { productApi } from "../../../api/product.api";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState, AppDispatch } from "../../../store/store";
 import {
   Product,
-  ProductCategory,
   ProductUpdateInput,
-} from "../../../types/product";
+} from "../../../features/products/store/product.types";
+import {
+  fetchCategoriesThunk,
+  updateProductThunk,
+} from "../../../features/products/store/product.thunks";
 import { toast } from "react-toastify";
-import axios from "axios";
 import {
   RotateCw,
   ChevronUp,
@@ -23,7 +26,11 @@ export default function EditProductPage() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const dispatch = useDispatch<AppDispatch>();
+
   const productData: Product | undefined = location.state?.product;
+
+  const { categories } = useSelector((state: RootState) => state.product);
 
   const [product, setProduct] = useState<ProductUpdateInput>({
     category_id: 0,
@@ -51,23 +58,14 @@ export default function EditProductPage() {
 
   const [deletedImageIds, setDeletedImageIds] = useState<number[]>([]);
 
-  const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [expanded, setExpanded] = useState({ info: true, images: true });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadingThumbnail] = useState(false);
   const [uploadingGallery] = useState(false);
 
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const res = await productApi.getProductCategories();
-        setCategories(res);
-      } catch (error) {
-        console.error("Error fetching categories:", error);
-      }
-    };
-    fetchCategories();
-  }, []);
+    dispatch(fetchCategoriesThunk());
+  }, [dispatch]);
 
   useEffect(() => {
     if (productData) {
@@ -89,7 +87,6 @@ export default function EditProductPage() {
     }
   }, [productData]);
 
-  // Dọn dẹp URL Object để tránh leak bộ nhớ
   useEffect(() => {
     return () => {
       previewGallery.forEach((url) => URL.revokeObjectURL(url));
@@ -142,20 +139,15 @@ export default function EditProductPage() {
         formData.append("deleteImageIds", JSON.stringify(deletedImageIds));
       }
 
-      console.log(
-        "📤 Sending update formData:",
-        Object.fromEntries(formData.entries())
+      const result = await dispatch(
+        updateProductThunk({ id: productData.id, formData })
       );
 
-      await productApi.updateProduct(productData.id, formData);
-
-      toast.success("Product updated successfully! 🎉");
-      navigate("/inventory/products");
-    } catch (error: unknown) {
-      if (axios.isAxiosError(error)) {
-        console.error("Update error:", error.response?.data || error.message);
+      if (updateProductThunk.fulfilled.match(result)) {
+        toast.success("Product updated successfully! 🎉");
+        navigate("/inventory/products");
       } else {
-        console.error("Unexpected error:", error);
+        toast.error("Update failed!");
       }
     } finally {
       setIsSubmitting(false);

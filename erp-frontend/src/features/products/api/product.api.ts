@@ -1,8 +1,8 @@
-import axiosClient from "./axiosClient";
-import { Product, ProductCategory } from "../types/product";
+import axiosClient from "../../../api/axiosClient";
+import { Product, ProductCategory } from "../../products/store/product.types";
 
 export const productApi = {
-  getAllProducts: async (): Promise<Product[]> => {
+  getAllProductsOnActive: async (): Promise<Product[]> => {
     const res = await axiosClient.get("/product");
     return res.data;
   },

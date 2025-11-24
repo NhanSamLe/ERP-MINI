@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import { FormInput } from "../../../components/ui/FormInput";
 import { Button } from "../../../components/ui/Button";
-import { productApi } from "../../../api/product.api";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState, AppDispatch } from "../../../store/store";
 import {
-  ProductCategory,
-  type ProductCreateInput,
-} from "../../../types/product";
+  fetchCategoriesThunk,
+  createProductThunk,
+} from "../store/product.thunks";
+
+import { type ProductCreateInput } from "../../../features/products/store/product.types";
 import { toast } from "react-toastify";
 import axios from "axios";
 import {
@@ -35,24 +38,19 @@ export default function CreateProductPage() {
     gallery: [],
   });
 
-  const [categories, setCategories] = useState<ProductCategory[]>([]);
+  const categories = useSelector(
+    (state: RootState) => state.product.categories
+  );
+
+  const dispatch = useDispatch<AppDispatch>();
   const [uploadingThumbnail] = useState(false);
   const [uploadingGallery] = useState(false);
   const [expanded, setExpanded] = useState({ info: true, images: true });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const res = await productApi.getProductCategories();
-        console.log("Fetched categories:", res);
-        setCategories(res);
-      } catch (error) {
-        console.error("Error fetching categories:", error);
-      }
-    };
-    fetchCategories();
-  }, []);
+    dispatch(fetchCategoriesThunk());
+  }, [dispatch]);
 
   const handleChange = (
     field: keyof ProductCreateInput,
@@ -96,8 +94,7 @@ export default function CreateProductPage() {
         Object.fromEntries(formData.entries())
       );
 
-      const res = await productApi.createProduct(formData);
-      console.log("✅ Product created:", res);
+      await dispatch(createProductThunk(formData)).unwrap();
       toast.success("Product created successfully! 🎉");
 
       setProduct({

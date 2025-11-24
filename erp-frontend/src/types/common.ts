@@ -14,4 +14,6 @@ export interface DataTableProps<T> {
   searchable?: boolean;
   searchKeys?: (keyof T)[];
   itemsPerPage?: number;
+  showSelection?: boolean; 
+  showActions?: boolean;   
 }

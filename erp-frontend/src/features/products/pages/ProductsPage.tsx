@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
-import { productApi } from "../../../api/product.api";
-import { Product } from "../../../types/product";
+import { Product } from "../../../features/products/store/product.types";
 import { DataTable } from "../../../components/ui/DataTable";
 import { Link } from "react-router-dom";
 import { Button } from "../../../components/ui/Button";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState, AppDispatch } from "../../../store/store";
+import {
+  fetchProductsThunk,
+  deleteProductThunk,
+} from "../store/product.thunks";
 
 import {
   FileText,
@@ -18,38 +23,28 @@ import {
 } from "lucide-react";
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const dispatch = useDispatch<AppDispatch>();
+
+  const { items: products, loading } = useSelector(
+    (state: RootState) => state.product
+  );
   const [deleting, setDeleting] = useState<boolean>(false);
   const [confirmOpen, setConfirmOpen] = useState<boolean>(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const navigate = useNavigate();
 
-  const fetchProducts = async () => {
-    setLoading(true);
-    try {
-      const data = await productApi.getAllProducts();
-      setProducts(data);
-    } catch (error) {
-      console.error("Failed to fetch products:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchProducts();
-  }, []);
+    dispatch(fetchProductsThunk());
+  }, [dispatch]);
 
   const handleDelete = async () => {
     if (!selectedProduct) return;
     setDeleting(true);
     try {
-      await productApi.deleteProduct(selectedProduct.id);
+      await dispatch(deleteProductThunk(selectedProduct.id)).unwrap();
       toast.success("Product deleted successfully!");
       setConfirmOpen(false);
-      fetchProducts(); // refresh list
     } catch (error) {
       console.error("Failed to delete product:", error);
       toast.error("Failed to delete product!");
@@ -129,7 +124,7 @@ export default function ProductsPage() {
 
           {/* Refresh */}
           <button
-            onClick={fetchProducts}
+            onClick={() => dispatch(fetchProductsThunk())}
             className="flex items-center gap-1 border border-gray-300 bg-gray-50 text-gray-600 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-100 transition"
           >
             <RotateCw className="w-4 h-4" />
@@ -172,7 +167,9 @@ export default function ProductsPage() {
         loading={loading}
         onView={(item) => console.log("Xem:", item)}
         onEdit={(item) =>
-          navigate("/inventory/products/edit", { state: { product: item } })
+          navigate(`/inventory/products/edit/${item.id}`, {
+            state: { product: item },
+          })
         }
         onDelete={(item) => {
           setSelectedProduct(item);

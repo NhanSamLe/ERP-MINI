@@ -41,6 +41,22 @@ export async function createUser(data: {
     is_active: false,
   });
   await user.save();
+  await user.reload({
+  attributes: { exclude: ["password_hash"] },
+  include: [
+    {
+        model: model.Role,
+        as: "role",
+        required: true,
+        attributes: ["id","code","name"], 
+      },
+      {
+        model: model.Branch,
+        as: "branch",
+        attributes: ["id","code","name","address"],
+      }
+  ],
+});
   return user;
 }
 export async function getAllUsers() {
@@ -75,7 +91,7 @@ export async function updateUser(data: {
   phone?: string;
   role_id: number;
 }){
-  const user = await model.User.findByPk(data.username);
+  const user = await model.User.findOne({ where: { username: data.username } });
   if (!user) throw new Error("User not found");
   if (data.role_id) {
     const role = await model.Role.findByPk(data.role_id);
@@ -104,6 +120,22 @@ export async function updateUser(data: {
     ...(data.role_id ? { role_id: data.role_id } : {}),
    });
   }
+  await user.reload({
+  attributes: { exclude: ["password_hash"] },
+  include: [
+    {
+        model: model.Role,
+        as: "role",
+        required: true,
+        attributes: ["id","code","name"], 
+      },
+      {
+        model: model.Branch,
+        as: "branch",
+        attributes: ["id","code","name","address"],
+      }
+  ],
+  });
   return user;
 }
 
