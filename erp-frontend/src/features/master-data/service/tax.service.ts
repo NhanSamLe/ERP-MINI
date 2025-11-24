@@ -1,5 +1,5 @@
 import * as api from "../api/tax.api";
-import { CreateTaxRateDto, UpdateTaxRateDto} from "../dto/tax.dto";
+import { CreateTaxRateDto, UpdateTaxRateDto } from "../dto/tax.dto";
 
 // 📍 Danh sách + filter/search
 export async function searchTaxRates(search?: string, status?: string) {
@@ -15,7 +15,7 @@ export async function getAllTaxRates() {
 // 📍 Lấy 1 tax theo ID
 export async function getTaxRateById(id: number) {
   const res = await api.getTaxById(id);
-  return res.data.data;
+  return res.data;
 }
 
 // 📍 Tạo tax mới
