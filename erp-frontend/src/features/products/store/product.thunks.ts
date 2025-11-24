@@ -6,7 +6,7 @@ export const fetchProductsThunk = createAsyncThunk(
   "product/fetchAll",
   async (_, { rejectWithValue }) => {
     try {
-      return await productService.getAllProducts();
+      return await productService.getAllProductsOnActive();
     } catch (error: unknown) {
       if (error instanceof Error) return rejectWithValue(error.message);
       return rejectWithValue("Unknown error");

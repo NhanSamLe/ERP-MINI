@@ -4,7 +4,15 @@ import { Product } from "../models/product.model";
 export const productCategoryService = {
   async getAll() {
     return await ProductCategory.findAll({
-      include: [{ model: ProductCategory, as: "children" }],
+      where: { status: true },
+      include: [
+        {
+          model: ProductCategory,
+          as: "children",
+          where: { status: true },
+          required: false,
+        },
+      ],
       order: [["id", "DESC"]],
     });
   },
@@ -26,13 +34,17 @@ export const productCategoryService = {
   },
 
   async delete(id: number) {
+    const category = await ProductCategory.findByPk(id);
     const hasProducts = await Product.count({
       where: { category_id: id },
     });
-    if (hasProducts > 0)
-      throw new Error("Cannot delete category with products");
-    const category = await ProductCategory.findByPk(id);
     if (!category) throw new Error("Category not found");
+
+    if (hasProducts > 0) {
+      category.status = false;
+      await category.save();
+      return { message: "Category deactivated successfully" };
+    }
     await category.destroy();
     return { message: "Category deleted successfully" };
   },
