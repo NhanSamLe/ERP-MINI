@@ -2,8 +2,8 @@ import { productApi } from "./api/product.api";
 import { Product } from "../products/store/product.types";
 
 export const productService = {
-  async getAllProducts(): Promise<Product[]> {
-    return await productApi.getAllProducts();
+  async getAllProductsOnActive(): Promise<Product[]> {
+    return await productApi.getAllProductsOnActive();
   },
 
   async getProductById(id: number): Promise<Product> {

@@ -2,9 +2,9 @@ import { Request, Response } from "express";
 import { productService } from "../services/product.service";
 
 export const productController = {
-  async getAllProduct(req: Request, res: Response) {
+  async getAllProductOnActive(req: Request, res: Response) {
     try {
-      const data = await productService.getAll();
+      const data = await productService.getAllOnActive();
       res.json(data);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
