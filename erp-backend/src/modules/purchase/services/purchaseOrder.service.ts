@@ -104,6 +104,6 @@ export const purchaseOrderService = {
       throw new Error("Only purchase orders in 'draft' status can be updated");
     }
     await po.destroy();
-    return this.getPOById(id);
+    return { success: true };
   },
 };

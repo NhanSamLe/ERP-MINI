@@ -43,7 +43,7 @@ export const purchaseOrderController = {
     try {
       const id = Number(req.params.id);
       await purchaseOrderService.delete(id);
-      res.status(204).send();
+      res.status(200).json({ message: "Deleted" });
     } catch (e: any) {
       res.status(400).json({ message: e.message });
     }

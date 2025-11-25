@@ -118,15 +118,6 @@ export default function EditPurchaseOrderPage() {
   }, [searchTerm, dispatch]);
 
   const handleSelectProduct = async (product: Product) => {
-    const checkStatusOrder = await dispatch(
-      fetchPurchaseOrderByIdThunk(Number(id))
-    ).unwrap();
-    if (checkStatusOrder.status !== "draft") {
-      toast.error("This Purchase Order is no longer editable.");
-      navigate("/purchase/orders");
-      return;
-    }
-
     if (lines.some((l) => l.product_id === product.id)) {
       alert("Sản phẩm đã có trong danh sách!");
       return;
@@ -188,6 +179,15 @@ export default function EditPurchaseOrderPage() {
 
   const finalPO = purchaseOrder;
   useEffect(() => {
+    if (finalPO?.branch_id && branches.length > 0) {
+      setBranch(finalPO.branch_id.toString());
+    }
+  }, [finalPO, branches]);
+
+  const selectedBranchName =
+    branches.find((b) => b.id === finalPO?.branch_id)?.name || "";
+
+  useEffect(() => {
     const linesToLoad = finalPO?.lines ?? [];
     if (linesToLoad.length === 0) return;
 
@@ -199,9 +199,8 @@ export default function EditPurchaseOrderPage() {
       }
       setReference(finalPO?.po_no || "");
       setDescription(finalPO?.description || "");
-      setBranch(finalPO?.branch_id?.toString() || "");
       const enrichedLines = await Promise.all(
-        linesToLoad.map(async (l) => {
+        linesToLoad.map(async (l: PurchaseOrderLine) => {
           const product = await dispatch(
             fetchProductByIdThunk(Number(l.product_id))
           ).unwrap();
@@ -294,14 +293,6 @@ export default function EditPurchaseOrderPage() {
   };
 
   const removeLine = async (temp_id: number) => {
-    const checkStatusOrder = await dispatch(
-      fetchPurchaseOrderByIdThunk(Number(id))
-    ).unwrap();
-    if (checkStatusOrder.status !== "draft") {
-      toast.error("This Purchase Order is no longer editable.");
-      navigate("/purchase/orders");
-      return;
-    }
     setLines((prev) => {
       const updated = prev.filter((l) => l.temp_id !== temp_id);
 
@@ -413,7 +404,6 @@ export default function EditPurchaseOrderPage() {
             </SelectContent>
           </Select>
         </div>
-
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Date <span className="text-red-500">*</span>
@@ -504,6 +494,7 @@ export default function EditPurchaseOrderPage() {
                 <th className="px-4 py-3 text-left w-10"></th>
                 <th className="px-4 py-3 text-left font-medium">Product</th>
                 <th className="px-4 py-3 text-center font-medium">Image</th>
+                <th className="px-4 py-3 text-center font-medium">Price</th>
                 <th className="px-4 py-3 text-center font-medium">Quantity</th>
                 <th className="px-4 py-3 text-center font-medium">Tax Type</th>
                 <th className="px-4 py-3 text-center font-medium">
@@ -551,6 +542,9 @@ export default function EditPurchaseOrderPage() {
                         className="h-12 w-12 object-cover rounded-md mx-auto border"
                       />
                     </td>
+                    <td className="px-4 py-3 text-center capitalize">
+                      ${line.sale_price?.toFixed(2)}
+                    </td>
                     <td className="px-4 py-3 text-center">
                       <Input
                         type="number"
@@ -571,11 +565,11 @@ export default function EditPurchaseOrderPage() {
                     <td className="px-4 py-3 text-center">{line.tax_rate}%</td>
 
                     <td className="px-4 py-3 text-right font-medium">
-                      {line.tax_amount.toFixed(2)}
+                      ${line.tax_amount.toFixed(2)}
                     </td>
 
                     <td className="px-4 py-3 text-right font-bold text-orange-600">
-                      {line.line_total.toFixed(2)}
+                      ${line.line_total.toFixed(2)}
                     </td>
                   </tr>
                 ))
@@ -591,7 +585,7 @@ export default function EditPurchaseOrderPage() {
             Total Order Tax
           </label>
           <Input
-            value={totalOrderTax.toString()}
+            value={"$" + totalOrderTax.toString()}
             onChange={(v) => setTotalOrderTax(Number(v) || 0)}
             disabled
           />
@@ -600,25 +594,32 @@ export default function EditPurchaseOrderPage() {
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Branch
           </label>
-          <Select value={branch} onValueChange={setBranch}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select Branch" />
-            </SelectTrigger>
-            <SelectContent>
-              {branches.map((b) => (
-                <SelectItem key={b.id} value={b.id.toString()}>
-                  {b.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {branches.length > 0 && (
+            <Select
+              value={branch}
+              onValueChange={setBranch}
+              defaultLabel={selectedBranchName}
+            >
+              {" "}
+              <SelectTrigger>
+                <SelectValue placeholder="Select Branch" />
+              </SelectTrigger>
+              <SelectContent>
+                {branches.map((b) => (
+                  <SelectItem key={b.id} value={b.id.toString()}>
+                    {b.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Total Before Tax *
           </label>
           <Input
-            value={totalBeforeTax.toString()}
+            value={"$" + totalBeforeTax.toString()}
             onChange={(v) => setTotalBeforeTax(Number(v) || 0)}
             disabled
           />
@@ -628,7 +629,7 @@ export default function EditPurchaseOrderPage() {
             Total After Tax *
           </label>
           <Input
-            value={totalAfterTax.toString()}
+            value={"$" + totalAfterTax.toString()}
             onChange={(v) => setTotalAfterTax(Number(v) || 0)}
             disabled
           />
