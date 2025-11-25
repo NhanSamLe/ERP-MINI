@@ -4,6 +4,7 @@ import PurchaseDashboard from "../features/purchase/PurchaseDashboard";
 import PurchaseOrderPage from "../features/purchase/pages/PurchaseOrderPages";
 import CreatePuchaseOrderPage from "../features/purchase/pages/CreatePurchaseOrderPage";
 import EditPurchaseOrderPage from "../features/purchase/pages/EditPurchaseOrderPage";
+import ViewPurchaseOrderPage from "../features/purchase/pages/ViewPurchaseOrderPage";
 
 const purchaseRoutes: RouteObject[] = [
   {
@@ -36,6 +37,14 @@ const purchaseRoutes: RouteObject[] = [
     element: (
       <ProtectedRoute allowedRoles={["PURCHASE"]}>
         <EditPurchaseOrderPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "purchase-orders/view/:id",
+    element: (
+      <ProtectedRoute allowedRoles={["PURCHASE"]}>
+        <ViewPurchaseOrderPage />
       </ProtectedRoute>
     ),
   },
