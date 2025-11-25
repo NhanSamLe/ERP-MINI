@@ -9,6 +9,7 @@ import { toast } from "react-toastify";
 import {
   fetchPurchaseOrdersThunk,
   deletePurchaseOrderThunk,
+  fetchPurchaseOrderByIdThunk,
 } from "../store/purchaseOrder.thunks";
 
 import { PurchaseOrder } from "../store/purchaseOrder.types";
@@ -44,6 +45,15 @@ export default function PurchaseOrderPage() {
 
   const handleDelete = async () => {
     if (!selectedPO) return;
+    const checkStatusOrder = await dispatch(
+      fetchPurchaseOrderByIdThunk(Number(selectedPO.id))
+    ).unwrap();
+    if (checkStatusOrder.status !== "draft") {
+      toast.error("This Purchase Order is no longer editable.");
+      navigate("/purchase/orders");
+      setConfirmOpen(false);
+      return;
+    }
 
     setDeleting(true);
     try {
@@ -167,7 +177,11 @@ export default function PurchaseOrderPage() {
         searchKeys={["po_no"]}
         onView={(item) => console.log(item)}
         onEdit={(item) =>
-          navigate(`/purchase-orders/edit/${item.id}`, { state: { po: item } })
+          item.status === "draft"
+            ? navigate(`/purchase-orders/edit/${item.id}`, {
+                state: { po: item },
+              })
+            : undefined
         }
         onDelete={
           role === "Purchasing Staff"
@@ -177,6 +191,8 @@ export default function PurchaseOrderPage() {
               }
             : undefined
         }
+        canEdit={(item) => item.status === "draft"}
+        canDelete={(item) => item.status === "draft"}
       />
 
       {/* Confirm Delete Modal */}

@@ -26,7 +26,7 @@ export const purchaseOrderApi = {
     body: PurchaseOrderUpdate
   ): Promise<PurchaseOrder> => {
     return axiosClient
-      .put(`/purchase-orders/${id}`, body)
+      .put(`/purchase-order/${id}`, body)
       .then((res) => res.data);
   },
 

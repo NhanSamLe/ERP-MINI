@@ -11,12 +11,15 @@ export interface PurchaseOrderAttrs {
   total_tax?: number;
   total_after_tax?: number;
   status: "draft" | "confirmed" | "received" | "cancelled";
+  description?: string;
 }
 
 type PurchaseOrderCreation = Optional<PurchaseOrderAttrs, "id" | "status">;
 
-export class PurchaseOrder extends Model<PurchaseOrderAttrs, PurchaseOrderCreation>
-  implements PurchaseOrderAttrs {
+export class PurchaseOrder
+  extends Model<PurchaseOrderAttrs, PurchaseOrderCreation>
+  implements PurchaseOrderAttrs
+{
   public id!: number;
   public branch_id?: number;
   public po_no!: string;
@@ -26,6 +29,7 @@ export class PurchaseOrder extends Model<PurchaseOrderAttrs, PurchaseOrderCreati
   public total_tax?: number;
   public total_after_tax?: number;
   public status!: "draft" | "confirmed" | "received" | "cancelled";
+  public description?: string;
 }
 
 PurchaseOrder.init(
@@ -35,13 +39,20 @@ PurchaseOrder.init(
     po_no: { type: DataTypes.STRING(50), allowNull: false, unique: true },
     supplier_id: { type: DataTypes.BIGINT },
     order_date: { type: DataTypes.DATE },
-    total_before_tax: { type: DataTypes.DECIMAL(18,2) },
-    total_tax: { type: DataTypes.DECIMAL(18,2) },
-    total_after_tax: { type: DataTypes.DECIMAL(18,2) },
+    total_before_tax: { type: DataTypes.DECIMAL(18, 2) },
+    total_tax: { type: DataTypes.DECIMAL(18, 2) },
+    total_after_tax: { type: DataTypes.DECIMAL(18, 2) },
     status: {
-      type: DataTypes.ENUM("draft","confirmed","received","cancelled"),
+      type: DataTypes.ENUM("draft", "confirmed", "received", "cancelled"),
       defaultValue: "draft",
     },
+    description: { type: DataTypes.TEXT, allowNull: true },
   },
-  { sequelize, tableName: "purchase_orders", timestamps: true, createdAt: "created_at", updatedAt: "updated_at" }
+  {
+    sequelize,
+    tableName: "purchase_orders",
+    timestamps: true,
+    createdAt: "created_at",
+    updatedAt: "updated_at",
+  }
 );

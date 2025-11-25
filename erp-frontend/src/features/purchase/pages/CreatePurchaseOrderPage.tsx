@@ -210,7 +210,24 @@ export default function CreatePurchaseOrderPage() {
 
   // Xóa dòng
   const removeLine = (id: number) => {
-    setLines((prev) => prev.filter((l) => l.id !== id));
+    setLines((prev) => {
+      const updated = prev.filter((l) => l.id !== id);
+
+      const totalBeforeTax = updated.reduce(
+        (sum, l) => sum + (l.sale_price || 0) * l.quantity,
+        0
+      );
+
+      const totalTax = updated.reduce((sum, l) => sum + l.tax_amount, 0);
+
+      const totalAfterTax = updated.reduce((sum, l) => sum + l.line_total, 0);
+
+      setTotalBeforeTax(totalBeforeTax);
+      setTotalOrderTax(totalTax);
+      setTotalAfterTax(totalAfterTax);
+
+      return updated;
+    });
   };
 
   const handleSubmit = async () => {
@@ -239,6 +256,7 @@ export default function CreatePurchaseOrderPage() {
         total_tax: totalOrderTax,
         total_after_tax: totalAfterTax,
         status: "draft",
+        description: description,
         lines: lines.map((l) => ({
           product_id: Number(l.product_id),
           quantity: Number(l.quantity),
@@ -484,6 +502,7 @@ export default function CreatePurchaseOrderPage() {
           <Input
             value={totalBeforeTax.toString()}
             onChange={(v) => setTotalBeforeTax(Number(v) || 0)}
+            disabled
           />
         </div>
         <div>
@@ -493,6 +512,7 @@ export default function CreatePurchaseOrderPage() {
           <Input
             value={totalAfterTax.toString()}
             onChange={(v) => setTotalAfterTax(Number(v) || 0)}
+            disabled
           />
         </div>
       </div>
@@ -511,7 +531,11 @@ export default function CreatePurchaseOrderPage() {
       </div>
 
       <div className="flex justify-end gap-4 pt-6">
-        <Button variant="outline" className="px-6">
+        <Button
+          variant="outline"
+          className="px-6"
+          onClick={() => navigate("/purchase/orders")}
+        >
           Cancel
         </Button>
         <Button
