@@ -50,7 +50,7 @@ export default function PurchaseOrderPage() {
     ).unwrap();
     if (checkStatusOrder.status !== "draft") {
       toast.error("This Purchase Order is no longer editable.");
-      navigate("/purchase/orders");
+      dispatch(fetchPurchaseOrdersThunk());
       setConfirmOpen(false);
       return;
     }
@@ -175,7 +175,9 @@ export default function PurchaseOrderPage() {
         columns={columns}
         loading={loading}
         searchKeys={["po_no"]}
-        onView={(item) => console.log(item)}
+        onView={(item) => {
+          navigate(`/purchase-orders/view/${item.id}`, { state: { po: item } });
+        }}
         onEdit={(item) =>
           item.status === "draft"
             ? navigate(`/purchase-orders/edit/${item.id}`, {
