@@ -11,6 +11,7 @@ import {
   uomReducer,
   conversionReducer,
 } from "../features/master-data/store";
+import partnersReducer from "../features/partner/store";
 const rootReducer = combineReducers({
   auth: authReducer,
   user: userReducer,
@@ -21,6 +22,7 @@ const rootReducer = combineReducers({
   tax: taxReducer,
   uom: uomReducer,
   conversion: conversionReducer,
+  partners: partnersReducer,
 });
 
 export default rootReducer;

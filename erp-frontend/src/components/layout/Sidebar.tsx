@@ -108,14 +108,14 @@ const menuItems: MenuItem[] = [
     ],
   },
   {
-    name: "Partners",
-    icon: Handshake,
-    path: "/partners",
-    subItems: [
-      { name: "All Partners", path: "/partners/all" },
-      { name: "Customers", path: "/partners/customers" },
-      { name: "Vendors", path: "/partners/vendors" },
-    ],
+  name: "Partners",
+  icon: Handshake,
+  path: "/partners",
+  subItems: [
+    { name: "All Partners", path: "/partners" },
+    { name: "Customers", path: "/partners?type=customer" },
+    { name: "Supplier", path: "/partners?type=supplier" },
+  ],
   },
   {
     name: "Branches",

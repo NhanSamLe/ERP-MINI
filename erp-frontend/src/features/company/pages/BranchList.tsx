@@ -9,6 +9,8 @@ import {
   CheckCircle,
   Trash2,
   Search,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   fetchBranches,
@@ -29,6 +31,10 @@ export default function BranchList() {
   const [items, setItems] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+
+  // ====== phân trang ======
+  const [page, setPage] = useState(1);
+  const pageSize = 10; // 👉 1 page = 10 branches, muốn đổi thì chỉnh số này
 
   const load = async () => {
     setLoading(true);
@@ -66,6 +72,23 @@ export default function BranchList() {
       b.address?.toLowerCase().includes(term)
     );
   });
+
+  // reset về page 1 khi filter thay đổi
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
+
+  // ====== tính toán phân trang ======
+  const totalItems = filtered.length;
+  const totalPages = totalItems ? Math.ceil(totalItems / pageSize) : 1;
+  const currentPage = Math.min(page, totalPages);
+  const startIndex = (currentPage - 1) * pageSize;
+  const pageItems = filtered.slice(startIndex, startIndex + pageSize);
+
+  const goToPage = (p: number) => {
+    if (p < 1 || p > totalPages) return;
+    setPage(p);
+  };
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -125,14 +148,14 @@ export default function BranchList() {
                   Loading...
                 </td>
               </tr>
-            ) : filtered.length === 0 ? (
+            ) : totalItems === 0 ? (
               <tr>
                 <td className="py-6 px-4 text-center" colSpan={11}>
                   No branches found
                 </td>
               </tr>
             ) : (
-              filtered.map((b) => (
+              pageItems.map((b) => (
                 <tr key={b.id} className="border-t">
                   <td className="py-3 px-4">{b.code}</td>
                   <td className="py-3 px-4">{b.name}</td>
@@ -195,10 +218,8 @@ export default function BranchList() {
                         <button
                           onClick={() => onDelete(Number(b.id))}
                           className="inline-flex items-center gap-1 px-2 py-1 rounded-md border text-red-600 hover:bg-red-50"
-                          title=""
                         >
                           <Trash2 className="w-4 h-4" />
-                         
                         </button>
                       )}
                     </div>
@@ -208,6 +229,53 @@ export default function BranchList() {
             )}
           </tbody>
         </table>
+
+        {/* Pagination */}
+        {totalItems > 0 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t bg-gray-50 text-xs text-gray-600">
+            <div>
+              Showing{" "}
+              <span className="font-medium">
+                {startIndex + 1} - {Math.min(startIndex + pageSize, totalItems)}
+              </span>{" "}
+              of <span className="font-medium">{totalItems}</span> branches
+            </div>
+
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="flex items-center gap-1 px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-white"
+              >
+                <ChevronLeft className="w-3 h-3" />
+                Prev
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pNum) => (
+                <button
+                  key={pNum}
+                  onClick={() => goToPage(pNum)}
+                  className={`w-7 h-7 rounded text-xs border ${
+                    pNum === currentPage
+                      ? "bg-orange-500 text-white border-orange-500"
+                      : "bg-white text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  {pNum}
+                </button>
+              ))}
+
+              <button
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="flex items-center gap-1 px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-white"
+              >
+                Next
+                <ChevronRight className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
