@@ -14,6 +14,7 @@ export interface PurchaseOrder {
   total_tax?: number;
   total_after_tax?: number;
   status: PurchaseOrderStatus;
+  description?: string;
   created_at: string;
   updated_at: string;
   lines?: PurchaseOrderLine[];
@@ -44,6 +45,7 @@ export interface PurchaseOrderCreate {
   total_tax: number;
   total_after_tax: number;
   status?: "draft" | "confirmed" | "received" | "cancelled";
+  description?: string;
   lines: PurchaseOrderLine[];
 }
 
@@ -56,6 +58,6 @@ export interface PurchaseOrderUpdate {
   total_tax: number;
   total_after_tax: number;
   status?: "draft" | "confirmed" | "received" | "cancelled";
+  description?: string;
   lines: PurchaseOrderLine[];
 }
-

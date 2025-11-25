@@ -31,6 +31,7 @@ import { PurchaseOrderLine, PurchaseOrderUpdate } from "../store";
 
 interface LineItem {
   id?: number;
+  temp_id?: number;
   product_id: string | number;
   product_name: string;
   product_image: string;
@@ -117,6 +118,15 @@ export default function EditPurchaseOrderPage() {
   }, [searchTerm, dispatch]);
 
   const handleSelectProduct = async (product: Product) => {
+    const checkStatusOrder = await dispatch(
+      fetchPurchaseOrderByIdThunk(Number(id))
+    ).unwrap();
+    if (checkStatusOrder.status !== "draft") {
+      toast.error("This Purchase Order is no longer editable.");
+      navigate("/purchase/orders");
+      return;
+    }
+
     if (lines.some((l) => l.product_id === product.id)) {
       alert("Sản phẩm đã có trong danh sách!");
       return;
@@ -136,7 +146,8 @@ export default function EditPurchaseOrderPage() {
     const lineTotal = qty * price + taxAmount;
 
     const newLine: LineItem = {
-      id: Date.now(),
+      id: undefined,
+      temp_id: Date.now(),
       product_id: product.id,
       product_name: product.name,
       product_image: product.image_url || "",
@@ -177,7 +188,7 @@ export default function EditPurchaseOrderPage() {
 
   const finalPO = purchaseOrder;
   useEffect(() => {
-    const linesToLoad = finalPO?.lines ?? []; // nếu undefined thì dùng mảng rỗng
+    const linesToLoad = finalPO?.lines ?? [];
     if (linesToLoad.length === 0) return;
 
     const loadLines = async () => {
@@ -187,7 +198,7 @@ export default function EditPurchaseOrderPage() {
         setDate(d.toISOString().split("T")[0]);
       }
       setReference(finalPO?.po_no || "");
-      setDescription("");
+      setDescription(finalPO?.description || "");
       setBranch(finalPO?.branch_id?.toString() || "");
       const enrichedLines = await Promise.all(
         linesToLoad.map(async (l) => {
@@ -205,7 +216,8 @@ export default function EditPurchaseOrderPage() {
             100;
 
           return {
-            id: l.id ?? Date.now(),
+            id: l.id ?? undefined,
+            temp_id: l.id ?? Date.now(),
             product_id: l.product_id,
             product_name: product.name,
             sku: product.sku,
@@ -239,13 +251,17 @@ export default function EditPurchaseOrderPage() {
     loadLines();
   }, [finalPO, dispatch]);
 
-  const updateLine = (id: number, field: keyof LineItem, value: number) => {
+  const updateLine = (
+    temp_id: number,
+    field: keyof LineItem,
+    value: number
+  ) => {
     if (field === "quantity" && value <= 0) {
-      removeLine(id);
+      removeLine(temp_id);
       return;
     }
     const updatedLines = lines.map((line) => {
-      if (line.id !== id) return line;
+      if (line.temp_id !== temp_id) return line;
       const updated = { ...line, [field]: value };
 
       const taxAmount =
@@ -277,11 +293,44 @@ export default function EditPurchaseOrderPage() {
     setTotalAfterTax(totalAfterTax);
   };
 
-  const removeLine = (id: number) => {
-    setLines((prev) => prev.filter((l) => l.id !== id));
+  const removeLine = async (temp_id: number) => {
+    const checkStatusOrder = await dispatch(
+      fetchPurchaseOrderByIdThunk(Number(id))
+    ).unwrap();
+    if (checkStatusOrder.status !== "draft") {
+      toast.error("This Purchase Order is no longer editable.");
+      navigate("/purchase/orders");
+      return;
+    }
+    setLines((prev) => {
+      const updated = prev.filter((l) => l.temp_id !== temp_id);
+
+      const totalBeforeTax = updated.reduce(
+        (sum, l) => sum + (l.sale_price || 0) * l.quantity,
+        0
+      );
+
+      const totalTax = updated.reduce((sum, l) => sum + l.tax_amount, 0);
+
+      const totalAfterTax = updated.reduce((sum, l) => sum + l.line_total, 0);
+
+      setTotalBeforeTax(totalBeforeTax);
+      setTotalOrderTax(totalTax);
+      setTotalAfterTax(totalAfterTax);
+
+      return updated;
+    });
   };
 
   const handleSubmit = async () => {
+    const checkStatusOrder = await dispatch(
+      fetchPurchaseOrderByIdThunk(Number(id))
+    ).unwrap();
+    if (checkStatusOrder.status !== "draft") {
+      toast.error("This Purchase Order is no longer editable.");
+      navigate("/purchase/orders");
+      return;
+    }
     try {
       const today = new Date().toISOString().split("T")[0];
 
@@ -327,6 +376,7 @@ export default function EditPurchaseOrderPage() {
         ),
         total_tax: lines.reduce((sum, l) => sum + l.tax_amount, 0),
         total_after_tax: lines.reduce((sum, l) => sum + l.line_total, 0),
+        description: description,
         lines: updatedLines,
         deletedLineIds: deletedLineIds.length ? deletedLineIds : undefined,
       };
@@ -477,7 +527,7 @@ export default function EditPurchaseOrderPage() {
                       <button
                         className="text-red-500 hover:text-red-700"
                         onClick={() =>
-                          line.id !== undefined && removeLine(line.id)
+                          line.temp_id !== undefined && removeLine(line.temp_id)
                         }
                       >
                         <Trash2 className="h-4 w-4" />
@@ -508,8 +558,8 @@ export default function EditPurchaseOrderPage() {
                         value={line.quantity.toString()}
                         onChange={(v) => {
                           const qty = Math.max(Number(v) || 1, 1);
-                          if (line.id !== undefined)
-                            updateLine(line.id, "quantity", qty);
+                          if (line.temp_id !== undefined)
+                            updateLine(line.temp_id, "quantity", qty);
                         }}
                       />
                     </td>
@@ -570,6 +620,7 @@ export default function EditPurchaseOrderPage() {
           <Input
             value={totalBeforeTax.toString()}
             onChange={(v) => setTotalBeforeTax(Number(v) || 0)}
+            disabled
           />
         </div>
         <div>
@@ -579,6 +630,7 @@ export default function EditPurchaseOrderPage() {
           <Input
             value={totalAfterTax.toString()}
             onChange={(v) => setTotalAfterTax(Number(v) || 0)}
+            disabled
           />
         </div>
       </div>
@@ -597,7 +649,11 @@ export default function EditPurchaseOrderPage() {
       </div>
 
       <div className="flex justify-end gap-4 pt-6">
-        <Button variant="outline" className="px-6">
+        <Button
+          variant="outline"
+          className="px-6"
+          onClick={() => navigate("/purchase/orders")}
+        >
           Cancel
         </Button>
         <Button
