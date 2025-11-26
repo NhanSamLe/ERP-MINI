@@ -6,6 +6,10 @@ export const productService = {
     return await productApi.getAllProductsOnActive();
   },
 
+  async getAllProducts(): Promise<Product[]> {
+    return await productApi.getAllProducts();
+  },
+
   async getProductById(id: number): Promise<Product> {
     return await productApi.getProductById(id);
   },

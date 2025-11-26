@@ -10,6 +10,13 @@ router.get(
   authMiddleware(["ADMIN", "SALES", "PURCHASE"]),
   productController.getAllProductOnActive
 );
+
+router.get(
+  "/all",
+  authMiddleware(["ADMIN", "SALES", "PURCHASE", "WHSTAFF"]),
+  productController.getAllProductAllStatus
+);
+
 router.get(
   "/search",
   authMiddleware(["PURCHASE"]),
