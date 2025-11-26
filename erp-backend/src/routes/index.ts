@@ -7,6 +7,8 @@ import productImageRoutes from "../modules/product/routes/productImage.route";
 import masterDataRoutes from "../modules/master-data/routes";
 import partnerRoutes from "../modules/partner/routes/partner.routes";
 import purchaseOrderRoutes from "../modules/purchase/routes/purchaseOrder.routes";
+import departmentRoutes from "../modules/hrm/routes/department.routes";
+import positionRoutes from "../modules/hrm/routes/position.routes";
 const router = express.Router();
 
 router.use("/auth", authRoutes);
@@ -17,5 +19,7 @@ router.use("/branch", branchRoutes);
 router.use("/partners", partnerRoutes);
 router.use("/master-data", masterDataRoutes);
 router.use("/purchase-order", purchaseOrderRoutes);
+router.use("/hrm/departments", departmentRoutes);
+router.use("/hrm/positions", positionRoutes);
 
 export default router;
