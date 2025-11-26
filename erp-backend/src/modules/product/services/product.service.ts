@@ -6,6 +6,7 @@ import {
   deleteFromCloudinary,
 } from "../../../core/utils/uploadCloudinary";
 import { hasLinkedData } from "../../../core/utils/getRelation";
+import { Op } from "sequelize";
 
 export const productService = {
   async getAllOnActive() {
@@ -202,5 +203,25 @@ export const productService = {
 
     await product.destroy();
     return { message: "Product và ảnh đã được xóa thành công" };
+  },
+
+  async search(keyword: string) {
+    return await Product.findAll({
+      where: {
+        name: {
+          [Op.like]: `%${keyword}%`,
+        },
+      },
+      include: [
+        { model: ProductCategory, as: "category" },
+        {
+          model: ProductImage,
+          as: "images",
+          attributes: ["id", "image_url", "image_public_id"],
+        },
+      ],
+      limit: 20,
+      order: [["name", "ASC"]],
+    });
   },
 };

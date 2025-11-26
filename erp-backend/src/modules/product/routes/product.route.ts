@@ -11,6 +11,11 @@ router.get(
   productController.getAllProductOnActive
 );
 router.get(
+  "/search",
+  authMiddleware(["PURCHASE"]),
+  productController.searchProducts
+);
+router.get(
   "/:id",
   authMiddleware(["ADMIN", "SALES", "PURCHASE"]),
   productController.getProductById

@@ -1,6 +1,14 @@
 import React, { useState } from "react";
 import { DataTableProps } from "../../types/common";
-import { ChevronLeft, ChevronRight, Eye, Edit2, Trash2, RefreshCw, Search} from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Edit2,
+  Trash2,
+  RefreshCw,
+  Search,
+} from "lucide-react";
 
 export function DataTable<T extends { id: number }>({
   data,
@@ -8,22 +16,29 @@ export function DataTable<T extends { id: number }>({
   onView,
   onEdit,
   onDelete,
+  canEdit,
+  canDelete,
   loading = false,
   searchable = true,
   searchKeys = [],
   itemsPerPage = 10,
-  showSelection = true, 
-  showActions = true,   
+  showSelection = true,
+  showActions = true,
 }: DataTableProps<T>) {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
-  
-  const filteredData = data.filter(item => {
+  const [sortConfig, setSortConfig] = useState<{
+    key: string;
+    direction: "asc" | "desc";
+  } | null>(null);
+
+  const filteredData = data.filter((item) => {
     if (!searchTerm) return true;
-    return searchKeys.some(key => {
+    return searchKeys.some((key) => {
       const value = item[key];
-      return value && String(value).toLowerCase().includes(searchTerm.toLowerCase());
+      return (
+        value && String(value).toLowerCase().includes(searchTerm.toLowerCase())
+      );
     });
   });
 
@@ -31,20 +46,23 @@ export function DataTable<T extends { id: number }>({
     if (!sortConfig) return 0;
     const aVal = a[sortConfig.key as keyof T];
     const bVal = b[sortConfig.key as keyof T];
-    if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
-    if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+    if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
+    if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
     return 0;
   });
 
   const totalPages = Math.ceil(sortedData.length / itemsPerPage);
-  const paginatedData = sortedData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const paginatedData = sortedData.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const handleSort = (key: string) => {
-    setSortConfig(prev => {
+    setSortConfig((prev) => {
       if (prev?.key === key) {
-        return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+        return { key, direction: prev.direction === "asc" ? "desc" : "asc" };
       }
-      return { key, direction: 'asc' };
+      return { key, direction: "asc" };
     });
   };
 
@@ -87,7 +105,9 @@ export function DataTable<T extends { id: number }>({
                 <th
                   key={idx}
                   onClick={() => col.sortable && handleSort(String(col.key))}
-                  className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${col.sortable ? 'cursor-pointer hover:bg-gray-100' : ''}`}
+                  className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${
+                    col.sortable ? "cursor-pointer hover:bg-gray-100" : ""
+                  }`}
                 >
                   {col.label}
                 </th>
@@ -102,32 +122,54 @@ export function DataTable<T extends { id: number }>({
           <tbody className="divide-y divide-gray-200">
             {paginatedData.map((item) => (
               <tr key={item.id} className="hover:bg-gray-50">
-               {showSelection && (
+                {showSelection && (
                   <td className="px-6 py-4">
                     <input type="checkbox" className="rounded" />
                   </td>
                 )}
                 {columns.map((col, idx) => (
                   <td key={idx} className="px-6 py-4 text-sm text-gray-900">
-                    {col.render ? col.render(item) : String(item[col.key as keyof T] || '')}
+                    {col.render
+                      ? col.render(item)
+                      : String(item[col.key as keyof T] || "")}
                   </td>
                 ))}
                 <td className="px-6 py-4 text-right space-x-2">
                   {onView && (
-                    <button onClick={() => onView(item)} className="text-gray-600 hover:text-gray-900">
+                    <button
+                      onClick={() => onView(item)}
+                      className="text-gray-600 hover:text-gray-900"
+                    >
                       <Eye className="w-4 h-4" />
                     </button>
                   )}
-                  {onEdit && (
-                    <button onClick={() => onEdit(item)} className="text-gray-600 hover:text-orange-600">
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                  )}
-                  {onDelete && (
-                    <button onClick={() => onDelete(item)} className="text-gray-600 hover:text-red-600">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
+                  {onEdit &&
+                    (canEdit?.(item) ? (
+                      <button
+                        onClick={() => onEdit(item)}
+                        className="text-gray-600 hover:text-orange-600"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <span className="inline-block w-4 h-4 opacity-0">
+                        <Edit2 className="w-4 h-4" />
+                      </span>
+                    ))}
+
+                  {onDelete &&
+                    (canDelete?.(item) ? (
+                      <button
+                        onClick={() => onDelete(item)}
+                        className="text-gray-600 hover:text-red-600"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <span className="inline-block w-4 h-4 opacity-0">
+                        <Trash2 className="w-4 h-4" />
+                      </span>
+                    ))}
                 </td>
               </tr>
             ))}
@@ -137,11 +179,13 @@ export function DataTable<T extends { id: number }>({
 
       <div className="flex items-center justify-between">
         <div className="text-sm text-gray-700">
-          Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, sortedData.length)} of {sortedData.length} entries
+          Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+          {Math.min(currentPage * itemsPerPage, sortedData.length)} of{" "}
+          {sortedData.length} entries
         </div>
         <div className="flex items-center space-x-2">
           <button
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
             disabled={currentPage === 1}
             className="p-2 rounded border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
           >
@@ -151,7 +195,7 @@ export function DataTable<T extends { id: number }>({
             {currentPage}
           </span>
           <button
-            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
             className="p-2 rounded border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
           >

@@ -8,7 +8,7 @@ const productRoutes: RouteObject[] = [
   {
     path: "/products",
     element: (
-      <ProtectedRoute allowedRoles={["ADMIN", "SALESMANAGER"]}>
+      <ProtectedRoute allowedRoles={["ADMIN", "PURCHASE"]}>
         <ProductDashboard />
       </ProtectedRoute>
     ),
@@ -16,7 +16,7 @@ const productRoutes: RouteObject[] = [
   {
     path: "inventory/products",
     element: (
-      <ProtectedRoute allowedRoles={["ADMIN", "SALESMANAGER"]}>
+      <ProtectedRoute allowedRoles={["ADMIN", "PURCHASE"]}>
         <ProductsPage />
       </ProtectedRoute>
     ),
