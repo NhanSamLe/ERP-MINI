@@ -18,6 +18,18 @@ export const fetchProductsThunk = createAsyncThunk(
     }
   }
 );
+
+export const fetchProductsThunkAllStatus = createAsyncThunk(
+  "product/fetchAll",
+  async (_, { rejectWithValue }) => {
+    try {
+      return await productService.getAllProducts();
+    } catch (error: unknown) {
+      if (error instanceof Error) return rejectWithValue(error.message);
+      return rejectWithValue("Unknown error");
+    }
+  }
+);
 export const fetchProductByIdThunk = createAsyncThunk<Product, number>(
   "product/fetchById",
   async (id, { rejectWithValue }) => {

@@ -11,6 +11,21 @@ import { Op } from "sequelize";
 export const productService = {
   async getAllOnActive() {
     return await Product.findAll({
+      where: { status: "Active" },
+      include: [
+        { model: ProductCategory, as: "category" },
+        {
+          model: ProductImage,
+          as: "images",
+          attributes: ["id", "image_url", "image_public_id"],
+        },
+      ],
+      order: [["id", "DESC"]],
+    });
+  },
+
+  async getAll() {
+    return await Product.findAll({
       include: [
         { model: ProductCategory, as: "category" },
         {

@@ -9,6 +9,8 @@ import partnerRoutes from "../modules/partner/routes/partner.routes";
 import purchaseOrderRoutes from "../modules/purchase/routes/purchaseOrder.routes";
 import departmentRoutes from "../modules/hrm/routes/department.routes";
 import positionRoutes from "../modules/hrm/routes/position.routes";
+import warehouseRoutes from "../modules/inventory/routes/warehouse.routes";
+import stockBalanceRoutes from "../modules/inventory/routes/stockBalance.routes";
 const router = express.Router();
 
 router.use("/auth", authRoutes);
@@ -21,5 +23,7 @@ router.use("/master-data", masterDataRoutes);
 router.use("/purchase-order", purchaseOrderRoutes);
 router.use("/hrm/departments", departmentRoutes);
 router.use("/hrm/positions", positionRoutes);
+router.use("/warehouse", warehouseRoutes);
+router.use("/stock-balance", stockBalanceRoutes);
 
 export default router;

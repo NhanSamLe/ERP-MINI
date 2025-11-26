@@ -15,6 +15,9 @@ import {
 import partnersReducer from "../features/partner/store";
 import departmentReducer from "../features/hrm/store/department/department.slice";
 import { positionReducer } from "../features/hrm/store/position/position.slice";
+import { stockBalanceReducer } from "../features/inventory/store";
+import { warehouseReducer } from "../features/inventory/store";
+
 const rootReducer = combineReducers({
   auth: authReducer,
   user: userReducer,
@@ -26,10 +29,11 @@ const rootReducer = combineReducers({
   uom: uomReducer,
   conversion: conversionReducer,
   partners: partnersReducer,
-
   purchaseOrder: purchaseOrderReducer,
   hrmDepartment: departmentReducer,
   position: positionReducer,
+  stockBalance: stockBalanceReducer,
+  warehouse: warehouseReducer,
 });
 
 export default rootReducer;
