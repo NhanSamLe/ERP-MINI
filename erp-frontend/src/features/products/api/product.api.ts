@@ -7,6 +7,11 @@ export const productApi = {
     return res.data;
   },
 
+  getAllProducts: async (): Promise<Product[]> => {
+    const res = await axiosClient.get("/product/all");
+    return res.data;
+  },
+
   getProductById: async (id: number): Promise<Product> => {
     const res = await axiosClient.get(`/product/${id}`);
     return res.data;

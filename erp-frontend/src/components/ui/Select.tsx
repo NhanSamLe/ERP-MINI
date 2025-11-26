@@ -137,8 +137,12 @@ export const SelectItem = forwardRef<
         selected ? "bg-orange-50 text-orange-900 font-medium" : ""
       } ${className}`}
     >
-      {selected && <Check className="mr-2 h-4 w-4 text-orange-600" />}
-      <span className={selected ? "ml-6" : ""}>{children}</span>
+      <Check
+        className={`mr-2 h-4 w-4 text-orange-600 ${
+          selected ? "visible" : "invisible"
+        }`}
+      />
+      <span>{children}</span>
     </div>
   );
 });

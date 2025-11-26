@@ -11,6 +11,15 @@ export const productController = {
     }
   },
 
+  async getAllProductAllStatus(req: Request, res: Response) {
+    try {
+      const data = await productService.getAll();
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  },
+
   async getProductById(req: Request, res: Response) {
     try {
       if (!req.params.id) {
