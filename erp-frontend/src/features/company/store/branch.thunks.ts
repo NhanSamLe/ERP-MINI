@@ -1,7 +1,7 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import * as branchService from "../branch.service";
 import { getErrorMessage } from "../../../utils/ErrorHelper";
-import { Branch } from "./branch.types";
+
 
 export const fetchAllBranchesThunk = createAsyncThunk<Branch[]>(
   "branch/fetchAllBranches",
@@ -14,3 +14,4 @@ export const fetchAllBranchesThunk = createAsyncThunk<Branch[]>(
     }
   }
 );
+
