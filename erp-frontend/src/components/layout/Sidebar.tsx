@@ -61,8 +61,7 @@ const menuItems: MenuItem[] = [
       { name: "Products", path: "/inventory/products" },
       { name: "Category", path: "/inventory/categories" },
       { name: "Stock", path: "/inventory/stock" },
-      { name: "Transfers", path: "/inventory/transfers" },
-      { name: "Adjustments", path: "/inventory/adjustments" },
+      { name: "Stock Moves", path: "/inventory/stock_move" },
     ],
   },
   {
@@ -113,14 +112,14 @@ const menuItems: MenuItem[] = [
     ],
   },
   {
-  name: "Partners",
-  icon: Handshake,
-  path: "/partners",
-  subItems: [
-    { name: "All Partners", path: "/partners" },
-    { name: "Customers", path: "/partners?type=customer" },
-    { name: "Supplier", path: "/partners?type=supplier" },
-  ],
+    name: "Partners",
+    icon: Handshake,
+    path: "/partners",
+    subItems: [
+      { name: "All Partners", path: "/partners" },
+      { name: "Customers", path: "/partners?type=customer" },
+      { name: "Supplier", path: "/partners?type=supplier" },
+    ],
   },
   {
     name: "Branches",

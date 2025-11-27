@@ -1,12 +1,12 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { warehouseApi } from "../../../api/warehouse.api";
 import { getErrorMessage } from "../../../../../utils/ErrorHelper";
+import { warehouseService } from "../../../services/warehouse.service";
 
 export const fetchWarehousesThunk = createAsyncThunk(
   "warehouse/fetchAll",
   async (_, { rejectWithValue }) => {
     try {
-      return await warehouseApi.getAllWarehouses();
+      return await warehouseService.getAllWarehouses();
     } catch (error) {
       return rejectWithValue(getErrorMessage(error));
     }
