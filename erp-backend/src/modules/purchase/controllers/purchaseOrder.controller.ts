@@ -11,6 +11,20 @@ export const purchaseOrderController = {
     }
   },
 
+  async getByStatus(req: Request, res: Response) {
+    const status = String(req.query.status);
+    if (!status) {
+      return res.status(400).json({ message: "status is required" });
+    }
+    try {
+      const data = await purchaseOrderService.getByStatus(status);
+      return res.json(data);
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ message: "Server error" });
+    }
+  },
+
   async getPOById(req: Request, res: Response) {
     try {
       const id = Number(req.params.id);

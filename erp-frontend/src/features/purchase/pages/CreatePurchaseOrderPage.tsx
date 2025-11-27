@@ -324,7 +324,6 @@ export default function CreatePurchaseOrderPage() {
         </div>
       </div>
 
-      {/* Product Search - ĐÃ HOẠT ĐỘNG HOÀN HẢO */}
       <div className="bg-white rounded-lg shadow p-6">
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Product <span className="text-red-500">*</span>
@@ -379,7 +378,6 @@ export default function CreatePurchaseOrderPage() {
         </div>
       </div>
 
-      {/* Product Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -470,7 +468,6 @@ export default function CreatePurchaseOrderPage() {
         </div>
       </div>
 
-      {/* Order Summary & Buttons - giữ nguyên */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
