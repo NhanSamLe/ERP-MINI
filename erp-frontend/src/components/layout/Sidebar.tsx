@@ -89,6 +89,8 @@ const menuItems: MenuItem[] = [
     icon: UserCheck,
     path: "/hrm",
     subItems: [
+      { name: "Department", path: "/hrm/department" },
+      { name: "Position", path: "/hrm/position" },
       { name: "Employees", path: "/hrm/employees" },
       { name: "Attendance", path: "/hrm/attendance" },
       { name: "Payroll", path: "/hrm/payroll" },
