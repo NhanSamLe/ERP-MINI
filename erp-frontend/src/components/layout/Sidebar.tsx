@@ -59,8 +59,7 @@ const menuItems: MenuItem[] = [
       { name: "Products", path: "/inventory/products" },
       { name: "Category", path: "/inventory/categories" },
       { name: "Stock", path: "/inventory/stock" },
-      { name: "Transfers", path: "/inventory/transfers" },
-      { name: "Adjustments", path: "/inventory/adjustments" },
+      { name: "Stock Moves", path: "/inventory/stock_move" },
     ],
   },
   {
@@ -110,14 +109,14 @@ const menuItems: MenuItem[] = [
     ],
   },
   {
-  name: "Partners",
-  icon: Handshake,
-  path: "/partners",
-  subItems: [
-    { name: "All Partners", path: "/partners" },
-    { name: "Customers", path: "/partners?type=customer" },
-    { name: "Supplier", path: "/partners?type=supplier" },
-  ],
+    name: "Partners",
+    icon: Handshake,
+    path: "/partners",
+    subItems: [
+      { name: "All Partners", path: "/partners" },
+      { name: "Customers", path: "/partners?type=customer" },
+      { name: "Supplier", path: "/partners?type=supplier" },
+    ],
   },
   {
     name: "Branches",
@@ -175,9 +174,11 @@ export default function Sidebar() {
               onClick={() => (item.subItems ? toggleExpand(item.name) : null)}
               className={`
                 flex items-center justify-between px-4 py-2.5 mx-2 rounded-lg cursor-pointer
-                ${item.path && isActive(item.path)
-                  ? "bg-orange-50 text-orange-600"
-                  : "text-gray-700 hover:bg-gray-50"}
+                ${
+                  item.path && isActive(item.path)
+                    ? "bg-orange-50 text-orange-600"
+                    : "text-gray-700 hover:bg-gray-50"
+                }
                 transition-colors
               `}
             >
@@ -193,13 +194,12 @@ export default function Sidebar() {
                 </div>
               )}
 
-              {item.subItems && (
-                expandedItems.includes(item.name) ? (
+              {item.subItems &&
+                (expandedItems.includes(item.name) ? (
                   <ChevronDown className="w-4 h-4" />
                 ) : (
                   <ChevronRight className="w-4 h-4" />
-                )
-              )}
+                ))}
             </div>
 
             {/* Sub Items */}

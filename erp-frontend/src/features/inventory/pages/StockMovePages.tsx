@@ -1,12 +1,7 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../../store/store";
-
-import { fetchStockBalancesThunk } from "../store/stock/stockbalance/stockBalance.thunks";
-
 import { fetchWarehousesThunk } from "../store/stock/warehouse/warehouse.thunks";
-import { fetchProductsThunkAllStatus } from "../../products/store";
-import { StockBalance } from "../store/stock/stockbalance/stockBalance.types";
 import { DataTable } from "../../../components/ui/DataTable";
 import {
   Select,
@@ -15,91 +10,78 @@ import {
   SelectContent,
   SelectItem,
 } from "../../../components/ui/Select";
+import { fetchStockMovesThunk, StockMove } from "../store";
 
-export default function StockBalancePage() {
+export default function StockMovePages() {
   const dispatch = useDispatch<AppDispatch>();
 
-  const { items, loading } = useSelector(
-    (state: RootState) => state.stockBalance
-  );
+  const { items, loading } = useSelector((state: RootState) => state.stockMove);
+
   const warehouses = useSelector((state: RootState) => state.warehouse.items);
-  const products = useSelector((state: RootState) => state.product.items);
 
   const [search] = useState("");
   const [warehouseId, setWarehouseId] = useState<string>("");
-  const [productId, setProductId] = useState<string>("");
+  const [type, setType] = useState("");
 
   useEffect(() => {
-    dispatch(fetchStockBalancesThunk());
+    dispatch(fetchStockMovesThunk());
     dispatch(fetchWarehousesThunk());
-    dispatch(fetchProductsThunkAllStatus());
   }, [dispatch]);
 
   const getWarehouseName = (id: number) =>
     warehouses.find((w) => w.id === id)?.name || "N/A";
 
-  const getProduct = (id: number) => products.find((p) => p.id === id);
-
   const filteredData = items.filter((item) => {
-    const product = getProduct(item.product_id);
     const warehouseName = getWarehouseName(item.warehouse_id);
 
     const matchSearch =
       search === "" ||
-      product?.name.toLowerCase().includes(search.toLowerCase()) ||
+      item.type.toLowerCase().includes(search.toLowerCase()) ||
       warehouseName.toLowerCase().includes(search.toLowerCase());
 
     const matchWarehouse =
       warehouseId === "" || item.warehouse_id === Number(warehouseId);
 
-    const matchProduct =
-      productId === "" || item.product_id === Number(productId);
+    const matchType = type === "" || item.type === type;
 
-    return matchSearch && matchWarehouse && matchProduct;
+    return matchSearch && matchWarehouse && matchType;
   });
 
   const columns = [
     {
+      key: "move_no",
+      label: "Move No",
+    },
+    {
       key: "warehouse_id",
       label: "Warehouse",
-      render: (row: StockBalance) => getWarehouseName(row.warehouse_id),
-    },
-    {
-      key: "product_id",
-      label: "Product",
-      render: (row: StockBalance) => {
-        const p = getProduct(row.product_id);
-        return (
-          <div className="flex items-center gap-3">
-            {p?.image_url && (
-              <img
-                src={p.image_url}
-                className="w-9 h-9 rounded-md border object-cover"
-              />
-            )}
-            <span className="font-medium text-gray-800">
-              {p?.name ?? "N/A"}
-            </span>
-          </div>
-        );
-      },
-    },
-    {
-      key: "quantity",
-      label: "Quantity",
-    },
-    {
-      key: "created_at",
-      label: "Created At",
-      render: (row: StockBalance) =>
-        row.created_at ? new Date(row.created_at).toLocaleString() : "N/A",
+      render: (row: StockMove) => getWarehouseName(row.warehouse_id),
     },
 
     {
-      key: "updated_at",
-      label: "Updated At",
-      render: (row: StockBalance) =>
-        row.updated_at ? new Date(row.updated_at).toLocaleString() : "N/A",
+      key: "type",
+      label: "Type",
+      render: (row: StockMove) => row.type.toUpperCase(),
+    },
+
+    {
+      key: "move_date",
+      label: "Date",
+      render: (row: StockMove) =>
+        row.move_date ? new Date(row.move_date).toLocaleString() : "N/A",
+    },
+
+    {
+      key: "status",
+      label: "Status",
+      render: (row: StockMove) => row.status,
+    },
+
+    {
+      key: "note",
+      label: "Note",
+      render: (row: StockMove) =>
+        row.note ? <span className="italic">{row.note}</span> : "N/A",
     },
   ];
 
@@ -113,7 +95,7 @@ export default function StockBalancePage() {
       <div className="flex items-center justify-between w-full gap-4">
         <div className="flex items-center gap-3">
           <Select value={warehouseId} onValueChange={setWarehouseId}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="min-w-[200px]">
               <SelectValue placeholder="Warehouse" />
             </SelectTrigger>
             <SelectContent>
@@ -127,19 +109,16 @@ export default function StockBalancePage() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={productId} onValueChange={setProductId}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Product" />
+          <Select value={type} onValueChange={setType}>
+            <SelectTrigger className="min-w-[200px]">
+              <SelectValue placeholder="Type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem key={""} value={""}>
-                None
-              </SelectItem>
-              {products.map((p) => (
-                <SelectItem key={p.id} value={String(p.id)}>
-                  {p.name}
-                </SelectItem>
-              ))}
+              <SelectItem value="">All Types</SelectItem>
+              <SelectItem value="receipt">Receipt</SelectItem>
+              <SelectItem value="issue">Issue</SelectItem>
+              <SelectItem value="transfer">Transfer</SelectItem>
+              <SelectItem value="adjustment">Adjustment</SelectItem>
             </SelectContent>
           </Select>
         </div>
