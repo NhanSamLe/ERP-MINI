@@ -27,11 +27,11 @@ export interface StockMove {
   note?: string;
   created_at: string;
   updated_at: string;
-
   lines?: StockMoveLine[];
 }
 
 export interface StockMoveCreate {
+  move_no: string;
   move_date: string;
   type: StockMoveType;
   warehouse_id: number;
@@ -46,6 +46,7 @@ export interface StockMoveCreate {
 }
 
 export interface StockMoveUpdate {
+  move_no: string;
   move_date: string;
   type: StockMoveType;
   warehouse_id: number;
@@ -53,6 +54,7 @@ export interface StockMoveUpdate {
   reference_id?: number;
   note?: string;
   lines: {
+    id: number | undefined;
     product_id: number;
     quantity: number;
     uom: string;

@@ -1,5 +1,7 @@
 import { useState, ElementType } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { RootState } from "../../store/store";
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -93,6 +95,7 @@ const menuItems: MenuItem[] = [
     subItems: [
       { name: "Department", path: "/hrm/department" },
       { name: "Position", path: "/hrm/position" },
+      { name: "Chart", path: "" },
       { name: "Employees", path: "/hrm/employees" },
       { name: "Attendance", path: "/hrm/attendance" },
       { name: "Payroll", path: "/hrm/payroll" },
@@ -147,6 +150,10 @@ export default function Sidebar() {
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const location = useLocation();
 
+  // 👇 lấy danh sách chi nhánh từ Redux
+  const branches = useSelector((s: RootState) => s.branch.branches  || []);
+  const defaultBranchId = branches[0]?.id; // tạm lấy chi nhánh đầu tiên
+
   const toggleExpand = (name: string) => {
     setExpandedItems((prev) =>
       prev.includes(name)
@@ -155,7 +162,8 @@ export default function Sidebar() {
     );
   };
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) =>
+    path && location.pathname === path;
 
   return (
     <aside className="w-64 h-screen bg-white border-r border-gray-200 flex flex-col">
@@ -205,23 +213,33 @@ export default function Sidebar() {
             {/* Sub Items */}
             {item.subItems && expandedItems.includes(item.name) && (
               <div className="ml-11 mt-1 space-y-1">
-                {item.subItems.map((subItem) => (
-                  <Link
-                    key={subItem.path}
-                    to={subItem.path}
-                    className={`
-                      block px-4 py-2 text-sm rounded-lg
-                      ${
-                        isActive(subItem.path)
-                          ? "bg-orange-50 text-orange-600 font-medium"
-                          : "text-gray-600 hover:bg-gray-50"
-                      }
-                      transition-colors
-                    `}
-                  >
-                    {subItem.name}
-                  </Link>
-                ))}
+                {item.subItems.map((subItem) => {
+                  // 👇 nếu là Chart → build path động
+                  const targetPath =
+                    subItem.name === "Chart"
+                      ? defaultBranchId
+                        ? `/hrm/organization/${defaultBranchId}`
+                        : "/company/branches" // chưa có branch thì dẫn về màn branches
+                      : subItem.path;
+
+                  return (
+                    <Link
+                      key={subItem.name}
+                      to={targetPath}
+                      className={`
+                        block px-4 py-2 text-sm rounded-lg
+                        ${
+                          isActive(targetPath)
+                            ? "bg-orange-50 text-orange-600 font-medium"
+                            : "text-gray-600 hover:bg-gray-50"
+                        }
+                        transition-colors
+                      `}
+                    >
+                      {subItem.name}
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </div>

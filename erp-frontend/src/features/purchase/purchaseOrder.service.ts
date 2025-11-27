@@ -16,6 +16,11 @@ export const purchaseOrderService = {
     return res;
   },
 
+  async getPOByStatus(status: string): Promise<PurchaseOrder[]> {
+    const res = await purchaseOrderApi.getByStatus(status);
+    return res;
+  },
+
   async create(body: PurchaseOrderCreate): Promise<PurchaseOrder> {
     const res = await purchaseOrderApi.create(body);
     return res;
