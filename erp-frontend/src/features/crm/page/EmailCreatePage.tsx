@@ -1,272 +1,356 @@
-// src/features/crm/pages/EmailCreatePage.tsx
-
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAppDispatch, useAppSelector } from "../../../store/hooks";
-import { createEmailActivity } from "../store/activitySlice";
-import { RootState } from "../../../store/store";
 
-import { Button } from "../../../components/ui/Button";
+import { Button } from "../../../components/ui/buttonn";
 import { Alert } from "../../../components/ui/Alert";
 import { FormInput } from "../../../components/ui/FormInput";
 
-import {
-  ArrowLeft,
-  Mail,
-  ArrowUpFromDot,
-  ArrowDownToDot,
-  Link,
-  FileText,
-} from "lucide-react";
+import { ArrowLeft, Mail } from "lucide-react";
 
+import { createEmailActivity } from "../service/activity.service";
+
+import { getAllLeads } from "../service/lead.service";
+import { getAllOpportunities } from "../service/opportunity.service";
+import { fetchPartners } from "../../partner/partner.service";
+
+import { Lead } from "../dto/lead.dto";
+import { Opportunity } from "../dto/opportunity.dto";
+import { Partner } from "../../partner/store/partner.types";
+import { useSelector } from "react-redux";
+import { RootState } from "../../../store/store";
 type RelatedType = "lead" | "opportunity" | "customer";
-type Direction = "in" | "out";
+
+interface SimpleItem {
+  id: number;
+  name: string;
+  email: string;
+}
 
 export default function EmailCreatePage() {
-  const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const currentUserId = useAppSelector((s: RootState) => s.auth.user?.id) || 1;
-  const { loading, error } = useAppSelector((s) => s.activity);
-  const EMAIL_STATUS_OPTIONS = [
-  "draft",
-  "sent",
-  "delivered",
-  "opened",
-  "clicked",
-  "failed",
-  "bounced",
- ];
-  const [alert, setAlert] = useState<{ type: "success" | "error" | "warning"; message: string } | null>(null);
 
+  // ============================
+  //  STATE
+  // ============================
+  const [leads, setLeads] = useState<SimpleItem[]>([]);
+  const [opps, setOpps] = useState<SimpleItem[]>([]);
+  const [customers, setCustomers] = useState<SimpleItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  const [alert, setAlert] = useState<{
+    type: "success" | "error" | "warning";
+    message: string;
+  } | null>(null);
+
+  // ============================
+  // CURRENT USER
+  // ============================
+ const currentUserId= useSelector((state: RootState) => state.auth.user?.id);
+  const owner_email = "owner@example.com";
+
+  // ============================
+  // FORM
+  // ============================
   const [form, setForm] = useState({
     subject: "",
     related_type: "lead" as RelatedType,
     related_id: "",
-    direction: "out" as Direction,
-    email_from: "",
+    direction: "out" as "in" | "out",
+    email_from: owner_email,
     email_to: "",
-    status: "",
-    message_id: "",
+    priority: "medium" as "low" | "medium" | "high",
     notes: "",
   });
 
-  const update = <K extends keyof typeof form>(
-    key: K,
-    value: (typeof form)[K]
-  ) => setForm(prev => ({ ...prev, [key]: value }));
+  const update = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
+    setForm((prev) => ({ ...prev, [key]: value }));
 
+  // ============================
+  // LOAD DATA
+  // ============================
+  useEffect(() => {
+    loadRelatedData();
+  }, []);
+
+  const loadRelatedData = async () => {
+    try {
+      setLoading(true);
+
+      const leadList: Lead[] = await getAllLeads();
+      setLeads(
+        leadList.map((l) => ({
+          id: l.id,
+          name: l.name,
+          email: l.email || "",
+        }))
+      );
+
+      const oppList: Opportunity[] = await getAllOpportunities();
+      setOpps(
+        oppList.map((o) => ({
+          id: o.id,
+          name: o.name,
+          email: o.lead?.email || o.customer?.email || "",
+        }))
+      );
+
+      const partnerList: Partner[] = await fetchPartners({
+        type: "customer",
+        status: "active",
+      });
+
+      setCustomers(
+        partnerList.map((c) => ({
+          id: c.id,
+          name: c.name,
+          email: c.email || "",
+        }))
+      );
+    } catch {
+      setAlert({
+        type: "error",
+        message: "Không thể tải dữ liệu liên quan",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ============================
+  // CHỌN LIST THEO related_type
+  // ============================
+  const relatedList = useMemo<SimpleItem[]>(() => {
+    if (form.related_type === "lead") return leads;
+    if (form.related_type === "opportunity") return opps;
+    return customers;
+  }, [form.related_type, leads, opps, customers]);
+
+  // ============================
+  // AUTO-FILL EMAIL
+  // ============================
+  const handleRelatedIdChange = (value: string) => {
+    update("related_id", value);
+
+    const id = Number(value);
+    const target = relatedList.find((x) => x.id === id);
+    const targetEmail = target?.email || "";
+
+    if (form.direction === "out") {
+      update("email_from", owner_email);
+      update("email_to", targetEmail);
+    } else {
+      update("email_from", targetEmail);
+      update("email_to", owner_email);
+    }
+  };
+
+  const handleDirectionChange = (value: "in" | "out") => {
+    update("direction", value);
+
+    const target = relatedList.find((x) => x.id === Number(form.related_id));
+    const targetEmail = target?.email || "";
+
+    if (value === "out") {
+      update("email_from", owner_email);
+      update("email_to", targetEmail);
+    } else {
+      update("email_from", targetEmail);
+      update("email_to", owner_email);
+    }
+  };
+
+  // ============================
+  // SUBMIT
+  // ============================
   const handleCreate = async () => {
     if (!form.subject.trim()) {
-      setAlert({ type: "warning", message: "Vui lòng nhập tiêu đề email" });
-      return;
+      return setAlert({
+        type: "warning",
+        message: "Vui lòng nhập tiêu đề email",
+      });
     }
+
     if (!form.related_id) {
-      setAlert({ type: "warning", message: "Vui lòng nhập ID đối tượng liên quan" });
-      return;
-    }
-    if (!form.email_to.trim()) {
-      setAlert({ type: "warning", message: "Vui lòng nhập email người nhận" });
-      return;
+      return setAlert({
+        type: "warning",
+        message: "Vui lòng chọn đối tượng liên quan",
+      });
     }
 
     try {
-      await dispatch(createEmailActivity({
+      await createEmailActivity({
         subject: form.subject,
         related_type: form.related_type,
         related_id: Number(form.related_id),
-        owner_id: currentUserId,
+        owner_id: currentUserId ?? 1 ,
         direction: form.direction,
-        email_from: form.email_from || '',
-        email_to: form.email_to,
-        status: form.status || '',
-        message_id: form.message_id || '',
+        email_from: form.email_from || null,
+        email_to: form.email_to || null,
         notes: form.notes || null,
-      })).unwrap();
+        priority: form.priority,
+      });
 
-      setAlert({ type: "success", message: "Gửi email thành công!" });
-      setTimeout(() => navigate(-1), 1000);
+      setAlert({
+        type: "success",
+        message: "Tạo hoạt động email thành công!",
+      });
+
+      setTimeout(() => navigate(-1), 800);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Không thể gửi email";
+      const message =
+        err instanceof Error ? err.message : "Không thể tạo hoạt động email";
       setAlert({ type: "error", message });
     }
   };
 
+  // ============================
+  // UI
+  // ============================
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* HEADER CAM – GIỐNG HỆT MEETING */}
+      {/* HEADER */}
       <div className="bg-white border-b border-gray-300">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate(-1)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-              <Mail className="w-7 h-7 text-orange-500" />
-              Soạn email mới
-            </h1>
-          </div>
+        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+            <Mail className="w-7 h-7 text-blue-500" />
+            Tạo hoạt động email
+          </h1>
         </div>
       </div>
 
+      {/* BODY */}
       <div className="max-w-4xl mx-auto px-6 py-8">
         {alert && (
-          <div className="mb-6">
-            <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />
-          </div>
-        )}
-        {error && (
-          <div className="mb-6">
-            <Alert type="error" message={error} />
-          </div>
+          <Alert
+            type={alert.type}
+            message={alert.message}
+            onClose={() => setAlert(null)}
+          />
         )}
 
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="px-8 py-6 space-y-6">
+        <div className="bg-white rounded-xl border shadow-sm px-8 py-6 space-y-6">
 
-            {/* Tiêu đề */}
-            <FormInput
-              label="Tiêu đề email"
-              required
-              placeholder="Ví dụ: Cập nhật tiến độ dự án Q4/2025"
-              value={form.subject}
-              onChange={(v) => update("subject", v)}
-              className="text-lg"
-            />
+          {/* SUBJECT */}
+          <FormInput
+            label="Tiêu đề email"
+            required
+            placeholder="Ví dụ: Gửi báo giá cho khách hàng"
+            value={form.subject}
+            onChange={(v) => update("subject", v)}
+          />
 
-            {/* Liên quan */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Liên quan đến
-                </label>
-                <select
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition"
-                  value={form.related_type}
-                  onChange={(e) => update("related_type", e.target.value as RelatedType)}
-                >
-                  <option value="lead">Lead</option>
-                  <option value="opportunity">Cơ hội</option>
-                  <option value="customer">Khách hàng</option>
-                </select>
-              </div>
-
-              <FormInput
-                label="ID đối tượng"
-                required
-                placeholder="Ví dụ: 123"
-                value={form.related_id}
-                onChange={(v) => update("related_id", v)}
-              />
-            </div>
-
-            {/* Hướng email */}
+          {/* RELATED */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                {form.direction === "out" ? (
-                  <ArrowUpFromDot className="w-4 h-4 text-green-600" />
-                ) : (
-                  <ArrowDownToDot className="w-4 h-4 text-blue-600" />
-                )}
-                Hướng email
+              <label className="block text-sm font-medium mb-2">
+                Liên quan đến
               </label>
               <select
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                value={form.direction}
-                onChange={(e) => update("direction", e.target.value as Direction)}
+                value={form.related_type}
+                onChange={(e) =>
+                  update("related_type", e.target.value as RelatedType)
+                }
+                className="w-full px-4 py-2.5 border rounded-lg"
               >
-                <option value="out">Gửi đi (Outbound)</option>
-                <option value="in">Nhận về (Inbound)</option>
+                <option value="lead">Lead</option>
+                <option value="opportunity">Opportunity</option>
+                <option value="customer">Customer</option>
               </select>
             </div>
 
-            {/* Từ & Đến */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                  <ArrowUpFromDot className="w-4 h-4 text-green-600" />
-                  Từ (Email của bạn)
-                </label>
-                <FormInput
-                  placeholder="you@company.com"
-                  value={form.email_from}
-                  onChange={(v) => update("email_from", v)}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                  <ArrowDownToDot className="w-4 h-4 text-blue-600" />
-                  Đến (Email người nhận)
-                </label>
-                <FormInput
-                  required
-                  placeholder="customer@example.com"
-                  value={form.email_to}
-                  onChange={(v) => update("email_to", v)}
-                />
-              </div>
-            </div>
-
-            {/* Trạng thái & Message ID */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Trạng thái (tùy chọn)
-                </label>
-                <select
-                  value={form.status}
-                  onChange={(v) => update("status", v)}
-                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none border-gray-300"
-                >
-                  <option value="">-- Chọn trạng thái --</option>
-                  {EMAIL_STATUS_OPTIONS.map((st) => (
-                    <option key={st} value={st}>
-                      {st.charAt(0).toUpperCase() + st.slice(1)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                  <Link className="w-4 h-4" />
-                  Message ID (tùy chọn)
-                </label>
-                <FormInput
-                  placeholder="<abc123@gmail.com>"
-                  value={form.message_id}
-                  onChange={(v) => update("message_id", v)}
-                />
-              </div>
-            </div>
-
-            {/* Nội dung email */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                Nội dung email
+              <label className="block text-sm font-medium mb-2">
+                Chọn đối tượng
               </label>
-              <textarea
-                rows={12}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 resize-none font-medium text-gray-800"
-                placeholder="Kính gửi anh/chị...\n\nNội dung email của bạn ở đây..."
-                value={form.notes}
-                onChange={(e) => update("notes", e.target.value)}
-              />
-            </div>
 
-            {/* Nút */}
-            <div className="flex justify-end gap-3 pt-6 border-t">
-              <Button variant="outline" onClick={() => navigate(-1)} disabled={loading}>
-                Hủy
-              </Button>
-              <Button onClick={handleCreate} loading={loading} className="min-w-40">
-                Gửi email
-              </Button>
+              <select
+                value={form.related_id}
+                onChange={(e) => handleRelatedIdChange(e.target.value)}
+                className="w-full px-4 py-2.5 border rounded-lg"
+              >
+                <option value="">— Chọn —</option>
+                {relatedList.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
             </div>
+          </div>
+
+          {/* DIRECTION */}
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Loại email
+            </label>
+            <select
+              value={form.direction}
+              onChange={(e) =>
+                handleDirectionChange(e.target.value as "in" | "out")
+              }
+              className="w-full px-4 py-2.5 border rounded-lg"
+            >
+              <option value="out">Email gửi đi</option>
+              <option value="in">Email nhận vào</option>
+            </select>
+          </div>
+
+          {/* EMAIL FROM / TO */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <FormInput
+              label="Email từ"
+              value={form.email_from}
+              onChange={(v) => update("email_from", v)}
+            />
+            <FormInput
+              label="Email đến"
+              value={form.email_to}
+              onChange={(v) => update("email_to", v)}
+            />
+          </div>
+
+          {/* PRIORITY */}
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Mức ưu tiên
+            </label>
+            <select
+              value={form.priority}
+              onChange={(e) =>
+                update("priority", e.target.value as typeof form.priority)
+              }
+              className="w-full px-4 py-2.5 border rounded-lg"
+            >
+              <option value="low">Thấp</option>
+              <option value="medium">Trung bình</option>
+              <option value="high">Cao</option>
+            </select>
+          </div>
+
+          {/* NOTES */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Ghi chú</label>
+            <textarea
+              rows={5}
+              className="w-full px-4 py-3 border rounded-lg"
+              placeholder="Nội dung email..."
+              value={form.notes}
+              onChange={(e) => update("notes", e.target.value)}
+            />
+          </div>
+
+          {/* ACTIONS */}
+          <div className="flex justify-end gap-3 pt-6 border-t">
+            <Button variant="outline" onClick={() => navigate(-1)}>
+              Hủy
+            </Button>
+            <Button className="min-w-40" onClick={handleCreate} disabled={loading}>
+              Tạo email
+            </Button>
           </div>
         </div>
       </div>

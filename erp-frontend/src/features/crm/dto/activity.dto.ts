@@ -1,7 +1,7 @@
 import { ActivityType, ActivityRelatedType, TaskStatus } from "../../../types/enum";
 import {Lead} from "./lead.dto"
 import { Opportunity } from "./opportunity.dto";
-import {Partner} from "../../partner/dtos/partner.dto"
+import {Partner} from "../../partner/store/partner.types"
 
 export interface CreateActivityDto {
   related_type: "lead" | "opportunity" | "customer";
@@ -58,11 +58,9 @@ export interface CreateTaskActivityDto {
   subject: string;
   owner_id: number;
   due_at: Date;
-
   priority?: "low" | "medium" | "high";
   status?: "Not Started" | "In Progress" | "Completed";
   reminder_at?: Date | null;
-
   notes?: string | null;
 }
 export interface UpdateActivityDto {
@@ -88,11 +86,11 @@ export interface UpdateCallDetailDto {
 }
 export interface UpdateEmailDetailDto {
   activity_id: number;
+  subject?: string;
   cc?: string | null;
   bcc?: string | null;
   html_body?: string | null;
   text_body?: string | null;
-
 }
 export interface CompleteActivityDto {
   activityId: number;
@@ -155,7 +153,7 @@ export interface EmailDetail {
   text_body?: string | null;
   sent_via?: string | null;
   error_message?: string | null;
-
+  subject?: string| null;
 }
 export interface MeetingDetail {
   id: number;

@@ -61,3 +61,11 @@ export async function deleteOpportunity(oppId :number ) {
   const res = await api.deleteOpportunity(oppId);
   return res.data.data
 }
+export async function getClosingOpportunitiesThisMonth() {
+  const res = await api.getClosingThisMonth();
+  return res.data.data
+}
+export async function getUnClosingOpportunities() {
+  const res = await api.getUnclosedOpportunities();
+  return res.data.data
+}

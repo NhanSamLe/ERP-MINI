@@ -34,7 +34,7 @@ import {
 import { sendEmail2 } from "../../../core/utils/email";
 import { addTimeline } from "./timeLine.service";
 import { start } from "repl";
-
+import { markLeadContacted } from "./lead.service";
 // ========================================================================
 // HELPERS
 // ========================================================================
@@ -98,7 +98,7 @@ export async function createActivity(dto: CreateActivityDto) {
     priority: dto.priority ?? null,
     done: false,
   });
-
+  
   await logTimeline(activity, "activity_created", "Tạo activity mới", dto.subject);
   return activity;
 }
@@ -230,6 +230,7 @@ export async function createCallActivity(dto: CreateCallActivityDto) {
     is_inbound: dto.is_inbound ?? null,
   });
   await logTimeline(activity, "call_created", "Tạo call", `${dto.call_from} → ${dto.call_to}`);
+  await markLeadContacted(activity.related_id);
   return { activity, detail };
 }
 
@@ -256,7 +257,7 @@ export async function updateCallDetail(dto: UpdateCallDetailDto) {
         done: true,
         completed_at: new Date(),
       });
-
+      
       await logTimeline(activity, "call_completed", "Cuộc gọi hoàn thành");
     }
   }
@@ -344,6 +345,7 @@ export async function sendEmailForActivity(dto: { activity_id: number }) {
 
     const activity = await Activity.findByPk(dto.activity_id);
     await logTimeline(activity!, "email_sent", "Email đã gửi");
+    await markLeadContacted(activity!.related_id);
   } catch (err: any) {
     await email.update({ status: "failed", error_message: err.message });
   }
@@ -356,6 +358,7 @@ export async function updateEmailDetail(dto: UpdateEmailDetailDto) {
   if (!detail) throw new Error("Email detail không tồn tại");
 
    await detail.update({
+    subject: dto.subject ?? detail.subject ?? null,
     cc: dto.cc ?? detail.cc ?? null,
     bcc: dto.bcc ?? detail.bcc ?? null,
     html_body: dto.html_body ?? detail.html_body ?? null,
@@ -393,7 +396,7 @@ export async function cancelEmailActivity(activityId: number, userId: number) {
 // ========================================================================
 
 export async function createMeetingActivity(dto: CreateMeetingActivityDto) {
-  requireDateOrder(dto.start_at, dto.end_at);
+  
 
   const activity = await Activity.create({
     related_type: dto.related_type,
@@ -417,6 +420,7 @@ export async function createMeetingActivity(dto: CreateMeetingActivityDto) {
   });
 
   await logTimeline(activity, "meeting_created", "Cuộc họp được tạo");
+  await markLeadContacted(activity.related_id);
   return activity;
 }
 
@@ -435,6 +439,14 @@ export async function updateMeetingDetail(dto: UpdateMeetingDetailDto) {
   });
    if (dto.meeting_notes !== undefined && dto.meeting_notes !== null && dto.meeting_notes.trim() !== "") {
     const activity = await Activity.findByPk(dto.activity_id);
+
+    if (detail.end_at && detail.end_at > new Date()) {
+        return {
+          success: false,
+          message: "Cuộc họp chưa kết thúc nên không thể hoàn thành",
+        };
+      }
+
     if (activity && activity.status !== "completed") {
       await activity.update({
         done: true,
@@ -450,7 +462,6 @@ export async function updateMeetingDetail(dto: UpdateMeetingDetailDto) {
       );
     }
   }
-
   return detail;
 }
 
@@ -475,21 +486,39 @@ export async function cancelMeeting(dto: { activity_id: number; reason?: string 
 
 export async function completeMeeting(activityId: number) {
   const activity = await Activity.findByPk(activityId);
-  if (!activity) return;
+  if (!activity) {
+    return { success: false, message: "Không tìm thấy activity" };
+  }
 
   const detail = await MeetingActivity.findOne({ where: { activity_id: activityId } });
-  if (!detail) return;
-
-  if (detail.end_at && detail.end_at < new Date()) {
-    await activity.update({
-      done: true,
-      status: "completed",
-      completed_at: new Date(),
-    });
-
-    await logTimeline(activity, "meeting_completed", "Cuộc họp hoàn thành");
+  if (!detail) {
+    return { success: false, message: "Không tìm thấy chi tiết cuộc họp" };
   }
+
+  // Chưa tới giờ kết thúc
+  if (!detail.end_at || detail.end_at >= new Date()) {
+    return {
+      success: false,
+      message: "Cuộc họp chưa đeén giờ hoặc chưa kết thúc, không thể hoàn thành",
+    };
+  }
+
+  // Đã kết thúc -> Mark completed
+  await activity.update({
+    done: true,
+    status: "completed",
+    completed_at: new Date(),
+  });
+
+  await logTimeline(activity, "meeting_completed", "Cuộc họp hoàn thành");
+
+  return {
+    success: true,
+    message: "Đánh dấu cuộc họp hoàn thành thành công",
+    activity,
+  };
 }
+
 
 // ========================================================================
 // 🔥 TASK FLOW
@@ -524,7 +553,7 @@ export async function updateTaskDetail(dto: UpdateTaskDetailDto) {
     status: dto.status ?? detail.status ?? null,
     reminder_at: dto.reminder_at ?? detail.reminder_at ?? null,
   });
-
+  
   return detail;
 }
 
@@ -540,7 +569,7 @@ export async function startTask(activity_id: number, user_id: number) {
   await activity.update({ status: "in_progress" });
 
   await logTimeline(activity, "task_started", "Task bắt đầu");
-
+  await markLeadContacted(activity.related_id);
   return detail;
 }
 

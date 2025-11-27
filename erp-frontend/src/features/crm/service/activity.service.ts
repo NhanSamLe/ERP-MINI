@@ -151,3 +151,9 @@ export async function sendEmailForActivity(activityId: number) {
   const res = await api.sendEmailForActivity(activityId);
   return res.data;
 }
+
+
+export async function getTimeline(type: string, id: number) {
+  const res = await api.getTimeline(type, id);
+  return res.data.data as Activity[];
+}

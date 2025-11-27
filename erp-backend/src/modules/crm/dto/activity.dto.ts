@@ -66,6 +66,7 @@ export interface UpdateEmailDetailDto {
   bcc?: string | null;
   html_body?: string | null;
   text_body?: string | null;
+  subject?: string | null;
 }
 export interface SendEmailActivityDto {
   activity_id: number;

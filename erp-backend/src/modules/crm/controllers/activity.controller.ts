@@ -1,10 +1,10 @@
 import { Request, Response } from "express";
 import * as activityService from "../services/activity.service";
-
+import * as service from "../services/timeLine.service"
 // ======================================================
 // 1. CREATE ACTIVITY - 4 LOẠI
 // ======================================================
-
+const VALID_TYPES = ["lead", "opportunity", "customer"];
 export const createCallActivity = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
@@ -161,7 +161,11 @@ export const updateTaskDetail = async (req: Request, res: Response) => {
 export const startTask = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    const updated = await activityService.startTask(req.body.activityId, user.id);
+    const activityId = Number(req.params.id);
+
+
+    const updated = await activityService.startTask(activityId, user.id);
+
 
     return res.json({
       message: "Bắt đầu task thành công",
@@ -175,7 +179,8 @@ export const startTask = async (req: Request, res: Response) => {
 export const completeTask = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    const updated = await activityService.completeTask(req.body.activityId, user.id);
+    const activityId = Number(req.params.id); 
+    const updated = await activityService.completeTask(activityId, user.id);
 
     return res.json({
       message: "Hoàn thành task thành công",
@@ -282,21 +287,21 @@ export const getActivitiesFor = async (req: Request, res: Response) => {
   }
 };
 
-export const getTimeline = async (req: Request, res: Response) => {
-  try {
-    const type = req.params.type as string;
-    const id = Number(req.params.id);
+// export const getTimeline = async (req: Request, res: Response) => {
+//   try {
+//     const type = req.params.type as string;
+//     const id = Number(req.params.id);
 
-    const data = await activityService.getTimeline(type, id);
+//     const data = await activityService.getTimeline(type, id);
 
-    return res.json({ 
-      message: "Timeline", 
-      data 
-    });
-  } catch (err: any) {
-    return res.status(400).json({ message: err.message });
-  }
-};
+//     return res.json({ 
+//       message: "Timeline", 
+//       data 
+//     });
+//   } catch (err: any) {
+//     return res.status(400).json({ message: err.message });
+//   }
+// };
 
 // ======================================================
 // 7. DELETE
@@ -385,11 +390,9 @@ export const completeMeeting = async (req: Request, res: Response) => {
   try {
     const { activity_id } = req.body;
 
-    await activityService.completeMeeting(Number(activity_id));
+    const result = await activityService.completeMeeting(Number(activity_id));
 
-    return res.json({
-      message: "Hoàn thành cuộc họp thành công",
-    });
+     return res.json(result);
   } catch (err: any) {
     return res.status(400).json({ message: err.message });
   }
@@ -415,3 +418,39 @@ export const sendEmailForActivity = async (req: Request, res: Response) => {
     return res.status(400).json({ message: err.message });
   }
 };
+
+export async function getTimeline(req: Request, res: Response) {
+  try {
+    const type = req.params.type as "lead" | "opportunity" | "customer";
+    const id = Number(req.params.id);
+    if (!VALID_TYPES.includes(type)) {
+      return res.status(400).json({
+        success: false,
+        message: "Loại timeline không hợp lệ (lead / opportunity / customer)",
+      });
+    }
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Thiếu ID",
+      });
+    }
+    // Phân trang optional
+    const limit = req.query.limit ? Number(req.query.limit) : 50;
+    const offset = req.query.offset ? Number(req.query.offset) : 0;
+
+    const timeline = await service.getTimelineByType(type, id, { limit, offset });
+
+    return res.json({
+      success: true,
+      data: timeline,
+    });
+
+  } catch (err: any) {
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+}

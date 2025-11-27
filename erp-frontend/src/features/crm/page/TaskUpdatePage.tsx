@@ -1,258 +1,322 @@
 // src/features/crm/pages/TaskUpdatePage.tsx
-
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useAppDispatch, useAppSelector } from "../../../store/hooks";
+
 import {
-  fetchActivityDetail,
-  clearActivityDetail,
+  getActivityDetail,
   updateActivity,
   updateTaskDetail,
-} from "../store/activitySlice";
+} from "../service/activity.service";
 
+import { Activity } from "../dto/activity.dto";
 
-import { Button } from "../../../components/ui/Button";
-import { Alert } from "../../../components/ui/Alert";
-import { FormInput } from "../../../components/ui/FormInput";
+import { Alert } from "@/components/ui/Alert";
+import { Button } from "@/components/ui/buttonn";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { FormInput } from "@/components/ui/FormInput";
 
 import {
   ArrowLeft,
   CheckSquare,
   Calendar,
   Bell,
+  FileText,
   AlertCircle,
   Flag,
-  FileText,
 } from "lucide-react";
 
 type Priority = "low" | "medium" | "high";
 type Status = "Not Started" | "In Progress" | "Completed";
 
 export default function TaskUpdatePage() {
-  const { id } = useParams<{ id: string }>();
-  const taskId = Number(id);
-  const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const { id } = useParams();
+  const activityId = Number(id);
 
-  const { detail, loading, error } = useAppSelector((s) => s.activity);
+  const [detail, setDetail] = useState<Activity | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
-  const [alert, setAlert] = useState<{ type: "success" | "error" | "warning"; message: string } | null>(null);
+  const [alert, setAlert] = useState<{
+    type: "success" | "error" | "warning";
+    message: string;
+  } | null>(null);
 
-  const [form, setForm] = useState({
+  // ==========================
+  // FORM STATE
+  // ==========================
+  const [general, setGeneral] = useState({
     subject: "",
     due_at: "",
-    reminder_at: "",
     priority: "medium" as Priority,
-    status: "Not Started" as Status,
     notes: "",
   });
 
-  const update = <K extends keyof typeof form>(
+  const [taskInfo, setTaskInfo] = useState({
+    status: "Not Started" as Status,
+    reminder_at: "",
+  });
+
+  const updateGeneral = <K extends keyof typeof general>(
     key: K,
-    value: (typeof form)[K]
-  ) => setForm((prev) => ({ ...prev, [key]: value }));
+    value: typeof general[K]
+  ) => setGeneral((prev) => ({ ...prev, [key]: value }));
 
-  // Fetch detail
+  const updateTaskInfo = <K extends keyof typeof taskInfo>(
+    key: K,
+    value: typeof taskInfo[K]
+  ) => setTaskInfo((prev) => ({ ...prev, [key]: value }));
+
+  // ==========================
+  // LOAD DATA
+  // ==========================
   useEffect(() => {
-    if (taskId) {
-      dispatch(fetchActivityDetail({ id: taskId}));
-    }
-    return () => {
-      dispatch(clearActivityDetail());
-    };
-  }, [dispatch, taskId]);
+    loadDetail();
+  }, [activityId]);
 
-  // Fill form when data loaded
-  useEffect(() => {
-    if (detail && detail.activity_type === "task" && detail.task) {
-      const t = detail.task;
-      setForm({
-        subject: detail.subject ?? "",
-        due_at: detail.due_at ? new Date(detail.due_at).toISOString().slice(0, 16) : "",
-        reminder_at: t.reminder_at ? new Date(t.reminder_at).toISOString().slice(0, 16) : "",
-        priority: detail.priority ?? "medium",
-        status: t.status ?? "Not Started",
-        notes: detail.notes ?? "",
-      });
-    }
-  }, [detail]);
-
-  const handleSave = async () => {
+  const loadDetail = async () => {
     try {
-      // Cập nhật activity chung
-      await dispatch(updateActivity({
-        activityId: taskId,
-        subject: form.subject,
-        notes: form.notes || null,
-        due_at: form.due_at ? new Date(form.due_at) : null,
-      })).unwrap();
+      setLoading(true);
+      const res = await getActivityDetail(activityId);
+      setDetail(res);
 
-      // Cập nhật chi tiết task
-      await dispatch(updateTaskDetail({
-        activityId: taskId,
-        data: {
-          activity_id: taskId,
-          priority: form.priority,
-          status: form.status,
-          reminder_at: form.reminder_at ? new Date(form.reminder_at) : null,
-        },
-      })).unwrap();
+      // GENERAL INFO
+      setGeneral({
+        subject: res.subject || "",
+        due_at: res.due_at
+          ? new Date(res.due_at).toISOString().slice(0, 16)
+          : "",
+        priority: res.priority || "medium",
+        notes: res.notes || "",
+      });
 
-      setAlert({ type: "success", message: "Cập nhật công việc thành công!" });
-      setTimeout(() => navigate(-1), 1000);
-    } catch (err) {
-      let message = "Cập nhật thất bại. Vui lòng thử lại.";
-      if (err instanceof Error) {
-        message = err.message;
+      // DETAIL TASK
+      if (res.task) {
+        setTaskInfo({
+          status: res.task.status || "Not Started",
+          reminder_at: res.task.reminder_at
+            ? new Date(res.task.reminder_at).toISOString().slice(0, 16)
+            : "",
+        });
       }
-      setAlert({ type: "error", message });
+    } catch (err) {
+      setAlert({
+        type: "error",
+        message:
+          err instanceof Error ? err.message : "Không thể tải dữ liệu task",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (!detail || detail.activity_type !== "task") {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-lg text-gray-600">
-          {loading ? "Đang tải công việc..." : "Không tìm thấy công việc"}
-        </div>
-      </div>
-    );
-  }
+  // ==========================
+  // SAVE GENERAL INFO
+  // ==========================
+  const handleSaveGeneral = async () => {
+    try {
+      await updateActivity({
+        activityId,
+        subject: general.subject,
+        notes: general.notes || null,
+        due_at: general.due_at ? new Date(general.due_at) : null,
+        priority: general.priority,
+      });
+
+      setAlert({ type: "success", message: "Đã lưu thông tin chung!" });
+    } catch (err) {
+      setAlert({
+        type: "error",
+        message:
+          err instanceof Error ? err.message : "Không thể lưu thông tin chung",
+      });
+    }
+  };
+
+  // ==========================
+  // SAVE TASK DETAILS
+  // ==========================
+  const handleSaveTaskDetail = async () => {
+    try {
+      await updateTaskDetail(activityId, {
+        activity_id: activityId,
+        status: taskInfo.status,
+        reminder_at: taskInfo.reminder_at
+          ? new Date(taskInfo.reminder_at)
+          : null,
+      });
+
+      setAlert({ type: "success", message: "Đã lưu chi tiết công việc!" });
+    } catch (err) {
+      setAlert({
+        type: "error",
+        message:
+          err instanceof Error ? err.message : "Không thể lưu chi tiết công việc",
+      });
+    }
+  };
+
+  if (loading) return <div className="p-8 text-center">Đang tải...</div>;
+  if (!detail) return <div className="p-8 text-center">Không tìm thấy công việc</div>;
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* HEADER CAM – ĐỒNG BỘ HOÀN HẢO */}
-      <div className="bg-white border-b border-gray-300">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate(-1)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-              <CheckSquare className="w-7 h-7 text-orange-500" />
-              Cập nhật công việc
-            </h1>
-          </div>
-        </div>
+
+      {/* HEADER */}
+      <div className="bg-white border-b px-6 py-4 flex items-center gap-4 max-w-5xl mx-auto">
+        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+
+        <h1 className="text-xl font-semibold flex items-center gap-2">
+          <CheckSquare className="w-6 h-6 text-orange-500" />
+          Cập nhật công việc
+        </h1>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      {/* BODY */}
+      <div className="max-w-5xl mx-auto px-6 py-6 space-y-6">
+
         {alert && (
-          <div className="mb-6">
-            <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />
-          </div>
-        )}
-        {error && (
-          <div className="mb-6">
-            <Alert type="error" message={error} />
-          </div>
+          <Alert
+            type={alert.type}
+            message={alert.message}
+            onClose={() => setAlert(null)}
+          />
         )}
 
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="px-8 py-6 space-y-6">
+        {/* ====================================================
+            1️⃣ GENERAL INFORMATION
+        ==================================================== */}
+        <Card>
+          <CardHeader className="flex flex-row items-center gap-3">
+            <Flag className="w-5 h-5 text-gray-500" />
+            <h2 className="text-lg font-semibold">Thông tin chung</h2>
+          </CardHeader>
 
-            {/* Tiêu đề công việc */}
+          <Separator />
+
+          <CardContent className="space-y-6 pt-5">
             <FormInput
               label="Tiêu đề công việc"
               required
-              placeholder="Ví dụ: Gọi lại khách hàng ABC để chốt hợp đồng"
-              value={form.subject}
-              onChange={(v) => update("subject", v)}
-              className="text-lg"
+              value={general.subject}
+              onChange={(v) => updateGeneral("subject", v)}
             />
 
-            {/* Hạn hoàn thành */}
+            {/* PRIORITY */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+              <label className="block text-sm font-medium mb-2">
+                Mức ưu tiên
+              </label>
+              <select
+                value={general.priority}
+                onChange={(e) =>
+                  updateGeneral(
+                    "priority",
+                    e.target.value as Priority
+                  )
+                }
+                className="border px-4 py-2 rounded-lg"
+              >
+                <option value="low">Thấp</option>
+                <option value="medium">Trung bình</option>
+                <option value="high">Cao</option>
+              </select>
+            </div>
+
+            {/* DUE DATE */}
+            <div>
+              <label className="block text-sm font-medium mb-2 flex items-center gap-2">
                 <Calendar className="w-4 h-4" />
                 Hạn hoàn thành
               </label>
               <input
                 type="datetime-local"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                value={form.due_at}
-                onChange={(e) => update("due_at", e.target.value)}
+                value={general.due_at}
+                onChange={(e) => updateGeneral("due_at", e.target.value)}
+                className="w-full border rounded-lg px-4 py-2"
               />
             </div>
 
-            {/* Nhắc nhở */}
+            {/* NOTES */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+              <label className="block text-sm font-medium mb-2 flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                Ghi chú
+              </label>
+              <textarea
+                rows={5}
+                className="w-full border rounded-lg px-4 py-3"
+                value={general.notes}
+                onChange={(e) => updateGeneral("notes", e.target.value)}
+              />
+            </div>
+
+            {/* SAVE GENERAL BUTTON */}
+            <div className="flex justify-end pt-4">
+              <Button onClick={handleSaveGeneral}>Lưu thông tin chung</Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ====================================================
+            2️⃣ TASK DETAILS
+        ==================================================== */}
+        <Card>
+          <CardHeader className="flex flex-row items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-blue-500" />
+            <h2 className="text-lg font-semibold">Chi tiết công việc</h2>
+          </CardHeader>
+
+          <Separator />
+
+          <CardContent className="space-y-6 pt-5">
+
+            {/* STATUS */}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Trạng thái
+              </label>
+              <select
+                value={taskInfo.status}
+                onChange={(e) =>
+                  updateTaskInfo("status", e.target.value as Status)
+                }
+                className="border px-4 py-2 rounded-lg"
+              >
+                <option value="Not Started">Chưa bắt đầu</option>
+                <option value="In Progress">Đang thực hiện</option>
+                <option value="Completed">Hoàn thành</option>
+              </select>
+            </div>
+
+            {/* REMINDER */}
+            <div>
+              <label className="block text-sm font-medium mb-2 flex items-center gap-2">
                 <Bell className="w-4 h-4" />
                 Nhắc nhở (tùy chọn)
               </label>
               <input
                 type="datetime-local"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                value={form.reminder_at}
-                onChange={(e) => update("reminder_at", e.target.value)}
+                value={taskInfo.reminder_at}
+                onChange={(e) =>
+                  updateTaskInfo("reminder_at", e.target.value)
+                }
+                className="w-full border rounded-lg px-4 py-2"
               />
             </div>
 
-            {/* Ưu tiên & Trạng thái */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                  <Flag className="w-4 h-4" />
-                  Độ ưu tiên
-                </label>
-                <select
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                  value={form.priority}
-                  onChange={(e) => update("priority", e.target.value as Priority)}
-                >
-                  <option value="low">Thấp</option>
-                  <option value="medium">Trung bình</option>
-                  <option value="high">Cao</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4" />
-                  Trạng thái
-                </label>
-                <select
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                  value={form.status}
-                  onChange={(e) => update("status", e.target.value as Status)}
-                >
-                  <option value="Not Started">Chưa bắt đầu</option>
-                  <option value="In Progress">Đang thực hiện</option>
-                  <option value="Completed">Hoàn thành</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Ghi chú */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                Ghi chú
-              </label>
-              <textarea
-                rows={6}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 resize-none"
-                placeholder="Mô tả chi tiết công việc, hướng dẫn thực hiện..."
-                value={form.notes}
-                onChange={(e) => update("notes", e.target.value)}
-              />
-            </div>
-
-            {/* Nút hành động */}
-            <div className="flex justify-end gap-3 pt-6 border-t">
-              <Button variant="outline" onClick={() => navigate(-1)} disabled={loading}>
-                Hủy
-              </Button>
-              <Button onClick={handleSave} loading={loading} className="min-w-40">
-                Lưu thay đổi
+            {/* SAVE TASK DETAIL BUTTON */}
+            <div className="flex justify-end pt-4">
+              <Button onClick={handleSaveTaskDetail}>
+                Lưu chi tiết công việc
               </Button>
             </div>
-          </div>
-        </div>
+
+          </CardContent>
+        </Card>
+
       </div>
     </div>
   );

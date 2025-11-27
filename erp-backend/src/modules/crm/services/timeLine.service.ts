@@ -23,3 +23,21 @@ export async function addTimeline({
     created_by: created_by ?? null,
   });
 }
+
+export async function getTimelineByType(
+  related_type: "lead" | "opportunity" | "customer",
+  related_id: number,
+  options?: { limit?: number; offset?: number }
+) {
+  const { limit = 50, offset = 0 } = options ?? {};
+
+  return TimelineEvent.findAll({
+    where: {
+      related_type,
+      related_id,
+    },
+    order: [["created_at", "DESC"]],
+    limit,
+    offset,
+  });
+}

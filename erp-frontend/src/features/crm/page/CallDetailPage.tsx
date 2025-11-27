@@ -2,13 +2,13 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate} from "react-router-dom";
-
+import { OwnerInfoCard } from "../components/OwnerInfoCard";
 import {
   getActivityDetail,
   deleteActivity,
   cancelCallActivity,
 } from "../service/activity.service";
-
+import {ActivityMetaInfoCard} from "../components/ActivityMetaInfoCard"
 import { Button } from "@/components/ui/buttonn";
 import { Alert } from "@/components/ui/Alert";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -251,59 +251,17 @@ const [alert, setAlert] = useState<{
             customer={detail.customer}
           />
 
-          <Card>
-            <CardHeader>
-              <h3 className="text-lg font-semibold">Người thực hiện</h3>
-            </CardHeader>
-            <Separator />
-            <CardContent className="pt-4 space-y-3 text-sm text-gray-700">
-
-              <div className="flex justify-between">
-                <span>Tên</span>
-                <span className="font-medium">{detail.owner?.full_name}</span>
-              </div>
-
-              <div className="flex justify-between">
-                <span>Liên Hệ</span>
-                <span className="font-medium">{detail.owner?.phone}</span>
-              </div>
-
-              {detail.completed_at && (
-                <div className="flex justify-between text-green-700">
-                  <span>Hoàn thành</span>
-                  <span className="font-medium">{formatDateTime(detail.completed_at)}</span>
-                </div>
-              )}
-
-            </CardContent>
-          </Card>
+           <OwnerInfoCard
+                        fullName={detail.owner?.full_name}
+                        email={detail.owner?.email}
+                        phone={detail.owner?.phone}
+                      />
           {/* CREATED & UPDATED */}
-          <Card>
-            <CardHeader>
-              <h3 className="text-lg font-semibold">Thông tin khác</h3>
-            </CardHeader>
-            <Separator />
-            <CardContent className="pt-4 space-y-3 text-sm text-gray-700">
-
-              <div className="flex justify-between">
-                <span>Tạo lúc</span>
-                <span className="font-medium">{formatDateTime(detail.created_at)}</span>
-              </div>
-
-              <div className="flex justify-between">
-                <span>Cập nhật</span>
-                <span className="font-medium">{formatDateTime(detail.updated_at)}</span>
-              </div>
-
-              {detail.completed_at && (
-                <div className="flex justify-between text-green-700">
-                  <span>Hoàn thành</span>
-                  <span className="font-medium">{formatDateTime(detail.completed_at)}</span>
-                </div>
-              )}
-
-            </CardContent>
-          </Card>
+          <ActivityMetaInfoCard
+          createdAt={detail.created_at}
+          updatedAt={detail.updated_at}
+          completedAt={detail.completed_at}
+        />
 
         </div>
       </div>
