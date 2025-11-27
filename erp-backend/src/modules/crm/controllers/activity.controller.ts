@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import * as activityService from "../services/activity.service";
 import * as service from "../services/timeLine.service"
+
 // ======================================================
 // 1. CREATE ACTIVITY - 4 LOẠI
 // ======================================================
@@ -454,3 +455,4 @@ export async function getTimeline(req: Request, res: Response) {
     });
   }
 }
+

@@ -1,6 +1,6 @@
 import { RouteObject } from "react-router-dom";
 import ProtectedRoute from "../components/ProtectedRoute";
-import CrmDashboard from "../features/crm/CrmDashboard";
+// import CrmDashboard from "../features/crm/CrmDashboard";
 // import CRMSaleWorkSpace from "../features/crm/page/crmSalesWorkspacePage";
 // import CallActivityCreatePage from "../features/crm/page/CallActivityCreatePage"
 // import CallAllActivityDashboard from "../features/crm/page/callActivityDashboard";
@@ -27,15 +27,16 @@ import CallUpdatePage from "../features/crm/page/CallUpdatePage";
 import OppDetailPage from "../features/crm/page/OppDetailPage";
 import OpportunityCreatePage from "../features/crm/page/OpportunityCreatePage";
 import OpportunityUpdatePage from "../features/crm/page/OpportunityUpdatePage";
+import CRMDashboardPage from "@/features/crm/page/CRMDashboardPage";
 const crmRoutes: RouteObject[] = [
-  {
-    path: "/crm",
-    element: (
-      <ProtectedRoute allowedRoles={["CEO", "SALESMANAGER"]}>
-        <CrmDashboard />
-      </ProtectedRoute>
-    ),
-  },
+  // {
+  //   path: "/crm",
+  //   element: (
+  //     <ProtectedRoute allowedRoles={["CEO", "SALESMANAGER"]}>
+  //       <CrmDashboard />
+  //     </ProtectedRoute>
+  //   ),
+  // },
   {
     path: "/crm/leads",
     element: (
@@ -92,17 +93,15 @@ const crmRoutes: RouteObject[] = [
       </ProtectedRoute>
     ),
   },
-  // {
-  //   path: "/crm/sale-workspace",
-  //   element: (
-  //     <ProtectedRoute allowedRoles={["SALES", "SALESMANAGER", "ADMIN"]}>
-  //       <CRMSaleWorkSpace />
-  //     </ProtectedRoute>
-  //   ),
-  // },
-
+  {
+    path: "/crm",
+    element: (
+      <ProtectedRoute allowedRoles={["SALES", "SALESMANAGER", "ADMIN"]}>
+        <CRMDashboardPage />
+      </ProtectedRoute>
+    ),
+  },
   
-
   {
     path: "/crm/activities/meetings",
     element: (

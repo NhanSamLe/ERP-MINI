@@ -103,3 +103,6 @@ export const sendEmailForActivity = (activityId: number) =>
     activity_id: activityId,
 });
 
+export const getSalesDashboard = () => {
+  return axiosClient.get("/crm/dashboard/sales");
+};

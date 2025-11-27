@@ -11,6 +11,7 @@ import {
   UpdateTaskDetailDto,
   Activity,TimelineEvent
 } from "../dto/activity.dto";
+import { SalesDashboardData } from "../dto/dashboard.dto";
 export async function createCallActivity(data: CreateCallActivityDto) {
   const res = await api.createCallActivity(data);
   return res.data.data as Activity;
@@ -156,4 +157,9 @@ export async function sendEmailForActivity(activityId: number) {
 export async function getTimeline(type: string, id: number) {
   const res = await api.getTimeline(type, id);
   return res.data.data as TimelineEvent[];
+}
+
+export async function fetchDashboard(): Promise<SalesDashboardData> {
+  const res = await api.getSalesDashboard();
+  return res.data.data as SalesDashboardData;
 }

@@ -3,6 +3,7 @@ import { authMiddleware } from "../../core/middleware/auth";
 import * as leadController from "./controllers/lead.controller";
 import * as opportunityController from "./controllers/opportunity.controller";
 import * as activityController from "./controllers/activity.controller";
+import{getSalesDashboard} from "./controllers/dashboard.controller"
 const router = Router();
 
 router.get("/leads", authMiddleware([]), leadController.getLeads);
@@ -128,4 +129,5 @@ router.post("/activities/email/cancel", authMiddleware([]), activityController.c
 router.post("/activities/meeting/complete", authMiddleware([]), activityController.completeMeeting);
 router.post("/activities/email/send", authMiddleware([]), activityController.sendEmailForActivity);
 
+router.get("/dashboard/sales", authMiddleware([]), getSalesDashboard);
 export default router;

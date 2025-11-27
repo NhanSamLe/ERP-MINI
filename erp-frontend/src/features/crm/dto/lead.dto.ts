@@ -49,5 +49,6 @@ export interface Lead {
   ready_to_buy?: boolean;     // "Mua được không?"
   expected_timeline?: string; // "Khi nào mua?" - VD: "this_week", "this_month", "next_quarter"
   assignedUser?: User;
+  created_at: string;
   opportunities?: Opportunity[];
 }
