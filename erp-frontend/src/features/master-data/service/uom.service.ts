@@ -20,13 +20,13 @@ export async function getUomById(id: number) {
 // 📍 Thêm UOM
 export async function createUom(data: CreateUomDto) {
   const res = await api.createUom(data);
-  return res.data;
+  return res.data.data;
 }
 
 // 📍 Cập nhật UOM
 export async function updateUom(id: number, data: UpdateUomDto) {
   const res = await api.updateUom(id, data);
-  return res.data;
+  return res.data.data;
 }
 
 // 📍 Xóa UOM

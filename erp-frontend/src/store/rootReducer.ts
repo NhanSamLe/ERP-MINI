@@ -11,6 +11,7 @@ import {
   uomReducer,
   conversionReducer,
 } from "../features/master-data/store";
+import { leadReducer, opportunityReducer, activityReducer } from "../features/crm/store";
 const rootReducer = combineReducers({
   auth: authReducer,
   user: userReducer,
@@ -21,6 +22,9 @@ const rootReducer = combineReducers({
   tax: taxReducer,
   uom: uomReducer,
   conversion: conversionReducer,
+  lead: leadReducer,
+  opportunity: opportunityReducer,
+  activity: activityReducer,
 });
 
 export default rootReducer;

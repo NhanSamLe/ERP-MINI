@@ -10,7 +10,7 @@ const router = Router();
 router.get("/currencies", authMiddleware([]),currencyController.getCurrencies);
 
 // Danh sách mã tiền thực tế (API ngoài)
-router.get("/currencies/real", currencyController.getRealCurrencies);
+router.get("/currencies/real", authMiddleware([]), currencyController.getRealCurrencies);
 
 //  Thêm loại tiền mới
 router.post("/currencies",authMiddleware(["ADMIN"]), currencyController.addCurrency);
@@ -22,39 +22,39 @@ router.post("/currencies/rates/update",authMiddleware([]), currencyController.up
 router.get("/currencies/rates",authMiddleware([]), currencyController.getExchangeRates);
 
 // Lấy danh sách + search + filter
-router.get("/taxes", taxController.getAllTaxRates);
+router.get("/taxes",authMiddleware([]), taxController.getAllTaxRates);
 
 // Lấy danh sách + search + filter
-router.get("/taxes/search", taxController.searchTaxRates);
+router.get("/taxes/search", authMiddleware([]), taxController.searchTaxRates);
 
 // Lấy thuế đang hoạt động          
-router.get("/taxs/active", taxController.getActiveTaxRates);   
+router.get("/taxs/active", authMiddleware([]), taxController.getActiveTaxRates);   
 
 // Lấy chi tiết 1 loại thuế theo ID
-router.get("/taxes/:id", taxController.getTaxById);       
+router.get("/taxes/:id", authMiddleware([]), taxController.getTaxById);       
 
  // Thêm thuế mới
-router.post("/taxes", taxController.createTaxRate);   
+router.post("/taxes", authMiddleware([]), taxController.createTaxRate);   
 
  // Cập nhật thông tin thuế
-router.put("/taxes/:id", taxController.updateTaxRate);       
+router.put("/taxes/:id", authMiddleware([]), taxController.updateTaxRate);       
 
 // Xóa (hoặc chuyển inactive)
-router.delete("/taxes/:id", taxController.deleteTaxRate);     
+router.delete("/taxes/:id", authMiddleware([]), taxController.deleteTaxRate);     
 
 // 📌 UOM Conversion CRUD
-router.get("/uoms/conversions", UomConversionController.getAllConversions);
-router.get("/uoms/conversions/search", UomConversionController.searchConversions);
-router.post("/uoms/conversions", UomConversionController.createConversion);
-router.put("/uoms/conversions/:id", UomConversionController.updateConversion);
-router.delete("/uoms/conversions/:id", UomConversionController.deleteConversion);
+router.get("/uoms/conversions", authMiddleware([]), UomConversionController.getAllConversions);
+router.get("/uoms/conversions/search", authMiddleware([]), UomConversionController.searchConversions);
+router.post("/uoms/conversions", authMiddleware([]), UomConversionController.createConversion);
+router.put("/uoms/conversions/:id", authMiddleware([]), UomConversionController.updateConversion);
+router.delete("/uoms/conversions/:id", authMiddleware([]), UomConversionController.deleteConversion);
 
-router.get("/uoms", uomController.getAllUoms);
-router.get("/uoms/search", uomController.searchUoms);
-router.get("/uoms/:id", uomController.getUomById);
-router.post("/uoms", uomController.createUom);
-router.put("/uoms/:id", uomController.updateUom);
-router.delete("/uoms/:id", uomController.deleteUom);
+router.get("/uoms", authMiddleware([]), uomController.getAllUoms);
+router.get("/uoms/search", authMiddleware([]), uomController.searchUoms);
+router.get("/uoms/:id", authMiddleware([]), uomController.getUomById);
+router.post("/uoms", authMiddleware([]), uomController.createUom);
+router.put("/uoms/:id", authMiddleware([]), uomController.updateUom);
+router.delete("/uoms/:id", authMiddleware([]), uomController.deleteUom);
 
 
 export default router;

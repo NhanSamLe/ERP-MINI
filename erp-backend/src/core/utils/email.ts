@@ -46,3 +46,36 @@ export function resetPasswordTemplate(username: string, resetLink: string) {
     `,
   };
 }
+
+
+export async function sendEmail2(
+  to: string,
+  subject: string,
+  text: string,
+  html?: string
+) {
+  try {
+    const info = await transporter.sendMail({
+      from: `"ERP System" <${env.mail.user}>`,
+      to,
+      subject,
+      text,
+      html: html || text,
+    });
+
+    console.log("📧 Email sent:", info.messageId);
+
+    return {
+      success: true,
+      messageId: info.messageId,
+      info,
+    };
+  } catch (err) {
+    console.error("❌ Email send failed:", err);
+    return {
+      success: false,
+      messageId: null,
+      error: err,
+    };
+  }
+}

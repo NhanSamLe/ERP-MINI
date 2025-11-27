@@ -52,6 +52,11 @@ import { GlEntry } from "../modules/finance/models/glEntry.model";
 import { GlEntryLine } from "../modules/finance/models/glEntryLine.model";
 // Associations
 import { applyAssociations } from "./associations";
+import { CallActivity } from "../modules/crm/models/callActivity.model";
+import { MeetingActivity } from "../modules/crm/models/meetingActivity.model";
+import { TaskActivity } from "../modules/crm/models/taskActivity.model";
+import { EmailActivity } from "../modules/crm/models/emailActivity.model";
+import { TimelineEvent } from "../modules/crm/models/timelineEvent.model";
 applyAssociations();
 
 export {
@@ -67,5 +72,5 @@ export {
   PurchaseOrder, PurchaseOrderLine, ApInvoice, ApInvoiceLine, ApPayment, ApPaymentAllocation,
   Warehouse, StockMove, StockMoveLine, StockBalance,
   Department, Position, Employee, PayrollPeriod, PayrollRun, PayrollRunLine,
-  GlAccount, GlJournal, GlEntry, GlEntryLine
+  GlAccount, GlJournal, GlEntry, GlEntryLine, CallActivity, MeetingActivity, TaskActivity, EmailActivity
 };

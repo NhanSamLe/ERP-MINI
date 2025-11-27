@@ -91,6 +91,7 @@ export default function UomConversionPage() {
         columns={columns}
         loading={loading}
         onEdit={(row) => setEditItem(row)}
+        showSelection={false}
         onDelete={handleDelete}
       />
 

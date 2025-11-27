@@ -40,6 +40,10 @@ import { GlJournal } from "../modules/finance/models/glJournal.model";
 import { GlEntry } from "../modules/finance/models/glEntry.model";
 import { GlEntryLine } from "../modules/finance/models/glEntryLine.model";
 import { ProductImage } from "../modules/product/models/productImage.model";
+import { CallActivity } from "../modules/crm/models/callActivity.model";
+import { MeetingActivity } from "../modules/crm/models/meetingActivity.model";
+import { TaskActivity } from "../modules/crm/models/taskActivity.model";
+import { EmailActivity } from "../modules/crm/models/emailActivity.model";
 
 export function applyAssociations() {
   // =====================
@@ -140,7 +144,9 @@ export function applyAssociations() {
   // Lead được gán cho 1 User (nhân viên sale)
   Lead.belongsTo(User, { foreignKey: "assigned_to", as: "assignedUser" });
   User.hasMany(Lead, { foreignKey: "assigned_to", as: "leads" });
-
+  // lead duoc qualified boi 1 user
+  Lead.belongsTo(User, { foreignKey: "qualified_by", as: "qualifiedByUser" });
+  User.hasMany(Lead, { foreignKey: "qualified_by", as: "qualifiedLeads" });
   // Opportunity được tạo từ 1 Lead
   Opportunity.belongsTo(Lead, { foreignKey: "lead_id", as: "lead" });
   Lead.hasMany(Opportunity, { foreignKey: "lead_id", as: "opportunities" });
@@ -401,3 +407,76 @@ export function applyAssociations() {
   Partner.hasMany(GlEntryLine, { foreignKey: "partner_id", as: "glEntries" });
   GlEntryLine.belongsTo(Partner, { foreignKey: "partner_id", as: "partner" });
 }
+
+// ===============================
+//   ACTIVITY → CALL (1-1)
+// ===============================
+Activity.hasOne(CallActivity, {
+  foreignKey: "activity_id",
+  as: "call",
+  onDelete: "CASCADE",
+});
+CallActivity.belongsTo(Activity, {
+  foreignKey: "activity_id",
+  as: "activity",
+});
+
+// ===============================
+//   ACTIVITY → EMAIL (1-1)
+// ===============================
+Activity.hasOne(EmailActivity, {
+  foreignKey: "activity_id",
+  as: "email",
+  onDelete: "CASCADE",
+});
+EmailActivity.belongsTo(Activity, {
+  foreignKey: "activity_id",
+  as: "activity",
+});
+
+// ===============================
+//   ACTIVITY → MEETING (1-1)
+// ===============================
+Activity.hasOne(MeetingActivity, {
+  foreignKey: "activity_id",
+  as: "meeting",
+  onDelete: "CASCADE",
+});
+MeetingActivity.belongsTo(Activity, {
+  foreignKey: "activity_id",
+  as: "activity",
+});
+
+// ===============================
+//   ACTIVITY → TASK (1-1)
+// ===============================
+Activity.hasOne(TaskActivity, {
+  foreignKey: "activity_id",
+  as: "task",
+  onDelete: "CASCADE",
+});
+TaskActivity.belongsTo(Activity, {
+  foreignKey: "activity_id",
+  as: "activity",
+});
+
+// Activity <-> Lead
+Activity.belongsTo(Lead, {
+  foreignKey: "related_id",
+  as: "lead",
+  constraints: false,
+});
+
+// Activity <-> Opportunity
+Activity.belongsTo(Opportunity, {
+  foreignKey: "related_id",
+  as: "opportunity",
+  constraints: false,
+});
+
+// Activity <-> Customer (Partner)
+Activity.belongsTo(Partner, {
+  foreignKey: "related_id",
+  as: "customer",
+  constraints: false,
+});

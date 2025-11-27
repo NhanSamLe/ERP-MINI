@@ -70,8 +70,10 @@ const menuItems: MenuItem[] = [
     subItems: [
       { name: "Leads", path: "/crm/leads" },
       { name: "Opportunities", path: "/crm/opportunities" },
-      { name: "Pipeline", path: "/crm/pipeline" },
-      { name: "Activities", path: "/crm/activities" },
+      { name: "Task", path: "/crm/activities/tasks" },
+      { name: "Calls", path: "/crm/activities/calls" },
+      { name: "Emails", path: "/crm/activities/emails" },
+      { name: "Meeting", path: "/crm/activities/meetings" },
     ],
   },
   {
@@ -136,8 +138,6 @@ const menuItems: MenuItem[] = [
       { name: "Units of Measure (UOM)", path: "/master-data/uoms" },
       { name: "UOM Conversions", path: "/master-data/uom-conversions" },
       { name: "Taxes", path: "/master-data/taxes" },
-      { name: "System Settings", path: "/admin/settings" },
-      { name: "Audit Logs", path: "/admin/logs" },
     ],
   },
 ];
