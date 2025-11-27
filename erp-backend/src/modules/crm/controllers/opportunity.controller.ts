@@ -64,20 +64,21 @@ export const createOpportunity = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
-
-    const { lead_id, name, expected_value, probability, stage, closing_date } =
-      req.body;
-
-    const data = await opportunityService.createOpportunity({
-      lead_id,
-      owner_id: user.id,
+    const owner_id = user.id;
+    const { related_type, related_id, name, expected_value, probability, stage, closing_date } = req.body;
+    const opp: any = {
+      owner_id,
       name,
       expected_value,
       probability,
       stage,
       closing_date,
-    });
+    };
 
+    if (related_type === "lead") opp.lead_id = related_id;
+    if (related_type === "customer") opp.customer_id = related_id;
+
+    const data = await opportunityService.createOpportunity(opp);
     return res.status(201).json({
       message: "Tạo Opportunity thành công",
       data,

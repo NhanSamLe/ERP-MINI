@@ -24,6 +24,8 @@ export function DataTable<T extends { id: number }>({
   itemsPerPage = 10,
   showSelection = true,
   showActions = true,
+  onRowClick, 
+  
 }: DataTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -121,7 +123,11 @@ export function DataTable<T extends { id: number }>({
           </thead>
           <tbody className="divide-y divide-gray-200">
             {paginatedData.map((item) => (
-              <tr key={item.id} className="hover:bg-gray-50">
+              <tr
+                key={item.id}
+                onClick={() => onRowClick?.(item)}   // ⭐ CLICK ROW
+                className="hover:bg-orange-50 cursor-pointer transition-colors"
+              >
                 {showSelection && (
                   <td className="px-6 py-4">
                     <input type="checkbox" className="rounded" />

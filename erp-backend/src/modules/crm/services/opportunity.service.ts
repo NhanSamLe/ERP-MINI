@@ -36,7 +36,8 @@ export async function getOpportunityById(oppId: number) {
 }
 
 export async function createOpportunity(data: {
-  lead_id: number;
+  lead_id?: number;
+  customer_id?: number;
   owner_id: number;
   name: string;
   expected_value?: number;
@@ -369,5 +370,20 @@ export async function getUnclosedOpportunities(userId?: number) {
       { model: model.Partner, as: "customer" },
     ],
     order: [["updated_at", "DESC"]],
+  });
+}
+export async function getOpportunitiesByLead(leadId: number) {
+  return Opportunity.findAll({
+    where: { lead_id: leadId, is_deleted: false },
+    include: [
+      { model: Lead, as: "lead" },
+      {
+        model: model.User,
+        as: "owner",
+        attributes: ["id", "full_name", "email", "phone"],
+      },
+      { model: model.Partner, as: "customer" }
+    ],
+    order: [["created_at", "DESC"]],
   });
 }

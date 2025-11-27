@@ -170,13 +170,13 @@ export default function LeadDashboard() {
     }
   };
 
-  const handleView = (lead: Lead) => {
-    navigate(`/crm/lead/${lead.id}`);
-  };
+  // const handleView = (lead: Lead) => {
+  //   navigate(`/crm/lead/${lead.id}`);
+  // };
 
-  const handleEdit = (lead: Lead) => {
-    navigate(`/crm/lead/${lead.id}/edit`);
-  };
+  // const handleEdit = (lead: Lead) => {
+  //   navigate(`/crm/lead/${lead.id}/edit`);
+  // };
 
   const handleDelete = async (lead: Lead) => {
     if (window.confirm(`Are you sure you want to delete lead "${lead.name}"?`)) {
@@ -303,11 +303,12 @@ export default function LeadDashboard() {
               searchable={true}
               searchKeys={["name", "email", "phone", "source"]}
               showSelection={false}
-              showActions={true}
-              onView={handleView}
-              onEdit={handleEdit}
+              showActions={false}
+              // onView={handleView}
+              // onEdit={handleEdit}
             //   onDelete={user?.role.code === "SALESMANAGER" ? handleDelete : undefined}
               onDelete={handleDelete}
+              onRowClick={(lead) => navigate(`/crm/leads/${lead.id}`)}
               itemsPerPage={10}
             />
           </div>

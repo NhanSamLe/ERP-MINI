@@ -9,7 +9,7 @@ import {
   UpdateEmailDetailDto,
   UpdateMeetingDetailDto,
   UpdateTaskDetailDto,
-  Activity,
+  Activity,TimelineEvent
 } from "../dto/activity.dto";
 export async function createCallActivity(data: CreateCallActivityDto) {
   const res = await api.createCallActivity(data);
@@ -155,5 +155,5 @@ export async function sendEmailForActivity(activityId: number) {
 
 export async function getTimeline(type: string, id: number) {
   const res = await api.getTimeline(type, id);
-  return res.data.data as Activity[];
+  return res.data.data as TimelineEvent[];
 }

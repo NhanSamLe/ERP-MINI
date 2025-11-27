@@ -1,9 +1,10 @@
 import { OpportunityStage } from "../../../types/enum";
 import {Lead} from "./lead.dto"
-import { Partner } from "../../partner/dtos/partner.dto";
+import { Partner } from "../../partner/store/partner.types";
 import {User} from "./activity.dto"
 export interface CreateOpportunityDto {
-  lead_id: number;
+  related_type: "lead" | "customer";
+  related_id: number;
   name: string;
   expected_value?: number;
   probability?: number;

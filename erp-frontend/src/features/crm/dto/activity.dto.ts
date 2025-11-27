@@ -211,3 +211,16 @@ export interface User {
   email: string;
   phone: string;
 }
+
+export interface TimelineEvent {
+  id: number;
+  related_type: "lead" | "opportunity" | "customer";
+  related_id: number;
+
+  event_type: string;          // vd: lead_created, opportunity_won, meeting_completed
+  title: string;               // tiêu đề ngắn
+  description?: string | null; // mô tả chi tiết (optional)
+
+  created_by?: number | null;  
+  created_at: string;          // dạng ISO từ API
+}

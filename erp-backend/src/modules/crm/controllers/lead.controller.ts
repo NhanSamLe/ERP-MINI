@@ -100,7 +100,7 @@ export const updateLeadEvaluation = async (req: Request, res: Response) => {
 export const convertToCustomer = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
-    const { leadId } = req.body;
+    const leadId = Number(req.params.leadId); 
      const role = (req as any).user.role;
     const result = await leadService.convertToCustomer(leadId, userId,role);
 

@@ -1,5 +1,6 @@
 import { LeadStage } from "../../../types/enum";
 import { User } from "./activity.dto";
+import { Opportunity } from "./opportunity.dto";
 export interface CreateLeadDto {
   name: string;
   email?: string;
@@ -48,4 +49,5 @@ export interface Lead {
   ready_to_buy?: boolean;     // "Mua được không?"
   expected_timeline?: string; // "Khi nào mua?" - VD: "this_week", "this_month", "next_quarter"
   assignedUser?: User;
+  opportunities?: Opportunity[];
 }

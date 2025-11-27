@@ -58,7 +58,7 @@ export const getActivitiesFor = (
   relatedType: string,
   relatedId: number
 ) =>
-  axiosClient.get(`/crm/activities/for/${relatedType}/${relatedId}`);
+  axiosClient.get(`/crm/activities/timeline/${relatedType}/${relatedId}`);
 
 export const getActivityDetail = (id: number) =>
   axiosClient.get(`/crm/activities/${id}`);

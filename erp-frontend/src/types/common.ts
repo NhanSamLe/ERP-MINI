@@ -18,4 +18,5 @@ export interface DataTableProps<T> {
   itemsPerPage?: number;
   showSelection?: boolean;
   showActions?: boolean;
+  onRowClick?: (row: T) => void;
 }

@@ -33,7 +33,7 @@ export async function getTodayLeads(role: string, userId?: number) {
     created_at: { [Op.gte]: today, [Op.lt]: tomorrow }
   };
 
-  if (role === "SALE") {
+  if (role === "SALES") {
     if (!userId) throw new Error("Thiếu userId cho SALE");
     where.assigned_to = userId;
   }
@@ -60,12 +60,37 @@ export async function getMyLeads(userId: number) {
 export async function getLeadById(leadId: number) {
   const lead = await Lead.findOne({
     where: { id: leadId, is_deleted: false },
-    include: [{ model: model.User, as: "assignedUser", attributes: ["id", "full_name", "email"] }],
+    include: [
+      {
+        model: model.User,
+        as: "assignedUser",
+        attributes: ["id", "full_name", "email"],
+      },
+      {
+        model: model.Opportunity,
+        as: "opportunities",
+        include: [
+          {
+            model: model.User,
+            as: "owner",
+            attributes: ["id", "full_name", "email"],
+          },
+          {
+            model: model.Partner,
+            as: "customer",
+          },
+        ],
+      },
+    ],
+    order: [
+      [{ model: model.Opportunity, as: "opportunities" }, "created_at", "DESC"],
+    ],
   });
 
   if (!lead) throw new Error("Lead không tồn tại");
   return lead;
 }
+
 
 
 export async function createLead(data: {
