@@ -6,6 +6,12 @@ import { upload } from "../../../core/middleware/upload";
 const router = Router();
 
 router.get("/", authMiddleware(["PURCHASE"]), purchaseOrderController.getAllPO);
+
+router.get(
+  "/by-status",
+  authMiddleware(["PURCHASE", "WHSTAFF"]),
+  purchaseOrderController.getByStatus
+);
 router.get(
   "/:id",
   authMiddleware(["PURCHASE"]),

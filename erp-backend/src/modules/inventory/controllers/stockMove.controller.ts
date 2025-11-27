@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { stockMoveService } from "../services/stockMove.service";
+import { StockMoveCreateDTO } from "../dto/stockMoveCreate.dto";
 
 export const StockMoveController = {
   async getAll(req: Request, res: Response) {
@@ -14,26 +15,27 @@ export const StockMoveController = {
     return res.json(data);
   },
 
-  async create(req: Request, res: Response) {
-    const data = await stockMoveService.create(req.body);
+  async createStockMove(req: Request, res: Response) {
+    const body = req.body as StockMoveCreateDTO;
+    const data = await stockMoveService.create(body);
     return res.status(201).json(data);
   },
 
-  async update(req: Request, res: Response) {
+  async updateStockMove(req: Request, res: Response) {
     const id = Number(req.params.id);
     const updated = await stockMoveService.update(id, req.body);
     if (!updated) return res.status(404).json({ message: "Not found" });
     return res.json(updated);
   },
 
-  async delete(req: Request, res: Response) {
+  async deleteStockMove(req: Request, res: Response) {
     const id = Number(req.params.id);
     const deleted = await stockMoveService.delete(id);
     if (!deleted) return res.status(404).json({ message: "Not found" });
     return res.json({ message: "Deleted successfully" });
   },
 
-  async findByType(req: Request, res: Response) {
+  async findByTypeStockMove(req: Request, res: Response) {
     const type = req.params.type;
     if (!type) {
       return res.json({ message: "Type parameter is required" });

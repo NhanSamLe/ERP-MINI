@@ -134,7 +134,7 @@ export function DataTable<T extends { id: number }>({
                       : String(item[col.key as keyof T] || "")}
                   </td>
                 ))}
-                <td className="px-6 py-4 text-right space-x-2">
+                <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
                   {onView && (
                     <button
                       onClick={() => onView(item)}

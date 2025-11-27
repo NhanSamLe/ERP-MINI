@@ -19,12 +19,12 @@ router.get(
 
 router.get(
   "/search",
-  authMiddleware(["PURCHASE"]),
+  authMiddleware(["PURCHASE", "WHSTAFF"]),
   productController.searchProducts
 );
 router.get(
   "/:id",
-  authMiddleware(["ADMIN", "SALES", "PURCHASE"]),
+  authMiddleware(["ADMIN", "SALES", "PURCHASE", "WHSTAFF"]),
   productController.getProductById
 );
 router.post(
