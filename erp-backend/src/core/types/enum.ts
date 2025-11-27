@@ -13,11 +13,11 @@ export enum BranchStatus {
 export enum PartnerType {
   CUSTOMER = "customer",
   SUPPLIER = "supplier",
-  INTERNAL = "internal"
+  INTERNAL = "internal",
 }
 export enum PartnerStatus {
   ACTIVE = "active",
-  INACTIVE = "inactive"
+  INACTIVE = "inactive",
 }
 // =====================
 // CRM
@@ -85,6 +85,14 @@ export enum PurchaseOrderStatus {
   CONFIRMED = "confirmed",
   RECEIVED = "received",
   CANCELLED = "cancelled",
+}
+
+export enum ReferenceType {
+  PURCHASE_ORDER = "purchase_order",
+  SALES_ORDER = "sales_order",
+  TRANSFER = "transfer",
+  ADJUSTMENT = "adjustment",
+  OTHER = "other",
 }
 
 export enum ApInvoiceStatus {
@@ -172,7 +180,6 @@ export enum GlEntryStatus {
   DRAFT = "draft",
   POSTED = "posted",
 }
-
 
 export enum TaxType {
   VAT = "VAT", // Thuế giá trị gia tăng

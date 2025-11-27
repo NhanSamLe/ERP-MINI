@@ -1,7 +1,8 @@
 import { RouteObject } from "react-router-dom";
 import ProtectedRoute from "../components/ProtectedRoute";
 import InventoryDashboard from "../features/inventory/InventoryDashboard";
-import StockBalancePage from "../features/inventory/pages/StockBalancePage";
+import StockBalancePages from "../features/inventory/pages/StockBalancePages";
+import StockMovePages from "../features/inventory/pages/StockMovePages";
 
 const inventoryRoutes: RouteObject[] = [
   {
@@ -17,7 +18,15 @@ const inventoryRoutes: RouteObject[] = [
     path: "/inventory/stock",
     element: (
       <ProtectedRoute allowedRoles={["WHMANAGER", "WHSTAFF"]}>
-        <StockBalancePage />
+        <StockBalancePages />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/inventory/stock_move",
+    element: (
+      <ProtectedRoute allowedRoles={["WHMANAGER", "WHSTAFF"]}>
+        <StockMovePages />
       </ProtectedRoute>
     ),
   },

@@ -15,6 +15,7 @@ import {
 import partnersReducer from "../features/partner/store";
 import { stockBalanceReducer } from "../features/inventory/store";
 import { warehouseReducer } from "../features/inventory/store";
+import { stockMoveReducer } from "../features/inventory/store";
 const rootReducer = combineReducers({
   auth: authReducer,
   user: userReducer,
@@ -29,6 +30,7 @@ const rootReducer = combineReducers({
   purchaseOrder: purchaseOrderReducer,
   stockBalance: stockBalanceReducer,
   warehouse: warehouseReducer,
+  stockMove: stockMoveReducer,
 });
 
 export default rootReducer;
