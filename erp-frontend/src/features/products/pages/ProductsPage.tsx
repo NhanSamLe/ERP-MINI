@@ -24,6 +24,7 @@ import {
 
 export default function ProductsPage() {
   const dispatch = useDispatch<AppDispatch>();
+  const role = useSelector((state: RootState) => state.auth.user?.role.name);
 
   const { items: products, loading } = useSelector(
     (state: RootState) => state.product
@@ -171,10 +172,14 @@ export default function ProductsPage() {
             state: { product: item },
           })
         }
-        onDelete={(item) => {
-          setSelectedProduct(item);
-          setConfirmOpen(true);
-        }}
+        onDelete={
+          role === "ADMIN"
+            ? (item) => {
+                setSelectedProduct(item);
+                setConfirmOpen(true);
+              }
+            : undefined
+        }
         searchKeys={["sku", "name"]}
       />
 

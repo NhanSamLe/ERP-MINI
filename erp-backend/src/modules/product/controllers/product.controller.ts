@@ -2,7 +2,16 @@ import { Request, Response } from "express";
 import { productService } from "../services/product.service";
 
 export const productController = {
-  async getAllProduct(req: Request, res: Response) {
+  async getAllProductOnActive(req: Request, res: Response) {
+    try {
+      const data = await productService.getAllOnActive();
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  },
+
+  async getAllProductAllStatus(req: Request, res: Response) {
     try {
       const data = await productService.getAll();
       res.json(data);
@@ -73,6 +82,24 @@ export const productController = {
       res.json(result);
     } catch (err: any) {
       res.status(400).json({ message: err.message });
+    }
+  },
+
+  async searchProducts(req: Request, res: Response) {
+    try {
+      const keyword = req.query.q?.toString().toLowerCase();
+
+      if (!keyword || keyword.length < 2) {
+        return res.status(400).json({
+          message: "Keyword must be at least 2 characters",
+        });
+      }
+
+      const results = await productService.search(keyword);
+      res.json(results);
+    } catch (err) {
+      console.error("SearchProduct error:", err);
+      res.status(500).json({ message: "Internal Server Error" });
     }
   },
 };

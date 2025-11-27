@@ -2,6 +2,10 @@ import { productApi } from "./api/product.api";
 import { Product } from "../products/store/product.types";
 
 export const productService = {
+  async getAllProductsOnActive(): Promise<Product[]> {
+    return await productApi.getAllProductsOnActive();
+  },
+
   async getAllProducts(): Promise<Product[]> {
     return await productApi.getAllProducts();
   },
@@ -24,5 +28,14 @@ export const productService = {
 
   async getCategories() {
     return await productApi.getProductCategories();
+  },
+
+  searchProducts: async (keyword: string) => {
+    const res = await productApi.search(keyword);
+    return res.data.map((p: Product) => ({
+      ...p,
+      cost_price: Number(p.cost_price),
+      sale_price: Number(p.sale_price),
+    }));
   },
 };

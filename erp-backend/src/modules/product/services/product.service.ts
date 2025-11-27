@@ -5,8 +5,25 @@ import {
   uploadBufferToCloudinary,
   deleteFromCloudinary,
 } from "../../../core/utils/uploadCloudinary";
+import { hasLinkedData } from "../../../core/utils/getRelation";
+import { Op } from "sequelize";
 
 export const productService = {
+  async getAllOnActive() {
+    return await Product.findAll({
+      where: { status: "Active" },
+      include: [
+        { model: ProductCategory, as: "category" },
+        {
+          model: ProductImage,
+          as: "images",
+          attributes: ["id", "image_url", "image_public_id"],
+        },
+      ],
+      order: [["id", "DESC"]],
+    });
+  },
+
   async getAll() {
     return await Product.findAll({
       include: [
@@ -167,7 +184,20 @@ export const productService = {
     const product = await Product.findByPk(id, {
       include: [{ model: ProductImage, as: "images" }],
     });
+
     if (!product) throw new Error("Product not found");
+
+    const linked = await hasLinkedData(Product, id);
+
+    if (linked) {
+      product.status = "inactive";
+      await product.save();
+      return {
+        message:
+          "Product được vô hiệu hóa (đã liên kết dữ liệu, không thể xóa)",
+      };
+    }
+
     if (product.image_public_id) {
       try {
         await deleteFromCloudinary(product.image_public_id);
@@ -185,7 +215,28 @@ export const productService = {
         }
       }
     }
+
     await product.destroy();
-    return { message: "Product và các hình ảnh đã được xóa thành công" };
+    return { message: "Product và ảnh đã được xóa thành công" };
+  },
+
+  async search(keyword: string) {
+    return await Product.findAll({
+      where: {
+        name: {
+          [Op.like]: `%${keyword}%`,
+        },
+      },
+      include: [
+        { model: ProductCategory, as: "category" },
+        {
+          model: ProductImage,
+          as: "images",
+          attributes: ["id", "image_url", "image_public_id"],
+        },
+      ],
+      limit: 20,
+      order: [["name", "ASC"]],
+    });
   },
 };

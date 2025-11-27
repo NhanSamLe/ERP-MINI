@@ -2,8 +2,13 @@ import axiosClient from "../../../api/axiosClient";
 import { Product, ProductCategory } from "../../products/store/product.types";
 
 export const productApi = {
-  getAllProducts: async (): Promise<Product[]> => {
+  getAllProductsOnActive: async (): Promise<Product[]> => {
     const res = await axiosClient.get("/product");
+    return res.data;
+  },
+
+  getAllProducts: async (): Promise<Product[]> => {
+    const res = await axiosClient.get("/product/all");
     return res.data;
   },
 
@@ -34,5 +39,10 @@ export const productApi = {
   getProductCategories: async (): Promise<ProductCategory[]> => {
     const res = await axiosClient.get("/product-category");
     return res.data;
+  },
+
+  search: (keyword: string) => {
+    const res = axiosClient.get(`/product/search?q=${keyword}`);
+    return res;
   },
 };

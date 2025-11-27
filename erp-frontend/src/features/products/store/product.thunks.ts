@@ -2,7 +2,24 @@ import { createAsyncThunk } from "@reduxjs/toolkit";
 import { productService } from "../product.service";
 import { Product } from "../../products/store/product.types";
 
+export interface SearchProductsParams {
+  search?: string;
+  limit?: number;
+}
+
 export const fetchProductsThunk = createAsyncThunk(
+  "product/fetchAll",
+  async (_, { rejectWithValue }) => {
+    try {
+      return await productService.getAllProductsOnActive();
+    } catch (error: unknown) {
+      if (error instanceof Error) return rejectWithValue(error.message);
+      return rejectWithValue("Unknown error");
+    }
+  }
+);
+
+export const fetchProductsThunkAllStatus = createAsyncThunk(
   "product/fetchAll",
   async (_, { rejectWithValue }) => {
     try {
@@ -13,7 +30,6 @@ export const fetchProductsThunk = createAsyncThunk(
     }
   }
 );
-
 export const fetchProductByIdThunk = createAsyncThunk<Product, number>(
   "product/fetchById",
   async (id, { rejectWithValue }) => {
@@ -71,6 +87,18 @@ export const fetchCategoriesThunk = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       return await productService.getCategories();
+    } catch (error: unknown) {
+      if (error instanceof Error) return rejectWithValue(error.message);
+      return rejectWithValue("Unknown error");
+    }
+  }
+);
+
+export const searchProductsThunk = createAsyncThunk(
+  "products/search",
+  async (keyword: string, { rejectWithValue }) => {
+    try {
+      return await productService.searchProducts(keyword);
     } catch (error: unknown) {
       if (error instanceof Error) return rejectWithValue(error.message);
       return rejectWithValue("Unknown error");

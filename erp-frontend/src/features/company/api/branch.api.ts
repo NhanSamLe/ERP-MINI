@@ -22,6 +22,6 @@ export const BranchAPI = {
   create: (payload: Branch)       => axiosClient.post<Branch>("/branch", payload),
   update: (id: number, p: Branch) => axiosClient.put<Branch>(`/branch/${id}`, p),
   deactivate: (id: number)        => axiosClient.patch(`/branch/${id}/deactivate`),
-   activate:    (id: number)            => axiosClient.patch(`/branch/${id}/activate`),
+  activate:    (id: number)            => axiosClient.patch(`/branch/${id}/activate`),
   remove: (id: number)            => axiosClient.delete(`/branch/${id}`),
 };
