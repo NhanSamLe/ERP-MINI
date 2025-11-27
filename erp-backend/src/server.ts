@@ -2,6 +2,7 @@ import app from "./app";
 import { sequelize } from "./config/db";
 import {env} from "./config/env";
 import { logger } from "./config/logger";
+import "./models"; 
 const PORT = env.port || 4040;
 async function startServer() {
   try {

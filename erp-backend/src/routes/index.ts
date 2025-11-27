@@ -11,6 +11,7 @@ import departmentRoutes from "../modules/hrm/routes/department.routes";
 import positionRoutes from "../modules/hrm/routes/position.routes";
 import warehouseRoutes from "../modules/inventory/routes/warehouse.routes";
 import stockBalanceRoutes from "../modules/inventory/routes/stockBalance.routes";
+import organizationRoutes from "../modules/hrm/routes/organization.routes";
 const router = express.Router();
 
 router.use("/auth", authRoutes);
@@ -25,5 +26,7 @@ router.use("/hrm/departments", departmentRoutes);
 router.use("/hrm/positions", positionRoutes);
 router.use("/warehouse", warehouseRoutes);
 router.use("/stock-balance", stockBalanceRoutes);
+router.use("/hrm/organization", organizationRoutes);
+
 
 export default router;
