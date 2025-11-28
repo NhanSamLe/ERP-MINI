@@ -17,7 +17,9 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
+  Download,
 } from "lucide-react";
+import * as XLSX from "xlsx";
 
 const AttendancePage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -76,21 +78,25 @@ const AttendancePage: React.FC = () => {
   // Lọc dữ liệu theo search, employee và date
   const filteredList = list.filter((item) => {
     const searchLower = search.toLowerCase();
-    const matchSearch =
-      item.employee_id?.toString().includes(searchLower) ||
-      item.status?.toLowerCase().includes(searchLower) ||
-      item.note?.toLowerCase().includes(searchLower) ||
-      (item as any).employee?.full_name?.toLowerCase().includes(searchLower);
+    const employeeName =
+    ((item as any).employee?.full_name || "").toLowerCase();
+  const branchName =
+    ((item as any).branch?.name || "").toLowerCase();
+     const matchSearch =
+    employeeName.includes(searchLower) ||          // 👈 search theo tên NV
+    branchName.includes(searchLower) ||            // (optional) theo tên chi nhánh
+    item.status?.toLowerCase().includes(searchLower) ||
+    item.note?.toLowerCase().includes(searchLower);
 
-    const matchEmployee =
-      selectedEmployee === "all" ||
-      item.employee_id?.toString() === selectedEmployee;
+  const matchEmployee =
+    selectedEmployee === "all" ||
+    item.employee_id?.toString() === selectedEmployee;
 
-    const matchDate =
-      !selectedDate ||
-      (item.work_date && item.work_date.toString().slice(0, 10) === selectedDate);
+  const matchDate =
+    !selectedDate ||
+    (item.work_date && item.work_date.toString().slice(0, 10) === selectedDate);
 
-    return matchSearch && matchEmployee && matchDate;
+  return matchSearch && matchEmployee && matchDate;
   });
 
   // Lấy danh sách nhân viên unique để hiển thị trong combobox
@@ -121,7 +127,7 @@ const AttendancePage: React.FC = () => {
   };
 
   const getPageNumbers = () => {
-    const pages = [];
+    const pages: number[] = [];
     const maxVisible = 7;
 
     if (totalPages <= maxVisible) {
@@ -158,6 +164,48 @@ const AttendancePage: React.FC = () => {
     return pages;
   };
 
+  // ================== EXPORT EXCEL ==================
+  // "List hiện gì thì export cái đó" -> dùng filteredList (đã filter theo search, employee, date)
+  // Nếu muốn chỉ export TRANG HIỆN TẠI thì đổi "filteredList" -> "pageItems"
+  const handleExportExcel = () => {
+    const exportSource = filteredList; // hoặc pageItems nếu muốn chỉ export trang hiện tại
+
+    if (!exportSource.length) {
+      alert("Không có dữ liệu để xuất Excel.");
+      return;
+    }
+
+    const exportData = exportSource.map((item) => ({
+      ID: item.id,
+      "Chi nhánh": item.branch_id,
+      "Nhân viên": (item as any).employee?.full_name || item.employee_id,
+      "Ngày làm": item.work_date ? item.work_date.toString().slice(0, 10) : "",
+      "Check In": item.check_in
+        ? new Date(item.check_in).toLocaleTimeString("vi-VN", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "",
+      "Check Out": item.check_out
+        ? new Date(item.check_out).toLocaleTimeString("vi-VN", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "",
+      "Giờ làm": item.working_hours || 0,
+      "Trạng thái": item.status || "",
+      "Ghi chú": item.note || "",
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance");
+
+    const fileName = `Attendance_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+  };
+  // ==================================================
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
       {/* Header Section */}
@@ -171,17 +219,28 @@ const AttendancePage: React.FC = () => {
               Quản lý chấm công
             </h1>
             <p className="text-gray-500 mt-2 text-sm">
-              Tổng số: <span className="font-semibold text-gray-700">{totalItems}</span> bản ghi
+              Tổng số:{" "}
+              <span className="font-semibold text-gray-700">{totalItems}</span> bản ghi
             </p>
           </div>
 
-          <button
-            onClick={handleAdd}
-            className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-5 py-2.5 flex items-center gap-2 rounded-xl shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 hover:from-orange-600 hover:to-orange-700 transition-all duration-200 font-medium"
-          >
-            <Plus className="w-5 h-5" />
-            Thêm chấm công
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={handleExportExcel}
+              className="bg-green-600 text-white px-5 py-2.5 flex items-center gap-2 rounded-xl shadow hover:bg-green-700 transition-all duration-200 font-medium"
+            >
+              <Download className="w-5 h-5" />
+              Xuất Excel
+            </button>
+
+            <button
+              onClick={handleAdd}
+              className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-5 py-2.5 flex items-center gap-2 rounded-xl shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 hover:from-orange-600 hover:to-orange-700 transition-all duration-200 font-medium"
+            >
+              <Plus className="w-5 h-5" />
+              Thêm chấm công
+            </button>
+          </div>
         </div>
       </div>
 
@@ -207,7 +266,7 @@ const AttendancePage: React.FC = () => {
           >
             <option value="all">Tất cả nhân viên</option>
             {employeeOptions.map((emp) => (
-              <option key={emp.id} value={emp.id}>
+              <option key={emp.id} value={emp.id as any}>
                 {emp.name}
               </option>
             ))}
@@ -404,7 +463,7 @@ const AttendancePage: React.FC = () => {
               <button
                 onClick={() => goToPage(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white hover:shadow-sm transition-all duration-200 bg-gray-50"
+                className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg白 hover:shadow-sm transition-all duration-200 bg-gray-50"
               >
                 <ChevronLeft className="w-4 h-4" />
                 <span className="hidden sm:inline">Trước</span>
