@@ -153,7 +153,7 @@ export default function Sidebar() {
   // 👇 lấy danh sách chi nhánh từ Redux
   const branches = useSelector((s: RootState) => s.branch.branches  || []);
   const defaultBranchId = branches[0]?.id; // tạm lấy chi nhánh đầu tiên
-
+  
   const toggleExpand = (name: string) => {
     setExpandedItems((prev) =>
       prev.includes(name)

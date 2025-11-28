@@ -89,13 +89,14 @@ export default function EmployeePage() {
 
   // Tính trang
   const totalItems = employees.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const totalPages = totalItems ? Math.ceil(totalItems / pageSize) : 1;
   const currentPage = Math.min(page, totalPages);
   const startIndex = (currentPage - 1) * pageSize;
   const pageItems = employees.slice(startIndex, startIndex + pageSize);
 
   const goToPage = (p: number) => {
-    if (p >= 1 && p <= totalPages) setPage(p);
+    if (p < 1 || p > totalPages) return;
+    setPage(p);
   };
 
   const getPageNumbers = () => {
@@ -103,16 +104,40 @@ export default function EmployeePage() {
     const maxVisible = 7;
 
     if (totalPages <= maxVisible) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
+      // Hiển thị tất cả nếu ít hơn maxVisible
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
     } else {
+      // Luôn hiển thị trang đầu
       pages.push(1);
+
       let start = Math.max(2, currentPage - 2);
       let end = Math.min(totalPages - 1, currentPage + 2);
 
-      if (start > 2) pages.push(-1);
-      for (let i = start; i <= end; i++) pages.push(i);
-      if (end < totalPages - 1) pages.push(-2);
+      // Điều chỉnh nếu ở đầu hoặc cuối
+      if (currentPage <= 3) {
+        end = 5;
+      } else if (currentPage >= totalPages - 2) {
+        start = totalPages - 4;
+      }
 
+      // Thêm "..." nếu cần
+      if (start > 2) {
+        pages.push(-1); // -1 = "..."
+      }
+
+      // Thêm các trang giữa
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+
+      // Thêm "..." nếu cần
+      if (end < totalPages - 1) {
+        pages.push(-2); // -2 = "..."
+      }
+
+      // Luôn hiển thị trang cuối
       pages.push(totalPages);
     }
 
@@ -121,7 +146,6 @@ export default function EmployeePage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
-
       {/* Header */}
       <div className="mb-8 flex justify-between items-center">
         <h1 className="text-3xl font-bold flex items-center gap-3">
@@ -154,7 +178,6 @@ export default function EmployeePage() {
 
       {/* Table */}
       <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
-
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -222,7 +245,6 @@ export default function EmployeePage() {
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </td>
-
                   </tr>
                 ))
               )}
@@ -230,48 +252,69 @@ export default function EmployeePage() {
           </table>
         </div>
 
-        {/* Pagination */}
-        <div className="flex justify-between items-center p-4 border-t">
-          <span>
-            Trang {currentPage} / {totalPages}
-          </span>
+        {/* Enhanced Pagination - Same as DepartmentPage */}
+        {totalItems > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t bg-gradient-to-r from-gray-50 to-white">
+            <div className="text-sm text-gray-600">
+              Hiển thị{" "}
+              <span className="font-semibold text-gray-900">
+                {startIndex + 1} - {Math.min(startIndex + pageSize, totalItems)}
+              </span>{" "}
+              trong tổng số{" "}
+              <span className="font-semibold text-gray-900">{totalItems}</span> nhân viên
+            </div>
 
-          <div className="flex gap-2">
-            <button
-              disabled={currentPage === 1}
-              onClick={() => goToPage(currentPage - 1)}
-              className="px-3 py-1 border rounded disabled:opacity-40"
-            >
-              <ChevronLeft />
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Previous Button */}
+              <button
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white hover:shadow-sm transition-all duration-200 bg-gray-50"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span className="hidden sm:inline">Trước</span>
+              </button>
 
-            {getPageNumbers().map((p, i) =>
-              p < 0 ? (
-                <span key={i} className="px-2">
-                  ...
-                </span>
-              ) : (
-                <button
-                  key={i}
-                  onClick={() => goToPage(p)}
-                  className={`px-3 py-1 rounded ${
-                    p === currentPage ? "bg-blue-600 text-white" : "border"
-                  }`}
-                >
-                  {p}
-                </button>
-              )
-            )}
+              {/* Page Numbers */}
+              <div className="flex items-center gap-1">
+                {getPageNumbers().map((pNum, idx) => {
+                  if (pNum < 0) {
+                    // Hiển thị "..."
+                    return (
+                      <span key={`ellipsis-${idx}`} className="px-2 text-gray-400">
+                        ...
+                      </span>
+                    );
+                  }
 
-            <button
-              disabled={currentPage === totalPages}
-              onClick={() => goToPage(currentPage + 1)}
-              className="px-3 py-1 border rounded disabled:opacity-40"
-            >
-              <ChevronRight />
-            </button>
+                  return (
+                    <button
+                      key={pNum}
+                      onClick={() => goToPage(pNum)}
+                      className={`min-w-[36px] h-9 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                        pNum === currentPage
+                          ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/30"
+                          : "bg-white text-gray-700 border border-gray-200 hover:border-orange-300 hover:bg-orange-50"
+                      }`}
+                    >
+                      {pNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Next Button */}
+              <button
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white hover:shadow-sm transition-all duration-200 bg-gray-50"
+              >
+                <span className="hidden sm:inline">Sau</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Modal */}
