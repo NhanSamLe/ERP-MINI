@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import * as authService from "../services/auth.service";
 import {refreshAccessToken, getCookieMaxAge} from "../../../core/utils/jwt";
+
 export const createUser = async (req: Request, res: Response) => {
   try {
     const user = await authService.createUser(req.body);
@@ -165,6 +166,20 @@ export const getAllRoles = async (req: Request, res: Response) => {
   try {
     const roles = await authService.getAllRoles();
     return res.status(200).json(roles);
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message });
+  }
+};
+// ✅ API trả về thông tin user + employee_id cho màn chấm công cá nhân
+export const getMeAttendance = async (req: Request, res: Response) => {
+  try {
+    const userJwt = (req as any).user;
+    if (!userJwt) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const user = await authService.getUserForAttendance(userJwt.id);
+    return res.json(user);
   } catch (err: any) {
     return res.status(400).json({ message: err.message });
   }

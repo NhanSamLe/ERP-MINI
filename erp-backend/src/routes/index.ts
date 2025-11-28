@@ -16,6 +16,7 @@ import stockMoveRoutes from "../modules/inventory/routes/stockMove.routes";
 import stockMoveLineRoutes from "../modules/inventory/routes/stockMoveLine.routes";
 import employeeRoutes from "../modules/hrm/routes/employee.routes";
 import crmRoutes from "../modules/crm/routes";
+import attendanceRoutes from "../modules/hrm/routes/attendance.routes";
 const router = express.Router();
 
 router.use("/auth", authRoutes);
@@ -35,4 +36,6 @@ router.use("/stock-move", stockMoveRoutes);
 router.use("/stock-move-line", stockMoveLineRoutes);
 router.use("/hrm/employees", employeeRoutes);
 router.use("/crm", crmRoutes);
+router.use("/attendance", attendanceRoutes);
+
 export default router;
