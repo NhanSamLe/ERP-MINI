@@ -92,6 +92,7 @@ export default function UomPage() {
         data={Uoms}
         columns={columns}
         loading={loading}
+        showSelection={false}
         searchable={false}
         onEdit={(row) => {
           setEditItem(row);

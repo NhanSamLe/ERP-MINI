@@ -81,6 +81,7 @@ export default function TaxPage() {
           searchable
           searchKeys={["name", "code"]}
           onEdit={(row) => setModalData(row)}
+          showSelection={false}
           onDelete={handleDelete}
         />
       </div>

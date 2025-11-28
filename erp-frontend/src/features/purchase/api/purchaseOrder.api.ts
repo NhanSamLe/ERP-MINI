@@ -16,6 +16,13 @@ export const purchaseOrderApi = {
     return res.data;
   },
 
+  getByStatus: async (status: string): Promise<PurchaseOrder[]> => {
+    const res = await axiosClient.get(
+      `/purchase-order/by-status?status=${status}`
+    );
+    return res.data;
+  },
+
   create: async (body: PurchaseOrderCreate): Promise<PurchaseOrder> => {
     const res = await axiosClient.post("/purchase-order", body);
     return res.data;

@@ -153,3 +153,17 @@ export type AppliesTo =
   | "sale"
   | "purchase"
   | "both";
+export type TaskPriority = "low" | "medium" | "high";
+export type TaskStatus = "Not Started" | "In Progress" | "Completed";
+
+export type EmailDirection = "in" | "out";
+
+export type ActivityStatus = "pending" | "in_progress" | "completed" | "cancelled";
+
+export type ResultType =
+  | "connected"
+  | "no_answer"
+  | "busy"
+  | "failed"
+  | "call_back"
+  | "wrong_number";

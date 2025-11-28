@@ -197,3 +197,21 @@ export enum AppliesTo {
   PURCHASE = "purchase", // Thuế áp dụng cho hóa đơn mua hàng
   BOTH = "both", // Áp dụng cho cả hai
 }
+
+export enum TaskPriorityEnum {
+  LOW = "low",
+  MEDIUM = "medium",
+  HIGH = "high",
+}
+
+export enum TaskStatusEnum {
+  NOT_STARTED = "Not Started",
+  IN_PROGRESS = "In Progress",
+  COMPLETED = "Completed",
+}
+export enum ActivityStatus{
+  PENDING ="pending",
+  IN_PROGRESS ="in_progress" ,
+  COMPLETED ="completed",
+  CANCELLED ="cancelled"
+}

@@ -18,7 +18,7 @@ import { positionReducer } from "../features/hrm/store/position/position.slice";
 import { stockBalanceReducer } from "../features/inventory/store";
 import { warehouseReducer } from "../features/inventory/store";
 import { stockMoveReducer } from "../features/inventory/store";
-
+import { leadReducer, opportunityReducer, activityReducer } from "../features/crm/store";
 const rootReducer = combineReducers({
   auth: authReducer,
   user: userReducer,
@@ -36,6 +36,10 @@ const rootReducer = combineReducers({
   stockBalance: stockBalanceReducer,
   warehouse: warehouseReducer,
   stockMove: stockMoveReducer,
+  lead: leadReducer,
+  opportunity: opportunityReducer,
+  activity: activityReducer,
+
 });
 
 export default rootReducer;

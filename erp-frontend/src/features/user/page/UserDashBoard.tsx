@@ -141,6 +141,7 @@ export default function UserDashboard() {
             }}
            onDelete={(user) => handleDelete(user.id)}
             itemsPerPage={10}
+            showSelection={false}
           />
         </div>
       </div>

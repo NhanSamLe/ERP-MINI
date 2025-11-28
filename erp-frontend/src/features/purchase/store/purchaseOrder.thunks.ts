@@ -31,6 +31,19 @@ export const fetchPurchaseOrderByIdThunk = createAsyncThunk(
   }
 );
 
+export const fetchPurchaseOrderByStatus = createAsyncThunk(
+  "purchaseOrder/fetchByStatus",
+  async (status: string, { rejectWithValue }) => {
+    try {
+      const res = await purchaseOrderService.getPOByStatus(status);
+      return res;
+    } catch (error: unknown) {
+      if (error instanceof Error) return rejectWithValue(error.message);
+      return rejectWithValue("Unknown error");
+    }
+  }
+);
+
 export const createPurchaseOrderThunk = createAsyncThunk(
   "purchaseOrder/create",
   async (body: PurchaseOrderCreate, { rejectWithValue }) => {

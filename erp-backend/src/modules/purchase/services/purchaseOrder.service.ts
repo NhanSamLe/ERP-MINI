@@ -10,6 +10,13 @@ export const purchaseOrderService = {
     });
   },
 
+  async getByStatus(status: string) {
+    return PurchaseOrder.findAll({
+      include: [{ model: PurchaseOrderLine, as: "lines" }],
+      where: { status },
+    });
+  },
+
   async getPOById(id: number) {
     const po = await PurchaseOrder.findByPk(id, {
       include: [{ model: PurchaseOrderLine, as: "lines" }],
