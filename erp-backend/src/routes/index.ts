@@ -14,6 +14,7 @@ import stockBalanceRoutes from "../modules/inventory/routes/stockBalance.routes"
 import organizationRoutes from "../modules/hrm/routes/organization.routes";
 import stockMoveRoutes from "../modules/inventory/routes/stockMove.routes";
 import stockMoveLineRoutes from "../modules/inventory/routes/stockMoveLine.routes";
+import employeeRoutes from "../modules/hrm/routes/employee.routes";
 import crmRoutes from "../modules/crm/routes";
 const router = express.Router();
 
@@ -32,5 +33,6 @@ router.use("/stock-balance", stockBalanceRoutes);
 router.use("/hrm/organization", organizationRoutes);
 router.use("/stock-move", stockMoveRoutes);
 router.use("/stock-move-line", stockMoveLineRoutes);
+router.use("/hrm/employees", employeeRoutes);
 router.use("/crm", crmRoutes);
 export default router;
