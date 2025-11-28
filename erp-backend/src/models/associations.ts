@@ -60,6 +60,7 @@ export function applyAssociations() {
     as: "role",
     onDelete: "SET NULL",
   });
+
   // Một Role có nhiều User
   Role.hasMany(User, { foreignKey: "role_id", as: "users" });
 
@@ -76,6 +77,25 @@ export function applyAssociations() {
   Company.hasMany(Branch, { foreignKey: "company_id", as: "branches" });
   // Mỗi Branch thuộc về một Company
   Branch.belongsTo(Company, { foreignKey: "company_id", as: "company" });
+  // ✅ Branch ↔ Attendance
+  Branch.hasMany(Attendance, {
+    foreignKey: "branch_id",
+    as: "attendances",
+  });
+  Attendance.belongsTo(Branch, {
+    foreignKey: "branch_id",
+    as: "branch",
+  });
+
+  // ✅ Employee ↔ Attendance
+  Employee.hasMany(Attendance, {
+    foreignKey: "employee_id",
+    as: "attendances",
+  });
+  Attendance.belongsTo(Employee, {
+    foreignKey: "employee_id",
+    as: "employee", // 👈 alias CHÍNH XÁC là "employee"
+  });
 
   // =====================
   // PRODUCT
@@ -483,23 +503,4 @@ Activity.belongsTo(Partner, {
   as: "customer",
   constraints: false,
 });
- // Branch ↔ Attendance
-  Branch.hasMany(Attendance, {
-    foreignKey: "branch_id",
-    as: "attendances",
-  });
-  Attendance.belongsTo(Branch, {
-    foreignKey: "branch_id",
-    as: "branch",
-  });
-
-  // Employee ↔ Attendance
-  Employee.hasMany(Attendance, {
-    foreignKey: "employee_id",
-    as: "attendances",
-  });
-  Attendance.belongsTo(Employee, {
-    foreignKey: "employee_id",
-    as: "employee",
-  });
 
