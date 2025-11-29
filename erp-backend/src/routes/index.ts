@@ -18,10 +18,10 @@ import employeeRoutes from "../modules/hrm/routes/employee.routes";
 import crmRoutes from "../modules/crm/routes";
 import attendanceRoutes from "../modules/hrm/routes/attendance.routes";
 import payrollPeriodRoutes from "../modules/hrm/routes/payrollPeriod.routes";
-const router = express.Router();
 import saleOrderRoutes from "../modules/sales/routes/saleOrder.routes";
 import arInvoiceRoutes from "../modules/sales/routes/arInvoice.routes";
-import arReceiptRoutes from "../modules/sales/routes/arReceipt.routes";const router = express.Router();
+import arReceiptRoutes from "../modules/sales/routes/arReceipt.routes";
+const router = express.Router();
 
 router.use("/auth", authRoutes);
 router.use("/product", productRoutes);

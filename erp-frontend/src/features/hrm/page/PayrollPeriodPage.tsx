@@ -323,8 +323,9 @@ const PayrollPeriodPage: React.FC = () => {
                       {row.end_date?.slice(0, 10)}
                     </td>
                     <td className="px-6 py-4 text-center">
-                      {getStatusBadge(row.status)}
-                    </td>
+  {getStatusBadge(row.status ?? "open")}
+</td>
+
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-center gap-2">
                         <button
