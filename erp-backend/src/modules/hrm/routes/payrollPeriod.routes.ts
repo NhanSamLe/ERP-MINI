@@ -5,24 +5,29 @@ import {
   createPayrollPeriod,
   updatePayrollPeriod,
   closePayrollPeriod,
-  deletePayrollPeriod,  
+  deletePayrollPeriod,
 } from "../controllers/payrollPeriod.controller";
+import { authMiddleware } from "../../../core/middleware/auth";
 
 const router = Router();
 
-// TODO: gắn middleware auth + check role HR Staff / Chief Accountant
-// ví dụ: router.use(authMiddleware);
+// HR Staff + Chief Accountant: được xem
+router.get(
+  "/",
+  authMiddleware(["HR_STAFF", "CHACC"]),
+  getPayrollPeriods
+);
 
-// HR Staff & Chief Accountant – xem danh sách / chi tiết kỳ lương
-router.get("/", getPayrollPeriods);
-router.get("/:id", getPayrollPeriodDetail);
+router.get(
+  "/:id",
+  authMiddleware(["HR_STAFF", "CHACC"]),
+  getPayrollPeriodDetail
+);
 
-// HR Staff – tạo & cập nhật kỳ lương
-router.post("/", createPayrollPeriod);
-router.put("/:id", updatePayrollPeriod);
-
-// HR Staff – đóng kỳ lương
-router.post("/:id/close", closePayrollPeriod);
-router.delete("/:id", deletePayrollPeriod);
+// Chỉ HR Staff mới được tạo / sửa / đóng / xóa
+router.post("/", authMiddleware(["HR_STAFF"]), createPayrollPeriod);
+router.put("/:id", authMiddleware(["HR_STAFF"]), updatePayrollPeriod);
+router.post("/:id/close", authMiddleware(["HR_STAFF"]), closePayrollPeriod);
+router.delete("/:id", authMiddleware(["HR_STAFF"]), deletePayrollPeriod);
 
 export default router;
