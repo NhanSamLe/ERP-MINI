@@ -10,6 +10,8 @@ export interface SaleOrderLineAttrs {
   unit_price?: number;
   tax_rate_id?: number;
   line_total?: number;
+  line_tax?: number;              // line_total * tax_rate%
+  line_total_after_tax?: number;  // line_total + line_tax
 }
 
 type SaleOrderLineCreation = Optional<SaleOrderLineAttrs, "id">;
@@ -23,6 +25,8 @@ export class SaleOrderLine extends Model<SaleOrderLineAttrs, SaleOrderLineCreati
   public unit_price?: number;
   public tax_rate_id?: number;
   public line_total?: number;
+  public line_tax?: number;
+  public line_total_after_tax?: number;
 }
 
 SaleOrderLine.init(
@@ -35,6 +39,8 @@ SaleOrderLine.init(
     unit_price: { type: DataTypes.DECIMAL(18,2) },
     tax_rate_id: { type: DataTypes.BIGINT },
     line_total: { type: DataTypes.DECIMAL(18,2) },
+    line_tax: { type: DataTypes.DECIMAL(18, 2) },
+    line_total_after_tax: { type: DataTypes.DECIMAL(18, 2) },
   },
   { sequelize, tableName: "sale_order_lines", timestamps: true, createdAt: "created_at", updatedAt: "updated_at" }
 );

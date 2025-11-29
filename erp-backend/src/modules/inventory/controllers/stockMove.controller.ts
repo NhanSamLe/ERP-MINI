@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import { stockMoveService } from "../services/stockMove.service";
-import { StockMoveCreateDTO } from "../dto/stockMoveCreate.dto";
+import {
+  StockMoveCreateDTO,
+  StockMoveTransferDTO,
+} from "../dto/stockMoveCreate.dto";
 
 export const StockMoveController = {
   async getAll(req: Request, res: Response) {
@@ -15,15 +18,28 @@ export const StockMoveController = {
     return res.json(data);
   },
 
-  async createStockMove(req: Request, res: Response) {
+  async createReceiptStockMove(req: Request, res: Response) {
     const body = req.body as StockMoveCreateDTO;
-    const data = await stockMoveService.create(body);
+    const data = await stockMoveService.createReceipt(body);
     return res.status(201).json(data);
   },
 
-  async updateStockMove(req: Request, res: Response) {
+  async createTransferStockMove(req: Request, res: Response) {
+    const body = req.body as StockMoveTransferDTO;
+    const data = await stockMoveService.createTransfer(body);
+    return res.status(201).json(data);
+  },
+
+  async updateReceiptStockMove(req: Request, res: Response) {
     const id = Number(req.params.id);
-    const updated = await stockMoveService.update(id, req.body);
+    const updated = await stockMoveService.updateReceipt(id, req.body);
+    if (!updated) return res.status(404).json({ message: "Not found" });
+    return res.json(updated);
+  },
+
+  async updateTransferStockMove(req: Request, res: Response) {
+    const id = Number(req.params.id);
+    const updated = await stockMoveService.updateTransfer(id, req.body);
     if (!updated) return res.status(404).json({ message: "Not found" });
     return res.json(updated);
   },
@@ -41,12 +57,6 @@ export const StockMoveController = {
       return res.json({ message: "Type parameter is required" });
     }
     const data = await stockMoveService.findByType(type);
-    return res.json(data);
-  },
-
-  async findByWarehouse(req: Request, res: Response) {
-    const warehouseId = Number(req.params.warehouseId);
-    const data = await stockMoveService.findByWarehouse(warehouseId);
     return res.json(data);
   },
 

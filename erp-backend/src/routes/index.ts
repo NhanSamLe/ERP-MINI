@@ -17,7 +17,11 @@ import stockMoveLineRoutes from "../modules/inventory/routes/stockMoveLine.route
 import employeeRoutes from "../modules/hrm/routes/employee.routes";
 import crmRoutes from "../modules/crm/routes";
 import attendanceRoutes from "../modules/hrm/routes/attendance.routes";
+import payrollPeriodRoutes from "../modules/hrm/routes/payrollPeriod.routes";
 const router = express.Router();
+import saleOrderRoutes from "../modules/sales/routes/saleOrder.routes";
+import arInvoiceRoutes from "../modules/sales/routes/arInvoice.routes";
+import arReceiptRoutes from "../modules/sales/routes/arReceipt.routes";const router = express.Router();
 
 router.use("/auth", authRoutes);
 router.use("/product", productRoutes);
@@ -37,5 +41,9 @@ router.use("/stock-move-line", stockMoveLineRoutes);
 router.use("/hrm/employees", employeeRoutes);
 router.use("/crm", crmRoutes);
 router.use("/attendance", attendanceRoutes);
+router.use("/hrm/payroll-period", payrollPeriodRoutes);
 
+router.use("/sales/orders", saleOrderRoutes);
+router.use("/ar/invoices", arInvoiceRoutes);
+router.use("/ar/receipts", arReceiptRoutes);
 export default router;

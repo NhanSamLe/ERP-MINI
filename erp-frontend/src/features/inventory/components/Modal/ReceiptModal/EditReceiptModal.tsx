@@ -6,8 +6,8 @@ import {
   SelectItem,
 } from "../../../../../components/ui/Select";
 import { Button } from "../../../../../components/ui/Button";
-import { Input } from "../../../../../components/ui/Input";
-import { Textarea } from "../../../../../components/ui/Textarea";
+import { Input } from "../../../../../components/ui/input";
+import { Textarea } from "../../../../../components/ui/textarea";
 import { useState, useEffect, useRef } from "react";
 import { PurchaseOrder, PurchaseOrderState } from "../../../../purchase/store";
 import { useDispatch } from "react-redux";
@@ -20,7 +20,7 @@ import {
 import { Product } from "../../../../products/store/product.types";
 import { StockMove } from "../../../store/stock/stockmove/stockMove.types";
 
-export interface LineItem {
+export interface LineReceiptItem {
   id: number | undefined;
   product_id: number;
   name: string;
@@ -30,8 +30,8 @@ export interface LineItem {
   quantity: number;
 }
 
-export interface TransferForm {
-  warehouseFrom: string;
+export interface EditReceiptForm {
+  warehouse: string;
   referenceNo: string;
   move_no: string;
   notes: string;
@@ -40,12 +40,15 @@ export interface TransferForm {
   reference_type: string;
 }
 
-interface TransferModalProps {
+interface EditReceiptModalProps {
   open: boolean;
   warehouses: Array<{ id: number; name: string }>;
   purchaseOrder: PurchaseOrderState;
   data: StockMove | null;
-  onSubmit: (data: { form: TransferForm; lineItems: LineItem[] }) => void;
+  onSubmit: (data: {
+    form: EditReceiptForm;
+    lineItems: LineReceiptItem[];
+  }) => void;
   onClose: () => void;
 }
 
@@ -56,7 +59,7 @@ export default function EditReceiptModal({
   data,
   onSubmit,
   onClose,
-}: TransferModalProps) {
+}: EditReceiptModalProps) {
   const dispatch = useDispatch<AppDispatch>();
 
   const generateMoveNo = (): string => {
@@ -65,8 +68,8 @@ export default function EditReceiptModal({
     return `RC${timestamp}${randomNum}`;
   };
 
-  const [form, setForm] = useState<TransferForm>({
-    warehouseFrom: "",
+  const [form, setForm] = useState<EditReceiptForm>({
+    warehouse: "",
     referenceNo: "",
     move_no: generateMoveNo(),
     notes: "",
@@ -75,7 +78,7 @@ export default function EditReceiptModal({
     reference_type: "purchase_order",
   });
 
-  const [lineItems, setLineItems] = useState<LineItem[]>([]);
+  const [lineItems, setLineItems] = useState<LineReceiptItem[]>([]);
   const [selectedPOId, setSelectedPOId] = useState<string>("");
 
   //
@@ -86,7 +89,7 @@ export default function EditReceiptModal({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const selectedWarehouseName =
-    warehouses.find((w) => w.id === data?.warehouse_id)?.name || "";
+    warehouses.find((w) => w.id === data?.warehouse_to_id)?.name || "";
 
   const selectedPurchaseOrder =
     purchaseOrder.items.find((p) => p.id === data?.reference_id)?.po_no || "";
@@ -98,7 +101,7 @@ export default function EditReceiptModal({
     const ids = data.lines.map((line) => line.product_id);
     Promise.all(ids.map((id) => dispatch(fetchProductByIdThunk(id)).unwrap()))
       .then((fetchedProducts) => {
-        const items: LineItem[] = (data.lines ?? []).map((line) => {
+        const items: LineReceiptItem[] = (data.lines ?? []).map((line) => {
           const product = fetchedProducts.find((p) => p.id === line.product_id);
           return {
             id: line.id,
@@ -122,7 +125,7 @@ export default function EditReceiptModal({
     if (!open || !data) return;
 
     setForm({
-      warehouseFrom: data.warehouse_id?.toString() ?? "",
+      warehouse: data.warehouse_to_id?.toString() ?? "",
       referenceNo: data.reference_id?.toString() ?? "",
       notes: data.note ?? "",
       move_no: data.move_no ?? "",
@@ -214,7 +217,7 @@ export default function EditReceiptModal({
       return;
     }
 
-    if (!form.warehouseFrom) {
+    if (!form.warehouse) {
       toast.error("Please select a Warehouse");
       return;
     }
@@ -265,11 +268,11 @@ export default function EditReceiptModal({
         {/* Warehouse */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="font-medium">Warehouse From *</label>
+            <label className="font-medium">Warehouse *</label>
             <Select
-              value={form.warehouseFrom}
+              value={form.warehouse}
               onValueChange={(v) =>
-                setForm((prev) => ({ ...prev, warehouseFrom: v }))
+                setForm((prev) => ({ ...prev, warehouse: v }))
               }
               defaultLabel={selectedWarehouseName}
             >

@@ -60,6 +60,7 @@ export function applyAssociations() {
     as: "role",
     onDelete: "SET NULL",
   });
+
   // Một Role có nhiều User
   Role.hasMany(User, { foreignKey: "role_id", as: "users" });
 
@@ -76,6 +77,25 @@ export function applyAssociations() {
   Company.hasMany(Branch, { foreignKey: "company_id", as: "branches" });
   // Mỗi Branch thuộc về một Company
   Branch.belongsTo(Company, { foreignKey: "company_id", as: "company" });
+  // ✅ Branch ↔ Attendance
+  Branch.hasMany(Attendance, {
+    foreignKey: "branch_id",
+    as: "attendances",
+  });
+  Attendance.belongsTo(Branch, {
+    foreignKey: "branch_id",
+    as: "branch",
+  });
+
+  // ✅ Employee ↔ Attendance
+  Employee.hasMany(Attendance, {
+    foreignKey: "employee_id",
+    as: "attendances",
+  });
+  Attendance.belongsTo(Employee, {
+    foreignKey: "employee_id",
+    as: "employee", // 👈 alias CHÍNH XÁC là "employee"
+  });
 
   // =====================
   // PRODUCT
@@ -252,6 +272,15 @@ export function applyAssociations() {
     as: "allocations",
   });
 
+SaleOrder.belongsTo(User, { as: "creator", foreignKey: "created_by" });
+SaleOrder.belongsTo(User, { as: "approver", foreignKey: "approved_by" });
+
+ArInvoice.belongsTo(User, { as: "creator", foreignKey: "created_by" });
+ArInvoice.belongsTo(User, { as: "approver", foreignKey: "approved_by" });
+
+ArReceipt.belongsTo(User, { as: "creator", foreignKey: "created_by" });
+ArReceipt.belongsTo(User, { as: "approver", foreignKey: "approved_by" });
+
   // =====================
   // PURCHASE & AP
   // =====================
@@ -302,10 +331,23 @@ export function applyAssociations() {
   // INVENTORY
   // =====================
   // Warehouse ↔ StockMoves
-  Warehouse.hasMany(StockMove, { foreignKey: "warehouse_id", as: "moves" });
+  Warehouse.hasMany(StockMove, {
+    foreignKey: "warehouse_from_id",
+    as: "moves_from",
+  });
   StockMove.belongsTo(Warehouse, {
-    foreignKey: "warehouse_id",
-    as: "warehouse",
+    foreignKey: "warehouse_from_id",
+    as: "warehouse_from",
+  });
+
+  // Warehouse → StockMove (to)
+  Warehouse.hasMany(StockMove, {
+    foreignKey: "warehouse_to_id",
+    as: "moves_to",
+  });
+  StockMove.belongsTo(Warehouse, {
+    foreignKey: "warehouse_to_id",
+    as: "warehouse_to",
   });
 
   // StockMove ↔ Lines
@@ -483,23 +525,4 @@ Activity.belongsTo(Partner, {
   as: "customer",
   constraints: false,
 });
- // Branch ↔ Attendance
-  Branch.hasMany(Attendance, {
-    foreignKey: "branch_id",
-    as: "attendances",
-  });
-  Attendance.belongsTo(Branch, {
-    foreignKey: "branch_id",
-    as: "branch",
-  });
-
-  // Employee ↔ Attendance
-  Employee.hasMany(Attendance, {
-    foreignKey: "employee_id",
-    as: "attendances",
-  });
-  Attendance.belongsTo(Employee, {
-    foreignKey: "employee_id",
-    as: "employee",
-  });
 

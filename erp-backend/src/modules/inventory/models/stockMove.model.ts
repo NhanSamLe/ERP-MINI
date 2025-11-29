@@ -6,9 +6,10 @@ export interface StockMoveAttrs {
   move_no: string;
   move_date: Date;
   type: "receipt" | "issue" | "transfer" | "adjustment";
-  warehouse_id?: number;
+  warehouse_from_id?: number | null;
+  warehouse_to_id?: number | null;
   reference_type?: "purchase_order" | "sale_order" | "transfer" | "adjustment";
-  reference_id?: number;
+  reference_id?: number | null;
   status: "draft" | "posted" | "cancelled";
   note?: string;
 }
@@ -23,13 +24,14 @@ export class StockMove
   public move_no!: string;
   public move_date!: Date;
   public type!: "receipt" | "issue" | "transfer" | "adjustment";
-  public warehouse_id?: number;
+  public warehouse_from_id?: number | null;
+  public warehouse_to_id?: number | null;
   public reference_type?:
     | "purchase_order"
     | "sale_order"
     | "transfer"
     | "adjustment";
-  public reference_id?: number;
+  public reference_id?: number | null;
   public status!: "draft" | "posted" | "cancelled";
   public note?: string;
 }
@@ -43,7 +45,8 @@ StockMove.init(
       type: DataTypes.ENUM("receipt", "issue", "transfer", "adjustment"),
       allowNull: false,
     },
-    warehouse_id: { type: DataTypes.BIGINT },
+    warehouse_from_id: { type: DataTypes.BIGINT, allowNull: true },
+    warehouse_to_id: { type: DataTypes.BIGINT, allowNull: true },
     reference_type: {
       type: DataTypes.ENUM(
         "purchase_order",
@@ -53,7 +56,7 @@ StockMove.init(
       ),
       allowNull: false,
     },
-    reference_id: { type: DataTypes.BIGINT },
+    reference_id: { type: DataTypes.BIGINT, allowNull: true },
     status: {
       type: DataTypes.ENUM("draft", "posted", "cancelled"),
       defaultValue: "draft",

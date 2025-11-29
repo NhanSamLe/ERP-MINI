@@ -11,6 +11,7 @@ import {
 import EmployeeFormModal from "../components/EmployeeFormModal";
 import { useSelector } from "react-redux";
 import { RootState } from "../../../store/store";
+import UserFormModal from "..//components/UserFormModal";
 
 import {
   Plus,
@@ -22,8 +23,10 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function EmployeePage() {
+  const nav = useNavigate();
   const auth = useSelector((state: RootState) => state.auth.user);
   const roleCode = auth?.role?.code;
   const isHR = roleCode === "HR_STAFF";
@@ -38,6 +41,9 @@ export default function EmployeePage() {
   // Phân trang
   const [page, setPage] = useState(1);
   const pageSize = 10;
+  const [openUserForm, setOpenUserForm] = useState(false);
+const [userForEmployee, setUserForEmployee] = useState<EmployeeDTO | null>(null);
+
 
   const load = async () => {
     try {
@@ -60,20 +66,37 @@ export default function EmployeePage() {
   }, [search]);
 
   const handleSubmit = async (data: EmployeeFormPayload) => {
-    try {
-      if (editing?.id) {
-        await updateEmployee(editing.id, data);
-      } else {
-        await createEmployee(data);
-      }
+  try {
+    if (editing?.id) {
+      // UPDATE: giữ nguyên
+      await updateEmployee(editing.id, data);
+      await load();
+      setOpenForm(false);
+      setEditing(null);
+    } else {
+      // CREATE: nhận về employee mới
+      const newEmp = await createEmployee(data);
 
+      // đóng form + reload list
       setOpenForm(false);
       setEditing(null);
       await load();
-    } catch (err: any) {
-      alert(err?.response?.data?.message || "Có lỗi xảy ra");
+
+      // 👉 chuyển sang UserForm, truyền kèm thông tin employee
+      nav("/hrm/users/create", {
+        state: {
+          employeeId: newEmp.id,
+          branchId: newEmp.branch_id,
+          fullName: newEmp.full_name,
+        },
+      });
     }
-  };
+  } catch (err: any) {
+    alert(err?.response?.data?.message || "Có lỗi xảy ra");
+  }
+};
+
+
 
   const handleDelete = async (emp: EmployeeDTO) => {
     if (!emp.id) return;
@@ -327,6 +350,15 @@ export default function EmployeePage() {
         initialData={editing}
         onSubmit={handleSubmit}
       />
+      <UserFormModal
+  open={openUserForm}
+  employee={userForEmployee}
+  onClose={() => {
+    setOpenUserForm(false);
+    setUserForEmployee(null);
+  }}
+/>
+
     </div>
   );
 }

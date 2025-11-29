@@ -21,6 +21,7 @@ import {
   Plus,
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { fetchAllTaxRatesThunk } from "@/features/master-data/store/master-data/tax/tax.thunks";
 
 export default function EditProductPage() {
   const location = useLocation();
@@ -31,6 +32,7 @@ export default function EditProductPage() {
   const productData: Product | undefined = location.state?.product;
 
   const { categories } = useSelector((state: RootState) => state.product);
+  const taxRates = useSelector((state: RootState) => state.tax.Taxes);
 
   const [product, setProduct] = useState<ProductUpdateInput>({
     category_id: 0,
@@ -65,6 +67,7 @@ export default function EditProductPage() {
 
   useEffect(() => {
     dispatch(fetchCategoriesThunk());
+    dispatch(fetchAllTaxRatesThunk());
   }, [dispatch]);
 
   useEffect(() => {
@@ -106,7 +109,6 @@ export default function EditProductPage() {
 
     try {
       setIsSubmitting(true);
-
       const formData = new FormData();
       formData.append("sku", product.sku);
       formData.append("name", product.name);
@@ -117,8 +119,7 @@ export default function EditProductPage() {
       formData.append("barcode", product.barcode || "");
       formData.append("cost_price", product.cost_price?.toString() || "0");
       formData.append("sale_price", product.sale_price?.toString() || "0");
-      formData.append("status", product.status);
-
+      formData.append("status", "active");
       if (product.tax_rate_id) {
         formData.append("tax_rate_id", product.tax_rate_id.toString());
       }
@@ -255,13 +256,21 @@ export default function EditProductPage() {
               onChange={(v) => handleChange("barcode", v)}
               placeholder="Enter barcode"
             />
-            <FormInput
-              label="Tax Rate ID"
-              type="number"
-              value={product.tax_rate_id?.toString() || ""}
-              onChange={(v) => handleChange("tax_rate_id", Number(v))}
-              placeholder="Enter tax rate ID"
-            />
+            <select
+              value={product.tax_rate_id || ""}
+              onChange={(e) =>
+                handleChange("tax_rate_id", Number(e.target.value))
+              }
+              className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-orange-400"
+            >
+              <option value="">-- Select Tax Rate --</option>
+
+              {taxRates.map((rate) => (
+                <option key={rate.id} value={rate.id}>
+                  {rate.name} ({rate.rate}%)
+                </option>
+              ))}
+            </select>
             <FormInput
               label="Cost Price"
               type="number"
@@ -276,24 +285,6 @@ export default function EditProductPage() {
               onChange={(v) => handleChange("sale_price", Number(v))}
               placeholder="0.00"
             />
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Status
-              </label>
-              <select
-                value={product.status}
-                onChange={(e) =>
-                  handleChange(
-                    "status",
-                    e.target.value as "active" | "inactive"
-                  )
-                }
-                className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-orange-400"
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
           </div>
 
           <div>

@@ -24,8 +24,7 @@ export function DataTable<T extends { id: number }>({
   itemsPerPage = 10,
   showSelection = true,
   showActions = true,
-  onRowClick, 
-  
+  onRowClick,
 }: DataTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -33,6 +32,10 @@ export function DataTable<T extends { id: number }>({
     key: string;
     direction: "asc" | "desc";
   } | null>(null);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [data]);
 
   const filteredData = data.filter((item) => {
     if (!searchTerm) return true;
@@ -125,7 +128,7 @@ export function DataTable<T extends { id: number }>({
             {paginatedData.map((item) => (
               <tr
                 key={item.id}
-                onClick={() => onRowClick?.(item)}   // ⭐ CLICK ROW
+                onClick={() => onRowClick?.(item)} // ⭐ CLICK ROW
                 className="hover:bg-orange-50 cursor-pointer transition-colors"
               >
                 {showSelection && (

@@ -18,9 +18,11 @@ export interface EmployeeDTO {
 export interface EmployeeFormPayload {
   emp_code: string;
   full_name: string;
-  gender: "male" | "female" | "other";
-  contract_type: "trial" | "official" | "seasonal";
+  gender: string;
+  contract_type: string;
   base_salary: number;
+  status?: string;
+
   birth_date?: string | null;
   cccd?: string | null;
   hire_date?: string | null;
@@ -28,7 +30,8 @@ export interface EmployeeFormPayload {
   position_id?: number | null;
   bank_account?: string | null;
   bank_name?: string | null;
-  status?: "active" | "inactive";
+
+  branch_id: number | null;   // 👈 THÊM DÒNG NÀY
 }
 
 

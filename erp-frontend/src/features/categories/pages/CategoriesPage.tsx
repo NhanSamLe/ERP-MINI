@@ -25,6 +25,7 @@ import {
 
 export default function CategoriesPage() {
   const dispatch = useDispatch<AppDispatch>();
+  const role = useSelector((state: RootState) => state.auth.user?.role.code);
 
   const { items: categories, loading } = useSelector(
     (state: RootState) => state.category
@@ -197,6 +198,8 @@ export default function CategoriesPage() {
           setSelectedCat(item);
           setConfirmOpen(true);
         }}
+        canEdit={() => true}
+        canDelete={() => role === "ADMIN"}
         searchKeys={["name"]}
       />
 
