@@ -311,10 +311,23 @@ ArReceipt.belongsTo(User, { as: "approver", foreignKey: "approved_by" });
   // INVENTORY
   // =====================
   // Warehouse ↔ StockMoves
-  Warehouse.hasMany(StockMove, { foreignKey: "warehouse_id", as: "moves" });
+  Warehouse.hasMany(StockMove, {
+    foreignKey: "warehouse_from_id",
+    as: "moves_from",
+  });
   StockMove.belongsTo(Warehouse, {
-    foreignKey: "warehouse_id",
-    as: "warehouse",
+    foreignKey: "warehouse_from_id",
+    as: "warehouse_from",
+  });
+
+  // Warehouse → StockMove (to)
+  Warehouse.hasMany(StockMove, {
+    foreignKey: "warehouse_to_id",
+    as: "moves_to",
+  });
+  StockMove.belongsTo(Warehouse, {
+    foreignKey: "warehouse_to_id",
+    as: "warehouse_to",
   });
 
   // StockMove ↔ Lines

@@ -20,7 +20,8 @@ export interface StockMove {
   move_no: string;
   move_date: string;
   type: StockMoveType;
-  warehouse_id: number;
+  warehouse_from_id?: number | null;
+  warehouse_to_id?: number | null;
   reference_type: ReferenceType;
   reference_id: number;
   status: "draft" | "confirmed" | "posted";
@@ -37,6 +38,37 @@ export interface StockMoveCreate {
   warehouse_id: number;
   reference_type: ReferenceType;
   reference_id?: number;
+  note?: string;
+  lines: {
+    product_id: number;
+    quantity: number;
+    uom: string;
+  }[];
+}
+
+export interface StockMoveTransferCreate {
+  move_no: string;
+  move_date: string;
+  type: StockMoveType;
+  warehouse_from_id: number;
+  warehouse_to_id: number;
+  reference_type: ReferenceType;
+  note?: string;
+  lines: {
+    id: number | undefined;
+    product_id: number;
+    quantity: number;
+    uom: string;
+  }[];
+}
+
+export interface StockMoveTransferUpdate {
+  move_no: string;
+  move_date: string;
+  type: StockMoveType;
+  warehouse_from_id: number;
+  warehouse_to_id: number;
+  reference_type: ReferenceType;
   note?: string;
   lines: {
     product_id: number;
@@ -66,4 +98,24 @@ export interface StockMoveState {
   error: string | null;
   items: StockMove[];
   selected: StockMove | null;
+}
+
+export interface LineTransferItem {
+  id: number | undefined;
+  product_id: number;
+  name: string;
+  image: string;
+  sku: string;
+  uom: string;
+  quantity: number;
+}
+
+export interface TransferForm {
+  warehouseFrom: string;
+  warehouseTo: string;
+  move_no: string;
+  move_date: string;
+  type: string;
+  notes: string;
+  reference_type: string;
 }

@@ -2,6 +2,8 @@ import { stockMoveApi } from "../../inventory/api/stockMove.api";
 import {
   StockMove,
   StockMoveCreate,
+  StockMoveTransferCreate,
+  StockMoveTransferUpdate,
   StockMoveUpdate,
 } from "../store/stock/stockmove/stockMove.types";
 
@@ -10,10 +12,17 @@ export const stockMoveService = {
 
   getById: (id: number) => stockMoveApi.getStockMoveById(id),
 
-  create: (data: StockMoveCreate) => stockMoveApi.createStockMove(data),
+  createReceiptStockMove: (data: StockMoveCreate) =>
+    stockMoveApi.createReceiptStockMove(data),
 
-  update: (id: number, data: StockMoveUpdate) =>
-    stockMoveApi.updateStockMove(id, data),
+  createTransferStockMove: (data: StockMoveTransferCreate) =>
+    stockMoveApi.createTransferStockMove(data),
+
+  updateReceiptStockMove: (id: number, data: StockMoveUpdate) =>
+    stockMoveApi.updateReceiptStockMove(id, data),
+
+  updateTransferStockMove: (id: number, data: StockMoveTransferUpdate) =>
+    stockMoveApi.updateTransferStockMove(id, data),
 
   delete: (id: number) => stockMoveApi.deleteStockMove(id),
 

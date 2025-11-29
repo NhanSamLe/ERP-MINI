@@ -1,7 +1,13 @@
 // src/features/stock/store/stock/stockmove/stockMove.thunks.ts
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { stockMoveService } from "../../../services/stockMove.service";
-import { StockMove, StockMoveCreate, StockMoveUpdate } from "./stockMove.types";
+import {
+  StockMove,
+  StockMoveCreate,
+  StockMoveTransferCreate,
+  StockMoveTransferUpdate,
+  StockMoveUpdate,
+} from "./stockMove.types";
 import { getErrorMessage } from "../../../../../utils/ErrorHelper";
 
 export const fetchStockMovesThunk = createAsyncThunk<StockMove[]>(
@@ -26,23 +32,45 @@ export const fetchStockMoveByIdThunk = createAsyncThunk<StockMove, number>(
   }
 );
 
-export const createStockMoveThunk = createAsyncThunk<
+export const createReceiptStockMoveThunk = createAsyncThunk<
   StockMove,
   StockMoveCreate
->("stockMove/create", async (data, { rejectWithValue }) => {
+>("stockMove/createReceipt", async (data, { rejectWithValue }) => {
   try {
-    return await stockMoveService.create(data);
+    return await stockMoveService.createReceiptStockMove(data);
   } catch (error) {
     return rejectWithValue(getErrorMessage(error));
   }
 });
 
-export const updateStockMoveThunk = createAsyncThunk<
+export const createTransferStockMoveThunk = createAsyncThunk<
+  StockMove,
+  StockMoveTransferCreate
+>("stockMove/createTransfer", async (data, { rejectWithValue }) => {
+  try {
+    return await stockMoveService.createTransferStockMove(data);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
+export const updateReceiptStockMoveThunk = createAsyncThunk<
   StockMove,
   { id: number; data: StockMoveUpdate }
->("stockMove/update", async ({ id, data }, { rejectWithValue }) => {
+>("stockMove/updateReceipt", async ({ id, data }, { rejectWithValue }) => {
   try {
-    return await stockMoveService.update(id, data);
+    return await stockMoveService.updateReceiptStockMove(id, data);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
+export const updateTransferStockMoveThunk = createAsyncThunk<
+  StockMove,
+  { id: number; data: StockMoveTransferUpdate }
+>("stockMove/updateTransfer", async ({ id, data }, { rejectWithValue }) => {
+  try {
+    return await stockMoveService.updateTransferStockMove(id, data);
   } catch (error) {
     return rejectWithValue(getErrorMessage(error));
   }
