@@ -99,6 +99,7 @@ const menuItems: MenuItem[] = [
       { name: "Employees", path: "/hrm/employees" },
       { name: "Attendance", path: "/hrm/attendance" },
       { name: "Payroll Period", path: "/hrm/payroll" },
+      { name: "Payroll Items", path: "/hrm/payroll-items" }, 
       { name: "Leave Management", path: "/hrm/leave" },
     ],
   },

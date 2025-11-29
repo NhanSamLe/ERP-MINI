@@ -39,9 +39,29 @@ const PayrollPeriodPage: React.FC = () => {
   );
   const branches = useAppSelector((state) => state.branch.branches || []);
 
-  const [statusFilter, setStatusFilter] = useState<PayrollPeriodStatus | "all">(
-    "all"
-  );
+  // 👇 Lấy thông tin user từ Redux
+  const authUser = useAppSelector((state) => state.auth.user);
+
+  // Hỗ trợ cả 2 kiểu: role = 'HR_STAFF' hoặc role = { code: 'HR_STAFF', ... }
+  const roleCode =
+    (authUser as any)?.role?.code ?? (authUser as any)?.role ?? "UNKNOWN";
+
+  const isHRStaff = roleCode === "HR_STAFF";
+  const isChiefAcc = roleCode === "CHIEF_ACCOUNTANT";
+
+  // Filter trạng thái, Chief Accountant mặc định = "closed"
+  const [statusFilter, setStatusFilter] =
+    useState<PayrollPeriodStatus | "all">(() =>
+      isChiefAcc ? "closed" : "all"
+    );
+
+  // Nếu role load sau (gọi /auth/me), khi role đổi → fix lại filter
+  useEffect(() => {
+    if (isChiefAcc) {
+      setStatusFilter("closed");
+    }
+  }, [isChiefAcc]);
+
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState<PayrollPeriodDTO>(emptyForm);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -152,7 +172,7 @@ const PayrollPeriodPage: React.FC = () => {
   };
 
   const getPageNumbers = () => {
-    const pages = [];
+    const pages: number[] = [];
     const maxVisible = 7;
 
     if (totalPages <= maxVisible) {
@@ -220,12 +240,14 @@ const PayrollPeriodPage: React.FC = () => {
           Quản lý kỳ lương
         </h1>
 
-        <button
-          onClick={openCreateModal}
-          className="bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-orange-700 transition-colors shadow-md"
-        >
-          <Plus className="w-5 h-5" /> Tạo kỳ lương
-        </button>
+        {isHRStaff && (
+          <button
+            onClick={openCreateModal}
+            className="bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-orange-700 transition-colors shadow-md"
+          >
+            <Plus className="w-5 h-5" /> Tạo kỳ lương
+          </button>
+        )}
       </div>
 
       {/* Filter Section */}
@@ -236,9 +258,12 @@ const PayrollPeriodPage: React.FC = () => {
             Trạng thái:
           </label>
           <select
-            className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            className={`border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
+              isChiefAcc ? "bg-gray-100 cursor-not-allowed" : ""
+            }`}
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
+            disabled={isChiefAcc}
           >
             <option value="all">Tất cả</option>
             <option value="open">Mở</option>
@@ -323,35 +348,38 @@ const PayrollPeriodPage: React.FC = () => {
                       {row.end_date?.slice(0, 10)}
                     </td>
                     <td className="px-6 py-4 text-center">
-  {getStatusBadge(row.status ?? "open")}
-</td>
-
+                      {getStatusBadge(row.status ?? "open")}
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => openEditModal(row)}
-                          disabled={row.status === "closed"}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                          title="Chỉnh sửa"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        {row.status !== "closed" && (
-                          <button
-                            onClick={() => handleClosePeriod(row.id!)}
-                            className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                            title="Đóng kỳ"
-                          >
-                            <Lock className="w-4 h-4" />
-                          </button>
+                        {isHRStaff && (
+                          <>
+                            <button
+                              onClick={() => openEditModal(row)}
+                              disabled={row.status === "closed"}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                              title="Chỉnh sửa"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            {row.status !== "closed" && (
+                              <button
+                                onClick={() => handleClosePeriod(row.id!)}
+                                className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                                title="Đóng kỳ"
+                              >
+                                <Lock className="w-4 h-4" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleDeletePeriod(row.id!)}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Xóa"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
                         )}
-                        <button
-                          onClick={() => handleDeletePeriod(row.id!)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Xóa"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
                       </div>
                     </td>
                   </tr>

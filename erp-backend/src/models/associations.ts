@@ -45,7 +45,7 @@ import { MeetingActivity } from "../modules/crm/models/meetingActivity.model";
 import { TaskActivity } from "../modules/crm/models/taskActivity.model";
 import { EmailActivity } from "../modules/crm/models/emailActivity.model";
 import { Attendance } from "../modules/hrm/models/attendance.model";
-
+import { PayrollItem } from "../modules/hrm/models/payrollItem.model";
 
 
 export function applyAssociations() {
@@ -86,7 +86,15 @@ export function applyAssociations() {
     foreignKey: "branch_id",
     as: "branch",
   });
+  Branch.hasMany(PayrollItem, {
+  foreignKey: "branch_id",
+  as: "payrollItems",
+});
 
+PayrollItem.belongsTo(Branch, {
+  foreignKey: "branch_id",
+  as: "branch",
+});
   // ✅ Employee ↔ Attendance
   Employee.hasMany(Attendance, {
     foreignKey: "employee_id",
