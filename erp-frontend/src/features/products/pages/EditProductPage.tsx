@@ -109,7 +109,6 @@ export default function EditProductPage() {
 
     try {
       setIsSubmitting(true);
-
       const formData = new FormData();
       formData.append("sku", product.sku);
       formData.append("name", product.name);

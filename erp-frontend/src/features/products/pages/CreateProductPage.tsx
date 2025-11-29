@@ -41,9 +41,7 @@ export default function CreateProductPage() {
     gallery: [],
   });
 
-  const categories = useSelector(
-    (state: RootState) => state.product.categories
-  );
+  const { categories } = useSelector((state: RootState) => state.product);
 
   const taxRates = useSelector((state: RootState) => state.tax.Taxes);
 
