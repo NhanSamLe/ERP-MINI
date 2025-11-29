@@ -9,90 +9,67 @@ import { Button } from "../../../../../components/ui/Button";
 import { Input } from "../../../../../components/ui/input";
 import { Textarea } from "../../../../../components/ui/textarea";
 import { useState, useEffect, useRef } from "react";
-import { PurchaseOrder, PurchaseOrderState } from "../../../../purchase/store";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "../../../../../store/store";
-import { toast } from "react-toastify";
+import { Product } from "@/features/products/store/product.types";
 import {
   fetchProductByIdThunk,
   searchProductsThunk,
-} from "../../../../products/store/product.thunks";
-import { Product } from "../../../../products/store/product.types";
-import { StockMove } from "../../../store/stock/stockmove/stockMove.types";
+} from "@/features/products/store/product.thunks";
+import { toast } from "react-toastify";
+import {
+  LineTransferItem,
+  StockMove,
+  TransferForm,
+} from "@/features/inventory/store/stock/stockmove/stockMove.types";
 
-export interface LineReceiptItem {
-  id: number | undefined;
-  product_id: number;
-  name: string;
-  image: string;
-  sku: string;
-  uom: string;
-  quantity: number;
-}
-
-export interface EditReceiptForm {
-  warehouse: string;
-  referenceNo: string;
-  move_no: string;
-  notes: string;
-  move_date: string;
-  type: string;
-  reference_type: string;
-}
-
-interface EditReceiptModalProps {
+interface TransferModalProps {
   open: boolean;
   warehouses: Array<{ id: number; name: string }>;
-  purchaseOrder: PurchaseOrderState;
   data: StockMove | null;
   onSubmit: (data: {
-    form: EditReceiptForm;
-    lineItems: LineReceiptItem[];
+    form: TransferForm;
+    lineItems: LineTransferItem[];
   }) => void;
   onClose: () => void;
 }
 
-export default function EditReceiptModal({
+export default function EditTransferModal({
   open,
   warehouses,
-  purchaseOrder,
   data,
   onSubmit,
   onClose,
-}: EditReceiptModalProps) {
+}: TransferModalProps) {
   const dispatch = useDispatch<AppDispatch>();
 
   const generateMoveNo = (): string => {
     const timestamp = Date.now();
     const randomNum = Math.floor(100 + Math.random() * 900);
-    return `RC${timestamp}${randomNum}`;
+    return `TF${timestamp}${randomNum}`;
   };
 
-  const [form, setForm] = useState<EditReceiptForm>({
-    warehouse: "",
-    referenceNo: "",
+  const [form, setForm] = useState<TransferForm>({
+    warehouseFrom: "",
+    warehouseTo: "",
     move_no: generateMoveNo(),
-    notes: "",
     move_date: "",
-    type: "receipt",
-    reference_type: "purchase_order",
+    type: "transfer",
+    notes: "",
+    reference_type: "transfer",
   });
 
-  const [lineItems, setLineItems] = useState<LineReceiptItem[]>([]);
-  const [selectedPOId, setSelectedPOId] = useState<string>("");
-
-  //
+  const [lineItems, setLineItems] = useState<LineTransferItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const selectedWarehouseName =
+  const selectedWarehouseFromName =
+    warehouses.find((w) => w.id === data?.warehouse_from_id)?.name || "";
+  const selectedWarehouseToName =
     warehouses.find((w) => w.id === data?.warehouse_to_id)?.name || "";
-
-  const selectedPurchaseOrder =
-    purchaseOrder.items.find((p) => p.id === data?.reference_id)?.po_no || "";
 
   useEffect(() => {
     if (!open) return;
@@ -101,7 +78,7 @@ export default function EditReceiptModal({
     const ids = data.lines.map((line) => line.product_id);
     Promise.all(ids.map((id) => dispatch(fetchProductByIdThunk(id)).unwrap()))
       .then((fetchedProducts) => {
-        const items: LineReceiptItem[] = (data.lines ?? []).map((line) => {
+        const items: LineTransferItem[] = (data.lines ?? []).map((line) => {
           const product = fetchedProducts.find((p) => p.id === line.product_id);
           return {
             id: line.id,
@@ -125,8 +102,8 @@ export default function EditReceiptModal({
     if (!open || !data) return;
 
     setForm({
-      warehouse: data.warehouse_to_id?.toString() ?? "",
-      referenceNo: data.reference_id?.toString() ?? "",
+      warehouseFrom: data.warehouse_from_id?.toString() ?? "",
+      warehouseTo: data.warehouse_to_id?.toString() ?? "",
       notes: data.note ?? "",
       move_no: data.move_no ?? "",
       move_date: data.move_date ? data.move_date.split("T")[0] : "",
@@ -134,15 +111,8 @@ export default function EditReceiptModal({
       reference_type: data.reference_type ?? "",
     });
 
-    setSelectedPOId(data.reference_id.toString());
     setSearchTerm("");
   }, [open, data]);
-
-  useEffect(() => {
-    if (selectedPOId) {
-      setForm((prev) => ({ ...prev, referenceNo: selectedPOId }));
-    }
-  }, [selectedPOId]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -210,15 +180,16 @@ export default function EditReceiptModal({
       )
     );
   };
+  if (!open) return null;
 
   const handleSubmit = () => {
-    if (!selectedPOId) {
-      toast.error("Please select a Purchase Order");
+    if (!form.warehouseFrom) {
+      toast.error("Please select a WarehouseFrom");
       return;
     }
 
-    if (!form.warehouse) {
-      toast.error("Please select a Warehouse");
+    if (!form.warehouseTo) {
+      toast.error("Please select a WarehouseTo");
       return;
     }
 
@@ -238,12 +209,9 @@ export default function EditReceiptModal({
         return;
       }
     }
-
     const finalForm = {
       ...form,
-      referenceNo: selectedPOId,
     };
-
     console.log("Final Form:", finalForm);
     console.log("Items Lines:", lineItems);
     onSubmit({
@@ -252,86 +220,87 @@ export default function EditReceiptModal({
     });
   };
 
-  if (!open) return null;
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
       <div className="bg-white w-[700px] rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
-        {/* HEADER */}
+        {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Edit Receipt</h2>
+          <h2 className="text-xl font-semibold">Edit Transfer</h2>
           <button onClick={onClose} className="!text-black text-xl font-bold">
             ✖
           </button>
         </div>
 
-        {/* Warehouse */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="font-medium">Warehouse *</label>
+            <label className="font-medium">
+              Warehouse From <span className="text-red-500">*</span>
+            </label>
             <Select
-              value={form.warehouse}
+              value={form.warehouseFrom}
               onValueChange={(v) =>
-                setForm((prev) => ({ ...prev, warehouse: v }))
+                setForm((prev) => ({ ...prev, warehouseFrom: v }))
               }
-              defaultLabel={selectedWarehouseName}
+              defaultLabel={selectedWarehouseFromName}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select" />
               </SelectTrigger>
               <SelectContent>
-                {warehouses.map((w) => (
-                  <SelectItem key={w.id} value={String(w.id)}>
-                    {w.name}
-                  </SelectItem>
-                ))}
+                {warehouses
+                  .filter((w) => String(w.id) !== form.warehouseTo)
+                  .map((w) => (
+                    <SelectItem key={w.id} value={String(w.id)}>
+                      {w.name}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Move Date</label>
-          <Input
-            type="date"
-            value={form.move_date}
-            onChange={(value) => setForm({ ...form, move_date: value })}
-            max={new Date().toISOString().split("T")[0]}
-          />
-        </div>
 
-        {/* PO SELECT */}
-        <div className="mt-4">
-          <label className="font-medium">Purchase Order *</label>
-          <Select
-            value={selectedPOId}
-            onValueChange={setSelectedPOId}
-            defaultLabel={selectedPurchaseOrder}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select Purchase Order" />
-            </SelectTrigger>
-            <SelectContent>
-              {purchaseOrder.items?.map((po: PurchaseOrder) => (
-                <SelectItem key={po.id} value={po.id.toString()}>
-                  {po.po_no}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+          <div>
+            <label className="font-medium">
+              Warehouse To <span className="text-red-500">*</span>
+            </label>
+            <Select
+              value={form.warehouseTo}
+              onValueChange={(v) =>
+                setForm((prev) => ({ ...prev, warehouseTo: v }))
+              }
+              defaultLabel={selectedWarehouseToName}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select" />
+              </SelectTrigger>
+              <SelectContent>
+                {warehouses
+                  .filter((w) => String(w.id) !== form.warehouseFrom)
+                  .map((w) => (
+                    <SelectItem key={w.id} value={String(w.id)}>
+                      {w.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Move Date</label>
+            <Input
+              type="date"
+              value={form.move_date}
+              onChange={(value) => setForm({ ...form, move_date: value })}
+              max={new Date().toISOString().split("T")[0]}
+            />
+          </div>
 
-        {/* Reference Number */}
-        <div className="mt-4">
-          <label className="font-medium">Reference Number</label>
-          <Input value={form.referenceNo} disabled />
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Move Number
+            </label>
+            <Input value={form.move_no} disabled />
+          </div>
         </div>
-
-        <div className="mt-4">
-          <label className="font-medium">Move Number</label>
-          <Input value={form.move_no} disabled />
-        </div>
-
-        {/* PRODUCT SEARCH */}
+        {/* Product search */}
         <div className="mt-4 relative" ref={dropdownRef}>
           <label className="font-medium">Product *</label>
 
@@ -374,8 +343,7 @@ export default function EditReceiptModal({
             </div>
           )}
         </div>
-
-        {/* TABLE */}
+        {/* Product table */}
         <div className="mt-3 border rounded-lg overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gray-100 text-left">
@@ -387,6 +355,7 @@ export default function EditReceiptModal({
                 <th className="p-2 w-[60px]"></th>
               </tr>
             </thead>
+
             <tbody>
               {lineItems.length > 0 ? (
                 lineItems.map((p) => (
@@ -394,12 +363,14 @@ export default function EditReceiptModal({
                     <td className="p-2 flex items-center gap-3">
                       <img
                         src={p.image}
+                        alt=""
                         className="w-10 h-10 rounded object-cover"
                       />
                       {p.name}
                     </td>
                     <td className="p-2">{p.sku}</td>
                     <td className="p-2">{p.uom}</td>
+                    <td className="p-2">{p.quantity}</td>
                     <td className="p-2">
                       <input
                         type="number"
@@ -419,7 +390,7 @@ export default function EditReceiptModal({
                         className="text-red-500 hover:underline"
                         onClick={() =>
                           setLineItems((prev) =>
-                            prev.filter((x) => x.id !== p.id)
+                            prev.filter((x) => x.product_id !== p.product_id)
                           )
                         }
                       >
@@ -430,7 +401,10 @@ export default function EditReceiptModal({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="p-4 text-center text-gray-500">
+                  <td
+                    colSpan={5}
+                    className="p-4 text-center text-gray-500 italic"
+                  >
                     No products selected
                   </td>
                 </tr>
@@ -439,18 +413,17 @@ export default function EditReceiptModal({
           </table>
         </div>
 
-        {/* Notes */}
         <div className="mt-4">
           <label className="font-medium">Notes</label>
           <Textarea
             value={form.notes}
-            onChange={(v) => setForm((prev) => ({ ...prev, notes: v }))}
+            onChange={(value) => setForm((prev) => ({ ...prev, notes: value }))}
             placeholder="Notes"
             className="min-h-[80px]"
           />
         </div>
 
-        {/* FOOTER */}
+        {/* Footer */}
         <div className="flex justify-end gap-3 mt-6">
           <Button variant="secondary" onClick={onClose}>
             Cancel

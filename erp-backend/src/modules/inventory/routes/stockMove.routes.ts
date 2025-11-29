@@ -7,15 +7,29 @@ const router = Router();
 router.get("/", authMiddleware(["WHSTAFF"]), StockMoveController.getAll);
 router.get("/:id", authMiddleware(["WHSTAFF"]), StockMoveController.getById);
 router.post(
-  "/",
+  "/receipt",
   authMiddleware(["WHSTAFF"]),
-  StockMoveController.createStockMove
+  StockMoveController.createReceiptStockMove
 );
+
+router.post(
+  "/transfer",
+  authMiddleware(["WHSTAFF"]),
+  StockMoveController.createTransferStockMove
+);
+
 router.put(
-  "/:id",
+  "/receipt/:id",
   authMiddleware(["WHSTAFF"]),
-  StockMoveController.updateStockMove
+  StockMoveController.updateReceiptStockMove
 );
+
+router.put(
+  "/transfer/:id",
+  authMiddleware(["WHSTAFF"]),
+  StockMoveController.updateTransferStockMove
+);
+
 router.delete(
   "/:id",
   authMiddleware(["WHSTAFF"]),
@@ -26,11 +40,6 @@ router.get(
   "/type/:type",
   authMiddleware(["WHSTAFF"]),
   StockMoveController.findByTypeStockMove
-);
-router.get(
-  "/warehouse/:warehouseId",
-  authMiddleware(["WHSTAFF"]),
-  StockMoveController.findByWarehouse
 );
 router.get(
   "/status/:status",

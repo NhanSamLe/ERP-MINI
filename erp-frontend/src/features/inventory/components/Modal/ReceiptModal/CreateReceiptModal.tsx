@@ -6,8 +6,8 @@ import {
   SelectItem,
 } from "../../../../../components/ui/Select";
 import { Button } from "../../../../../components/ui/Button";
-import { Input } from "../../../../../components/ui/Input";
-import { Textarea } from "../../../../../components/ui/Textarea";
+import { Input } from "../../../../../components/ui/input";
+import { Textarea } from "../../../../../components/ui/textarea";
 import { useState, useEffect, useRef } from "react";
 import {
   fetchPurchaseOrderByStatus,
@@ -28,8 +28,8 @@ export interface ProductItem {
   quantity: number;
 }
 
-export interface TransferForm {
-  warehouseFrom: string;
+export interface CreateReceiptForm {
+  warehouse: string;
   referenceNo: string;
   move_no: string;
   notes: string;
@@ -38,10 +38,13 @@ export interface TransferForm {
   reference_type: string;
 }
 
-interface TransferModalProps {
+interface CreateReceiptModalProps {
   open: boolean;
   warehouses: Array<{ id: number; name: string }>;
-  onSubmit: (data: { form: TransferForm; products: ProductItem[] }) => void;
+  onSubmit: (data: {
+    form: CreateReceiptForm;
+    products: ProductItem[];
+  }) => void;
   onClose: () => void;
 }
 
@@ -50,7 +53,7 @@ export default function CreateReceiptModal({
   warehouses,
   onSubmit,
   onClose,
-}: TransferModalProps) {
+}: CreateReceiptModalProps) {
   const dispatch = useDispatch<AppDispatch>();
   const purchaseOrder = useSelector((state: RootState) => state.purchaseOrder);
 
@@ -60,8 +63,8 @@ export default function CreateReceiptModal({
     return `RC${timestamp}${randomNum}`;
   };
 
-  const [form, setForm] = useState<TransferForm>({
-    warehouseFrom: "",
+  const [form, setForm] = useState<CreateReceiptForm>({
+    warehouse: "",
     referenceNo: "",
     move_no: generateMoveNo(),
     notes: "",
@@ -87,7 +90,7 @@ export default function CreateReceiptModal({
   useEffect(() => {
     if (!open) return;
     setForm({
-      warehouseFrom: "",
+      warehouse: "",
       referenceNo: "",
       notes: "",
       move_no: generateMoveNo(),
@@ -175,7 +178,7 @@ export default function CreateReceiptModal({
       return;
     }
 
-    if (!form.warehouseFrom) {
+    if (!form.warehouse) {
       toast.error("Please select a Warehouse");
       return;
     }
@@ -230,9 +233,9 @@ export default function CreateReceiptModal({
         {/* Warehouse */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="font-medium">Warehouse From *</label>
+            <label className="font-medium">Warehouse *</label>
             <Select
-              value={form.warehouseFrom}
+              value={form.warehouse}
               onValueChange={(v) =>
                 setForm((prev) => ({ ...prev, warehouseFrom: v }))
               }

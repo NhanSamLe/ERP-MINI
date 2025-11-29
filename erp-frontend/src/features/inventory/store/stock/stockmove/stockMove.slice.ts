@@ -2,9 +2,11 @@ import { createSlice } from "@reduxjs/toolkit";
 import {
   fetchStockMovesThunk,
   fetchStockMoveByIdThunk,
-  createStockMoveThunk,
-  updateStockMoveThunk,
+  createReceiptStockMoveThunk,
+  updateReceiptStockMoveThunk,
   deleteStockMoveThunk,
+  createTransferStockMoveThunk,
+  updateTransferStockMoveThunk,
 } from "./stockMove.thunks";
 
 import { StockMoveState } from "./stockMove.types";
@@ -52,12 +54,21 @@ export const stockMoveSlice = createSlice({
     });
 
     // ---- CREATE ----
-    builder.addCase(createStockMoveThunk.fulfilled, (state, action) => {
+    builder.addCase(createReceiptStockMoveThunk.fulfilled, (state, action) => {
+      state.items.push(action.payload);
+    });
+
+    builder.addCase(createTransferStockMoveThunk.fulfilled, (state, action) => {
       state.items.push(action.payload);
     });
 
     // ---- UPDATE ----
-    builder.addCase(updateStockMoveThunk.fulfilled, (state, action) => {
+    builder.addCase(updateReceiptStockMoveThunk.fulfilled, (state, action) => {
+      const index = state.items.findIndex((m) => m.id === action.payload.id);
+      if (index !== -1) state.items[index] = action.payload;
+    });
+
+    builder.addCase(updateTransferStockMoveThunk.fulfilled, (state, action) => {
       const index = state.items.findIndex((m) => m.id === action.payload.id);
       if (index !== -1) state.items[index] = action.payload;
     });
