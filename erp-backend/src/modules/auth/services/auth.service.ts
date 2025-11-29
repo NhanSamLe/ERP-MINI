@@ -179,7 +179,7 @@ export async function login(username: string, password: string) {
     role: user.role?.code ?? "UNKNOWN",
     ...(user.full_name ? { fullName: user.full_name } : {}),
     ...(user.email ? { email: user.email } : {}),
-    ...(user.branch_id ? { branchId: user.branch_id.toString() } : {}),
+    ...(user.branch_id ? { branch_id: user.branch_id } : {}),
   };
   const token = generateAccessToken(payload);
   const refreshToken = generateRefreshToken(payload);

@@ -22,6 +22,22 @@ export interface StockMoveCreateDTO {
   lines: StockMoveLineDTO[];
 }
 
+export interface StockMoveTransferDTO {
+  move_no: string;
+  move_date: string;
+  type: StockMoveType;
+  warehouse_from_id: number;
+  warehouse_to_id: number;
+  reference_type: ReferenceType;
+  note?: string;
+  lines: {
+    id: number | undefined;
+    product_id: number;
+    quantity: number;
+    uom: string;
+  }[];
+}
+
 export interface StockMoveUpdateDTO {
   move_no: string;
   move_date: string;

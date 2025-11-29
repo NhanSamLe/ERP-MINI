@@ -16,6 +16,7 @@ export const authMiddleware = (requiredRoles: string[]) => (req: AuthRequest, re
   }
   try {
     const decoded = jwt.verify(token, env.jwt.secret);
+      console.log("DECODED TOKEN --->", decoded);
      if (typeof decoded === 'object' && decoded !== null && 'id' in decoded && 'role' in decoded) {
       if (requiredRoles && requiredRoles.length > 0 && !requiredRoles.includes((decoded as any).role)) {
           return res.status(403).json({ message: "Forbidden: insufficient role" });

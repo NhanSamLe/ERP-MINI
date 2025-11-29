@@ -1,6 +1,7 @@
 import { Product } from "../models/product.model";
 import { ProductCategory } from "../models/productCategory.model";
 import { ProductImage } from "../models/productImage.model";
+import { TaxRate } from "../../../models";
 import {
   uploadBufferToCloudinary,
   deleteFromCloudinary,
@@ -19,6 +20,11 @@ export const productService = {
           as: "images",
           attributes: ["id", "image_url", "image_public_id"],
         },
+        {
+        model: TaxRate,
+        as: "taxRate",   // ✔ alias đúng
+        attributes: ["id", "name", "rate"],
+      },
       ],
       order: [["id", "DESC"]],
     });
@@ -33,6 +39,11 @@ export const productService = {
           as: "images",
           attributes: ["id", "image_url", "image_public_id"],
         },
+        {
+        model: TaxRate,
+        as: "taxRate",   // ✔ alias đúng
+        attributes: ["id", "name", "rate"],
+      },
       ],
       order: [["id", "DESC"]],
     });

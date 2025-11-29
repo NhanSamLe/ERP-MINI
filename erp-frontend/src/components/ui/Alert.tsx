@@ -16,7 +16,9 @@ export function Alert({ type, message, onClose, className = "" }: AlertProps) {
 
   return (
     <div className={`p-4 border rounded-lg flex items-center justify-between ${styles[type]} ${className}`}>
-      <p className="text-sm font-medium">{message}</p>
+      <div className="text-sm font-medium">
+        {message}
+      </div>
       {onClose && (
         <button
           onClick={onClose}

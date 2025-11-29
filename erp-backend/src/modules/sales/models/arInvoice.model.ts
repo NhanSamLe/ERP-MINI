@@ -10,6 +10,13 @@ export interface ArInvoiceAttrs {
   total_tax?: number;
   total_after_tax?: number;
   status: "draft" | "posted" | "paid" | "cancelled";
+  approval_status: "draft" | "waiting_approval" | "approved" | "rejected";
+  created_by: number;
+  approved_by?: number | null;
+  submitted_at?: Date | null;
+  approved_at?: Date | null;
+  reject_reason?: string | null;
+  branch_id: number;
 }
 
 type ArInvoiceCreation = Optional<ArInvoiceAttrs, "id" | "status">;
@@ -23,6 +30,14 @@ export class ArInvoice extends Model<ArInvoiceAttrs, ArInvoiceCreation> implemen
   public total_tax?: number;
   public total_after_tax?: number;
   public status!: "draft" | "posted" | "paid" | "cancelled";
+  public approval_status!: "draft" | "waiting_approval" | "approved" | "rejected";
+  public created_by!: number;
+  public approved_by?: number | null;
+  public submitted_at?: Date | null;
+  public approved_at?: Date | null;
+  public reject_reason?: string | null;
+  public branch_id!: number;
+
 }
 
 ArInvoice.init(
@@ -35,6 +50,16 @@ ArInvoice.init(
     total_tax: { type: DataTypes.DECIMAL(18,2) },
     total_after_tax: { type: DataTypes.DECIMAL(18,2) },
     status: { type: DataTypes.ENUM("draft","posted","paid","cancelled"), defaultValue: "draft" },
+    approval_status: {
+      type: DataTypes.ENUM("draft", "waiting_approval", "approved", "rejected"),
+      defaultValue: "draft",
+    },
+    created_by: { type: DataTypes.BIGINT, allowNull: false },
+    approved_by: { type: DataTypes.BIGINT },
+    submitted_at: { type: DataTypes.DATE },
+    approved_at: { type: DataTypes.DATE },
+    reject_reason: { type: DataTypes.STRING(255) },
+     branch_id: { type: DataTypes.BIGINT, allowNull: false },
   },
   { sequelize, tableName: "ar_invoices", timestamps: true, createdAt: "created_at", updatedAt: "updated_at" }
 );

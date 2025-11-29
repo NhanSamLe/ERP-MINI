@@ -1,3 +1,4 @@
+
 export interface Product {
   id: number;
   category_id?: number;
@@ -16,6 +17,11 @@ export interface Product {
   created_at: string;
   updated_at?: string;
   images?: ProductImage[];
+  taxRate?: {
+    id: number;
+    name: string;
+    rate: number;
+  } | null;
 }
 
 export interface ProductCategory {

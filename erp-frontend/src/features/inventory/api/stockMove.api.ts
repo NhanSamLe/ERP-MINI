@@ -2,6 +2,8 @@ import axiosClient from "../../../api/axiosClient";
 import {
   StockMove,
   StockMoveCreate,
+  StockMoveTransferCreate,
+  StockMoveTransferUpdate,
   StockMoveUpdate,
 } from "../store/stock/stockmove/stockMove.types";
 
@@ -16,16 +18,31 @@ export const stockMoveApi = {
     return res.data;
   },
 
-  createStockMove: async (data: StockMoveCreate): Promise<StockMove> => {
-    const res = await axiosClient.post("/stock-move", data);
+  createReceiptStockMove: async (data: StockMoveCreate): Promise<StockMove> => {
+    const res = await axiosClient.post("/stock-move/receipt", data);
     return res.data;
   },
 
-  updateStockMove: async (
+  createTransferStockMove: async (
+    data: StockMoveTransferCreate
+  ): Promise<StockMove> => {
+    const res = await axiosClient.post("/stock-move/transfer", data);
+    return res.data;
+  },
+
+  updateReceiptStockMove: async (
     id: number,
     data: StockMoveUpdate
   ): Promise<StockMove> => {
-    const res = await axiosClient.put(`/stock-move/${id}`, data);
+    const res = await axiosClient.put(`/stock-move/receipt/${id}`, data);
+    return res.data;
+  },
+
+  updateTransferStockMove: async (
+    id: number,
+    data: StockMoveTransferUpdate
+  ): Promise<StockMove> => {
+    const res = await axiosClient.put(`/stock-move/transfer/${id}`, data);
     return res.data;
   },
 

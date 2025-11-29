@@ -19,6 +19,9 @@ import { stockBalanceReducer } from "../features/inventory/store";
 import { warehouseReducer } from "../features/inventory/store";
 import { stockMoveReducer } from "../features/inventory/store";
 import { leadReducer, opportunityReducer, activityReducer } from "../features/crm/store";
+import saleOrderReducer from "@/features/sales/store/saleOrder.slice";
+import invoiceReducer from "@/features/sales/store/invoice.slice";
+import receiptReducer from "@/features/sales/store/receipt.slice";
 import attendanceReducer from "../features/hrm/store/attendance/attendance.slice";
 import payrollPeriodReducer from "../features/hrm/store/payrollPeriod/payrollPeriod.slice";
 
@@ -44,6 +47,9 @@ const rootReducer = combineReducers({
   activity: activityReducer,
   attendance: attendanceReducer,
   payrollPeriod: payrollPeriodReducer,
+  saleOrder: saleOrderReducer,
+  invoice: invoiceReducer,
+  receipt: receiptReducer
 });
 
 export default rootReducer;
