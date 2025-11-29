@@ -249,6 +249,15 @@ export function applyAssociations() {
     as: "allocations",
   });
 
+SaleOrder.belongsTo(User, { as: "creator", foreignKey: "created_by" });
+SaleOrder.belongsTo(User, { as: "approver", foreignKey: "approved_by" });
+
+ArInvoice.belongsTo(User, { as: "creator", foreignKey: "created_by" });
+ArInvoice.belongsTo(User, { as: "approver", foreignKey: "approved_by" });
+
+ArReceipt.belongsTo(User, { as: "creator", foreignKey: "created_by" });
+ArReceipt.belongsTo(User, { as: "approver", foreignKey: "approved_by" });
+
   // =====================
   // PURCHASE & AP
   // =====================

@@ -4,5 +4,5 @@ export interface JwtPayload {
   role: string;
   fullName?: string;
   email?: string;
-  branchId?: string;
+  branch_id?: number;
 }

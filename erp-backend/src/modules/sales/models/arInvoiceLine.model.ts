@@ -10,6 +10,8 @@ export interface ArInvoiceLineAttrs {
   unit_price?: number;
   tax_rate_id?: number;
   line_total?: number;
+  line_tax?: number;              // tiền VAT từng dòng
+  line_total_after_tax?: number;  // sau thuế
 }
 
 type ArInvoiceLineCreation = Optional<ArInvoiceLineAttrs, "id">;
@@ -23,6 +25,8 @@ export class ArInvoiceLine extends Model<ArInvoiceLineAttrs, ArInvoiceLineCreati
   public unit_price?: number;
   public tax_rate_id?: number;
   public line_total?: number;
+  public line_tax?: number;
+  public line_total_after_tax?: number;
 }
 
 ArInvoiceLine.init(
@@ -35,6 +39,8 @@ ArInvoiceLine.init(
     unit_price: { type: DataTypes.DECIMAL(18,2) },
     tax_rate_id: { type: DataTypes.BIGINT },
     line_total: { type: DataTypes.DECIMAL(18,2) },
+    line_tax: { type: DataTypes.DECIMAL(18, 2) },
+    line_total_after_tax: { type: DataTypes.DECIMAL(18, 2) },
   },
   { sequelize, tableName: "ar_invoice_lines", timestamps: true, createdAt: "created_at", updatedAt: "updated_at" }
 );

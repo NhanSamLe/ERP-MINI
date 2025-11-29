@@ -15,6 +15,9 @@ import organizationRoutes from "../modules/hrm/routes/organization.routes";
 import stockMoveRoutes from "../modules/inventory/routes/stockMove.routes";
 import stockMoveLineRoutes from "../modules/inventory/routes/stockMoveLine.routes";
 import crmRoutes from "../modules/crm/routes";
+import saleOrderRoutes from "../modules/sales/routes/saleOrder.routes";
+import arInvoiceRoutes from "../modules/sales/routes/arInvoice.routes";
+import arReceiptRoutes from "../modules/sales/routes/arReceipt.routes";
 const router = express.Router();
 
 router.use("/auth", authRoutes);
@@ -33,4 +36,7 @@ router.use("/hrm/organization", organizationRoutes);
 router.use("/stock-move", stockMoveRoutes);
 router.use("/stock-move-line", stockMoveLineRoutes);
 router.use("/crm", crmRoutes);
+router.use("/sales/orders", saleOrderRoutes);
+router.use("/ar/invoices", arInvoiceRoutes);
+router.use("/ar/receipts", arReceiptRoutes);
 export default router;

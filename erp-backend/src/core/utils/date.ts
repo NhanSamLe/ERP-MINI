@@ -1,5 +1,4 @@
 import dayjs from "dayjs";
-
 //  Format ngày thành chuỗi
 export const formatDate = (date: Date | string, format = "DD/MM/YYYY"): string => {
   return dayjs(date).format(format);
@@ -16,3 +15,4 @@ export const endOfMonth = (date: Date | string = new Date()): Date => {
 export const addDays = (date: Date | string, days: number): Date => {
   return dayjs(date).add(days, "day").toDate();
 };
+

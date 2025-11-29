@@ -33,7 +33,7 @@ export function refreshAccessToken(refreshToken: string): string | null {
       role: decoded.role,
         ...(decoded.fullName ? { fullName: decoded.fullName } : {}),
         ...(decoded.email ? { email: decoded.email } : {}),
-        ...(decoded.branchId ? { branchId: decoded.branchId } : {}),
+        ...(decoded.branch_id ? { branch_id: decoded.branch_id } : {}),
     });
   } catch (err) {
     return null;

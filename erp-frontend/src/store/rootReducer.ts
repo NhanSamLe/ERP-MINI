@@ -19,6 +19,9 @@ import { stockBalanceReducer } from "../features/inventory/store";
 import { warehouseReducer } from "../features/inventory/store";
 import { stockMoveReducer } from "../features/inventory/store";
 import { leadReducer, opportunityReducer, activityReducer } from "../features/crm/store";
+import saleOrderReducer from "@/features/sales/store/saleOrder.slice";
+import invoiceReducer from "@/features/sales/store/invoice.slice";
+import receiptReducer from "@/features/sales/store/receipt.slice";
 const rootReducer = combineReducers({
   auth: authReducer,
   user: userReducer,
@@ -39,7 +42,9 @@ const rootReducer = combineReducers({
   lead: leadReducer,
   opportunity: opportunityReducer,
   activity: activityReducer,
-
+  saleOrder: saleOrderReducer,
+  invoice: invoiceReducer,
+  receipt: receiptReducer
 });
 
 export default rootReducer;
