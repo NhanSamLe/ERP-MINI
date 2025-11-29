@@ -19,4 +19,10 @@ router.put("/users",authMiddleware(["ADMIN"]), authController.updateUser);
 router.delete("/users/:id",authMiddleware(["ADMIN"]), authController.deleteUser);
 router.get("/users",authMiddleware(["ADMIN"]), authController.getAllUsers);
 router.get("/roles",authMiddleware(["ADMIN"]), authController.getAllRoles);
+router.get(
+  "/me-attendance",
+  authMiddleware([]),
+  authController.getMeAttendance
+);
+
 export default router;

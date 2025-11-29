@@ -271,6 +271,34 @@ export async function updateUserInfo(
   await user.save();
   return { message: "User info updated successfully", user };
 }
+// ✅ DÙNG CHO CHẤM CÔNG 
+export async function getUserForAttendance(userId: number) {
+   const user = await model.User.findByPk(userId, {
+    include: [
+      { model: model.Role, as: "role" },
+      {
+        model: model.Branch,
+        as: "branch",
+        attributes: ["id", "code", "name", "address"],
+      },
+    ],
+    attributes: [
+      "id",
+      "username",
+      "full_name",
+      "email",
+      "phone",
+      "avatar_url",
+      "is_active",
+      "employee_id",      // 👈 thêm dòng này
+    ],
+  });
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+  return user;
+}
 
 
 

@@ -22,6 +22,7 @@ import { leadReducer, opportunityReducer, activityReducer } from "../features/cr
 import saleOrderReducer from "@/features/sales/store/saleOrder.slice";
 import invoiceReducer from "@/features/sales/store/invoice.slice";
 import receiptReducer from "@/features/sales/store/receipt.slice";
+import attendanceReducer from "../features/hrm/store/attendance/attendance.slice";
 const rootReducer = combineReducers({
   auth: authReducer,
   user: userReducer,
@@ -42,6 +43,7 @@ const rootReducer = combineReducers({
   lead: leadReducer,
   opportunity: opportunityReducer,
   activity: activityReducer,
+  attendance: attendanceReducer,
   saleOrder: saleOrderReducer,
   invoice: invoiceReducer,
   receipt: receiptReducer

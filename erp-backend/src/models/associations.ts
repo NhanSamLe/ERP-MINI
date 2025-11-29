@@ -44,6 +44,9 @@ import { CallActivity } from "../modules/crm/models/callActivity.model";
 import { MeetingActivity } from "../modules/crm/models/meetingActivity.model";
 import { TaskActivity } from "../modules/crm/models/taskActivity.model";
 import { EmailActivity } from "../modules/crm/models/emailActivity.model";
+import { Attendance } from "../modules/hrm/models/attendance.model";
+
+
 
 export function applyAssociations() {
   // =====================
@@ -489,3 +492,23 @@ Activity.belongsTo(Partner, {
   as: "customer",
   constraints: false,
 });
+ // Branch ↔ Attendance
+  Branch.hasMany(Attendance, {
+    foreignKey: "branch_id",
+    as: "attendances",
+  });
+  Attendance.belongsTo(Branch, {
+    foreignKey: "branch_id",
+    as: "branch",
+  });
+
+  // Employee ↔ Attendance
+  Employee.hasMany(Attendance, {
+    foreignKey: "employee_id",
+    as: "attendances",
+  });
+  Attendance.belongsTo(Employee, {
+    foreignKey: "employee_id",
+    as: "employee",
+  });
+
