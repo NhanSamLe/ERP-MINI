@@ -98,7 +98,7 @@ const menuItems: MenuItem[] = [
       { name: "Chart", path: "" },
       { name: "Employees", path: "/hrm/employees" },
       { name: "Attendance", path: "/hrm/attendance" },
-      { name: "Payroll", path: "/hrm/payroll" },
+      { name: "Payroll Period", path: "/hrm/payroll" },
       { name: "Leave Management", path: "/hrm/leave" },
     ],
   },

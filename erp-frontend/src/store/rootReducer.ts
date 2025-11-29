@@ -20,6 +20,7 @@ import { warehouseReducer } from "../features/inventory/store";
 import { stockMoveReducer } from "../features/inventory/store";
 import { leadReducer, opportunityReducer, activityReducer } from "../features/crm/store";
 import attendanceReducer from "../features/hrm/store/attendance/attendance.slice";
+import payrollPeriodReducer from "../features/hrm/store/payrollPeriod/payrollPeriod.slice";
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -42,7 +43,7 @@ const rootReducer = combineReducers({
   opportunity: opportunityReducer,
   activity: activityReducer,
   attendance: attendanceReducer,
-
+  payrollPeriod: payrollPeriodReducer,
 });
 
 export default rootReducer;

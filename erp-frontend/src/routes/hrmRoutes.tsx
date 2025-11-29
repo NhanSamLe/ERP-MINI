@@ -7,6 +7,7 @@ import AttendancePage from "../features/hrm/page/AttendancePage";
 import MyAttendancePage from "../features/hrm/page/MyAttendancePage";
 import AttendanceGuard from "../features/hrm/page/AttendanceGuard";
 import UserFormPage from "../features/hrm/page/UserFormPage";
+import PayrollPeriodPage from "../features/hrm/page/PayrollPeriodPage";
 
 const hrmRoutes: RouteObject[] = [
   {
@@ -37,6 +38,10 @@ const hrmRoutes: RouteObject[] = [
   {
     path: "/hrm/users/create",
     element: <UserFormPage />,
+  },
+  {
+    path: "/hrm/payroll",
+    element: <PayrollPeriodPage />,
   },
   // ví dụ sau này:
   // { path: "/hrm/position", element: <PositionPage /> },
