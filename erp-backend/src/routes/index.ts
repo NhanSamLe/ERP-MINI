@@ -22,6 +22,7 @@ import saleOrderRoutes from "../modules/sales/routes/saleOrder.routes";
 import arInvoiceRoutes from "../modules/sales/routes/arInvoice.routes";
 import arReceiptRoutes from "../modules/sales/routes/arReceipt.routes";
 import payrollItemRoutes from "../modules/hrm/routes/payrollItem.routes";
+import payrollRunRoutes from "../modules/hrm/routes/payrollRun.routes";
 const router = express.Router();
 
 router.use("/auth", authRoutes);
@@ -48,4 +49,5 @@ router.use("/sales/orders", saleOrderRoutes);
 router.use("/ar/invoices", arInvoiceRoutes);
 router.use("/ar/receipts", arReceiptRoutes);
 router.use("/hrm/payroll-items", payrollItemRoutes);
+router.use("/hrm/payroll-runs", payrollRunRoutes);
 export default router;
