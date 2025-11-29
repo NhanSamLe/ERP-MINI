@@ -41,6 +41,7 @@ import EditReceiptModal, {
 import { fetchPurchaseOrderByStatus } from "../../purchase/store/purchaseOrder.thunks";
 import EditTransferModal from "../components/Modal/TransferModal/EditTransferModal";
 import CreateTransferModal from "../components/Modal/TransferModal/CreateTransferModal";
+import { Trash2 } from "lucide-react";
 
 export default function StockMovePages() {
   const dispatch = useDispatch<AppDispatch>();
@@ -74,6 +75,9 @@ export default function StockMovePages() {
   const [selectedStockMove, setSelectedStockMove] = useState<StockMove | null>(
     null
   );
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     dispatch(fetchStockMovesThunk());
@@ -358,6 +362,19 @@ export default function StockMovePages() {
     }
   };
 
+  const handleDelete = async () => {
+    try {
+      setDeleting(true);
+      toast.success("Deleted successfully!");
+      setConfirmOpen(false);
+    } catch (err) {
+      console.log(err);
+      toast.error("Delete failed!");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className="p-8">
       <div className="mb-6">
@@ -435,11 +452,43 @@ export default function StockMovePages() {
                 toast.warn("Unknown stock move type:");
             }
           }}
-          onDelete={(item) => console.log("Delete", item)}
+          onDelete={(item) => {
+            setSelectedStockMove(item);
+            setConfirmOpen(true);
+          }}
           canEdit={(item) => item.status === "draft"}
           canDelete={(item) => item.status === "draft"}
         />
       </div>
+      {confirmOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-lg p-6 w-96 text-center">
+            <Trash2 className="w-10 h-10 text-red-500 mx-auto mb-3" />
+            <h2 className="text-lg font-semibold mb-2">
+              Are you sure you want to delete this Stock move?
+            </h2>
+            <p className="text-sm text-gray-500 mb-5">
+              This action cannot be undone.
+            </p>
+            <div className="flex justify-center gap-3">
+              <Button
+                onClick={() => setConfirmOpen(false)}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm"
+                disabled={deleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleDelete}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm"
+                disabled={deleting}
+              >
+                {deleting ? "Deleting..." : "Yes, Delete"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       <CreateTransferModal
         open={openCreateTransferModal}
         warehouses={warehouses}
