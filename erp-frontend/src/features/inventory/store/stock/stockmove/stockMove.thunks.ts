@@ -3,6 +3,8 @@ import { createAsyncThunk } from "@reduxjs/toolkit";
 import { stockMoveService } from "../../../services/stockMove.service";
 import {
   StockMove,
+  StockMoveAdjustmentCreate,
+  StockMoveAdjustmentUpdate,
   StockMoveCreate,
   StockMoveTransferCreate,
   StockMoveTransferUpdate,
@@ -54,6 +56,17 @@ export const createTransferStockMoveThunk = createAsyncThunk<
   }
 });
 
+export const createAdjustmentStockMoveThunk = createAsyncThunk<
+  StockMove,
+  StockMoveAdjustmentCreate
+>("stockMove/createAdjustment", async (data, { rejectWithValue }) => {
+  try {
+    return await stockMoveService.createAdjustmentStockMove(data);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
 export const updateReceiptStockMoveThunk = createAsyncThunk<
   StockMove,
   { id: number; data: StockMoveUpdate }
@@ -71,6 +84,17 @@ export const updateTransferStockMoveThunk = createAsyncThunk<
 >("stockMove/updateTransfer", async ({ id, data }, { rejectWithValue }) => {
   try {
     return await stockMoveService.updateTransferStockMove(id, data);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
+export const updateAdjustmentStockMoveThunk = createAsyncThunk<
+  StockMove,
+  { id: number; data: StockMoveAdjustmentUpdate }
+>("stockMove/updateAdjustment", async ({ id, data }, { rejectWithValue }) => {
+  try {
+    return await stockMoveService.updateAdjustmentStockMove(id, data);
   } catch (error) {
     return rejectWithValue(getErrorMessage(error));
   }

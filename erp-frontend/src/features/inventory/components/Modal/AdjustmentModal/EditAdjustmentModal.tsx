@@ -9,104 +9,107 @@ import { Button } from "../../../../../components/ui/Button";
 import { Input } from "../../../../../components/ui/input";
 import { Textarea } from "../../../../../components/ui/textarea";
 import { useState, useEffect, useRef } from "react";
+import { useDispatch } from "react-redux";
+import { AppDispatch } from "../../../../../store/store";
+import { Product } from "@/features/products/store/product.types";
 import {
-  fetchPurchaseOrderByStatus,
-  PurchaseOrder,
-} from "../../../../purchase/store";
-import { useDispatch, useSelector } from "react-redux";
-import { AppDispatch, RootState } from "../../../../../store/store";
+  fetchProductByIdThunk,
+  searchProductsThunk,
+} from "@/features/products/store/product.thunks";
 import { toast } from "react-toastify";
-import { searchProductsThunk } from "../../../../products/store/product.thunks";
-import { Product } from "../../../../products/store/product.types";
+import {
+  AdjustmentForm,
+  LineAdjustmentItem,
+  StockMove,
+} from "@/features/inventory/store/stock/stockmove/stockMove.types";
 
-export interface ProductItem {
-  id: number;
-  name: string;
-  image: string;
-  sku: string;
-  uom: string;
-  quantity: number;
-}
-
-export interface CreateReceiptForm {
-  warehouse: string;
-  referenceNo: string;
-  move_no: string;
-  notes: string;
-  move_date: string;
-  type: string;
-  reference_type: string;
-}
-
-interface CreateReceiptModalProps {
+interface AdjustmentModalProps {
   open: boolean;
   warehouses: Array<{ id: number; name: string }>;
+  data: StockMove | null;
   onSubmit: (data: {
-    form: CreateReceiptForm;
-    products: ProductItem[];
+    form: AdjustmentForm;
+    lineItems: LineAdjustmentItem[];
   }) => void;
   onClose: () => void;
 }
 
-export default function CreateReceiptModal({
+export default function EditAdjustmentModal({
   open,
   warehouses,
+  data,
   onSubmit,
   onClose,
-}: CreateReceiptModalProps) {
+}: AdjustmentModalProps) {
   const dispatch = useDispatch<AppDispatch>();
-  const purchaseOrder = useSelector((state: RootState) => state.purchaseOrder);
 
   const generateMoveNo = (): string => {
     const timestamp = Date.now();
     const randomNum = Math.floor(100 + Math.random() * 900);
-    return `RC${timestamp}${randomNum}`;
+    return `AD${timestamp}${randomNum}`;
   };
 
-  const [form, setForm] = useState<CreateReceiptForm>({
+  const [form, setForm] = useState<AdjustmentForm>({
     warehouse: "",
-    referenceNo: "",
     move_no: generateMoveNo(),
-    notes: "",
     move_date: "",
-    type: "receipt",
-    reference_type: "purchase_order",
+    type: "adjustment",
+    notes: "",
+    reference_type: "adjustment",
   });
 
-  const [products, setProducts] = useState<ProductItem[]>([]);
-  const [selectedPOId, setSelectedPOId] = useState<string>("");
-
-  // search
+  const [lineItems, setLineItems] = useState<LineAdjustmentItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    dispatch(fetchPurchaseOrderByStatus("confirmed"));
-  }, [dispatch]);
+  const selectedWarehouse =
+    warehouses.find((w) => w.id === data?.warehouse_from_id)?.name || "";
 
   useEffect(() => {
     if (!open) return;
-    setForm({
-      warehouse: "",
-      referenceNo: "",
-      notes: "",
-      move_no: generateMoveNo(),
-      move_date: "",
-      type: "receipt",
-      reference_type: "purchase_order",
-    });
-    setProducts([]);
-    setSelectedPOId("");
-    setSearchTerm("");
-  }, [open]);
+    console.log("Modal open, data:", data);
+    setLineItems([]);
+    if (!data?.lines || data.lines.length === 0) return;
+    const ids = data.lines.map((line) => line.product_id);
+    Promise.all(ids.map((id) => dispatch(fetchProductByIdThunk(id)).unwrap()))
+      .then((fetchedProducts) => {
+        const items: LineAdjustmentItem[] = (data.lines ?? []).map((line) => {
+          const product = fetchedProducts.find((p) => p.id === line.product_id);
+          return {
+            id: line.id,
+            product_id: product?.id ?? line.product_id,
+            name: product?.name ?? "Unknown",
+            sku: product?.sku ?? "",
+            image: product?.image_url ?? "",
+            uom: line.uom ?? "",
+            quantity: line.quantity ?? 0,
+          };
+        });
+        setLineItems(items);
+        console.log("LineItems after fetch:", items);
+      })
+      .catch(() => {
+        setLineItems([]);
+      });
+  }, [open, data, dispatch]);
+
   useEffect(() => {
-    if (selectedPOId) {
-      setForm((prev) => ({ ...prev, referenceNo: selectedPOId }));
-    }
-  }, [selectedPOId]);
+    if (!open || !data) return;
+
+    setForm({
+      warehouse: data.warehouse_from_id?.toString() ?? "",
+      notes: data.note ?? "",
+      move_no: data.move_no ?? "",
+      move_date: data.move_date ? data.move_date.split("T")[0] : "",
+      type: data.type ?? "",
+      reference_type: data.reference_type ?? "",
+    });
+
+    setSearchTerm("");
+  }, [open, data]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -146,15 +149,16 @@ export default function CreateReceiptModal({
   }, []);
 
   const handleSelectProduct = (p: Product) => {
-    if (products.some((l) => l.id === p.id)) {
+    if (lineItems.some((l) => l.product_id === p.id)) {
       alert("Sản phẩm đã có trong danh sách!");
       setSearchTerm("");
       return;
     }
-    setProducts((prev) => [
+    setLineItems((prev) => [
       ...prev,
       {
-        id: p.id,
+        id: undefined,
+        product_id: p.id,
         name: p.name,
         sku: p.sku,
         uom: p.uom ?? "",
@@ -167,78 +171,62 @@ export default function CreateReceiptModal({
   };
 
   const handleQuantityChange = (id: number, value: number) => {
-    setProducts((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, quantity: value } : item))
+    setLineItems((prev) =>
+      prev.map((item) =>
+        item.product_id === id ? { ...item, quantity: value } : item
+      )
     );
   };
+  if (!open) return null;
 
   const handleSubmit = () => {
-    if (!selectedPOId) {
-      toast.error("Please select a Purchase Order");
-      return;
-    }
-
     if (!form.warehouse) {
       toast.error("Please select a Warehouse");
       return;
     }
-
     if (!form.move_date) {
       toast.error("Please select a Move Date");
       return;
     }
 
-    if (products.length === 0) {
+    if (lineItems.length === 0) {
       toast.error("Please add at least one product");
       return;
     }
 
-    for (const p of products) {
-      if (!p.id) {
-        toast.error("Some product items are missing ID");
-        return;
-      }
-      if (!p.quantity || p.quantity <= 0) {
-        toast.error(`Invalid quantity for product: ${p.name}`);
-        return;
-      }
-    }
-
     const finalForm = {
       ...form,
-      referenceNo: selectedPOId,
     };
-
     console.log("Final Form:", finalForm);
-    console.log("Product Lines:", products);
+    console.log("Items Lines:", lineItems);
     onSubmit({
       form: finalForm,
-      products,
+      lineItems,
     });
   };
-
-  if (!open) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
       <div className="bg-white w-[700px] rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
-        {/* HEADER */}
+        {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Add Receipt</h2>
+          <h2 className="text-xl font-semibold">Edit Adjustment</h2>
           <button onClick={onClose} className="!text-black text-xl font-bold">
             ✖
           </button>
         </div>
 
-        {/* Warehouse */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="font-medium">Warehouse *</label>
+            <label className="font-medium">
+              Warehouse From <span className="text-red-500">*</span>
+            </label>
             <Select
               value={form.warehouse}
               onValueChange={(v) =>
                 setForm((prev) => ({ ...prev, warehouse: v }))
               }
+              defaultLabel={selectedWarehouse}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select" />
@@ -252,47 +240,24 @@ export default function CreateReceiptModal({
               </SelectContent>
             </Select>
           </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Move Date</label>
-          <Input
-            type="date"
-            value={form.move_date}
-            onChange={(value) => setForm({ ...form, move_date: value })}
-            max={new Date().toISOString().split("T")[0]}
-          />
-        </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Move Date</label>
+            <Input
+              type="date"
+              value={form.move_date}
+              onChange={(value) => setForm({ ...form, move_date: value })}
+              max={new Date().toISOString().split("T")[0]}
+            />
+          </div>
 
-        {/* PO SELECT */}
-        <div className="mt-4">
-          <label className="font-medium">Purchase Order *</label>
-
-          <Select value={selectedPOId} onValueChange={setSelectedPOId}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select Purchase Order" />
-            </SelectTrigger>
-            <SelectContent>
-              {purchaseOrder.items?.map((po: PurchaseOrder) => (
-                <SelectItem key={po.id} value={po.id.toString()}>
-                  {po.po_no}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Move Number
+            </label>
+            <Input value={form.move_no} disabled />
+          </div>
         </div>
-
-        {/* Reference Number */}
-        <div className="mt-4">
-          <label className="font-medium">Reference Number</label>
-          <Input value={form.referenceNo} disabled />
-        </div>
-
-        <div className="mt-4">
-          <label className="font-medium">Move Number</label>
-          <Input value={form.move_no} disabled />
-        </div>
-
-        {/* PRODUCT SEARCH */}
+        {/* Product search */}
         <div className="mt-4 relative" ref={dropdownRef}>
           <label className="font-medium">Product *</label>
 
@@ -335,8 +300,7 @@ export default function CreateReceiptModal({
             </div>
           )}
         </div>
-
-        {/* TABLE */}
+        {/* Product table */}
         <div className="mt-3 border rounded-lg overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gray-100 text-left">
@@ -348,27 +312,32 @@ export default function CreateReceiptModal({
                 <th className="p-2 w-[60px]"></th>
               </tr>
             </thead>
+
             <tbody>
-              {products.length > 0 ? (
-                products.map((p) => (
+              {lineItems.length > 0 ? (
+                lineItems.map((p) => (
                   <tr key={p.id} className="border-t">
                     <td className="p-2 flex items-center gap-3">
                       <img
                         src={p.image}
+                        alt=""
                         className="w-10 h-10 rounded object-cover"
                       />
                       {p.name}
                     </td>
                     <td className="p-2">{p.sku}</td>
                     <td className="p-2">{p.uom}</td>
+                    <td className="p-2">{p.quantity}</td>
                     <td className="p-2">
                       <input
                         type="number"
                         value={p.quantity}
-                        min={1}
                         className="w-20 border rounded px-2 py-1"
                         onChange={(e) =>
-                          handleQuantityChange(p.id, Number(e.target.value))
+                          handleQuantityChange(
+                            p.product_id,
+                            Number(e.target.value)
+                          )
                         }
                       />
                     </td>
@@ -376,8 +345,8 @@ export default function CreateReceiptModal({
                       <button
                         className="text-red-500 hover:underline"
                         onClick={() =>
-                          setProducts((prev) =>
-                            prev.filter((x) => x.id !== p.id)
+                          setLineItems((prev) =>
+                            prev.filter((x) => x.product_id !== p.product_id)
                           )
                         }
                       >
@@ -388,7 +357,10 @@ export default function CreateReceiptModal({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="p-4 text-center text-gray-500">
+                  <td
+                    colSpan={5}
+                    className="p-4 text-center text-gray-500 italic"
+                  >
                     No products selected
                   </td>
                 </tr>
@@ -397,18 +369,17 @@ export default function CreateReceiptModal({
           </table>
         </div>
 
-        {/* Notes */}
         <div className="mt-4">
           <label className="font-medium">Notes</label>
           <Textarea
             value={form.notes}
-            onChange={(v) => setForm((prev) => ({ ...prev, notes: v }))}
+            onChange={(value) => setForm((prev) => ({ ...prev, notes: value }))}
             placeholder="Notes"
             className="min-h-[80px]"
           />
         </div>
 
-        {/* FOOTER */}
+        {/* Footer */}
         <div className="flex justify-end gap-3 mt-6">
           <Button variant="secondary" onClick={onClose}>
             Cancel
@@ -417,7 +388,7 @@ export default function CreateReceiptModal({
             className="bg-orange-500 hover:bg-orange-600 text-white"
             onClick={handleSubmit}
           >
-            Create
+            Update
           </Button>
         </div>
       </div>

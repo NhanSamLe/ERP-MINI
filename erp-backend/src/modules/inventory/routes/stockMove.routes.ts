@@ -18,6 +18,12 @@ router.post(
   StockMoveController.createTransferStockMove
 );
 
+router.post(
+  "/adjustment",
+  authMiddleware(["WHSTAFF"]),
+  StockMoveController.createAdjustmentStockMove
+);
+
 router.put(
   "/receipt/:id",
   authMiddleware(["WHSTAFF"]),
@@ -28,6 +34,12 @@ router.put(
   "/transfer/:id",
   authMiddleware(["WHSTAFF"]),
   StockMoveController.updateTransferStockMove
+);
+
+router.put(
+  "/adjustment/:id",
+  authMiddleware(["WHSTAFF"]),
+  StockMoveController.updateAdjustmentStockMove
 );
 
 router.delete(

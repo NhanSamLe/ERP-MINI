@@ -32,11 +32,13 @@ export function DataTable<T extends { id: number }>({
     key: string;
     direction: "asc" | "desc";
   } | null>(null);
-
+  const prevLengthRef = React.useRef(data.length);
   React.useEffect(() => {
-    setCurrentPage(1);
-  }, [data]);
-
+    if (data.length !== prevLengthRef.current) {
+      setCurrentPage(1);
+      prevLengthRef.current = data.length;
+    }
+  }, [data.length]);
   const filteredData = data.filter((item) => {
     if (!searchTerm) return true;
     return searchKeys.some((key) => {

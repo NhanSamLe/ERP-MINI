@@ -1,6 +1,8 @@
 import axiosClient from "../../../api/axiosClient";
 import {
   StockMove,
+  StockMoveAdjustmentCreate,
+  StockMoveAdjustmentUpdate,
   StockMoveCreate,
   StockMoveTransferCreate,
   StockMoveTransferUpdate,
@@ -30,6 +32,13 @@ export const stockMoveApi = {
     return res.data;
   },
 
+  createAdjustmentStockMove: async (
+    data: StockMoveAdjustmentCreate
+  ): Promise<StockMove> => {
+    const res = await axiosClient.post("/stock-move/adjustment", data);
+    return res.data;
+  },
+
   updateReceiptStockMove: async (
     id: number,
     data: StockMoveUpdate
@@ -43,6 +52,14 @@ export const stockMoveApi = {
     data: StockMoveTransferUpdate
   ): Promise<StockMove> => {
     const res = await axiosClient.put(`/stock-move/transfer/${id}`, data);
+    return res.data;
+  },
+
+  updateAdjustmentStockMove: async (
+    id: number,
+    data: StockMoveAdjustmentUpdate
+  ): Promise<StockMove> => {
+    const res = await axiosClient.put(`/stock-move/adjustment/${id}`, data);
     return res.data;
   },
 
