@@ -3,6 +3,7 @@ import { SaleOrderDto } from "../dto/saleOrder.dto";
 import SaleOrderStatusBadge from "./SaleOrderStatusBadge";
 import { Link } from "react-router-dom";
 import { Eye, Edit, Send, CheckCircle, XCircle } from "lucide-react";
+import {formatVND} from "@/utils/currency.helper"
 
 interface Props {
   items: SaleOrderDto[];
@@ -37,7 +38,7 @@ export default function SaleOrderTable({ items }: Props) {
                 <SaleOrderStatusBadge status={item.approval_status} />
               </td>
 
-              <td className="p-3">{item.total_after_tax.toLocaleString()} ₫</td>
+              <td className="p-3">{formatVND(item.total_after_tax)} </td>
 
               <td className="p-3">{item.creator?.full_name}</td>
 

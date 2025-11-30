@@ -1,34 +1,43 @@
-import React from "react";
-import { useAppDispatch } from "@/store/hooks";
-import { createSaleOrder } from "@/features/sales/store/saleOrder.slice";
-import SaleOrderForm from "../components/SaleOrderForm";
-import { useNavigate } from "react-router-dom";
-import { CreateSaleOrderDto } from "../dto/saleOrder.dto";
-import { SaleOrderDto } from "../dto/saleOrder.dto";
-import { unwrapResult } from "@reduxjs/toolkit";
+import React, { useEffect } from 'react';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { createSaleOrder } from '@/features/sales/store/saleOrder.slice';
+import SaleOrderForm from '../components/SaleOrderForm';
+import { useNavigate } from 'react-router-dom';
+import { CreateSaleOrderDto, UpdateSaleOrderDto } from '../dto/saleOrder.dto';
+import { unwrapResult } from '@reduxjs/toolkit';
+import { loadPartners } from '@/features/partner/store/partner.thunks';
+import { fetchProductsThunk} from '@/features/products/store/product.thunks';
 
 export default function SaleOrderCreatePage() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
-  const handleSubmit = async (data: CreateSaleOrderDto) => {
+  const { items: customers } = useAppSelector(s => s.partners);
+  const { items: products } = useAppSelector(s => s.product);
+  const { loading } = useAppSelector(s => s.saleOrder);
+
+  useEffect(() => {
+    dispatch(loadPartners({ type: 'customer' }));
+    dispatch(fetchProductsThunk());
+  }, [dispatch]);
+
+  const handleSubmit = async (data: CreateSaleOrderDto | UpdateSaleOrderDto): Promise<void> => {
     try {
-      // Dispatch typed thunk
-      const actionResult = await dispatch(createSaleOrder(data));
-
-      // Lấy kết quả type-safe (KHÔNG any)
-      const createdOrder: SaleOrderDto = unwrapResult(actionResult);
-
+      const actionResult = await dispatch(createSaleOrder(data as CreateSaleOrderDto));
+      const createdOrder = unwrapResult(actionResult);
       navigate(`/sales/orders/${createdOrder.id}`);
     } catch (err) {
-      console.error("Failed to create order:", err);
+      console.error('Failed to create order:', err);
     }
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-semibold mb-6">Create Sale Order</h1>
-      <SaleOrderForm  mode="edit" onSubmit={handleSubmit} />
-    </div>
+    <SaleOrderForm
+      mode="create"
+      onSubmit={handleSubmit}
+      customers={customers}
+      products={products}
+      loading={loading}
+    />
   );
 }

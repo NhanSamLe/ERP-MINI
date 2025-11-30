@@ -84,6 +84,7 @@ export interface SaleOrderDto {
 }
 
 export interface CreateSaleOrderLineDto {
+  id?: number
   product_id: number;
   description?: string;
   quantity: number;
@@ -95,6 +96,7 @@ export interface CreateSaleOrderDto {
   customer_id: number;
   order_date: string;
   lines: CreateSaleOrderLineDto[];
+  deletedLineIds?: number[];
 }
 
 export interface UpdateSaleOrderDto {

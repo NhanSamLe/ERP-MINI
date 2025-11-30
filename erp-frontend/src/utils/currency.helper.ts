@@ -22,3 +22,9 @@ export function convertToBase(rate: number | string, base: string): string {
     maximumFractionDigits: 2,
   });
 }
+
+export function formatVND(value: number | null | undefined): string {
+  if (value == null || value === 0) return '0 ₫';
+  const num = Number(value);
+  return num.toLocaleString('vi-VN') + ' ₫';
+}
