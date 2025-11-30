@@ -1,17 +1,20 @@
 import { useState, useEffect } from "react";
 import { Button } from "../../../components/ui/Button";
-import { Input } from "../../../components/ui/Input";
-import { Textarea } from "../../../components/ui/Textarea";
+import { Input } from "../../../components/ui/input";
+import { Textarea } from "../../../components/ui/textarea";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../../store/store";
 import { useParams, useNavigate } from "react-router-dom";
-import { Calendar } from "lucide-react";
-
 import { fetchProductByIdThunk } from "../../products/store/product.thunks";
 import { fetchTaxRatesByIdThunk } from "../../master-data/store/master-data/tax/tax.thunks";
 import { fetchAllBranchesThunk } from "../../../features/company/store/branch.thunks";
-import { fetchPurchaseOrderByIdThunk } from "../store/purchaseOrder.thunks";
+import {
+  fetchPurchaseOrderByIdThunk,
+  submitPurchaseOrderThunk,
+} from "../store/purchaseOrder.thunks";
 import { PurchaseOrderLine } from "../store";
+import { toast } from "react-toastify";
+import { getErrorMessage } from "@/utils/ErrorHelper";
 
 interface LineItem {
   id?: number;
@@ -37,6 +40,10 @@ export default function ViewPurchaseOrderPage() {
   const purchaseOrder = useSelector(
     (state: RootState) => state.purchaseOrder.selectedPO
   );
+  const currentUser = useSelector((state: RootState) => state.auth.user);
+
+  const [confirmSubmit, setConfirmSubmit] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const [, setSupplierId] = useState("");
   const [date, setDate] = useState("");
@@ -134,51 +141,175 @@ export default function ViewPurchaseOrderPage() {
     loadLines();
   }, [finalPO, dispatch]);
 
-  return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 bg-gray-50 min-h-screen">
-      <h1 className="text-2xl font-bold text-gray-800">Edit Purchase Order</h1>
+  const handleSubmitApproval = async () => {
+    if (!finalPO) return;
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Supplier Name <span className="text-red-500">*</span>
-          </label>
-          <Input
-            value="ABC Supplies Ltd"
-            disabled
-            placeholder="Select Supplier"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Date <span className="text-red-500">*</span>
-          </label>
-          <div className="relative">
+    setSubmitting(true);
+    try {
+      console.log(">>> Submitting PO id:", finalPO.id);
+      console.log(">>> PO status:", finalPO.status);
+
+      const result = await dispatch(
+        submitPurchaseOrderThunk(finalPO.id)
+      ).unwrap();
+
+      console.log(">>> Submit result:", result);
+
+      toast.success("Purchase order submitted for approval!");
+
+      const refreshedPO = await dispatch(
+        fetchPurchaseOrderByIdThunk(finalPO.id)
+      ).unwrap();
+      console.log(">>> Refreshed PO:", refreshedPO);
+
+      setConfirmSubmit(false);
+    } catch (error) {
+      console.log(">>> Error caught:", error);
+      console.log(">>>> ERROR TYPE:", typeof error);
+      toast.error(getErrorMessage(error));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="p-8 max-w-7xl mx-auto space-y-8 bg-gray-100 min-h-screen">
+      {/* HEADER */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold text-gray-800">
+          Purchase Order Details
+        </h1>
+
+        {currentUser?.id === finalPO?.creator.id &&
+          finalPO?.status === "draft" &&
+          finalPO?.branch_id === currentUser?.branch.id && (
+            <div className="flex gap-3">
+              <Button
+                className="bg-blue-600 hover:bg-blue-700 px-6"
+                onClick={() => navigate(`/purchase-orders/edit/${id}`)}
+              >
+                Edit Purchase Order
+              </Button>
+
+              <Button
+                className="bg-green-600 hover:bg-green-700 px-6"
+                onClick={() => setConfirmSubmit(true)}
+              >
+                Submit for Approval
+              </Button>
+            </div>
+          )}
+      </div>
+
+      {/* MAIN TOP CARD */}
+      <div className="bg-white p-6 rounded-lg shadow space-y-6">
+        <h2 className="text-lg font-semibold text-gray-700 border-b pb-3">
+          General Information
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {/* STATUS */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Status
+            </label>
+
+            <span
+              className={`
+      inline-flex items-center px-5 py-2.5 rounded-xl text-sm font-semibold
+      border shadow-sm
+      ${
+        finalPO?.status === "draft"
+          ? "bg-gray-50 text-gray-700 border-gray-300"
+          : ""
+      }
+      ${
+        finalPO?.status === "waiting_approval"
+          ? "bg-amber-50 text-amber-700 border-amber-300"
+          : ""
+      }
+      ${
+        finalPO?.status === "confirmed"
+          ? "bg-blue-50 text-blue-700 border-blue-300"
+          : ""
+      }
+      ${
+        finalPO?.status === "partially_received"
+          ? "bg-purple-50 text-purple-700 border-purple-300"
+          : ""
+      }
+      ${
+        finalPO?.status === "completed"
+          ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+          : ""
+      }
+      ${
+        finalPO?.status === "cancelled"
+          ? "bg-red-50 text-red-700 border-red-300"
+          : ""
+      }
+    `}
+            >
+              ● {finalPO?.status?.replace("_", " ") || "N/A"}
+            </span>
+          </div>
+          {/* CREATED BY */}
+          <div>
+            <label className="text-sm font-medium text-gray-600">
+              Created By
+            </label>
             <Input
-              type="date"
+              className="mt-1"
+              value={finalPO?.creator.full_name || ""}
               disabled
-              value={date}
-              onChange={setDate}
-              max={new Date().toISOString().split("T")[0]}
             />
-            <Calendar className="absolute right-3 top-3 h-4 w-4 text-gray-400 pointer-events-none" />
+          </div>
+
+          {/* DATE */}
+          <div>
+            <label className="text-sm font-medium text-gray-600">Date</label>
+            <Input className="mt-1" value={date} disabled />
+          </div>
+
+          {/* BRANCH */}
+          <div>
+            <label className="text-sm font-medium text-gray-600">Branch</label>
+            <Input className="mt-1" value={selectedBranchName} disabled />
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Reference <span className="text-red-500">*</span>
-          </label>
-          <Input
-            disabled
-            value={reference}
-            onChange={setReference}
-            placeholder="PO-2025-XXXX"
-          />
+        {/* TIMELINE */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+          <div className="p-4 bg-gray-50 border rounded">
+            <div className="text-sm text-gray-700">
+              <span className="font-medium">Created At: </span>
+              {finalPO?.created_at
+                ? new Date(finalPO.created_at).toLocaleString()
+                : "N/A"}
+            </div>
+            <div className="text-sm text-gray-700 mt-1">
+              <span className="font-medium">Updated At: </span>
+              {finalPO?.updated_at
+                ? new Date(finalPO.updated_at).toLocaleString()
+                : "N/A"}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-gray-600">
+              Reference
+            </label>
+            <Input className="mt-1" value={reference} disabled />
+          </div>
         </div>
       </div>
-      {/* Product Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+
+      {/* TABLE SECTION */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-lg font-semibold text-gray-700 border-b pb-3 mb-4">
+          Purchase Items
+        </h2>
+
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -263,66 +394,40 @@ export default function ViewPurchaseOrderPage() {
         </div>
       </div>
 
+      {/* TOTALS */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Total Order Tax
+          <label className="text-sm font-medium text-gray-600">
+            Total Before Tax
           </label>
-          <Input
-            value={"$" + totalOrderTax.toString()}
-            onChange={(v) => setTotalOrderTax(Number(v) || 0)}
-            disabled
-          />
+          <Input className="mt-1" value={`$${totalBeforeTax}`} disabled />
         </div>
+
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Branch
+          <label className="text-sm font-medium text-gray-600">
+            Order Tax Total
           </label>
-          {branches.length > 0 && (
-            <Input
-              value={selectedBranchName}
-              disabled
-              placeholder="Select Branch"
-            />
-          )}
+          <Input className="mt-1" value={`$${totalOrderTax}`} disabled />
         </div>
+
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Total Before Tax *
+          <label className="text-sm font-medium text-gray-600">
+            Total After Tax
           </label>
-          <Input
-            value={"$" + totalBeforeTax.toString()}
-            onChange={(v) => setTotalBeforeTax(Number(v) || 0)}
-            disabled
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Total After Tax *
-          </label>
-          <Input
-            value={"$" + totalAfterTax.toString()}
-            onChange={(v) => setTotalAfterTax(Number(v) || 0)}
-            disabled
-          />
+          <Input className="mt-1" value={`$${totalAfterTax}`} disabled />
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+      {/* DESCRIPTION */}
+      <div className="bg-white p-6 rounded-lg shadow">
+        <h2 className="text-lg font-semibold text-gray-700 mb-2">
           Description
-        </label>
-        <Textarea
-          value={description}
-          onChange={setDescription}
-          rows={6}
-          className="resize-none"
-          placeholder="Enter description..."
-          disabled
-        />
+        </h2>
+        <Textarea value={description} disabled rows={5} />
       </div>
 
-      <div className="flex justify-end gap-4 pt-6">
+      {/* FOOTER BUTTON */}
+      <div className="flex justify-end">
         <Button
           className="bg-orange-500 hover:bg-orange-600 px-8"
           onClick={() => navigate("/purchase/orders")}
@@ -330,6 +435,36 @@ export default function ViewPurchaseOrderPage() {
           Back to List
         </Button>
       </div>
+
+      {confirmSubmit && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-sm">
+            <h2 className="text-lg font-bold mb-4">Submit for Approval?</h2>
+            <p className="text-gray-600 mb-6">
+              After submitting for approval, you will no longer be able to edit
+              this purchase order.
+            </p>
+
+            <div className="flex justify-end gap-3">
+              <Button
+                className="bg-gray-200 text-gray-700 hover:bg-gray-300"
+                onClick={() => setConfirmSubmit(false)}
+                disabled={submitting}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={handleSubmitApproval}
+                disabled={submitting}
+              >
+                {submitting ? "Submitting..." : "Yes, Submit"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

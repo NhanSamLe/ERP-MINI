@@ -6,6 +6,7 @@ import {
   updatePurchaseOrderThunk,
   deletePurchaseOrderThunk,
   fetchPurchaseOrderByStatus,
+  submitPurchaseOrderThunk,
 } from "./purchaseOrder.thunks";
 import { PurchaseOrderState } from "./purchaseOrder.types";
 
@@ -50,6 +51,12 @@ export const purchaseOrderSlice = createSlice({
       })
 
       .addCase(updatePurchaseOrderThunk.fulfilled, (state, action) => {
+        state.items = state.items.map((po) =>
+          po.id === action.payload.id ? action.payload : po
+        );
+      })
+
+      .addCase(submitPurchaseOrderThunk.fulfilled, (state, action) => {
         state.items = state.items.map((po) =>
           po.id === action.payload.id ? action.payload : po
         );

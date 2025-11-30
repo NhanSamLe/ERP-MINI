@@ -85,3 +85,16 @@ export const deletePurchaseOrderThunk = createAsyncThunk(
     }
   }
 );
+
+export const submitPurchaseOrderThunk = createAsyncThunk(
+  "purchaseOrder/submitApproval",
+  async (id: number, { rejectWithValue }) => {
+    try {
+      const res = await purchaseOrderService.submitForApproval(id);
+      return res;
+    } catch (error: unknown) {
+      if (error instanceof Error) return rejectWithValue(error.message);
+      return rejectWithValue("Unknown error");
+    }
+  }
+);

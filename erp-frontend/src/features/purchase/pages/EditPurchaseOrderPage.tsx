@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "../../../components/ui/Button";
-import { Input } from "../../../components/ui/Input";
-import { Textarea } from "../../../components/ui/Textarea";
+import { Input } from "../../../components/ui/input";
+import { Textarea } from "../../../components/ui/textarea";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../../store/store";
 import { Product } from "../../../features/products/store/product.types";
@@ -21,13 +21,13 @@ import {
   searchProductsThunk,
 } from "../../products/store/product.thunks";
 import { fetchTaxRatesByIdThunk } from "../../master-data/store/master-data/tax/tax.thunks";
-import { fetchAllBranchesThunk } from "../../../features/company/store/branch.thunks";
 import {
   fetchPurchaseOrderByIdThunk,
   updatePurchaseOrderThunk,
 } from "../store/purchaseOrder.thunks";
 import { toast } from "react-toastify";
 import { PurchaseOrderLine, PurchaseOrderUpdate } from "../store";
+import { Branch, fetchBranch } from "@/features/company/branch.service";
 
 interface LineItem {
   id?: number;
@@ -59,8 +59,6 @@ export default function EditPurchaseOrderPage() {
   const [date, setDate] = useState("");
   const [reference, setReference] = useState("");
   const [totalOrderTax, setTotalOrderTax] = useState(0);
-  const [branch, setBranch] = useState("");
-  const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
   const [totalBeforeTax, setTotalBeforeTax] = useState(0);
   const [totalAfterTax, setTotalAfterTax] = useState(0);
   const [description, setDescription] = useState("");
@@ -70,14 +68,20 @@ export default function EditPurchaseOrderPage() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
 
+  const [branch, setBranch] = useState<Branch | null>(null);
+
   const [lines, setLines] = useState<LineItem[]>([]);
 
   useEffect(() => {
-    dispatch(fetchAllBranchesThunk())
-      .unwrap()
-      .then((data) => setBranches(data || []))
-      .catch(() => setBranches([]));
-  }, [dispatch]);
+    if (!purchaseOrder) return;
+
+    fetchBranch(purchaseOrder.branch_id!)
+      .then((res) => setBranch(res))
+      .catch((err) => {
+        console.error(err);
+        setBranch(null);
+      });
+  }, [purchaseOrder]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -178,15 +182,6 @@ export default function EditPurchaseOrderPage() {
   }, [dispatch, id]);
 
   const finalPO = purchaseOrder;
-  useEffect(() => {
-    if (finalPO?.branch_id && branches.length > 0) {
-      setBranch(finalPO.branch_id.toString());
-    }
-  }, [finalPO, branches]);
-
-  const selectedBranchName =
-    branches.find((b) => b.id === finalPO?.branch_id)?.name || "";
-
   useEffect(() => {
     const linesToLoad = finalPO?.lines ?? [];
     if (linesToLoad.length === 0) return;
@@ -357,7 +352,7 @@ export default function EditPurchaseOrderPage() {
       }));
 
       const requestBody: PurchaseOrderUpdate & { deletedLineIds?: number[] } = {
-        branch_id: Number(branch),
+        branch_id: branch.id ?? 0,
         po_no: reference,
         supplier_id: Number(supplierId),
         order_date: date,
@@ -594,25 +589,9 @@ export default function EditPurchaseOrderPage() {
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Branch
           </label>
-          {branches.length > 0 && (
-            <Select
-              value={branch}
-              onValueChange={setBranch}
-              defaultLabel={selectedBranchName}
-            >
-              {" "}
-              <SelectTrigger>
-                <SelectValue placeholder="Select Branch" />
-              </SelectTrigger>
-              <SelectContent>
-                {branches.map((b) => (
-                  <SelectItem key={b.id} value={b.id.toString()}>
-                    {b.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          <div className="border rounded px-3 py-2 bg-gray-100 text-gray-700">
+            {branch?.name}
+          </div>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">

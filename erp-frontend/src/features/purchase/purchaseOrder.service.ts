@@ -34,4 +34,9 @@ export const purchaseOrderService = {
   async delete(id: number): Promise<void> {
     await purchaseOrderApi.delete(id);
   },
+
+  async submitForApproval(id: number): Promise<PurchaseOrder> {
+    const res = await purchaseOrderApi.submitForApproval(id);
+    return res;
+  },
 };
