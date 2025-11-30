@@ -7,6 +7,8 @@ import {
   deleteStockMoveThunk,
   createTransferStockMoveThunk,
   updateTransferStockMoveThunk,
+  createAdjustmentStockMoveThunk,
+  updateAdjustmentStockMoveThunk,
 } from "./stockMove.thunks";
 
 import { StockMoveState } from "./stockMove.types";
@@ -62,6 +64,13 @@ export const stockMoveSlice = createSlice({
       state.items.push(action.payload);
     });
 
+    builder.addCase(
+      createAdjustmentStockMoveThunk.fulfilled,
+      (state, action) => {
+        state.items.push(action.payload);
+      }
+    );
+
     // ---- UPDATE ----
     builder.addCase(updateReceiptStockMoveThunk.fulfilled, (state, action) => {
       const index = state.items.findIndex((m) => m.id === action.payload.id);
@@ -72,6 +81,13 @@ export const stockMoveSlice = createSlice({
       const index = state.items.findIndex((m) => m.id === action.payload.id);
       if (index !== -1) state.items[index] = action.payload;
     });
+    builder.addCase(
+      updateAdjustmentStockMoveThunk.fulfilled,
+      (state, action) => {
+        const index = state.items.findIndex((m) => m.id === action.payload.id);
+        if (index !== -1) state.items[index] = action.payload;
+      }
+    );
 
     // ---- DELETE ----
     builder.addCase(deleteStockMoveThunk.fulfilled, (state, action) => {

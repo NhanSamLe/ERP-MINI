@@ -1,6 +1,9 @@
 import { PurchaseOrder } from "../models/purchaseOrder.model";
 import { PurchaseOrderLine } from "../models/purchaseOrderLine.model";
 import { PurchaseOrderUpdateDto } from "../dto/purchaseOrderUpdate.dto";
+import { StockMoveLine } from "../../inventory/models/stockMoveLine.model";
+import { StockMove } from "../../inventory/models/stockMove.model";
+import { productService } from "../../product/services/product.service";
 
 export const purchaseOrderService = {
   async getAllPO() {
@@ -112,5 +115,88 @@ export const purchaseOrderService = {
     }
     await po.destroy();
     return { success: true };
+  },
+
+  // Tính toán cho phần phiếu nhập kho
+  async getPOLines(poId: number) {
+    const lines = await PurchaseOrderLine.findAll({
+      where: { po_id: poId },
+    });
+
+    if (!lines.length) {
+      throw {
+        status: 400,
+        message: "Purchase Order không có dòng sản phẩm.",
+      };
+    }
+
+    return lines;
+  },
+
+  /** Lấy tổng số lượng đã nhập cho 1 sản phẩm từ các StockMove đã posted */
+  async getAlreadyReceivedQty(
+    poId: number,
+    productId: number
+  ): Promise<number> {
+    // 1. Lấy tất cả stock moves thuộc PO đang posted
+    const postedMoves = await StockMove.findAll({
+      where: {
+        reference_id: poId,
+        reference_type: "purchase_order",
+        status: "posted",
+      },
+      attributes: ["id"],
+      raw: true,
+    });
+
+    if (postedMoves.length === 0) return 0;
+
+    const moveIds = postedMoves.map((m) => m.id);
+
+    // 2. Lấy tất cả StockMoveLine của các move đó + productId
+    const lines = await StockMoveLine.findAll({
+      where: {
+        move_id: moveIds,
+        product_id: productId,
+      },
+      attributes: ["quantity"],
+      raw: true,
+    });
+
+    // 3. SUM bằng JS (an toàn, dễ debug)
+    return lines.reduce((sum, l) => sum + Number(l.quantity), 0);
+  },
+
+  /** Kiểm tra sản phẩm có trong PO không */
+  async validateProductInPO(
+    map: Map<number, PurchaseOrderLine>,
+    productId: number
+  ) {
+    const poLine = map.get(productId);
+    if (!poLine) {
+      const productResult = await productService.getById(productId);
+      throw {
+        status: 400,
+        message: `Sản phẩm  ${productResult?.name} không có trong Purchase Order.`,
+      };
+    }
+    return poLine;
+  },
+
+  async validateRemainingQuantity(
+    productId: number,
+    inputQty: number,
+    poQty: number,
+    receivedQty: number
+  ) {
+    const remaining = poQty - receivedQty;
+
+    if (inputQty > remaining) {
+      const productResult = await productService.getById(productId);
+      throw {
+        status: 400,
+        message: `Sản phẩm ${productResult?.name} vượt quá số lượng Purchase Order còn lại. Còn lại: ${remaining}, nhập: ${inputQty}`,
+      };
+    }
   },
 };

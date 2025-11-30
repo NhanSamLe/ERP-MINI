@@ -6,6 +6,7 @@ export type ReferenceType =
   | "adjustment";
 
 export interface StockMoveLineDTO {
+  id: number | undefined;
   product_id: number;
   quantity: number;
   uom: string;
@@ -22,6 +23,16 @@ export interface StockMoveCreateDTO {
   lines: StockMoveLineDTO[];
 }
 
+export interface StockMoveAdjustmentDTO {
+  move_no: string;
+  move_date: string;
+  type: StockMoveType;
+  warehouse_id: number;
+  reference_type: ReferenceType;
+  note?: string;
+  lines: StockMoveLineDTO[];
+}
+
 export interface StockMoveTransferDTO {
   move_no: string;
   move_date: string;
@@ -30,12 +41,7 @@ export interface StockMoveTransferDTO {
   warehouse_to_id: number;
   reference_type: ReferenceType;
   note?: string;
-  lines: {
-    id: number | undefined;
-    product_id: number;
-    quantity: number;
-    uom: string;
-  }[];
+  lines: StockMoveLineDTO[];
 }
 
 export interface StockMoveUpdateDTO {
@@ -46,10 +52,5 @@ export interface StockMoveUpdateDTO {
   reference_type: ReferenceType;
   reference_id?: number;
   note?: string;
-  lines: {
-    id: number | undefined;
-    product_id: number;
-    quantity: number;
-    uom: string;
-  }[];
+  lines: StockMoveLineDTO[];
 }

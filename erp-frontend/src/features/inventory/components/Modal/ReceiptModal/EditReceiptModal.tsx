@@ -97,6 +97,7 @@ export default function EditReceiptModal({
   useEffect(() => {
     if (!open) return;
     console.log("Modal open, data:", data);
+    setLineItems([]);
     if (!data?.lines || data.lines.length === 0) return;
     const ids = data.lines.map((line) => line.product_id);
     Promise.all(ids.map((id) => dispatch(fetchProductByIdThunk(id)).unwrap()))
@@ -106,7 +107,7 @@ export default function EditReceiptModal({
           return {
             id: line.id,
             product_id: product?.id ?? line.product_id,
-            name: product?.name ?? "Unknown",
+            name: product?.name ?? "",
             sku: product?.sku ?? "",
             image: product?.image_url ?? "",
             uom: line.uom ?? "",
@@ -419,7 +420,7 @@ export default function EditReceiptModal({
                         className="text-red-500 hover:underline"
                         onClick={() =>
                           setLineItems((prev) =>
-                            prev.filter((x) => x.id !== p.id)
+                            prev.filter((x) => x.product_id !== p.product_id)
                           )
                         }
                       >

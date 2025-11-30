@@ -1,3 +1,4 @@
+import { where } from "sequelize";
 import { StockBalance } from "../models/stockBalance.model";
 
 export const stockBalanceService = {
@@ -32,5 +33,11 @@ export const stockBalanceService = {
 
   async findByProduct(productId: number) {
     return await StockBalance.findAll({ where: { product_id: productId } });
+  },
+
+  async findByProductAndWarehouse(productId: number, warehouseId: number) {
+    return await StockBalance.findOne({
+      where: { product_id: productId, warehouse_id: warehouseId },
+    });
   },
 };

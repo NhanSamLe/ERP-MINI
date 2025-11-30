@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { stockMoveService } from "../services/stockMove.service";
 import {
+  StockMoveAdjustmentDTO,
   StockMoveCreateDTO,
   StockMoveTransferDTO,
 } from "../dto/stockMoveCreate.dto";
@@ -30,6 +31,12 @@ export const StockMoveController = {
     return res.status(201).json(data);
   },
 
+  async createAdjustmentStockMove(req: Request, res: Response) {
+    const body = req.body as StockMoveAdjustmentDTO;
+    const data = await stockMoveService.createAdjustment(body);
+    return res.status(201).json(data);
+  },
+
   async updateReceiptStockMove(req: Request, res: Response) {
     const id = Number(req.params.id);
     const updated = await stockMoveService.updateReceipt(id, req.body);
@@ -40,6 +47,13 @@ export const StockMoveController = {
   async updateTransferStockMove(req: Request, res: Response) {
     const id = Number(req.params.id);
     const updated = await stockMoveService.updateTransfer(id, req.body);
+    if (!updated) return res.status(404).json({ message: "Not found" });
+    return res.json(updated);
+  },
+
+  async updateAdjustmentStockMove(req: Request, res: Response) {
+    const id = Number(req.params.id);
+    const updated = await stockMoveService.updateAdjustment(id, req.body);
     if (!updated) return res.status(404).json({ message: "Not found" });
     return res.json(updated);
   },

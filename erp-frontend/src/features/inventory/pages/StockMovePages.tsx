@@ -26,6 +26,13 @@ import {
   LineTransferItem,
   updateTransferStockMoveThunk,
   StockMoveTransferUpdate,
+  AdjustmentForm,
+  LineAdjustmentItem,
+  StockMoveAdjustmentCreate,
+  createAdjustmentStockMoveThunk,
+  StockMoveAdjustmentUpdate,
+  updateAdjustmentStockMoveThunk,
+  deleteStockMoveThunk,
 } from "../store";
 import { Button } from "../../../components/ui/Button";
 import { BasicDropdownMenu } from "../../../components/ui/DropdownMenu";
@@ -42,6 +49,9 @@ import { fetchPurchaseOrderByStatus } from "../../purchase/store/purchaseOrder.t
 import EditTransferModal from "../components/Modal/TransferModal/EditTransferModal";
 import CreateTransferModal from "../components/Modal/TransferModal/CreateTransferModal";
 import { Trash2 } from "lucide-react";
+import CreateAdjustmentModal from "../components/Modal/AdjustmentModal/CreateAdjustmentModal";
+import { getErrorMessage } from "@/utils/ErrorHelper";
+import EditAdjustmentModal from "../components/Modal/AdjustmentModal/EditAdjustmentModal";
 
 export default function StockMovePages() {
   const dispatch = useDispatch<AppDispatch>();
@@ -67,10 +77,14 @@ export default function StockMovePages() {
     posted: "bg-green-100 text-green-700",
     cancelled: "bg-red-100 text-red-700",
   };
-  const [openReceiptModal, setOpenReceiptModal] = useState(false);
+  const [openCreateReceiptModal, setOpenCreateReceiptModal] = useState(false);
   const [openCreateTransferModal, setOpenCreateTransferModal] = useState(false);
+  const [openCreateAdjustmentModal, setOpenCreateAdjustmentModal] =
+    useState(false);
+
   const [openEditReceiptModal, setOpenEditReceiptModal] = useState(false);
   const [openEditTransferModal, setOpenEditTransferModal] = useState(false);
+  const [openEditAdjustmentModal, setOpenEditAdjustmentModal] = useState(false);
 
   const [selectedStockMove, setSelectedStockMove] = useState<StockMove | null>(
     null
@@ -202,10 +216,13 @@ export default function StockMovePages() {
 
   const handleCreate = (type: string) => {
     if (type === "receipt") {
-      setOpenReceiptModal(true);
+      setOpenCreateReceiptModal(true);
     }
     if (type === "transfer") {
       setOpenCreateTransferModal(true);
+    }
+    if (type === "adjustment") {
+      setOpenCreateAdjustmentModal(true);
     }
   };
 
@@ -223,18 +240,23 @@ export default function StockMovePages() {
         reference_id: Number(data.form.referenceNo),
         note: data.form.notes || "",
         lines: data.products.map((p) => ({
+          id: undefined,
           product_id: p.id,
           quantity: p.quantity,
           uom: p.uom,
         })),
       };
-      const result = await dispatch(createReceiptStockMoveThunk(payload));
+      const result = await dispatch(
+        createReceiptStockMoveThunk(payload)
+      ).unwrap();
       console.log("Created stock move:", result);
       toast.success("Stock Receipt Move created!");
-      setOpenReceiptModal(false);
+      setOpenCreateReceiptModal(false);
     } catch (error) {
-      console.error("Failed to create Stock Receipt Move:", error);
-      toast.error("Failed to create Stock Receipt Move");
+      console.log(">>> Error caught:", error);
+      console.log(">>>> ERROR TYPE:", typeof error);
+
+      toast.error(getErrorMessage(error));
     }
   };
 
@@ -265,6 +287,38 @@ export default function StockMovePages() {
     } catch (error) {
       console.error("Failed to create Stock Transfer Move:", error);
       toast.error("Failed to create Stock Transfer Move");
+    }
+  };
+  const handleCreateAdjustmentSubmit = async (data: {
+    form: AdjustmentForm;
+    lineItems: LineAdjustmentItem[];
+  }) => {
+    try {
+      const payload: StockMoveAdjustmentCreate = {
+        move_no: data.form.move_no,
+        move_date: data.form.move_date,
+        type: data.form.type as StockMoveType,
+        warehouse_id: Number(data.form.warehouse),
+        reference_type: data.form.reference_type as ReferenceType,
+        note: data.form.notes || "",
+        lines: data.lineItems.map((p) => ({
+          id: undefined,
+          product_id: p.product_id,
+          quantity: p.quantity,
+          uom: p.uom,
+        })),
+      };
+      const result = await dispatch(
+        createAdjustmentStockMoveThunk(payload)
+      ).unwrap();
+      console.log("Created stock move:", result);
+      toast.success("Stock Receipt Move created!");
+      setOpenCreateAdjustmentModal(false);
+    } catch (error) {
+      console.log(">>> Error caught:", error);
+      console.log(">>>> ERROR TYPE:", typeof error);
+
+      toast.error(getErrorMessage(error));
     }
   };
 
@@ -304,13 +358,15 @@ export default function StockMovePages() {
       };
       const result = await dispatch(
         updateReceiptStockMoveThunk({ id: selectedStockMove.id, data: payload })
-      );
+      ).unwrap();
       console.log("Edited stock move:", result);
       toast.success("Stock Receipt Move Edited!");
       setOpenEditReceiptModal(false);
     } catch (error) {
-      console.error("Failed to Edit Stock Receipt Move:", error);
-      toast.error("Failed to Edit Stock Receipt Move");
+      console.log(">>> Error caught:", error);
+      console.log(">>>> ERROR TYPE:", typeof error);
+
+      toast.error(getErrorMessage(error));
     }
   };
 
@@ -327,7 +383,7 @@ export default function StockMovePages() {
     ).unwrap();
 
     if (checkStatus.status !== "draft") {
-      toast.error("Cannot edit, receipt already approved!");
+      toast.error("Cannot edit, Transfer already approved!");
       setOpenEditReceiptModal(false);
       return;
     }
@@ -341,7 +397,7 @@ export default function StockMovePages() {
         reference_type: data.form.reference_type as ReferenceType,
         note: data.form.notes || "",
         lines: data.lineItems.map((p) => ({
-          id: undefined,
+          id: p.id,
           product_id: p.product_id,
           quantity: p.quantity,
           uom: p.uom,
@@ -362,14 +418,66 @@ export default function StockMovePages() {
     }
   };
 
+  const handleEditAdjustmentSubmit = async (data: {
+    form: AdjustmentForm;
+    lineItems: LineAdjustmentItem[];
+  }) => {
+    if (!selectedStockMove) {
+      toast.error("No receipt selected!");
+      return;
+    }
+    const checkStatus = await dispatch(
+      fetchStockMoveByIdThunk(selectedStockMove.id)
+    ).unwrap();
+
+    if (checkStatus.status !== "draft") {
+      toast.error("Cannot edit, Adjustment already approved!");
+      setOpenEditReceiptModal(false);
+      return;
+    }
+    try {
+      const payload: StockMoveAdjustmentUpdate = {
+        move_no: data.form.move_no,
+        move_date: data.form.move_date,
+        type: data.form.type as StockMoveType,
+        warehouse_id: Number(data.form.warehouse),
+        reference_type: data.form.reference_type as ReferenceType,
+        note: data.form.notes || "",
+        lines: data.lineItems.map((p) => ({
+          id: p.id,
+          product_id: p.product_id,
+          quantity: p.quantity,
+          uom: p.uom,
+        })),
+      };
+      const result = await dispatch(
+        updateAdjustmentStockMoveThunk({
+          id: selectedStockMove.id,
+          data: payload,
+        })
+      ).unwrap();
+      console.log("Edited stock move:", result);
+      toast.success("Stock Adjustment Move Edited!");
+      setOpenEditAdjustmentModal(false);
+    } catch (error) {
+      console.log(">>> Error caught:", error);
+      console.log(">>>> ERROR TYPE:", typeof error);
+      toast.error(getErrorMessage(error));
+    }
+  };
+
   const handleDelete = async () => {
+    if (!selectedStockMove) return;
     try {
       setDeleting(true);
+      await dispatch(deleteStockMoveThunk(selectedStockMove.id)).unwrap();
       toast.success("Deleted successfully!");
       setConfirmOpen(false);
-    } catch (err) {
-      console.log(err);
-      toast.error("Delete failed!");
+      dispatch(fetchStockMovesThunk());
+    } catch (error) {
+      console.log(">>> Error caught:", error);
+      console.log(">>>> ERROR TYPE:", typeof error);
+      toast.error(getErrorMessage(error));
     } finally {
       setDeleting(false);
     }
@@ -440,16 +548,24 @@ export default function StockMovePages() {
           loading={loading}
           onView={(item) => console.log("Xem:", item)}
           onEdit={(item) => {
-            setSelectedStockMove(item);
-            switch (item.type) {
-              case "receipt":
-                setOpenEditReceiptModal(true);
-                break;
-              case "transfer":
-                setOpenEditTransferModal(true);
-                break;
-              default:
-                toast.warn("Unknown stock move type:");
+            try {
+              setSelectedStockMove(item);
+              switch (item.type) {
+                case "receipt":
+                  setOpenEditReceiptModal(true);
+                  break;
+                case "transfer":
+                  setOpenEditTransferModal(true);
+                  break;
+                case "adjustment":
+                  setOpenEditAdjustmentModal(true);
+                  break;
+                default:
+                  toast.warn("Unknown stock move type");
+              }
+            } catch (error) {
+              console.log(error);
+              toast.error("Failed to load stock move detail");
             }
           }}
           onDelete={(item) => {
@@ -496,10 +612,16 @@ export default function StockMovePages() {
         onClose={() => setOpenCreateTransferModal(false)}
       />
       <CreateReceiptModal
-        open={openReceiptModal}
+        open={openCreateReceiptModal}
         warehouses={warehouses}
         onSubmit={handleCreateReceiptSubmit}
-        onClose={() => setOpenReceiptModal(false)}
+        onClose={() => setOpenCreateReceiptModal(false)}
+      />
+      <CreateAdjustmentModal
+        open={openCreateAdjustmentModal}
+        warehouses={warehouses}
+        onSubmit={handleCreateAdjustmentSubmit}
+        onClose={() => setOpenCreateAdjustmentModal(false)}
       />
       <EditTransferModal
         open={openEditTransferModal}
@@ -515,6 +637,13 @@ export default function StockMovePages() {
         data={selectedStockMove}
         onSubmit={handleEditReceiptSubmit}
         onClose={() => setOpenEditReceiptModal(false)}
+      />
+      <EditAdjustmentModal
+        open={openEditAdjustmentModal}
+        warehouses={warehouses}
+        data={selectedStockMove}
+        onSubmit={handleEditAdjustmentSubmit}
+        onClose={() => setOpenEditAdjustmentModal(false)}
       />
     </div>
   );
