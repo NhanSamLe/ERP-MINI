@@ -40,4 +40,9 @@ export const purchaseOrderApi = {
   delete: async (id: number): Promise<void> => {
     await axiosClient.delete(`/purchase-order/${id}`);
   },
+
+  submitForApproval: async (id: number): Promise<PurchaseOrder> => {
+    const res = await axiosClient.patch(`/purchase-order/${id}/submit`);
+    return res.data;
+  },
 };

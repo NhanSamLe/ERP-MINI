@@ -29,7 +29,6 @@ export default function PurchaseOrderPage() {
   const navigate = useNavigate();
 
   const role = useSelector((state: RootState) => state.auth.user?.role.name);
-  console.log("User Role:", role);
 
   const { items: purchaseOrders, loading } = useSelector(
     (state: RootState) => state.purchaseOrder
@@ -79,6 +78,11 @@ export default function PurchaseOrderPage() {
           : "—",
     },
     {
+      key: "Creator",
+      label: "Created By",
+      render: (po: PurchaseOrder) => po.creator.full_name,
+    },
+    {
       key: "total_after_tax",
       label: "Total",
       render: (po: PurchaseOrder) =>
@@ -89,17 +93,25 @@ export default function PurchaseOrderPage() {
       label: "Status",
       render: (po: PurchaseOrder) => (
         <span
-          className={`px-2 py-1 rounded text-xs font-medium ${
-            po.status === "draft"
-              ? "bg-gray-100 text-gray-500"
-              : po.status === "confirmed"
-              ? "bg-blue-100 text-blue-700"
-              : po.status === "received"
-              ? "bg-green-100 text-green-700"
-              : "bg-red-100 text-red-700"
-          }`}
+          className={`px-2 py-1 rounded text-xs font-medium
+    ${
+      po.status === "draft"
+        ? "bg-gray-100 text-gray-600"
+        : po.status === "waiting_approval"
+        ? "bg-amber-100 text-amber-700"
+        : po.status === "confirmed"
+        ? "bg-blue-100 text-blue-700"
+        : po.status === "partially_received"
+        ? "bg-indigo-100 text-indigo-700"
+        : po.status === "completed"
+        ? "bg-green-100 text-green-700"
+        : po.status === "cancelled"
+        ? "bg-red-100 text-red-700"
+        : "bg-gray-100 text-gray-600"
+    }
+  `}
         >
-          {po.status.toUpperCase()}
+          {po.status.replace("_", " ")}
         </span>
       ),
     },
