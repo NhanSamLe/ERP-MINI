@@ -4,11 +4,27 @@ import { PurchaseOrderUpdateDto } from "../dto/purchaseOrderUpdate.dto";
 import { StockMoveLine } from "../../inventory/models/stockMoveLine.model";
 import { StockMove } from "../../inventory/models/stockMove.model";
 import { productService } from "../../product/services/product.service";
+import { JwtPayload } from "../../../core/types/jwt";
+import { User } from "../../../models";
 
 export const purchaseOrderService = {
-  async getAllPO() {
+  async getAllPO(user: JwtPayload) {
+    const where: any = { branch_id: user.branch_id };
+
+    if (user.role === "PURCHASE") {
+      where.created_by = user.id;
+    }
+
     return await PurchaseOrder.findAll({
-      include: [{ model: PurchaseOrderLine, as: "lines" }],
+      where,
+      include: [
+        { model: PurchaseOrderLine, as: "lines" },
+        {
+          model: User,
+          as: "creator",
+          attributes: ["id", "username", "full_name"],
+        },
+      ],
       order: [["id", "DESC"]],
     });
   },
@@ -22,19 +38,37 @@ export const purchaseOrderService = {
 
   async getPOById(id: number) {
     const po = await PurchaseOrder.findByPk(id, {
-      include: [{ model: PurchaseOrderLine, as: "lines" }],
+      include: [
+        { model: PurchaseOrderLine, as: "lines" },
+        {
+          model: User,
+          as: "creator",
+          attributes: ["id", "full_name", "email"],
+        },
+      ],
     });
 
     if (!po) throw new Error("Purchase order not found");
     return po;
   },
 
-  async create(data: any) {
+  async create(data: any, user: any) {
+    const allowedRoles = ["PURCHASE"];
+
+    if (!allowedRoles.includes(user.role)) {
+      throw new Error("You do not have permission to create purchase orders.");
+    }
+
+    if (data.branch_id !== user.branch_id) {
+      throw new Error("You cannot create a purchase order for another branch.");
+    }
+
     const po = await PurchaseOrder.create({
       branch_id: data.branch_id,
       po_no: data.po_no,
       supplier_id: data.supplier_id,
       order_date: data.order_date,
+      created_by: user.id,
       total_before_tax: data.total_before_tax,
       total_tax: data.total_tax,
       total_after_tax: data.total_after_tax,
@@ -42,6 +76,7 @@ export const purchaseOrderService = {
       description: data.description,
     });
 
+    // 4. Tạo line
     for (const line of data.lines) {
       await PurchaseOrderLine.create({
         ...line,
@@ -52,7 +87,17 @@ export const purchaseOrderService = {
     return this.getPOById(po.id);
   },
 
-  async update(id: number, data: PurchaseOrderUpdateDto) {
+  async update(id: number, data: PurchaseOrderUpdateDto, user: any) {
+    const allowedRoles = ["PURCHASE"];
+
+    if (!allowedRoles.includes(user.role)) {
+      throw new Error("You do not have permission to edit purchase orders.");
+    }
+
+    if (data.branch_id !== user.branch_id) {
+      throw new Error("You cannot edit a purchase order for another branch.");
+    }
+
     const po = await PurchaseOrder.findByPk(id, {
       include: [{ model: PurchaseOrderLine, as: "lines" }],
     });
@@ -115,6 +160,26 @@ export const purchaseOrderService = {
     }
     await po.destroy();
     return { success: true };
+  },
+
+  async submitForApproval(id: number, user: any) {
+    const po = await this.getPOById(id);
+    if (!po) throw new Error("Purchase order not found");
+
+    if (po.branch_id !== user.branch_id) {
+      throw new Error("You cannot submit a purchase order for another branch.");
+    }
+
+    if (po.status !== "draft") {
+      throw new Error("Only draft purchase orders can be submitted.");
+    }
+
+    po.status = "waiting_approval";
+    po.submitted_at = new Date();
+
+    await po.save();
+
+    return po;
   },
 
   // Tính toán cho phần phiếu nhập kho

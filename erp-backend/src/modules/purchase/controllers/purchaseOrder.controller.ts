@@ -4,7 +4,8 @@ import { Request, Response } from "express";
 export const purchaseOrderController = {
   async getAllPO(req: Request, res: Response) {
     try {
-      const data = await purchaseOrderService.getAllPO();
+      const user = (req as any).user;
+      const data = await purchaseOrderService.getAllPO(user);
       res.json(data);
     } catch (e: any) {
       res.status(500).json({ message: e.message });
@@ -37,7 +38,8 @@ export const purchaseOrderController = {
 
   async create(req: Request, res: Response) {
     try {
-      const data = await purchaseOrderService.create(req.body);
+      const user = (req as any).user;
+      const data = await purchaseOrderService.create(req.body, user);
       res.status(201).json(data);
     } catch (e: any) {
       res.status(400).json({ message: e.message });
@@ -47,7 +49,8 @@ export const purchaseOrderController = {
   async update(req: Request, res: Response) {
     try {
       const id = Number(req.params.id);
-      const data = await purchaseOrderService.update(id, req.body);
+      const user = (req as any).user;
+      const data = await purchaseOrderService.update(id, req.body, user);
       res.json(data);
     } catch (e: any) {
       res.status(400).json({ message: e.message });
@@ -58,6 +61,18 @@ export const purchaseOrderController = {
       const id = Number(req.params.id);
       await purchaseOrderService.delete(id);
       res.status(200).json({ message: "Deleted" });
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
+  },
+
+  async submitForApproval(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const user = (req as any).user;
+
+      const data = await purchaseOrderService.submitForApproval(id, user);
+      res.json(data);
     } catch (e: any) {
       res.status(400).json({ message: e.message });
     }
