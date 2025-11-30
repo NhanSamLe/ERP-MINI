@@ -47,7 +47,6 @@ import { EmailActivity } from "../modules/crm/models/emailActivity.model";
 import { Attendance } from "../modules/hrm/models/attendance.model";
 import { PayrollItem } from "../modules/hrm/models/payrollItem.model";
 
-
 export function applyAssociations() {
   // =====================
   // AUTH
@@ -87,14 +86,14 @@ export function applyAssociations() {
     as: "branch",
   });
   Branch.hasMany(PayrollItem, {
-  foreignKey: "branch_id",
-  as: "payrollItems",
-});
+    foreignKey: "branch_id",
+    as: "payrollItems",
+  });
 
-PayrollItem.belongsTo(Branch, {
-  foreignKey: "branch_id",
-  as: "branch",
-});
+  PayrollItem.belongsTo(Branch, {
+    foreignKey: "branch_id",
+    as: "branch",
+  });
   // ✅ Employee ↔ Attendance
   Employee.hasMany(Attendance, {
     foreignKey: "employee_id",
@@ -280,14 +279,14 @@ PayrollItem.belongsTo(Branch, {
     as: "allocations",
   });
 
-SaleOrder.belongsTo(User, { as: "creator", foreignKey: "created_by" });
-SaleOrder.belongsTo(User, { as: "approver", foreignKey: "approved_by" });
+  SaleOrder.belongsTo(User, { as: "creator", foreignKey: "created_by" });
+  SaleOrder.belongsTo(User, { as: "approver", foreignKey: "approved_by" });
 
-ArInvoice.belongsTo(User, { as: "creator", foreignKey: "created_by" });
-ArInvoice.belongsTo(User, { as: "approver", foreignKey: "approved_by" });
+  ArInvoice.belongsTo(User, { as: "creator", foreignKey: "created_by" });
+  ArInvoice.belongsTo(User, { as: "approver", foreignKey: "approved_by" });
 
-ArReceipt.belongsTo(User, { as: "creator", foreignKey: "created_by" });
-ArReceipt.belongsTo(User, { as: "approver", foreignKey: "approved_by" });
+  ArReceipt.belongsTo(User, { as: "creator", foreignKey: "created_by" });
+  ArReceipt.belongsTo(User, { as: "approver", foreignKey: "approved_by" });
 
   // =====================
   // PURCHASE & AP
@@ -305,6 +304,16 @@ ArReceipt.belongsTo(User, { as: "approver", foreignKey: "approved_by" });
   // PurchaseOrder ↔ Invoice
   PurchaseOrder.hasMany(ApInvoice, { foreignKey: "po_id", as: "invoices" });
   ApInvoice.belongsTo(PurchaseOrder, { foreignKey: "po_id", as: "order" });
+
+  // PurchaseOrder ↔ user
+  User.hasMany(PurchaseOrder, {
+    as: "purchase_orders",
+    foreignKey: "created_by",
+  });
+  PurchaseOrder.belongsTo(User, {
+    as: "creator",
+    foreignKey: "created_by",
+  });
 
   // ApInvoice ↔ Lines
   ApInvoice.hasMany(ApInvoiceLine, {
@@ -533,4 +542,3 @@ Activity.belongsTo(Partner, {
   as: "customer",
   constraints: false,
 });
-

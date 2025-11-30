@@ -16,6 +16,10 @@ export interface PurchaseOrderUpdateDto {
   total_tax: number;
   total_after_tax: number;
   description: string;
+  approved_by?: string | null;
+  submitted_at?: string | null;
+  approved_at?: string | null;
+  reject_reason?: string | null;
   lines: PurchaseOrderLineUpdateDto[];
   deletedLineIds?: number[];
 }

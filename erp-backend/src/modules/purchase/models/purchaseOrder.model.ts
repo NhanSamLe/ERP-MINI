@@ -7,11 +7,22 @@ export interface PurchaseOrderAttrs {
   po_no: string;
   supplier_id?: number;
   order_date?: Date;
+  status:
+    | "draft"
+    | "waiting_approval"
+    | "confirmed"
+    | "partially_received"
+    | "completed"
+    | "cancelled";
   total_before_tax?: number;
   total_tax?: number;
   total_after_tax?: number;
-  status: "draft" | "confirmed" | "received" | "cancelled";
   description?: string;
+  created_by: number;
+  approved_by?: number | null;
+  submitted_at?: Date | null;
+  approved_at?: Date | null;
+  reject_reason?: string | null;
 }
 
 type PurchaseOrderCreation = Optional<PurchaseOrderAttrs, "id" | "status">;
@@ -28,8 +39,19 @@ export class PurchaseOrder
   public total_before_tax?: number;
   public total_tax?: number;
   public total_after_tax?: number;
-  public status!: "draft" | "confirmed" | "received" | "cancelled";
+  public status!:
+    | "draft"
+    | "waiting_approval"
+    | "confirmed"
+    | "partially_received"
+    | "completed"
+    | "cancelled";
   public description?: string;
+  public created_by!: number;
+  public approved_by?: number | null;
+  public submitted_at?: Date | null;
+  public approved_at?: Date | null;
+  public reject_reason?: string | null;
 }
 
 PurchaseOrder.init(
@@ -47,6 +69,11 @@ PurchaseOrder.init(
       defaultValue: "draft",
     },
     description: { type: DataTypes.TEXT, allowNull: true },
+    created_by: { type: DataTypes.BIGINT, allowNull: false },
+    approved_by: { type: DataTypes.BIGINT, allowNull: true },
+    submitted_at: { type: DataTypes.DATE },
+    approved_at: { type: DataTypes.DATE },
+    reject_reason: { type: DataTypes.STRING(255), allowNull: true },
   },
   {
     sequelize,

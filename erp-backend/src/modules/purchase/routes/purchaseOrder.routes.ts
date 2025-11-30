@@ -33,6 +33,12 @@ router.put(
   purchaseOrderController.update
 );
 
+router.patch(
+  "/:id/submit",
+  authMiddleware(["PURCHASE"]),
+  purchaseOrderController.submitForApproval
+);
+
 router.delete(
   "/:id",
   authMiddleware(["PURCHASE"]),
