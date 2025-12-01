@@ -1,4 +1,22 @@
 // =====================
+// ROLE
+// =====================
+
+export enum Role {
+  ADMIN = "ADMIN",
+  CEO = "CEO",
+  SALESMANAGER = "SALESMANAGER",
+  SALES = "SALES",
+  WHMANAGER = "WHMANAGER",
+  WHSTAFF = "WHSTAFF",
+  CHACC = "CHACC",
+  ACCOUNT = "ACCOUNT",
+  HRMANAGER = "HRMANAGER",
+  PURCHASE = "PURCHASE",
+  PURCHASEMANAGER = "PURCHASEMANAGER",
+}
+
+// =====================
 // AUTH & USER
 // =====================
 export enum UserStatus {
@@ -209,9 +227,9 @@ export enum TaskStatusEnum {
   IN_PROGRESS = "In Progress",
   COMPLETED = "Completed",
 }
-export enum ActivityStatus{
-  PENDING ="pending",
-  IN_PROGRESS ="in_progress" ,
-  COMPLETED ="completed",
-  CANCELLED ="cancelled"
+export enum ActivityStatus {
+  PENDING = "pending",
+  IN_PROGRESS = "in_progress",
+  COMPLETED = "completed",
+  CANCELLED = "cancelled",
 }

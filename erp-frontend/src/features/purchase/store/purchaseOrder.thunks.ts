@@ -92,3 +92,17 @@ export const submitPurchaseOrderThunk = createAsyncThunk(
     }
   }
 );
+
+export const approvePurchaseOrderThunk = createAsyncThunk(
+  "purchaseOrder/approve",
+  async (id: number) => {
+    return await purchaseOrderService.approve(id);
+  }
+);
+
+export const cancelPurchaseOrderThunk = createAsyncThunk(
+  "purchaseOrder/cancel",
+  async ({ id, reason }: { id: number; reason: string }) => {
+    return await purchaseOrderService.cancel(id, reason);
+  }
+);

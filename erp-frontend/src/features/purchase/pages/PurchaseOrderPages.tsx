@@ -5,6 +5,7 @@ import { DataTable } from "../../../components/ui/DataTable";
 import { Button } from "../../../components/ui/Button";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { Roles } from "@/types/enum";
 
 import {
   fetchPurchaseOrdersThunk,
@@ -28,7 +29,7 @@ export default function PurchaseOrderPage() {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
 
-  const role = useSelector((state: RootState) => state.auth.user?.role.name);
+  const role = useSelector((state: RootState) => state.auth.user?.role.code);
 
   const { items: purchaseOrders, loading } = useSelector(
     (state: RootState) => state.purchaseOrder
@@ -189,14 +190,14 @@ export default function PurchaseOrderPage() {
             : undefined
         }
         onDelete={
-          role === "Purchasing Staff"
+          role === Roles.PURCHASE
             ? (item) => {
                 setSelectedPO(item);
                 setConfirmOpen(true);
               }
             : undefined
         }
-        canEdit={(item) => item.status === "draft"}
+        canEdit={(item) => item.status === "draft" && role === Roles.PURCHASE}
         canDelete={(item) => item.status === "draft"}
       />
 

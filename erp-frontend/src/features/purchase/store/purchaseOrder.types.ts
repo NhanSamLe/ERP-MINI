@@ -25,8 +25,17 @@ export interface PurchaseOrder {
   updated_at: string;
   creator: {
     id: number;
-    username: string;
+    email: string;
     full_name: string;
+    phone: string;
+    avatar_url: string;
+  };
+  approver: {
+    id: number;
+    email: string;
+    full_name: string;
+    phone: string;
+    avatar_url: string;
   };
   lines?: PurchaseOrderLine[];
 }
