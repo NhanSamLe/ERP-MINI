@@ -1,14 +1,15 @@
 import { Router } from "express";
 import { WarehouseController } from "../controllers/warehouse.controller";
 import { authMiddleware } from "../../../core/middleware/auth";
+import { Role } from "../../../core/types/enum";
 
 const router = Router();
 
-router.get("/", authMiddleware(["WHSTAFF"]), WarehouseController.getAll);
-router.get("/:id", authMiddleware(["WHSTAFF"]), WarehouseController.getById);
+router.get("/", authMiddleware([Role.WHSTAFF]), WarehouseController.getAll);
+router.get("/:id", authMiddleware([Role.WHSTAFF]), WarehouseController.getById);
 router.get(
   "/branch/:branchId",
-  authMiddleware(["WHSTAFF"]),
+  authMiddleware([Role.WHSTAFF]),
   WarehouseController.getByBranch
 );
 router.get("/code/:code", WarehouseController.findByCode);

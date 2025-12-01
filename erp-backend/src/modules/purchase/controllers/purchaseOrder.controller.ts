@@ -17,8 +17,10 @@ export const purchaseOrderController = {
     if (!status) {
       return res.status(400).json({ message: "status is required" });
     }
+
+    const user = (req as any).user;
     try {
-      const data = await purchaseOrderService.getByStatus(status);
+      const data = await purchaseOrderService.getByStatus(status, user);
       return res.json(data);
     } catch (err) {
       console.error(err);

@@ -13,6 +13,13 @@ export interface StockMoveLine {
   uom: string;
   created_at: string;
   updated_at: string;
+  product: {
+    id: number;
+    name: string;
+    sku: string;
+    image_url: string;
+    uom: string;
+  };
 }
 
 export interface StockMove {
@@ -24,11 +31,31 @@ export interface StockMove {
   warehouse_to_id?: number | null;
   reference_type: ReferenceType;
   reference_id: number;
-  status: "draft" | "confirmed" | "posted";
+  status: "draft" | "waiting_approval" | "posted " | "cancelled";
   note?: string;
   created_at: string;
   updated_at: string;
+  created_by: number;
+  approved_by?: string;
+  submitted_at?: string;
+  approved_at?: string;
+  reject_reason?: string;
+
   lines?: StockMoveLine[];
+  creator: {
+    id: number;
+    email: string;
+    full_name: string;
+    phone: string;
+    avatar_url: string;
+  };
+  approver: {
+    id: number;
+    email: string;
+    full_name: string;
+    phone: string;
+    avatar_url: string;
+  };
 }
 
 export interface StockMoveCreate {
@@ -39,6 +66,11 @@ export interface StockMoveCreate {
   reference_type: ReferenceType;
   reference_id?: number;
   note?: string;
+  created_by: number;
+  approved_by?: string;
+  submitted_at?: string;
+  approved_at?: string;
+  reject_reason?: string;
   lines: {
     id: number | undefined;
     product_id: number;
@@ -55,6 +87,11 @@ export interface StockMoveTransferCreate {
   warehouse_to_id: number;
   reference_type: ReferenceType;
   note?: string;
+  created_by: number;
+  approved_by?: string;
+  submitted_at?: string;
+  approved_at?: string;
+  reject_reason?: string;
   lines: {
     id: number | undefined;
     product_id: number;
@@ -71,6 +108,11 @@ export interface StockMoveTransferUpdate {
   warehouse_to_id: number;
   reference_type: ReferenceType;
   note?: string;
+  created_by: number;
+  approved_by?: string;
+  submitted_at?: string;
+  approved_at?: string;
+  reject_reason?: string;
   lines: {
     id: number | undefined;
     product_id: number;
@@ -87,6 +129,11 @@ export interface StockMoveUpdate {
   reference_type: ReferenceType;
   reference_id?: number;
   note?: string;
+  created_by: number;
+  approved_by?: string;
+  submitted_at?: string;
+  approved_at?: string;
+  reject_reason?: string;
   lines: {
     id: number | undefined;
     product_id: number;
@@ -141,6 +188,26 @@ export interface LineAdjustmentItem {
   quantity: number;
 }
 
+export interface IssueForm {
+  warehouse: string;
+  referenceNo: string;
+  move_no: string;
+  move_date: string;
+  type: string;
+  notes: string;
+  reference_type: string;
+}
+
+export interface LineIssueItem {
+  id: number | undefined;
+  product_id: number;
+  name: string;
+  image: string;
+  sku: string;
+  uom: string;
+  quantity: number;
+}
+
 export interface StockMoveAdjustmentCreate {
   move_no: string;
   move_date: string;
@@ -148,6 +215,11 @@ export interface StockMoveAdjustmentCreate {
   warehouse_id: number;
   reference_type: ReferenceType;
   note?: string;
+  created_by: number;
+  approved_by?: string;
+  submitted_at?: string;
+  approved_at?: string;
+  reject_reason?: string;
   lines: {
     id: number | undefined;
     product_id: number;
@@ -163,6 +235,11 @@ export interface StockMoveAdjustmentUpdate {
   warehouse_id: number;
   reference_type: ReferenceType;
   note?: string;
+  created_by: number;
+  approved_by?: string;
+  submitted_at?: string;
+  approved_at?: string;
+  reject_reason?: string;
   lines: {
     id: number | undefined;
     product_id: number;

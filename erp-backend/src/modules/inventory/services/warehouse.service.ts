@@ -1,8 +1,12 @@
 import { Warehouse } from "../models/warehouse.model";
 
 export const warehouseService = {
-  async getAll() {
-    return await Warehouse.findAll();
+  async getAll(user: any) {
+    return await Warehouse.findAll({
+      where: {
+        branch_id: user.branch_id,
+      },
+    });
   },
 
   async getById(id: number) {

@@ -33,6 +33,10 @@ import {
   StockMoveAdjustmentUpdate,
   updateAdjustmentStockMoveThunk,
   deleteStockMoveThunk,
+  IssueForm,
+  LineIssueItem,
+  createIssueStockMoveThunk,
+  updateIssueStockMoveThunk,
 } from "../store";
 import { Button } from "../../../components/ui/Button";
 import { BasicDropdownMenu } from "../../../components/ui/DropdownMenu";
@@ -52,6 +56,9 @@ import { Trash2 } from "lucide-react";
 import CreateAdjustmentModal from "../components/Modal/AdjustmentModal/CreateAdjustmentModal";
 import { getErrorMessage } from "@/utils/ErrorHelper";
 import EditAdjustmentModal from "../components/Modal/AdjustmentModal/EditAdjustmentModal";
+import CreateIssueModal from "../components/Modal/IssueModal/CreateIssueModal";
+import { fetchSaleOrdersByStatus } from "@/features/sales/store/saleOrder.slice";
+import EditIssueModal from "../components/Modal/IssueModal/EditIssueModal";
 
 export default function StockMovePages() {
   const dispatch = useDispatch<AppDispatch>();
@@ -60,6 +67,8 @@ export default function StockMovePages() {
 
   const warehouses = useSelector((state: RootState) => state.warehouse.items);
   const purchaseOrder = useSelector((state: RootState) => state.purchaseOrder);
+  const user = useSelector((state: RootState) => state.auth.user);
+  const saleOrder = useSelector((state: RootState) => state.saleOrder);
 
   const [search] = useState("");
   const [warehouseId, setWarehouseId] = useState<string>("");
@@ -82,7 +91,10 @@ export default function StockMovePages() {
   const [openCreateAdjustmentModal, setOpenCreateAdjustmentModal] =
     useState(false);
 
+  const [openCreateIssueModal, setOpenCreateIssueModal] = useState(false);
+
   const [openEditReceiptModal, setOpenEditReceiptModal] = useState(false);
+  const [openEditIssueModal, setOpenEditIssueModal] = useState(false);
   const [openEditTransferModal, setOpenEditTransferModal] = useState(false);
   const [openEditAdjustmentModal, setOpenEditAdjustmentModal] = useState(false);
 
@@ -97,6 +109,7 @@ export default function StockMovePages() {
     dispatch(fetchStockMovesThunk());
     dispatch(fetchWarehousesThunk());
     dispatch(fetchPurchaseOrderByStatus("confirmed"));
+    dispatch(fetchSaleOrdersByStatus("confirmed"));
   }, [dispatch]);
 
   const getWarehouseName = (id: number) =>
@@ -167,6 +180,19 @@ export default function StockMovePages() {
         }
       },
     },
+    {
+      key: "created_by",
+      label: "Created By",
+      render: (row: StockMove) => {
+        if (!row.creator) return "N/A";
+
+        return (
+          <div className="flex flex-col">
+            <span className=" text-gray-700">{row.creator.full_name}</span>
+          </div>
+        );
+      },
+    },
 
     {
       key: "type",
@@ -224,6 +250,9 @@ export default function StockMovePages() {
     if (type === "adjustment") {
       setOpenCreateAdjustmentModal(true);
     }
+    if (type === "issue") {
+      setOpenCreateIssueModal(true);
+    }
   };
 
   const handleCreateReceiptSubmit = async (data: {
@@ -239,6 +268,7 @@ export default function StockMovePages() {
         reference_type: data.form.reference_type as ReferenceType,
         reference_id: Number(data.form.referenceNo),
         note: data.form.notes || "",
+        created_by: user?.id ?? 0,
         lines: data.products.map((p) => ({
           id: undefined,
           product_id: p.id,
@@ -260,6 +290,41 @@ export default function StockMovePages() {
     }
   };
 
+  const handleCreateIssueSubmit = async (data: {
+    form: IssueForm;
+    lineItems: LineIssueItem[];
+  }) => {
+    try {
+      const payload: StockMoveCreate = {
+        move_no: data.form.move_no,
+        move_date: data.form.move_date,
+        type: data.form.type as StockMoveType,
+        warehouse_id: Number(data.form.warehouse),
+        reference_type: data.form.reference_type as ReferenceType,
+        reference_id: Number(data.form.referenceNo),
+        note: data.form.notes || "",
+        created_by: user?.id ?? 0,
+        lines: data.lineItems.map((p) => ({
+          id: undefined,
+          product_id: p.product_id,
+          quantity: p.quantity,
+          uom: p.uom,
+        })),
+      };
+      const result = await dispatch(
+        createIssueStockMoveThunk(payload)
+      ).unwrap();
+      console.log("Created stock move:", result);
+      toast.success("Stock Issue Move created!");
+      setOpenCreateIssueModal(false);
+    } catch (error) {
+      console.log(">>> Error caught:", error);
+      console.log(">>>> ERROR TYPE:", typeof error);
+
+      toast.error(getErrorMessage(error));
+    }
+  };
+
   const handleCreateTransferSubmit = async (data: {
     form: TransferForm;
     lineItems: LineTransferItem[];
@@ -273,6 +338,7 @@ export default function StockMovePages() {
         warehouse_to_id: Number(data.form.warehouseTo),
         reference_type: data.form.reference_type as ReferenceType,
         note: data.form.notes || "",
+        created_by: user?.id ?? 0,
         lines: data.lineItems.map((p) => ({
           id: undefined,
           product_id: p.product_id,
@@ -301,6 +367,7 @@ export default function StockMovePages() {
         warehouse_id: Number(data.form.warehouse),
         reference_type: data.form.reference_type as ReferenceType,
         note: data.form.notes || "",
+        created_by: user?.id ?? 0,
         lines: data.lineItems.map((p) => ({
           id: undefined,
           product_id: p.product_id,
@@ -312,7 +379,7 @@ export default function StockMovePages() {
         createAdjustmentStockMoveThunk(payload)
       ).unwrap();
       console.log("Created stock move:", result);
-      toast.success("Stock Receipt Move created!");
+      toast.success("Stock Ajustment Move created!");
       setOpenCreateAdjustmentModal(false);
     } catch (error) {
       console.log(">>> Error caught:", error);
@@ -349,6 +416,7 @@ export default function StockMovePages() {
         reference_type: data.form.reference_type as ReferenceType,
         reference_id: Number(data.form.referenceNo),
         note: data.form.notes || "",
+        created_by: user?.id ?? 0,
         lines: data.lineItems.map((p) => ({
           id: p.id,
           product_id: p.product_id,
@@ -396,6 +464,7 @@ export default function StockMovePages() {
         warehouse_to_id: Number(data.form.warehouseTo),
         reference_type: data.form.reference_type as ReferenceType,
         note: data.form.notes || "",
+        created_by: user?.id ?? 0,
         lines: data.lineItems.map((p) => ({
           id: p.id,
           product_id: p.product_id,
@@ -443,6 +512,7 @@ export default function StockMovePages() {
         warehouse_id: Number(data.form.warehouse),
         reference_type: data.form.reference_type as ReferenceType,
         note: data.form.notes || "",
+        created_by: user?.id ?? 0,
         lines: data.lineItems.map((p) => ({
           id: p.id,
           product_id: p.product_id,
@@ -459,6 +529,54 @@ export default function StockMovePages() {
       console.log("Edited stock move:", result);
       toast.success("Stock Adjustment Move Edited!");
       setOpenEditAdjustmentModal(false);
+    } catch (error) {
+      console.log(">>> Error caught:", error);
+      console.log(">>>> ERROR TYPE:", typeof error);
+      toast.error(getErrorMessage(error));
+    }
+  };
+
+  const handleEditIssueSubmit = async (data: {
+    form: IssueForm;
+    lineItems: LineIssueItem[];
+  }) => {
+    if (!selectedStockMove) {
+      toast.error("No receipt selected!");
+      return;
+    }
+    const checkStatus = await dispatch(
+      fetchStockMoveByIdThunk(selectedStockMove.id)
+    ).unwrap();
+
+    if (checkStatus.status !== "draft") {
+      toast.error("Cannot edit, receipt already approved!");
+      setOpenEditIssueModal(false);
+      return;
+    }
+
+    try {
+      const payload: StockMoveUpdate = {
+        move_no: data.form.move_no,
+        move_date: data.form.move_date,
+        type: data.form.type as StockMoveType,
+        warehouse_id: Number(data.form.warehouse),
+        reference_type: data.form.reference_type as ReferenceType,
+        reference_id: Number(data.form.referenceNo),
+        note: data.form.notes || "",
+        created_by: user?.id ?? 0,
+        lines: data.lineItems.map((p) => ({
+          id: p.id,
+          product_id: p.product_id,
+          quantity: p.quantity,
+          uom: p.uom,
+        })),
+      };
+      const result = await dispatch(
+        updateIssueStockMoveThunk({ id: selectedStockMove.id, data: payload })
+      ).unwrap();
+      console.log("Edited stock move:", result);
+      toast.success("Stock Receipt Move Edited!");
+      setOpenEditIssueModal(false);
     } catch (error) {
       console.log(">>> Error caught:", error);
       console.log(">>>> ERROR TYPE:", typeof error);
@@ -560,6 +678,9 @@ export default function StockMovePages() {
                 case "adjustment":
                   setOpenEditAdjustmentModal(true);
                   break;
+                case "issue":
+                  setOpenEditIssueModal(true);
+                  break;
                 default:
                   toast.warn("Unknown stock move type");
               }
@@ -617,6 +738,13 @@ export default function StockMovePages() {
         onSubmit={handleCreateReceiptSubmit}
         onClose={() => setOpenCreateReceiptModal(false)}
       />
+
+      <CreateIssueModal
+        open={openCreateIssueModal}
+        warehouses={warehouses}
+        onSubmit={handleCreateIssueSubmit}
+        onClose={() => setOpenCreateIssueModal(false)}
+      />
       <CreateAdjustmentModal
         open={openCreateAdjustmentModal}
         warehouses={warehouses}
@@ -637,6 +765,15 @@ export default function StockMovePages() {
         data={selectedStockMove}
         onSubmit={handleEditReceiptSubmit}
         onClose={() => setOpenEditReceiptModal(false)}
+      />
+
+      <EditIssueModal
+        open={openEditIssueModal}
+        warehouses={warehouses}
+        saleOrder={saleOrder}
+        data={selectedStockMove}
+        onSubmit={handleEditIssueSubmit}
+        onClose={() => setOpenEditIssueModal(false)}
       />
       <EditAdjustmentModal
         open={openEditAdjustmentModal}

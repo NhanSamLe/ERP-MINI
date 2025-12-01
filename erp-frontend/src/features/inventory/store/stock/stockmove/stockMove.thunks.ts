@@ -45,6 +45,17 @@ export const createReceiptStockMoveThunk = createAsyncThunk<
   }
 });
 
+export const createIssueStockMoveThunk = createAsyncThunk<
+  StockMove,
+  StockMoveCreate
+>("stockMove/createIssue", async (data, { rejectWithValue }) => {
+  try {
+    return await stockMoveService.createIsssueStockMove(data);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
 export const createTransferStockMoveThunk = createAsyncThunk<
   StockMove,
   StockMoveTransferCreate
@@ -73,6 +84,17 @@ export const updateReceiptStockMoveThunk = createAsyncThunk<
 >("stockMove/updateReceipt", async ({ id, data }, { rejectWithValue }) => {
   try {
     return await stockMoveService.updateReceiptStockMove(id, data);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
+export const updateIssueStockMoveThunk = createAsyncThunk<
+  StockMove,
+  { id: number; data: StockMoveUpdate }
+>("stockMove/updateIssue", async ({ id, data }, { rejectWithValue }) => {
+  try {
+    return await stockMoveService.updateIssueStockMove(id, data);
   } catch (error) {
     return rejectWithValue(getErrorMessage(error));
   }

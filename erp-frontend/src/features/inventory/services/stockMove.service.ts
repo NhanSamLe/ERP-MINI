@@ -17,6 +17,9 @@ export const stockMoveService = {
   createReceiptStockMove: (data: StockMoveCreate) =>
     stockMoveApi.createReceiptStockMove(data),
 
+  createIsssueStockMove: (data: StockMoveCreate) =>
+    stockMoveApi.createIssueStockMove(data),
+
   createTransferStockMove: (data: StockMoveTransferCreate) =>
     stockMoveApi.createTransferStockMove(data),
 
@@ -25,6 +28,9 @@ export const stockMoveService = {
 
   updateReceiptStockMove: (id: number, data: StockMoveUpdate) =>
     stockMoveApi.updateReceiptStockMove(id, data),
+
+  updateIssueStockMove: (id: number, data: StockMoveUpdate) =>
+    stockMoveApi.updateIssueStockMove(id, data),
 
   updateTransferStockMove: (id: number, data: StockMoveTransferUpdate) =>
     stockMoveApi.updateTransferStockMove(id, data),

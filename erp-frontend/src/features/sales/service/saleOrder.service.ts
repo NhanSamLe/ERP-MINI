@@ -49,3 +49,10 @@ export async function rejectSaleOrder(
   const res = await api.rejectSaleOrder(id, payload);
   return res.data.data as SaleOrderDto;
 }
+
+export async function getSaleOrdersByStatus(
+  status: string
+): Promise<SaleOrderDto[]> {
+  const res = await api.fetchSaleOrdersByStatusApi(status);
+  return res.data as SaleOrderDto[];
+}

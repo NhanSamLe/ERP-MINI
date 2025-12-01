@@ -20,6 +20,7 @@ export interface StockMoveCreateDTO {
   reference_type: ReferenceType;
   reference_id?: number;
   note?: string;
+  created_by: number;
   lines: StockMoveLineDTO[];
 }
 
@@ -30,6 +31,7 @@ export interface StockMoveAdjustmentDTO {
   warehouse_id: number;
   reference_type: ReferenceType;
   note?: string;
+  created_by: number;
   lines: StockMoveLineDTO[];
 }
 
@@ -41,6 +43,7 @@ export interface StockMoveTransferDTO {
   warehouse_to_id: number;
   reference_type: ReferenceType;
   note?: string;
+  created_by: number;
   lines: StockMoveLineDTO[];
 }
 
@@ -52,5 +55,6 @@ export interface StockMoveUpdateDTO {
   reference_type: ReferenceType;
   reference_id?: number;
   note?: string;
+  created_by: number;
   lines: StockMoveLineDTO[];
 }
