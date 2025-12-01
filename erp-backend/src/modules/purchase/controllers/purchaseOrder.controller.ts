@@ -59,10 +59,13 @@ export const purchaseOrderController = {
   async deletedPO(req: Request, res: Response) {
     try {
       const id = Number(req.params.id);
-      await purchaseOrderService.delete(id);
+      const user = (req as any).user;
+      await purchaseOrderService.delete(id, user);
       res.status(200).json({ message: "Deleted" });
     } catch (e: any) {
-      res.status(400).json({ message: e.message });
+      const status = e.status || 400;
+      const message = e.message || "Something went wrong";
+      res.status(status).json({ message });
     }
   },
 

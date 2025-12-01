@@ -4,6 +4,7 @@ import {
   PurchaseOrderCreate,
   PurchaseOrderUpdate,
 } from "./purchaseOrder.types";
+import { getErrorMessage } from "@/utils/ErrorHelper";
 
 export const fetchPurchaseOrdersThunk = createAsyncThunk(
   "purchaseOrder/fetchAll",
@@ -11,9 +12,8 @@ export const fetchPurchaseOrdersThunk = createAsyncThunk(
     try {
       const res = await purchaseOrderService.getAllPO();
       return res;
-    } catch (error: unknown) {
-      if (error instanceof Error) return rejectWithValue(error.message);
-      return rejectWithValue("Unknown error");
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
     }
   }
 );
@@ -24,9 +24,8 @@ export const fetchPurchaseOrderByIdThunk = createAsyncThunk(
     try {
       const res = await purchaseOrderService.getPOById(id);
       return res;
-    } catch (error: unknown) {
-      if (error instanceof Error) return rejectWithValue(error.message);
-      return rejectWithValue("Unknown error");
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
     }
   }
 );
@@ -37,9 +36,8 @@ export const fetchPurchaseOrderByStatus = createAsyncThunk(
     try {
       const res = await purchaseOrderService.getPOByStatus(status);
       return res;
-    } catch (error: unknown) {
-      if (error instanceof Error) return rejectWithValue(error.message);
-      return rejectWithValue("Unknown error");
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
     }
   }
 );
@@ -50,9 +48,8 @@ export const createPurchaseOrderThunk = createAsyncThunk(
     try {
       const res = await purchaseOrderService.create(body);
       return res;
-    } catch (error: unknown) {
-      if (error instanceof Error) return rejectWithValue(error.message);
-      return rejectWithValue("Unknown error");
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
     }
   }
 );
@@ -66,9 +63,8 @@ export const updatePurchaseOrderThunk = createAsyncThunk(
     try {
       const res = await purchaseOrderService.update(id, body);
       return res;
-    } catch (error: unknown) {
-      if (error instanceof Error) return rejectWithValue(error.message);
-      return rejectWithValue("Unknown error");
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
     }
   }
 );
@@ -79,9 +75,8 @@ export const deletePurchaseOrderThunk = createAsyncThunk(
     try {
       await purchaseOrderService.delete(id);
       return id;
-    } catch (error: unknown) {
-      if (error instanceof Error) return rejectWithValue(error.message);
-      return rejectWithValue("Unknown error");
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
     }
   }
 );
@@ -92,9 +87,8 @@ export const submitPurchaseOrderThunk = createAsyncThunk(
     try {
       const res = await purchaseOrderService.submitForApproval(id);
       return res;
-    } catch (error: unknown) {
-      if (error instanceof Error) return rejectWithValue(error.message);
-      return rejectWithValue("Unknown error");
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
     }
   }
 );

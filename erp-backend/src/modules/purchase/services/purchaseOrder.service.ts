@@ -62,7 +62,6 @@ export const purchaseOrderService = {
     if (data.branch_id !== user.branch_id) {
       throw new Error("You cannot create a purchase order for another branch.");
     }
-
     const po = await PurchaseOrder.create({
       branch_id: data.branch_id,
       po_no: data.po_no,
@@ -104,8 +103,15 @@ export const purchaseOrderService = {
 
     if (!po) throw new Error("Purchase order not found");
     if (po.status !== "draft") {
-      throw new Error("Only draft purchase orders can be updated");
+      throw {
+        status: 400,
+        message:
+          "Cannot edit the purchase order because it has already been approved",
+      };
     }
+
+    if (po.created_by !== user.id)
+      throw new Error("You can only modify your own orders");
 
     await po.update({
       branch_id: data.branch_id,
@@ -152,12 +158,27 @@ export const purchaseOrderService = {
     return this.getPOById(id);
   },
 
-  async delete(id: number) {
+  async delete(id: number, user: any) {
     const po = await PurchaseOrder.findByPk(id);
+    const allowedRoles = ["PURCHASE"];
+
+    if (!allowedRoles.includes(user.role)) {
+      throw new Error("You do not have permission to delete purchase orders.");
+    }
+
+    if (po?.branch_id !== user.branch_id) {
+      throw new Error("You cannot delete a purchase order for another branch.");
+    }
+
     if (!po) throw new Error("Purchase order not found");
     if (po.status !== "draft") {
-      throw new Error("Only purchase orders in 'draft' status can be updated");
+      throw new Error(
+        "Cannot delete the purchase order because it has already been approved"
+      );
     }
+    if (po.created_by !== user.id)
+      throw new Error("You can only delete your own orders");
+
     await po.destroy();
     return { success: true };
   },
@@ -173,6 +194,9 @@ export const purchaseOrderService = {
     if (po.status !== "draft") {
       throw new Error("Only draft purchase orders can be submitted.");
     }
+
+    if (po.created_by !== user.id)
+      throw new Error("Only the creator can submit");
 
     po.status = "waiting_approval";
     po.submitted_at = new Date();

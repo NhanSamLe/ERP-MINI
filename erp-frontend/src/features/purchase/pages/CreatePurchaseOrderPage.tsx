@@ -21,6 +21,7 @@ import { fetchTaxRatesByIdThunk } from "../../master-data/store/master-data/tax/
 import { createPurchaseOrderThunk } from "../store/purchaseOrder.thunks";
 import { toast } from "react-toastify";
 import { PurchaseOrderCreate } from "../store";
+import { loadPartners } from "@/features/partner/store/partner.thunks";
 
 interface LineItem {
   id: number;
@@ -58,6 +59,11 @@ export default function CreatePurchaseOrderPage() {
   const [lines, setLines] = useState<LineItem[]>([]);
 
   const user = useSelector((state: RootState) => state.auth.user);
+  const partners = useSelector((state: RootState) => state.partners);
+
+  useEffect(() => {
+    dispatch(loadPartners({ type: "supplier" }));
+  }, [dispatch]);
 
   useEffect(() => {
     const today = new Date();
@@ -278,12 +284,17 @@ export default function CreatePurchaseOrderPage() {
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Supplier Name <span className="text-red-500">*</span>
           </label>
-          <Select value={supplierId} onValueChange={setSupplierId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select" />
+          <Select value={supplierId} onValueChange={(v) => setSupplierId(v)}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select Supplier" />
             </SelectTrigger>
+
             <SelectContent>
-              <SelectItem value="2">ABC Supplies Ltd</SelectItem>
+              {partners.items.map((p) => (
+                <SelectItem key={p.id} value={String(p.id)}>
+                  {p.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
