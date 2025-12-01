@@ -1,4 +1,24 @@
 // =====================
+// ROLE
+// =====================
+
+export const Roles = {
+  ADMIN: "ADMIN",
+  CEO: "CEO",
+  SALESMANAGER: "SALESMANAGER",
+  SALES: "SALES",
+  WHMANAGER: "WHMANAGER",
+  WHSTAFF: "WHSTAFF",
+  CHACC: "CHACC",
+  ACCOUNT: "ACCOUNT",
+  HRMANAGER: "HRMANAGER",
+  PURCHASE: "PURCHASE",
+  PURCHASEMANAGER: "PURCHASEMANAGER",
+} as const;
+
+export type Role = (typeof Roles)[keyof typeof Roles];
+
+// =====================
 // AUTH & USER
 // =====================
 export type UserStatus = "active" | "inactive";
@@ -12,22 +32,11 @@ export type PartnerStatus = "active" | "inactive";
 // =====================
 export type LeadStage = "new" | "qualified" | "lost";
 
-export type OpportunityStage =
-  | "prospecting"
-  | "negotiation"
-  | "won"
-  | "lost";
+export type OpportunityStage = "prospecting" | "negotiation" | "won" | "lost";
 
-export type ActivityRelatedType =
-  | "lead"
-  | "opportunity"
-  | "customer";
+export type ActivityRelatedType = "lead" | "opportunity" | "customer";
 
-export type ActivityType =
-  | "call"
-  | "email"
-  | "meeting"
-  | "task";
+export type ActivityType = "call" | "email" | "meeting" | "task";
 
 // =====================
 // SALES & AR
@@ -39,84 +48,48 @@ export type SaleOrderStatus =
   | "completed"
   | "cancelled";
 
-export type ArInvoiceStatus =
-  | "draft"
-  | "posted"
-  | "paid"
-  | "cancelled";
+export type ArInvoiceStatus = "draft" | "posted" | "paid" | "cancelled";
 
-export type ArReceiptMethod =
-  | "cash"
-  | "bank"
-  | "transfer";
+export type ArReceiptMethod = "cash" | "bank" | "transfer";
 
-export type ArReceiptStatus =
-  | "draft"
-  | "posted";
+export type ArReceiptStatus = "draft" | "posted";
 
 // =====================
 // PURCHASE & AP
 // =====================
 export type PurchaseOrderStatus =
   | "draft"
+  | "waiting_approval"
   | "confirmed"
-  | "received"
+  | "partially_received"
+  | "completed"
   | "cancelled";
 
-export type ApInvoiceStatus =
-  | "draft"
-  | "posted"
-  | "paid"
-  | "cancelled";
+export type ApInvoiceStatus = "draft" | "posted" | "paid" | "cancelled";
 
-export type ApPaymentMethod =
-  | "cash"
-  | "bank"
-  | "transfer";
+export type ApPaymentMethod = "cash" | "bank" | "transfer";
 
-export type ApPaymentStatus =
-  | "draft"
-  | "posted";
+export type ApPaymentStatus = "draft" | "posted";
 
 // =====================
 // INVENTORY / SCM
 // =====================
-export type StockMoveType =
-  | "receipt"
-  | "issue"
-  | "transfer"
-  | "adjustment";
+export type StockMoveType = "receipt" | "issue" | "transfer" | "adjustment";
 
-export type StockMoveStatus =
-  | "draft"
-  | "posted"
-  | "cancelled";
+export type StockMoveStatus = "draft" | "posted" | "cancelled";
 
 // =====================
 // HRM
 // =====================
-export type Gender =
-  | "male"
-  | "female"
-  | "other";
+export type Gender = "male" | "female" | "other";
 
-export type ContractType =
-  | "trial"
-  | "official"
-  | "seasonal";
+export type ContractType = "trial" | "official" | "seasonal";
 
-export type EmployeeStatus =
-  | "active"
-  | "inactive";
+export type EmployeeStatus = "active" | "inactive";
 
-export type PayrollPeriodStatus =
-  | "open"
-  | "processed"
-  | "closed";
+export type PayrollPeriodStatus = "open" | "processed" | "closed";
 
-export type PayrollRunStatus =
-  | "draft"
-  | "posted";
+export type PayrollRunStatus = "draft" | "posted";
 
 // =====================
 // FINANCE & GL
@@ -128,13 +101,9 @@ export type GlAccountType =
   | "revenue"
   | "expense";
 
-export type NormalSide =
-  | "debit"
-  | "credit";
+export type NormalSide = "debit" | "credit";
 
-export type GlEntryStatus =
-  | "draft"
-  | "posted";
+export type GlEntryStatus = "draft" | "posted";
 
 // =====================
 // TAX
@@ -149,16 +118,17 @@ export type TaxType =
   | "ENVIRONMENTAL"
   | "OTHER";
 
-export type AppliesTo =
-  | "sale"
-  | "purchase"
-  | "both";
+export type AppliesTo = "sale" | "purchase" | "both";
 export type TaskPriority = "low" | "medium" | "high";
 export type TaskStatus = "Not Started" | "In Progress" | "Completed";
 
 export type EmailDirection = "in" | "out";
 
-export type ActivityStatus = "pending" | "in_progress" | "completed" | "cancelled";
+export type ActivityStatus =
+  | "pending"
+  | "in_progress"
+  | "completed"
+  | "cancelled";
 
 export type ResultType =
   | "connected"

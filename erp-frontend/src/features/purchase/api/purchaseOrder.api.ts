@@ -45,4 +45,15 @@ export const purchaseOrderApi = {
     const res = await axiosClient.patch(`/purchase-order/${id}/submit`);
     return res.data;
   },
+
+  approve: async (id: number): Promise<PurchaseOrder> => {
+    const res = await axiosClient.put(`/purchase-order/${id}/approve`);
+    return res.data;
+  },
+  cancel: async (id: number, reason: string): Promise<PurchaseOrder> => {
+    const res = await axiosClient.put(`/purchase-order/${id}/cancel`, {
+      reason,
+    });
+    return res.data;
+  },
 };

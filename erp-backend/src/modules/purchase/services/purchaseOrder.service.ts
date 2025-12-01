@@ -6,6 +6,7 @@ import { StockMove } from "../../inventory/models/stockMove.model";
 import { productService } from "../../product/services/product.service";
 import { JwtPayload } from "../../../core/types/jwt";
 import { User } from "../../../models";
+import { Role } from "../../../core/types/enum";
 
 export const purchaseOrderService = {
   async getAllPO(user: JwtPayload) {
@@ -43,7 +44,12 @@ export const purchaseOrderService = {
         {
           model: User,
           as: "creator",
-          attributes: ["id", "full_name", "email"],
+          attributes: ["id", "full_name", "email", "phone", "avatar_url"],
+        },
+        {
+          model: User,
+          as: "approver",
+          attributes: ["id", "full_name", "email", "phone", "avatar_url"],
         },
       ],
     });
@@ -181,6 +187,61 @@ export const purchaseOrderService = {
 
     await po.destroy();
     return { success: true };
+  },
+
+  async approvalPO(id: number, user: any) {
+    const po = await this.getPOById(id);
+    if (!po) throw new Error("Purchase order not found");
+
+    if (user.role !== Role.PURCHASEMANAGER) {
+      throw new Error("You do not have permission to approve purchase orders.");
+    }
+    if (po.branch_id !== user.branch_id) {
+      throw new Error(
+        "You cannot approve a purchase order for another branch."
+      );
+    }
+
+    if (po.status !== "waiting_approval") {
+      throw new Error(
+        "Only purchase orders in 'waiting_approval' can be approved."
+      );
+    }
+    po.status = "confirmed";
+    po.approved_by = user.id;
+    po.approved_at = new Date();
+    await po.save();
+    return po;
+  },
+
+  async cancelPO(id: number, user: any, reason: string) {
+    const po = await this.getPOById(id);
+    if (!po) throw new Error("Purchase order not found");
+
+    if (user.role !== Role.PURCHASEMANAGER) {
+      throw new Error("You do not have permission to cancel purchase orders.");
+    }
+
+    if (po.branch_id !== user.branch_id) {
+      throw new Error("You cannot cancel a purchase order for another branch.");
+    }
+
+    if (po.status !== "waiting_approval") {
+      throw new Error(
+        "Only purchase orders in 'waiting_approval' can be cancelled."
+      );
+    }
+
+    if (!reason || reason.trim() === "") {
+      throw new Error("Reject reason is required to cancel a purchase order.");
+    }
+
+    po.status = "cancelled";
+    po.approved_by = user.id;
+    po.approved_at = new Date();
+    po.reject_reason = reason.trim();
+    await po.save();
+    return po;
   },
 
   async submitForApproval(id: number, user: any) {

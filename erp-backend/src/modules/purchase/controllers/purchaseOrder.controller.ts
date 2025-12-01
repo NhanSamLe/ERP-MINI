@@ -80,4 +80,28 @@ export const purchaseOrderController = {
       res.status(400).json({ message: e.message });
     }
   },
+  async approvePO(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const user = (req as any).user;
+
+      const result = await purchaseOrderService.approvalPO(id, user);
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  },
+
+  async cancelPO(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const user = (req as any).user;
+      const { reason } = req.body;
+
+      const result = await purchaseOrderService.cancelPO(id, user, reason);
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  },
 };

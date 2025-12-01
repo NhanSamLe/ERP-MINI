@@ -315,6 +315,15 @@ export function applyAssociations() {
     foreignKey: "created_by",
   });
 
+  User.hasMany(PurchaseOrder, {
+    as: "approvedPOs",
+    foreignKey: "approved_by",
+  });
+  PurchaseOrder.belongsTo(User, {
+    as: "approver",
+    foreignKey: "approved_by",
+  });
+
   // ApInvoice ↔ Lines
   ApInvoice.hasMany(ApInvoiceLine, {
     foreignKey: "ap_invoice_id",

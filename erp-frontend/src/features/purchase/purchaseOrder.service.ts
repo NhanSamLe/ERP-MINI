@@ -39,4 +39,14 @@ export const purchaseOrderService = {
     const res = await purchaseOrderApi.submitForApproval(id);
     return res;
   },
+
+  async approve(id: number): Promise<PurchaseOrder> {
+    const res = await purchaseOrderApi.approve(id);
+    return res;
+  },
+
+  async cancel(id: number, reason: string): Promise<PurchaseOrder> {
+    const res = await purchaseOrderApi.cancel(id, reason);
+    return res;
+  },
 };
