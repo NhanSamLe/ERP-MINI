@@ -8,7 +8,7 @@ import {
 import { Button } from "../../../../../components/ui/Button";
 import { Input } from "../../../../../components/ui/input";
 import { Textarea } from "../../../../../components/ui/textarea";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   fetchPurchaseOrderByStatus,
   PurchaseOrder,
@@ -16,8 +16,7 @@ import {
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../../../../store/store";
 import { toast } from "react-toastify";
-import { searchProductsThunk } from "../../../../products/store/product.thunks";
-import { Product } from "../../../../products/store/product.types";
+import { fetchProductByIdThunk } from "@/features/products/store/product.thunks";
 
 export interface ProductItem {
   id: number;
@@ -76,13 +75,6 @@ export default function CreateReceiptModal({
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [selectedPOId, setSelectedPOId] = useState<string>("");
 
-  // search
-  const [searchTerm, setSearchTerm] = useState("");
-  const [searchResults, setSearchResults] = useState<Product[]>([]);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     dispatch(fetchPurchaseOrderByStatus("confirmed"));
   }, [dispatch]);
@@ -100,7 +92,6 @@ export default function CreateReceiptModal({
     });
     setProducts([]);
     setSelectedPOId("");
-    setSearchTerm("");
   }, [open]);
   useEffect(() => {
     if (selectedPOId) {
@@ -109,62 +100,49 @@ export default function CreateReceiptModal({
   }, [selectedPOId]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const keyword = searchTerm.trim();
-
-      if (!keyword || keyword.length < 2) {
-        setSearchResults([]);
-        setShowDropdown(false);
+    const loadProducts = async () => {
+      if (!selectedPOId) {
+        setProducts([]);
         return;
       }
 
-      setSearchLoading(true);
+      const po = purchaseOrder.items.find(
+        (x: PurchaseOrder) => x.id.toString() === selectedPOId
+      );
 
-      dispatch(searchProductsThunk(keyword))
-        .unwrap()
-        .then((res) => {
-          setSearchResults(res);
-          setShowDropdown(true);
-        })
-        .catch(() => setSearchResults([]))
-        .finally(() => setSearchLoading(false));
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchTerm, dispatch]);
+      if (!po || !po.lines) {
+        setProducts([]);
+        return;
+      }
 
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node)
-      ) {
-        setShowDropdown(false);
+      try {
+        // Gọi API song song cho từng product
+        const fetchedProducts = await Promise.all(
+          po.lines.map(async (line) => {
+            const result = await dispatch(
+              fetchProductByIdThunk(line.product_id)
+            ).unwrap(); // ép return type là Product
+
+            return {
+              id: result.id,
+              name: result.name,
+              sku: result.sku,
+              uom: result.uom,
+              image: result.image_url,
+              quantity: line.quantity,
+            } as ProductItem;
+          })
+        );
+
+        setProducts(fetchedProducts);
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to load product details");
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
-  const handleSelectProduct = (p: Product) => {
-    if (products.some((l) => l.id === p.id)) {
-      alert("Sản phẩm đã có trong danh sách!");
-      setSearchTerm("");
-      return;
-    }
-    setProducts((prev) => [
-      ...prev,
-      {
-        id: p.id,
-        name: p.name,
-        sku: p.sku,
-        uom: p.uom ?? "",
-        image: p.image_url ?? "",
-        quantity: 1,
-      },
-    ]);
-    setSearchTerm("");
-    setShowDropdown(false);
-  };
+    loadProducts();
+  }, [selectedPOId, purchaseOrder.items, dispatch]);
 
   const handleQuantityChange = (id: number, value: number) => {
     setProducts((prev) =>
@@ -290,50 +268,6 @@ export default function CreateReceiptModal({
         <div className="mt-4">
           <label className="font-medium">Move Number</label>
           <Input value={form.move_no} disabled />
-        </div>
-
-        {/* PRODUCT SEARCH */}
-        <div className="mt-4 relative" ref={dropdownRef}>
-          <label className="font-medium">Product *</label>
-
-          <Input
-            value={searchTerm}
-            onChange={(value) => setSearchTerm(value)}
-            placeholder="Search product..."
-          />
-
-          {showDropdown && searchResults.length > 0 && (
-            <div className="absolute w-full mt-1 bg-white border rounded shadow-lg max-h-60 overflow-auto z-50">
-              {searchLoading ? (
-                <div className="p-2 text-gray-500">Loading...</div>
-              ) : searchResults.length > 0 ? (
-                searchResults.map((p) => (
-                  <div
-                    key={p.id}
-                    onClick={() => handleSelectProduct(p)}
-                    className="flex items-center gap-3 p-2 hover:bg-gray-100 cursor-pointer transition rounded"
-                  >
-                    <img
-                      src={p.image_url ?? ""}
-                      className="w-10 h-10 rounded object-cover bg-gray-200"
-                      alt={p.name}
-                    />
-
-                    <div className="flex flex-col">
-                      <span className="font-medium text-gray-800">
-                        {p.name}
-                      </span>
-                      <span className="text-sm text-gray-500">
-                        SKU: {p.sku}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="p-2 text-gray-500">No results</div>
-              )}
-            </div>
-          )}
         </div>
 
         {/* TABLE */}

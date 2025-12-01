@@ -387,6 +387,27 @@ export function applyAssociations() {
   });
   StockMoveLine.belongsTo(Product, { foreignKey: "product_id", as: "product" });
 
+  // StockMove ↔ User
+  StockMove.belongsTo(User, {
+    as: "creator",
+    foreignKey: "created_by",
+  });
+
+  StockMove.belongsTo(User, {
+    as: "approver",
+    foreignKey: "approved_by",
+  });
+
+  User.hasMany(StockMove, {
+    as: "created_stock_moves",
+    foreignKey: "created_by",
+  });
+
+  User.hasMany(StockMove, {
+    as: "approved_stock_moves",
+    foreignKey: "approved_by",
+  });
+
   // Warehouse ↔ StockBalance
   Warehouse.hasMany(StockBalance, {
     foreignKey: "warehouse_id",

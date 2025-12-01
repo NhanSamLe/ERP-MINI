@@ -1,61 +1,74 @@
 import { Router } from "express";
 import { StockMoveController } from "../controllers/stockMove.controller";
 import { authMiddleware } from "../../../core/middleware/auth";
+import { Role } from "../../../core/types/enum";
 
 const router = Router();
 
-router.get("/", authMiddleware(["WHSTAFF"]), StockMoveController.getAll);
-router.get("/:id", authMiddleware(["WHSTAFF"]), StockMoveController.getById);
+router.get("/", authMiddleware([Role.WHSTAFF]), StockMoveController.getAll);
+router.get("/:id", authMiddleware([Role.WHSTAFF]), StockMoveController.getById);
 router.post(
   "/receipt",
-  authMiddleware(["WHSTAFF"]),
+  authMiddleware([Role.WHSTAFF]),
   StockMoveController.createReceiptStockMove
 );
 
 router.post(
+  "/issue",
+  authMiddleware([Role.WHSTAFF]),
+  StockMoveController.createIssuetStockMove
+);
+
+router.post(
   "/transfer",
-  authMiddleware(["WHSTAFF"]),
+  authMiddleware([Role.WHSTAFF]),
   StockMoveController.createTransferStockMove
 );
 
 router.post(
   "/adjustment",
-  authMiddleware(["WHSTAFF"]),
+  authMiddleware([Role.WHSTAFF]),
   StockMoveController.createAdjustmentStockMove
 );
 
 router.put(
   "/receipt/:id",
-  authMiddleware(["WHSTAFF"]),
+  authMiddleware([Role.WHSTAFF]),
   StockMoveController.updateReceiptStockMove
 );
 
 router.put(
+  "/issue/:id",
+  authMiddleware([Role.WHSTAFF]),
+  StockMoveController.updateIssueStockMove
+);
+
+router.put(
   "/transfer/:id",
-  authMiddleware(["WHSTAFF"]),
+  authMiddleware([Role.WHSTAFF]),
   StockMoveController.updateTransferStockMove
 );
 
 router.put(
   "/adjustment/:id",
-  authMiddleware(["WHSTAFF"]),
+  authMiddleware([Role.WHSTAFF]),
   StockMoveController.updateAdjustmentStockMove
 );
 
 router.delete(
   "/:id",
-  authMiddleware(["WHSTAFF"]),
+  authMiddleware([Role.WHSTAFF]),
   StockMoveController.deleteStockMove
 );
 
 router.get(
   "/type/:type",
-  authMiddleware(["WHSTAFF"]),
+  authMiddleware([Role.WHSTAFF]),
   StockMoveController.findByTypeStockMove
 );
 router.get(
   "/status/:status",
-  authMiddleware(["WHSTAFF"]),
+  authMiddleware([Role.WHSTAFF]),
   StockMoveController.findByStatus
 );
 

@@ -7,6 +7,13 @@ const router = Router();
 // Lấy danh sách (filter theo branch + role)
 router.get("/", authMiddleware([]), SaleOrderController.getAll);
 
+// Lấy danh sách theo statuss
+router.get(
+  "/status/:status",
+  authMiddleware([]),
+  SaleOrderController.getByStatus
+);
+
 // Chi tiết đơn hàng
 router.get("/:id", authMiddleware([]), SaleOrderController.getOne);
 

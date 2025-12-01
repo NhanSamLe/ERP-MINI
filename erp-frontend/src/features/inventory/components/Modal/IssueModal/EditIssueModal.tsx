@@ -9,81 +9,61 @@ import { Button } from "../../../../../components/ui/Button";
 import { Input } from "../../../../../components/ui/input";
 import { Textarea } from "../../../../../components/ui/textarea";
 import { useState, useEffect } from "react";
-import { PurchaseOrder, PurchaseOrderState } from "../../../../purchase/store";
-import { useDispatch } from "react-redux";
-import { AppDispatch } from "../../../../../store/store";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "../../../../../store/store";
 import { toast } from "react-toastify";
-import { fetchProductByIdThunk } from "../../../../products/store/product.thunks";
-import { StockMove } from "../../../store/stock/stockmove/stockMove.types";
+import { fetchProductByIdThunk } from "@/features/products/store/product.thunks";
+import {
+  IssueForm,
+  LineIssueItem,
+  StockMove,
+} from "@/features/inventory/store/stock/stockmove/stockMove.types";
+import { SaleOrderDto } from "@/features/sales/dto/saleOrder.dto";
+import { SaleOrderState } from "@/features/sales/store/saleOrder.slice";
 
-export interface LineReceiptItem {
-  id: number | undefined;
-  product_id: number;
-  name: string;
-  image: string;
-  sku: string;
-  uom: string;
-  quantity: number;
-}
-
-export interface EditReceiptForm {
-  warehouse: string;
-  referenceNo: string;
-  move_no: string;
-  notes: string;
-  move_date: string;
-  type: string;
-  reference_type: string;
-}
-
-interface EditReceiptModalProps {
+interface CreateIssueModalProps {
   open: boolean;
   warehouses: Array<{ id: number; name: string }>;
-  purchaseOrder: PurchaseOrderState;
+  saleOrder: SaleOrderState;
   data: StockMove | null;
-  onSubmit: (data: {
-    form: EditReceiptForm;
-    lineItems: LineReceiptItem[];
-  }) => void;
+  onSubmit: (data: { form: IssueForm; lineItems: LineIssueItem[] }) => void;
   onClose: () => void;
 }
 
-export default function EditReceiptModal({
+export default function CreateReceiptModal({
   open,
   warehouses,
-  purchaseOrder,
   data,
   onSubmit,
   onClose,
-}: EditReceiptModalProps) {
+}: CreateIssueModalProps) {
   const dispatch = useDispatch<AppDispatch>();
+  const saleOrder = useSelector((state: RootState) => state.saleOrder);
 
   const generateMoveNo = (): string => {
     const timestamp = Date.now();
     const randomNum = Math.floor(100 + Math.random() * 900);
-    return `RC${timestamp}${randomNum}`;
+    return `IS${timestamp}${randomNum}`;
   };
 
-  const [form, setForm] = useState<EditReceiptForm>({
+  const [form, setForm] = useState<IssueForm>({
     warehouse: "",
     referenceNo: "",
     move_no: generateMoveNo(),
     notes: "",
     move_date: "",
-    type: "receipt",
-    reference_type: "purchase_order",
+    type: "issue",
+    reference_type: "sale_order",
   });
 
-  const [lineItems, setLineItems] = useState<LineReceiptItem[]>([]);
-  const [selectedPOId, setSelectedPOId] = useState<string>("");
+  const [lineItems, setLineItems] = useState<LineIssueItem[]>([]);
+  const [selectedSOId, setSelectedSOId] = useState<string>("");
 
-  //
+  const selectedWarehouse =
+    warehouses.find((w) => w.id === data?.warehouse_from_id)?.name || "";
 
-  const selectedWarehouseName =
-    warehouses.find((w) => w.id === data?.warehouse_to_id)?.name || "";
-
-  const selectedPurchaseOrder =
-    purchaseOrder.items.find((p) => p.id === data?.reference_id)?.po_no || "";
+  const selectedSaleOrder =
+    saleOrder.items.find((p) => p.id === data?.reference_id)?.order_no || "";
 
   useEffect(() => {
     if (!open) return;
@@ -93,12 +73,12 @@ export default function EditReceiptModal({
     const ids = data.lines.map((line) => line.product_id);
     Promise.all(ids.map((id) => dispatch(fetchProductByIdThunk(id)).unwrap()))
       .then((fetchedProducts) => {
-        const items: LineReceiptItem[] = (data.lines ?? []).map((line) => {
+        const items: LineIssueItem[] = (data.lines ?? []).map((line) => {
           const product = fetchedProducts.find((p) => p.id === line.product_id);
           return {
             id: line.id,
             product_id: product?.id ?? line.product_id,
-            name: product?.name ?? "",
+            name: product?.name ?? "Unknown",
             sku: product?.sku ?? "",
             image: product?.image_url ?? "",
             uom: line.uom ?? "",
@@ -117,7 +97,7 @@ export default function EditReceiptModal({
     if (!open || !data) return;
 
     setForm({
-      warehouse: data.warehouse_to_id?.toString() ?? "",
+      warehouse: data.warehouse_from_id?.toString() ?? "",
       referenceNo: data.reference_id?.toString() ?? "",
       notes: data.note ?? "",
       move_no: data.move_no ?? "",
@@ -125,27 +105,59 @@ export default function EditReceiptModal({
       type: data.type ?? "",
       reference_type: data.reference_type ?? "",
     });
-
-    setSelectedPOId(data.reference_id.toString());
+    setSelectedSOId(data.reference_id.toString());
   }, [open, data]);
 
   useEffect(() => {
-    if (selectedPOId) {
-      setForm((prev) => ({ ...prev, referenceNo: selectedPOId }));
+    if (selectedSOId) {
+      setForm((prev) => ({ ...prev, referenceNo: selectedSOId }));
     }
-  }, [selectedPOId]);
+  }, [selectedSOId]);
 
-  const handleQuantityChange = (id: number, value: number) => {
-    setLineItems((prev) =>
-      prev.map((item) =>
-        item.product_id === id ? { ...item, quantity: value } : item
-      )
-    );
-  };
+  useEffect(() => {
+    const loadProducts = async () => {
+      if (!selectedSOId) {
+        setLineItems([]);
+        return;
+      }
+      const so = saleOrder.items.find(
+        (x: SaleOrderDto) => x.id.toString() === selectedSOId
+      );
+      if (!so || !so.lines) {
+        setLineItems([]);
+        return;
+      }
+      try {
+        const fetchedProducts = await Promise.all(
+          so.lines.map(async (line) => {
+            const result = await dispatch(
+              fetchProductByIdThunk(line.product_id!)
+            ).unwrap();
+            return {
+              id: undefined,
+              product_id: result.id,
+              name: result.name,
+              sku: result.sku,
+              uom: result.uom,
+              image: result.image_url,
+              quantity: line.quantity,
+            } as LineIssueItem;
+          })
+        );
+
+        setLineItems(fetchedProducts);
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to load product details");
+      }
+    };
+
+    loadProducts();
+  }, [selectedSOId, saleOrder.items, dispatch]);
 
   const handleSubmit = () => {
-    if (!selectedPOId) {
-      toast.error("Please select a Purchase Order");
+    if (!selectedSOId) {
+      toast.error("Please select a Sale order");
       return;
     }
 
@@ -165,18 +177,23 @@ export default function EditReceiptModal({
     }
 
     for (const p of lineItems) {
+      if (!p.product_id) {
+        toast.error("Some product items are missing ID");
+        return;
+      }
       if (!p.quantity || p.quantity <= 0) {
         toast.error(`Invalid quantity for product: ${p.name}`);
         return;
       }
     }
+
     const finalForm = {
       ...form,
-      referenceNo: selectedPOId,
+      referenceNo: selectedSOId,
     };
 
     console.log("Final Form:", finalForm);
-    console.log("Items Lines:", lineItems);
+    console.log("Product Lines:", lineItems);
     onSubmit({
       form: finalForm,
       lineItems,
@@ -190,7 +207,7 @@ export default function EditReceiptModal({
       <div className="bg-white w-[700px] rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
         {/* HEADER */}
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Edit Receipt</h2>
+          <h2 className="text-xl font-semibold">Add Issue</h2>
           <button onClick={onClose} className="!text-black text-xl font-bold">
             ✖
           </button>
@@ -205,7 +222,7 @@ export default function EditReceiptModal({
               onValueChange={(v) =>
                 setForm((prev) => ({ ...prev, warehouse: v }))
               }
-              defaultLabel={selectedWarehouseName}
+              defaultLabel={selectedWarehouse}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select" />
@@ -232,19 +249,20 @@ export default function EditReceiptModal({
 
         {/* PO SELECT */}
         <div className="mt-4">
-          <label className="font-medium">Purchase Order *</label>
+          <label className="font-medium">Sale Order *</label>
+
           <Select
-            value={selectedPOId}
-            onValueChange={setSelectedPOId}
-            defaultLabel={selectedPurchaseOrder}
+            value={selectedSOId}
+            onValueChange={setSelectedSOId}
+            defaultLabel={selectedSaleOrder}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select Purchase Order" />
             </SelectTrigger>
             <SelectContent>
-              {purchaseOrder.items?.map((po: PurchaseOrder) => (
-                <SelectItem key={po.id} value={po.id.toString()}>
-                  {po.po_no}
+              {saleOrder.items?.map((so: SaleOrderDto) => (
+                <SelectItem key={so.id} value={so.id.toString()}>
+                  {so.order_no}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -287,32 +305,7 @@ export default function EditReceiptModal({
                     </td>
                     <td className="p-2">{p.sku}</td>
                     <td className="p-2">{p.uom}</td>
-                    <td className="p-2">
-                      <input
-                        type="number"
-                        value={p.quantity}
-                        min={1}
-                        className="w-20 border rounded px-2 py-1"
-                        onChange={(e) =>
-                          handleQuantityChange(
-                            p.product_id,
-                            Number(e.target.value)
-                          )
-                        }
-                      />
-                    </td>
-                    <td className="p-2 text-right">
-                      <button
-                        className="text-red-500 hover:underline"
-                        onClick={() =>
-                          setLineItems((prev) =>
-                            prev.filter((x) => x.product_id !== p.product_id)
-                          )
-                        }
-                      >
-                        Delete
-                      </button>
-                    </td>
+                    <td className="p-2">{p.quantity}</td>
                   </tr>
                 ))
               ) : (
@@ -346,7 +339,7 @@ export default function EditReceiptModal({
             className="bg-orange-500 hover:bg-orange-600 text-white"
             onClick={handleSubmit}
           >
-            Update
+            Create
           </Button>
         </div>
       </div>

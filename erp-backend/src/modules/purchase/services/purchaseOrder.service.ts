@@ -12,7 +12,7 @@ export const purchaseOrderService = {
   async getAllPO(user: JwtPayload) {
     const where: any = { branch_id: user.branch_id };
 
-    if (user.role === "PURCHASE") {
+    if (user.role === Role.PURCHASE) {
       where.created_by = user.id;
     }
 
@@ -30,10 +30,10 @@ export const purchaseOrderService = {
     });
   },
 
-  async getByStatus(status: string) {
+  async getByStatus(status: string, user: any) {
     return PurchaseOrder.findAll({
       include: [{ model: PurchaseOrderLine, as: "lines" }],
-      where: { status },
+      where: { status, branch_id: user.branch_id },
     });
   },
 

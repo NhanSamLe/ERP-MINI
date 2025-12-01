@@ -65,7 +65,14 @@ PurchaseOrder.init(
     total_tax: { type: DataTypes.DECIMAL(18, 2) },
     total_after_tax: { type: DataTypes.DECIMAL(18, 2) },
     status: {
-      type: DataTypes.ENUM("draft", "confirmed", "received", "cancelled"),
+      type: DataTypes.ENUM(
+        "draft",
+        "waiting_approval",
+        "confirmed",
+        "partially_received",
+        "completed",
+        "cancelled"
+      ),
       defaultValue: "draft",
     },
     description: { type: DataTypes.TEXT, allowNull: true },

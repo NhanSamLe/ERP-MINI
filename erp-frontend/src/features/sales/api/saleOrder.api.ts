@@ -24,3 +24,6 @@ export const approveSaleOrder = (id: number) =>
 
 export const rejectSaleOrder = (id: number, data: RejectSaleOrderDto) =>
   axiosClient.post(`/sales/orders/${id}/reject`, data);
+
+export const fetchSaleOrdersByStatusApi = (status: string) =>
+  axiosClient.get(`/sales/orders/status/${status}`);

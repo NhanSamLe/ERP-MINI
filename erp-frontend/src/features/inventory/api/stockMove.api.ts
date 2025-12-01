@@ -25,6 +25,11 @@ export const stockMoveApi = {
     return res.data;
   },
 
+  createIssueStockMove: async (data: StockMoveCreate): Promise<StockMove> => {
+    const res = await axiosClient.post("/stock-move/issue", data);
+    return res.data;
+  },
+
   createTransferStockMove: async (
     data: StockMoveTransferCreate
   ): Promise<StockMove> => {
@@ -44,6 +49,14 @@ export const stockMoveApi = {
     data: StockMoveUpdate
   ): Promise<StockMove> => {
     const res = await axiosClient.put(`/stock-move/receipt/${id}`, data);
+    return res.data;
+  },
+
+  updateIssueStockMove: async (
+    id: number,
+    data: StockMoveUpdate
+  ): Promise<StockMove> => {
+    const res = await axiosClient.put(`/stock-move/issue/${id}`, data);
     return res.data;
   },
 

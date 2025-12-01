@@ -28,6 +28,23 @@ export const SaleOrderController = {
     }
   },
 
+  /** GET BY STATUS */
+  async getByStatus(req: Request, res: Response) {
+    try {
+      const { status } = req.params;
+      const user = (req as any).user;
+
+      if (!status)
+        return res.status(400).json({ message: "Status is required" });
+
+      const orders = await saleOrderService.getByStatus(status, user);
+
+      return res.json(orders);
+    } catch (err: any) {
+      console.error(err);
+      return res.status(400).json({ message: err.message || "Error" });
+    }
+  },
   /** CREATE */
   async create(req: Request, res: Response) {
     try {
@@ -36,7 +53,7 @@ export const SaleOrderController = {
 
       return res.status(201).json({ message: "Created", data: result });
     } catch (err: any) {
-       console.error("🔥 BE ERROR:", err); 
+      console.error("🔥 BE ERROR:", err);
       return res.status(400).json({ message: err.message });
     }
   },
