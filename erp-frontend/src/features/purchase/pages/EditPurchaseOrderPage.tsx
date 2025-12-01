@@ -28,6 +28,7 @@ import {
 import { toast } from "react-toastify";
 import { PurchaseOrderLine, PurchaseOrderUpdate } from "../store";
 import { Branch, fetchBranch } from "@/features/company/branch.service";
+import { loadPartners } from "@/features/partner/store/partner.thunks";
 
 interface LineItem {
   id?: number;
@@ -55,6 +56,8 @@ export default function EditPurchaseOrderPage() {
     (state: RootState) => state.purchaseOrder.selectedPO
   );
 
+  const partners = useSelector((state: RootState) => state.partners);
+
   const [supplierId, setSupplierId] = useState("");
   const [date, setDate] = useState("");
   const [reference, setReference] = useState("");
@@ -71,6 +74,16 @@ export default function EditPurchaseOrderPage() {
   const [branch, setBranch] = useState<Branch | null>(null);
 
   const [lines, setLines] = useState<LineItem[]>([]);
+
+  useEffect(() => {
+    if (id) dispatch(fetchPurchaseOrderByIdThunk(Number(id)));
+    dispatch(loadPartners({ type: "supplier" }));
+  }, [dispatch, id]);
+
+  const selectedSupplierName =
+    partners.items.find((w) => w.id === Number(supplierId))?.name || "";
+
+  console.log("check supplier: ", selectedSupplierName);
 
   useEffect(() => {
     if (!purchaseOrder) return;
@@ -176,10 +189,6 @@ export default function EditPurchaseOrderPage() {
     setSearchTerm("");
     setShowDropdown(false);
   };
-
-  useEffect(() => {
-    if (id) dispatch(fetchPurchaseOrderByIdThunk(Number(id)));
-  }, [dispatch, id]);
 
   const finalPO = purchaseOrder;
   useEffect(() => {
@@ -390,12 +399,20 @@ export default function EditPurchaseOrderPage() {
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Supplier Name <span className="text-red-500">*</span>
           </label>
-          <Select value={supplierId} onValueChange={setSupplierId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select" />
+          <Select
+            value={supplierId}
+            onValueChange={(v) => setSupplierId(v)}
+            defaultLabel={selectedSupplierName}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select Supplier" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="2">ABC Supplies Ltd</SelectItem>
+              {partners.items.map((p) => (
+                <SelectItem key={p.id} value={String(p.id)}>
+                  {p.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

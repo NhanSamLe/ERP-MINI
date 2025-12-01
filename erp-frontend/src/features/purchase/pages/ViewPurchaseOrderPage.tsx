@@ -15,6 +15,8 @@ import {
 import { PurchaseOrderLine } from "../store";
 import { toast } from "react-toastify";
 import { getErrorMessage } from "@/utils/ErrorHelper";
+import { loadPartnerDetail } from "@/features/partner/store/partner.thunks";
+import { Partner } from "@/features/partner/store";
 
 interface LineItem {
   id?: number;
@@ -54,6 +56,7 @@ export default function ViewPurchaseOrderPage() {
   const [totalBeforeTax, setTotalBeforeTax] = useState(0);
   const [totalAfterTax, setTotalAfterTax] = useState(0);
   const [description, setDescription] = useState("");
+  const [supplierInfo, setSupplierInfo] = useState<Partner | null>(null);
 
   const [lines, setLines] = useState<LineItem[]>([]);
 
@@ -81,9 +84,20 @@ export default function ViewPurchaseOrderPage() {
   useEffect(() => {
     const linesToLoad = finalPO?.lines ?? [];
     if (linesToLoad.length === 0) return;
-
     const loadLines = async () => {
       setSupplierId(finalPO?.supplier_id?.toString() || "");
+
+      if (finalPO?.supplier_id) {
+        try {
+          const supplier = await dispatch(
+            loadPartnerDetail(finalPO.supplier_id)
+          ).unwrap();
+          setSupplierInfo(supplier);
+        } catch (err) {
+          console.log(err);
+          setSupplierInfo(null);
+        }
+      }
       if (finalPO?.order_date) {
         const d = new Date(finalPO.order_date);
         setDate(d.toISOString().split("T")[0]);
@@ -276,6 +290,80 @@ export default function ViewPurchaseOrderPage() {
             <label className="text-sm font-medium text-gray-600">Branch</label>
             <Input className="mt-1" value={selectedBranchName} disabled />
           </div>
+        </div>
+
+        <div className="bg-gray-50 p-5 rounded-xl border">
+          <h3 className="text-lg font-semibold mb-4 text-gray-700">
+            Supplier Information
+          </h3>
+
+          {supplierInfo ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              {/* Name */}
+              <div>
+                <p className="text-gray-500 text-xs mb-1">Name</p>
+                <p className="font-medium">{supplierInfo.name}</p>
+              </div>
+
+              {/* Contact Person */}
+              <div>
+                <p className="text-gray-500 text-xs mb-1">Contact Person</p>
+                <p className="font-medium">{supplierInfo.contact_person}</p>
+              </div>
+
+              {/* Phone */}
+              <div>
+                <p className="text-gray-500 text-xs mb-1">Phone</p>
+                <p className="font-medium">{supplierInfo.phone}</p>
+              </div>
+
+              {/* Email */}
+              <div>
+                <p className="text-gray-500 text-xs mb-1">Email</p>
+                <p className="font-medium">{supplierInfo.email}</p>
+              </div>
+
+              {/* Address (full width) */}
+              <div className="col-span-1 md:col-span-3">
+                <p className="text-gray-500 text-xs mb-1">Address</p>
+                <p className="font-medium whitespace-pre-line">
+                  {supplierInfo.address}
+                </p>
+              </div>
+
+              {/* Province */}
+              <div>
+                <p className="text-gray-500 text-xs mb-1">Province</p>
+                <p className="font-medium">{supplierInfo.province}</p>
+              </div>
+
+              {/* District */}
+              <div>
+                <p className="text-gray-500 text-xs mb-1">District</p>
+                <p className="font-medium">{supplierInfo.district}</p>
+              </div>
+
+              {/* Ward */}
+              <div>
+                <p className="text-gray-500 text-xs mb-1">Ward</p>
+                <p className="font-medium">{supplierInfo.ward}</p>
+              </div>
+
+              {/* Bank Name */}
+              <div>
+                <p className="text-gray-500 text-xs mb-1">Bank Name</p>
+                <p className="font-medium">{supplierInfo.bank_name}</p>
+              </div>
+
+              {/* Bank Account */}
+              <div>
+                <p className="text-gray-500 text-xs mb-1">Bank Account</p>
+                <p className="font-medium">{supplierInfo.bank_account}</p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-gray-400 text-sm">Loading supplier info...</p>
+          )}
         </div>
 
         {/* TIMELINE */}

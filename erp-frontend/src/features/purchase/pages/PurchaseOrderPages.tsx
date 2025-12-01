@@ -9,7 +9,6 @@ import { toast } from "react-toastify";
 import {
   fetchPurchaseOrdersThunk,
   deletePurchaseOrderThunk,
-  fetchPurchaseOrderByIdThunk,
 } from "../store/purchaseOrder.thunks";
 
 import { PurchaseOrder } from "../store/purchaseOrder.types";
@@ -23,6 +22,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
+import { getErrorMessage } from "@/utils/ErrorHelper";
 
 export default function PurchaseOrderPage() {
   const dispatch = useDispatch<AppDispatch>();
@@ -44,24 +44,15 @@ export default function PurchaseOrderPage() {
 
   const handleDelete = async () => {
     if (!selectedPO) return;
-    const checkStatusOrder = await dispatch(
-      fetchPurchaseOrderByIdThunk(Number(selectedPO.id))
-    ).unwrap();
-    if (checkStatusOrder.status !== "draft") {
-      toast.error("This Purchase Order is no longer editable.");
-      dispatch(fetchPurchaseOrdersThunk());
-      setConfirmOpen(false);
-      return;
-    }
-
     setDeleting(true);
     try {
       await dispatch(deletePurchaseOrderThunk(selectedPO.id)).unwrap();
       toast.success("Purchase Order deleted successfully!");
       setConfirmOpen(false);
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to delete Purchase Order!");
+    } catch (error) {
+      console.log(">>> Error caught:", error);
+      console.log(">>>> ERROR TYPE:", typeof error);
+      toast.error(getErrorMessage(error));
     } finally {
       setDeleting(false);
     }

@@ -34,6 +34,10 @@ export const Select = ({
   const [open, setOpen] = useState(false);
   const [selectedLabel, setSelectedLabel] = useState(defaultLabel);
 
+  React.useEffect(() => {
+    setSelectedLabel(defaultLabel);
+  }, [defaultLabel]);
+
   return (
     <SelectContext.Provider
       value={{
