@@ -2,6 +2,12 @@
 import { ArReceipt } from "../models/arReceipt.model";
 import { ArReceiptAllocation } from "../models/arReceiptAllocation.model";
 
+import { sequelize } from "../../../config/db";
+import { Transaction } from "sequelize";
+import { GlJournal } from "../../finance/models/glJournal.model";
+import { GlEntry } from "../../finance/models/glEntry.model";
+import { GlEntryLine } from "../../finance/models/glEntryLine.model";
+
 export const arReceiptService = {
   /** GET ALL — lọc theo branch và quyền */
   async getAll(user: any) {
@@ -67,26 +73,113 @@ export const arReceiptService = {
     return receipt;
   },
 
-  /** APPROVE — Chief Accountant */
-  async approve(id: number, approver: any) {
-    const receipt = await ArReceipt.findByPk(id);
+  /** APPROVE — Chief Accountant + POST to GL */
+async approve(id: number, approver: any) {
+  const t: Transaction = await sequelize.transaction();
 
-    if (!receipt) throw new Error("Not found");
+  try {
+    // 1. Load receipt trong transaction
+    const receipt = await ArReceipt.findByPk(id, { transaction: t });
+
+    if (!receipt) throw new Error("Receipt not found");
     if (receipt.approval_status !== "waiting_approval")
-      throw new Error("Wrong stage");
+      throw new Error("Wrong approval stage");
 
     if (receipt.branch_id !== approver.branch_id)
       throw new Error("Cross-branch denied");
 
-    await receipt.update({
-      approval_status: "approved",
-      approved_by: approver.id,
-      approved_at: new Date(),
-      status: "posted",
+    // 2. Cập nhật trạng thái receipt: approved + posted
+    await receipt.update(
+      {
+        approval_status: "approved",
+        approved_by: approver.id,
+        approved_at: new Date(),
+        status: "posted",
+      },
+      { transaction: t }
+    );
+
+    // 3. Xác định tài khoản Nợ/Có theo method
+    //  id = 1 → TK 111 (Tiền mặt)
+    //  id = 2 → TK 112 (Tiền gửi NH)
+    //  id = 3 → TK 131 (Phải thu khách hàng)
+    const debitAccountId =
+      receipt.method === "cash"
+        ? 1 // Nợ 111 - Tiền mặt
+        : 2; // Nợ 112 - Tiền gửi ngân hàng
+
+    const creditAccountId = 3; // Có 131 - Phải thu khách hàng
+
+    // 4. Lấy journal: CASH hoặc BANK
+    const journalCode = receipt.method === "cash" ? "CASH" : "BANK";
+
+    const journal = await GlJournal.findOne({
+      where: { code: journalCode },
+      transaction: t,
     });
 
-    return receipt;
-  },
+    if (!journal) {
+      throw new Error(`${journalCode} journal not found`);
+    }
+
+    // 👇 FIX 1: đảm bảo là Date, không undefined
+    const entryDate: Date = receipt.receipt_date || new Date();
+
+    // 5. Tạo GL Entry (chứng từ thu tiền)
+    const entry = await GlEntry.create(
+      {
+        journal_id: journal.id,
+        entry_no: `GL-AR-REC-${receipt.id}`,
+        entry_date: entryDate,
+        reference_type: "ar_receipt",
+        reference_id: receipt.id,
+        memo: `AR Receipt ${receipt.receipt_no}`,
+        status: "posted",
+      },
+      { transaction: t }
+    );
+
+    const amount = Number(receipt.amount || 0);
+
+    // 👇 FIX 2: ép kiểu partnerId sang number cho TS vui
+    const partnerId = receipt.customer_id as number | undefined;
+
+    const lineDebit: any = {
+      entry_id: entry.id,
+      account_id: debitAccountId,
+      debit: amount,
+      credit: 0,
+    };
+
+    const lineCredit: any = {
+      entry_id: entry.id,
+      account_id: creditAccountId,
+      debit: 0,
+      credit: amount,
+    };
+
+    // chỉ set partner_id nếu có customer_id
+    if (partnerId) {
+      lineDebit.partner_id = partnerId;
+      lineCredit.partner_id = partnerId;
+    }
+
+    // 6. Tạo GL Entry Lines (Nợ 111/112, Có 131)
+    await GlEntryLine.bulkCreate([lineDebit, lineCredit], {
+      transaction: t,
+    });
+
+    // 7. Commit transaction
+    await t.commit();
+
+    // Trả lại detail mới nhất
+    return this.getById(receipt.id, approver);
+  } catch (err) {
+    await t.rollback();
+    throw err;
+  }
+},
+
 
   /** REJECT — Chief Accountant */
   async reject(id: number, approver: any, reason: string) {

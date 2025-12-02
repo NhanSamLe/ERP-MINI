@@ -38,6 +38,7 @@ const menuItems: MenuItem[] = [
     subItems: [
       { name: "Orders", path: "/sales/orders" },
       { name: "Invoices", path: "/sales/invoices" },
+      { name: "Receipts", path: "/sales/receipts" },
       { name: "Quotations", path: "/sales/quotations" },
       { name: "Customers", path: "/sales/customers" },
     ],
