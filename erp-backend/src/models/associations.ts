@@ -90,10 +90,6 @@ export function applyAssociations() {
     as: "payrollItems",
   });
 
-PayrollItem.belongsTo(Branch, {
-  foreignKey: "branch_id",
-  as: "branch",
-});
   PayrollItem.belongsTo(Branch, {
     foreignKey: "branch_id",
     as: "branch",

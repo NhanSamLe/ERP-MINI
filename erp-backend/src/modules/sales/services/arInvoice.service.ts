@@ -15,14 +15,11 @@ import {
 import { ArInvoiceStatus, ApprovalStatus} from "../../../core/types/enum";
 import { generateInvoiceNo
  } from "../utils";
-// ⭐ thêm mới:
-import { sequelize } from "../../../config/db";
 import { Transaction } from "sequelize";
 import { GlJournal } from "../../finance/models/glJournal.model";
 import { GlEntry } from "../../finance/models/glEntry.model";
 import { GlEntryLine } from "../../finance/models/glEntryLine.model";
 import { GlAccount } from "../../finance/models/glAccount.model";
-
 export const arInvoiceService = {
   /** tính thuế từng dòng */
   async calcLineTax(line: any) {
@@ -62,7 +59,7 @@ export const arInvoiceService = {
   async getAll(user: any) {
     const where: any = { branch_id: user.branch_id };
 
-    if (user.role === "ACCOUNT"," CHACC") {
+    if (user.role === "ACCOUNT") {
       where.created_by = user.id;
     }
 
@@ -305,26 +302,7 @@ export const arInvoiceService = {
     return this.getById(invoice.id, user);
   },
 
-  // /** APPROVE — Chief Accountant */
-  // async approve(id: number, approver: any) {
-  //   const invoice = await ArInvoice.findByPk(id);
-
-  //   if (!invoice) throw new Error("Invoice not found");
-  //   if (invoice.approval_status !== "waiting_approval")
-  //     throw new Error("Wrong approval stage");
-  //   if (invoice.branch_id !== approver.branch_id)
-  //     throw new Error("Cross-branch denied");
-
-  //   await invoice.update({
-  //     approval_status: "approved",
-  //     approved_by: approver.id,
-  //     approved_at: new Date(),
-  //     status: "posted",
-  //   });
-
-  //   return invoice;
-  // },
-    /** APPROVE — Chief Accountant */
+  /** APPROVE — Chief Accountant */
   async approve(id: number, approver: any) {
     return await sequelize.transaction(async (t) => {
       const invoice = await ArInvoice.findByPk(id, { transaction: t });
@@ -335,9 +313,8 @@ export const arInvoiceService = {
       if (invoice.branch_id !== approver.branch_id)
         throw new Error("Cross-branch denied");
       if (approver.role !== "CHACC") {
-    throw new Error("Permission denied");
-  }
-
+        throw new Error("Permission denied");
+      }
       // Cập nhật trạng thái invoice → approved + posted
       await invoice.update(
         {
@@ -353,12 +330,9 @@ export const arInvoiceService = {
       await this.postArInvoiceToGL(invoice, t);
 
       // Trả về invoice đã cập nhật (có thể load lại nếu cần include lines)
-      return invoice;
+      return this.getById(invoice.id, approver);
     });
-
-    return this.getById(invoice.id, approver); 
   },
-
 
   /** REJECT — Chief Accountant */
   async reject(id: number, approver: any, reason: string) {
@@ -492,13 +466,7 @@ async getApprovedOrdersWithoutInvoice(user: any) {
     order: [["id", "DESC"]],
   });
 
-// ⭐ HELPER: Post AR Invoice vào Sổ cái (GL Entry + GL Entry Lines)
-  async postArInvoiceToGL(invoice: ArInvoice, t: Transaction) {
-    // Không post nếu chưa approved / chưa ở trạng thái posted
-    if (invoice.status !== "posted" || invoice.approval_status !== "approved") {
-      throw new Error("Invoice must be approved & posted before GL posting");
-    }
-if (orders.length === 0) return [];
+  if (orders.length === 0) return [];
 
   // 2) Lấy danh sách order_id
   const orderIds = orders
@@ -549,7 +517,12 @@ if (orders.length === 0) return [];
   }
 
   return result;
-}
+},
+async postArInvoiceToGL(invoice: ArInvoice, t: Transaction) {
+    // Không post nếu chưa approved / chưa ở trạng thái posted
+    if (invoice.status !== "posted" || invoice.approval_status !== "approved") {
+      throw new Error("Invoice must be approved & posted before GL posting");
+    }
 
     // Tránh post trùng
     const existed = await GlEntry.findOne({
