@@ -135,6 +135,50 @@ export default function EditReceiptModal({
     }
   }, [selectedPOId]);
 
+  useEffect(() => {
+    const loadProducts = async () => {
+      if (!selectedPOId) {
+        setLineItems([]);
+        return;
+      }
+
+      const po = purchaseOrder.items.find(
+        (x: PurchaseOrder) => x.id.toString() === selectedPOId
+      );
+
+      if (!po || !po.lines) {
+        setLineItems([]);
+        return;
+      }
+
+      try {
+        // Gọi API song song cho từng product
+        const fetchedProducts = await Promise.all(
+          po.lines.map(async (line) => {
+            const result = await dispatch(
+              fetchProductByIdThunk(line.product_id)
+            ).unwrap(); // ép return type là Product
+
+            return {
+              id: result.id,
+              name: result.name,
+              sku: result.sku,
+              uom: result.uom,
+              image: result.image_url,
+              quantity: line.quantity,
+            } as LineReceiptItem;
+          })
+        );
+        setLineItems(fetchedProducts);
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to load product details");
+      }
+    };
+
+    loadProducts();
+  }, [selectedPOId, purchaseOrder.items, dispatch]);
+
   const handleQuantityChange = (id: number, value: number) => {
     setLineItems((prev) =>
       prev.map((item) =>

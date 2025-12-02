@@ -3,7 +3,8 @@ import { stockBalanceService } from "../services/stockBalance.service";
 
 export const stockBalanceController = {
   async getAll(req: Request, res: Response) {
-    const data = await stockBalanceService.getAll();
+    const user = (req as any).user;
+    const data = await stockBalanceService.getAll(user);
     return res.json(data);
   },
 

@@ -5,7 +5,11 @@ import { Role } from "../../../core/types/enum";
 
 const router = Router();
 
-router.get("/", authMiddleware([Role.WHSTAFF]), WarehouseController.getAll);
+router.get(
+  "/",
+  authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
+  WarehouseController.getAll
+);
 router.get("/:id", authMiddleware([Role.WHSTAFF]), WarehouseController.getById);
 router.get(
   "/branch/:branchId",

@@ -20,6 +20,7 @@ router.get(
     Role.PURCHASE,
     Role.WHSTAFF,
     Role.PURCHASEMANAGER,
+    Role.WHMANAGER,
   ]),
   productController.getAllProductAllStatus
 );

@@ -7,6 +7,7 @@ import { productService } from "../../product/services/product.service";
 import { JwtPayload } from "../../../core/types/jwt";
 import { User } from "../../../models";
 import { Role } from "../../../core/types/enum";
+import { Op } from "sequelize";
 
 export const purchaseOrderService = {
   async getAllPO(user: JwtPayload) {
@@ -30,10 +31,10 @@ export const purchaseOrderService = {
     });
   },
 
-  async getByStatus(status: string, user: any) {
+  async getByStatus(statusList: string[], user: any) {
     return PurchaseOrder.findAll({
       include: [{ model: PurchaseOrderLine, as: "lines" }],
-      where: { status, branch_id: user.branch_id },
+      where: { status: { [Op.in]: statusList }, branch_id: user.branch_id },
     });
   },
 

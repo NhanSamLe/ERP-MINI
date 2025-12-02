@@ -14,7 +14,12 @@ router.get(
 
 router.get(
   "/by-status",
-  authMiddleware([Role.PURCHASE, Role.WHSTAFF, Role.PURCHASEMANAGER]),
+  authMiddleware([
+    Role.PURCHASE,
+    Role.WHSTAFF,
+    Role.PURCHASEMANAGER,
+    Role.WHMANAGER,
+  ]),
   purchaseOrderController.getByStatus
 );
 router.get(

@@ -42,4 +42,18 @@ export const stockMoveService = {
 
   search: (keyword: string): Promise<StockMove[]> =>
     stockMoveApi.search(keyword).then((res) => res.data),
+
+  submitForApproval(id: number): Promise<StockMove> {
+    return stockMoveApi.submitForApproval(id);
+  },
+
+  approveStockMove: async (id: number): Promise<StockMove> => {
+    const res = await stockMoveApi.approve(id);
+    return res.data;
+  },
+
+  rejectStockMove: async (id: number, rejectReason: string) => {
+    const res = await stockMoveApi.rejectStockMove(id, rejectReason);
+    return res.data;
+  },
 };

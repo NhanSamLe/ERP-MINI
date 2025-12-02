@@ -83,4 +83,13 @@ export const stockMoveApi = {
   search: (keyword: string) => {
     return axiosClient.get(`/stock-move/search?q=${keyword}`);
   },
+
+  submitForApproval: async (id: number): Promise<StockMove> => {
+    const res = await axiosClient.post(`/stock-move/${id}/submit`);
+    return res.data;
+  },
+  approve: (id: number) => axiosClient.post(`/stock-move/${id}/approve`),
+
+  rejectStockMove: (id: number, rejectReason: string) =>
+    axiosClient.put(`/stock-move/${id}/reject`, { rejectReason }),
 };
