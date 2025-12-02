@@ -15,6 +15,14 @@ import {
 import { ArInvoiceStatus, ApprovalStatus} from "../../../core/types/enum";
 import { generateInvoiceNo
  } from "../utils";
+// ⭐ thêm mới:
+import { sequelize } from "../../../config/db";
+import { Transaction } from "sequelize";
+import { GlJournal } from "../../finance/models/glJournal.model";
+import { GlEntry } from "../../finance/models/glEntry.model";
+import { GlEntryLine } from "../../finance/models/glEntryLine.model";
+import { GlAccount } from "../../finance/models/glAccount.model";
+
 export const arInvoiceService = {
   /** tính thuế từng dòng */
   async calcLineTax(line: any) {
@@ -54,7 +62,7 @@ export const arInvoiceService = {
   async getAll(user: any) {
     const where: any = { branch_id: user.branch_id };
 
-    if (user.role === "ACCOUNT") {
+    if (user.role === "ACCOUNT"," CHACC") {
       where.created_by = user.id;
     }
 
@@ -297,29 +305,60 @@ export const arInvoiceService = {
     return this.getById(invoice.id, user);
   },
 
-  /** APPROVE — Chief Accountant */
-  async approve(id: number, approver: any) {
-    const invoice = await ArInvoice.findByPk(id);
+  // /** APPROVE — Chief Accountant */
+  // async approve(id: number, approver: any) {
+  //   const invoice = await ArInvoice.findByPk(id);
 
-    if (!invoice) throw new Error("Invoice not found");
-    if (invoice.approval_status !== "waiting_approval")
-      throw new Error("Wrong approval stage");
-    if (invoice.branch_id !== approver.branch_id)
-      throw new Error("Cross-branch denied");
+  //   if (!invoice) throw new Error("Invoice not found");
+  //   if (invoice.approval_status !== "waiting_approval")
+  //     throw new Error("Wrong approval stage");
+  //   if (invoice.branch_id !== approver.branch_id)
+  //     throw new Error("Cross-branch denied");
+
+  //   await invoice.update({
+  //     approval_status: "approved",
+  //     approved_by: approver.id,
+  //     approved_at: new Date(),
+  //     status: "posted",
+  //   });
+
+  //   return invoice;
+  // },
+    /** APPROVE — Chief Accountant */
+  async approve(id: number, approver: any) {
+    return await sequelize.transaction(async (t) => {
+      const invoice = await ArInvoice.findByPk(id, { transaction: t });
+
+      if (!invoice) throw new Error("Invoice not found");
+      if (invoice.approval_status !== "waiting_approval")
+        throw new Error("Wrong approval stage");
+      if (invoice.branch_id !== approver.branch_id)
+        throw new Error("Cross-branch denied");
       if (approver.role !== "CHACC") {
     throw new Error("Permission denied");
   }
 
+      // Cập nhật trạng thái invoice → approved + posted
+      await invoice.update(
+        {
+          approval_status: "approved",
+          approved_by: approver.id,
+          approved_at: new Date(),
+          status: "posted",
+        },
+        { transaction: t }
+      );
 
-    await invoice.update({
-      approval_status: "approved",
-      approved_by: approver.id,
-      approved_at: new Date(),
-      status: "posted",
+      // ⭐ Sinh GL Entry + GL Entry Lines cho hóa đơn này
+      await this.postArInvoiceToGL(invoice, t);
+
+      // Trả về invoice đã cập nhật (có thể load lại nếu cần include lines)
+      return invoice;
     });
 
     return this.getById(invoice.id, approver); 
   },
+
 
   /** REJECT — Chief Accountant */
   async reject(id: number, approver: any, reason: string) {
@@ -453,7 +492,13 @@ async getApprovedOrdersWithoutInvoice(user: any) {
     order: [["id", "DESC"]],
   });
 
-  if (orders.length === 0) return [];
+// ⭐ HELPER: Post AR Invoice vào Sổ cái (GL Entry + GL Entry Lines)
+  async postArInvoiceToGL(invoice: ArInvoice, t: Transaction) {
+    // Không post nếu chưa approved / chưa ở trạng thái posted
+    if (invoice.status !== "posted" || invoice.approval_status !== "approved") {
+      throw new Error("Invoice must be approved & posted before GL posting");
+    }
+if (orders.length === 0) return [];
 
   // 2) Lấy danh sách order_id
   const orderIds = orders
@@ -506,4 +551,82 @@ async getApprovedOrdersWithoutInvoice(user: any) {
   return result;
 }
 
+    // Tránh post trùng
+    const existed = await GlEntry.findOne({
+      where: {
+        reference_type: "ar_invoice",
+        reference_id: invoice.id,
+      },
+      transaction: t,
+    });
+
+    if (existed) {
+      return existed;
+    }
+
+    // Lấy journal SALES
+    const salesJournal = await GlJournal.findOne({
+      where: { code: "SALES" },
+      transaction: t,
+    });
+
+    if (!salesJournal) {
+      throw new Error("GL Journal 'SALES' not found");
+    }
+
+    // Lấy các tài khoản 131, 511, 3331
+    const [arAcc, revenueAcc, vatAcc] = await Promise.all([
+      GlAccount.findOne({ where: { code: "131" }, transaction: t }),
+      GlAccount.findOne({ where: { code: "511" }, transaction: t }),
+      GlAccount.findOne({ where: { code: "3331" }, transaction: t }),
+    ]);
+
+    if (!arAcc || !revenueAcc || !vatAcc) {
+      throw new Error("Missing GL Accounts 131 / 511 / 3331");
+    }
+
+    const totalBeforeTax = Number(invoice.total_before_tax || 0);
+    const totalTax = Number(invoice.total_tax || 0);
+    const totalAfterTax = Number(invoice.total_after_tax || 0);
+
+    // Tạo GL Entry
+    const entry = await GlEntry.create(
+      {
+        journal_id: salesJournal.id,
+        entry_no: `AR-${invoice.invoice_no}`, // TODO: sau này bạn có thể đổi sang generator chuẩn hơn
+        entry_date: invoice.invoice_date || new Date(),
+        reference_type: "AR_INVOICE",
+        reference_id: invoice.id,
+        memo: `AR Invoice ${invoice.invoice_no}`,
+        status: "posted",
+      },
+      { transaction: t }
+    );
+
+    // Tạo các dòng Nợ/Có
+    const lines: Partial<GlEntryLine>[] = [
+      {
+        entry_id: entry.id,
+        account_id: arAcc.id,
+        debit: totalAfterTax,
+        credit: 0,
+      },
+      {
+        entry_id: entry.id,
+        account_id: revenueAcc.id,
+        debit: 0,
+        credit: totalBeforeTax,
+      },
+      {
+        entry_id: entry.id,
+        account_id: vatAcc.id,
+        debit: 0,
+        credit: totalTax,
+      },
+    ];
+
+    await GlEntryLine.bulkCreate(lines as any, { transaction: t });
+
+    return entry;
+  },
 };

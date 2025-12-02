@@ -26,6 +26,17 @@ import {
   LineTransferItem,
   updateTransferStockMoveThunk,
   StockMoveTransferUpdate,
+  AdjustmentForm,
+  LineAdjustmentItem,
+  StockMoveAdjustmentCreate,
+  createAdjustmentStockMoveThunk,
+  StockMoveAdjustmentUpdate,
+  updateAdjustmentStockMoveThunk,
+  deleteStockMoveThunk,
+  IssueForm,
+  LineIssueItem,
+  createIssueStockMoveThunk,
+  updateIssueStockMoveThunk,
 } from "../store";
 import { Button } from "../../../components/ui/Button";
 import { BasicDropdownMenu } from "../../../components/ui/DropdownMenu";
@@ -42,14 +53,26 @@ import { fetchPurchaseOrderByStatus } from "../../purchase/store/purchaseOrder.t
 import EditTransferModal from "../components/Modal/TransferModal/EditTransferModal";
 import CreateTransferModal from "../components/Modal/TransferModal/CreateTransferModal";
 import { Trash2 } from "lucide-react";
+import CreateAdjustmentModal from "../components/Modal/AdjustmentModal/CreateAdjustmentModal";
+import { getErrorMessage } from "@/utils/ErrorHelper";
+import EditAdjustmentModal from "../components/Modal/AdjustmentModal/EditAdjustmentModal";
+import CreateIssueModal from "../components/Modal/IssueModal/CreateIssueModal";
+import { fetchSaleOrdersByStatus } from "@/features/sales/store/saleOrder.slice";
+import EditIssueModal from "../components/Modal/IssueModal/EditIssueModal";
+import { useNavigate } from "react-router-dom";
+import { Roles } from "@/types/enum";
 
 export default function StockMovePages() {
   const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
 
   const { items, loading } = useSelector((state: RootState) => state.stockMove);
+  const role = useSelector((state: RootState) => state.auth.user?.role.code);
 
   const warehouses = useSelector((state: RootState) => state.warehouse.items);
   const purchaseOrder = useSelector((state: RootState) => state.purchaseOrder);
+  const user = useSelector((state: RootState) => state.auth.user);
+  const saleOrder = useSelector((state: RootState) => state.saleOrder);
 
   const [search] = useState("");
   const [warehouseId, setWarehouseId] = useState<string>("");
@@ -64,13 +87,21 @@ export default function StockMovePages() {
 
   const statusColorMap: Record<string, string> = {
     draft: "bg-gray-100 text-gray-700",
+    waiting_approval: "bg-yellow-100 text-yellow-700",
     posted: "bg-green-100 text-green-700",
     cancelled: "bg-red-100 text-red-700",
   };
-  const [openReceiptModal, setOpenReceiptModal] = useState(false);
+  const [openCreateReceiptModal, setOpenCreateReceiptModal] = useState(false);
   const [openCreateTransferModal, setOpenCreateTransferModal] = useState(false);
+  const [openCreateAdjustmentModal, setOpenCreateAdjustmentModal] =
+    useState(false);
+
+  const [openCreateIssueModal, setOpenCreateIssueModal] = useState(false);
+
   const [openEditReceiptModal, setOpenEditReceiptModal] = useState(false);
+  const [openEditIssueModal, setOpenEditIssueModal] = useState(false);
   const [openEditTransferModal, setOpenEditTransferModal] = useState(false);
+  const [openEditAdjustmentModal, setOpenEditAdjustmentModal] = useState(false);
 
   const [selectedStockMove, setSelectedStockMove] = useState<StockMove | null>(
     null
@@ -83,6 +114,7 @@ export default function StockMovePages() {
     dispatch(fetchStockMovesThunk());
     dispatch(fetchWarehousesThunk());
     dispatch(fetchPurchaseOrderByStatus("confirmed"));
+    dispatch(fetchSaleOrdersByStatus("confirmed"));
   }, [dispatch]);
 
   const getWarehouseName = (id: number) =>
@@ -153,6 +185,19 @@ export default function StockMovePages() {
         }
       },
     },
+    {
+      key: "created_by",
+      label: "Created By",
+      render: (row: StockMove) => {
+        if (!row.creator) return "N/A";
+
+        return (
+          <div className="flex flex-col">
+            <span className=" text-gray-700">{row.creator.full_name}</span>
+          </div>
+        );
+      },
+    },
 
     {
       key: "type",
@@ -202,10 +247,16 @@ export default function StockMovePages() {
 
   const handleCreate = (type: string) => {
     if (type === "receipt") {
-      setOpenReceiptModal(true);
+      setOpenCreateReceiptModal(true);
     }
     if (type === "transfer") {
       setOpenCreateTransferModal(true);
+    }
+    if (type === "adjustment") {
+      setOpenCreateAdjustmentModal(true);
+    }
+    if (type === "issue") {
+      setOpenCreateIssueModal(true);
     }
   };
 
@@ -222,19 +273,60 @@ export default function StockMovePages() {
         reference_type: data.form.reference_type as ReferenceType,
         reference_id: Number(data.form.referenceNo),
         note: data.form.notes || "",
+        created_by: user?.id ?? 0,
         lines: data.products.map((p) => ({
+          id: undefined,
           product_id: p.id,
           quantity: p.quantity,
           uom: p.uom,
         })),
       };
-      const result = await dispatch(createReceiptStockMoveThunk(payload));
+      const result = await dispatch(
+        createReceiptStockMoveThunk(payload)
+      ).unwrap();
       console.log("Created stock move:", result);
       toast.success("Stock Receipt Move created!");
-      setOpenReceiptModal(false);
+      setOpenCreateReceiptModal(false);
     } catch (error) {
-      console.error("Failed to create Stock Receipt Move:", error);
-      toast.error("Failed to create Stock Receipt Move");
+      console.log(">>> Error caught:", error);
+      console.log(">>>> ERROR TYPE:", typeof error);
+
+      toast.error(getErrorMessage(error));
+    }
+  };
+
+  const handleCreateIssueSubmit = async (data: {
+    form: IssueForm;
+    lineItems: LineIssueItem[];
+  }) => {
+    try {
+      const payload: StockMoveCreate = {
+        move_no: data.form.move_no,
+        move_date: data.form.move_date,
+        type: data.form.type as StockMoveType,
+        warehouse_id: Number(data.form.warehouse),
+        reference_type: data.form.reference_type as ReferenceType,
+        reference_id: Number(data.form.referenceNo),
+        note: data.form.notes || "",
+        created_by: user?.id ?? 0,
+        lines: data.lineItems.map((p) => ({
+          id: undefined,
+          product_id: p.product_id,
+          quantity: p.quantity,
+          uom: p.uom,
+        })),
+      };
+      const result = await dispatch(
+        createIssueStockMoveThunk(payload)
+      ).unwrap();
+      console.log("Created stock move:", result);
+      toast.success("Stock Issue Move created!");
+      setOpenCreateIssueModal(false);
+    } catch (error) {
+      console.log(">>> Error caught:", error);
+      console.log(">>>> ERROR TYPE:", typeof error);
+
+      toast.error(getErrorMessage(error));
     }
   };
 
@@ -251,6 +343,7 @@ export default function StockMovePages() {
         warehouse_to_id: Number(data.form.warehouseTo),
         reference_type: data.form.reference_type as ReferenceType,
         note: data.form.notes || "",
+        created_by: user?.id ?? 0,
         lines: data.lineItems.map((p) => ({
           id: undefined,
           product_id: p.product_id,
@@ -258,13 +351,49 @@ export default function StockMovePages() {
           uom: p.uom,
         })),
       };
-      const result = await dispatch(createTransferStockMoveThunk(payload));
+      const result = await dispatch(
+        createTransferStockMoveThunk(payload)
+      ).unwrap();
       console.log("Created stock move:", result);
       toast.success("Stock Transfer Move created!");
       setOpenCreateTransferModal(false);
     } catch (error) {
-      console.error("Failed to create Stock Transfer Move:", error);
-      toast.error("Failed to create Stock Transfer Move");
+      console.log(">>> Error caught:", error);
+      console.log(">>>> ERROR TYPE:", typeof error);
+      toast.error(getErrorMessage(error));
+    }
+  };
+  const handleCreateAdjustmentSubmit = async (data: {
+    form: AdjustmentForm;
+    lineItems: LineAdjustmentItem[];
+  }) => {
+    try {
+      const payload: StockMoveAdjustmentCreate = {
+        move_no: data.form.move_no,
+        move_date: data.form.move_date,
+        type: data.form.type as StockMoveType,
+        warehouse_id: Number(data.form.warehouse),
+        reference_type: data.form.reference_type as ReferenceType,
+        note: data.form.notes || "",
+        created_by: user?.id ?? 0,
+        lines: data.lineItems.map((p) => ({
+          id: undefined,
+          product_id: p.product_id,
+          quantity: p.quantity,
+          uom: p.uom,
+        })),
+      };
+      const result = await dispatch(
+        createAdjustmentStockMoveThunk(payload)
+      ).unwrap();
+      console.log("Created stock move:", result);
+      toast.success("Stock Ajustment Move created!");
+      setOpenCreateAdjustmentModal(false);
+    } catch (error) {
+      console.log(">>> Error caught:", error);
+      console.log(">>>> ERROR TYPE:", typeof error);
+
+      toast.error(getErrorMessage(error));
     }
   };
 
@@ -295,6 +424,7 @@ export default function StockMovePages() {
         reference_type: data.form.reference_type as ReferenceType,
         reference_id: Number(data.form.referenceNo),
         note: data.form.notes || "",
+        created_by: user?.id ?? 0,
         lines: data.lineItems.map((p) => ({
           id: p.id,
           product_id: p.product_id,
@@ -304,13 +434,15 @@ export default function StockMovePages() {
       };
       const result = await dispatch(
         updateReceiptStockMoveThunk({ id: selectedStockMove.id, data: payload })
-      );
+      ).unwrap();
       console.log("Edited stock move:", result);
       toast.success("Stock Receipt Move Edited!");
       setOpenEditReceiptModal(false);
     } catch (error) {
-      console.error("Failed to Edit Stock Receipt Move:", error);
-      toast.error("Failed to Edit Stock Receipt Move");
+      console.log(">>> Error caught:", error);
+      console.log(">>>> ERROR TYPE:", typeof error);
+
+      toast.error(getErrorMessage(error));
     }
   };
 
@@ -327,7 +459,7 @@ export default function StockMovePages() {
     ).unwrap();
 
     if (checkStatus.status !== "draft") {
-      toast.error("Cannot edit, receipt already approved!");
+      toast.error("Cannot edit, Transfer already approved!");
       setOpenEditReceiptModal(false);
       return;
     }
@@ -340,8 +472,9 @@ export default function StockMovePages() {
         warehouse_to_id: Number(data.form.warehouseTo),
         reference_type: data.form.reference_type as ReferenceType,
         note: data.form.notes || "",
+        created_by: user?.id ?? 0,
         lines: data.lineItems.map((p) => ({
-          id: undefined,
+          id: p.id,
           product_id: p.product_id,
           quantity: p.quantity,
           uom: p.uom,
@@ -362,14 +495,115 @@ export default function StockMovePages() {
     }
   };
 
+  const handleEditAdjustmentSubmit = async (data: {
+    form: AdjustmentForm;
+    lineItems: LineAdjustmentItem[];
+  }) => {
+    if (!selectedStockMove) {
+      toast.error("No receipt selected!");
+      return;
+    }
+    const checkStatus = await dispatch(
+      fetchStockMoveByIdThunk(selectedStockMove.id)
+    ).unwrap();
+
+    if (checkStatus.status !== "draft") {
+      toast.error("Cannot edit, Adjustment already approved!");
+      setOpenEditReceiptModal(false);
+      return;
+    }
+    try {
+      const payload: StockMoveAdjustmentUpdate = {
+        move_no: data.form.move_no,
+        move_date: data.form.move_date,
+        type: data.form.type as StockMoveType,
+        warehouse_id: Number(data.form.warehouse),
+        reference_type: data.form.reference_type as ReferenceType,
+        note: data.form.notes || "",
+        created_by: user?.id ?? 0,
+        lines: data.lineItems.map((p) => ({
+          id: p.id,
+          product_id: p.product_id,
+          quantity: p.quantity,
+          uom: p.uom,
+        })),
+      };
+      const result = await dispatch(
+        updateAdjustmentStockMoveThunk({
+          id: selectedStockMove.id,
+          data: payload,
+        })
+      ).unwrap();
+      console.log("Edited stock move:", result);
+      toast.success("Stock Adjustment Move Edited!");
+      setOpenEditAdjustmentModal(false);
+    } catch (error) {
+      console.log(">>> Error caught:", error);
+      console.log(">>>> ERROR TYPE:", typeof error);
+      toast.error(getErrorMessage(error));
+    }
+  };
+
+  const handleEditIssueSubmit = async (data: {
+    form: IssueForm;
+    lineItems: LineIssueItem[];
+  }) => {
+    if (!selectedStockMove) {
+      toast.error("No receipt selected!");
+      return;
+    }
+    const checkStatus = await dispatch(
+      fetchStockMoveByIdThunk(selectedStockMove.id)
+    ).unwrap();
+
+    if (checkStatus.status !== "draft") {
+      toast.error("Cannot edit, receipt already approved!");
+      setOpenEditIssueModal(false);
+      return;
+    }
+
+    try {
+      const payload: StockMoveUpdate = {
+        move_no: data.form.move_no,
+        move_date: data.form.move_date,
+        type: data.form.type as StockMoveType,
+        warehouse_id: Number(data.form.warehouse),
+        reference_type: data.form.reference_type as ReferenceType,
+        reference_id: Number(data.form.referenceNo),
+        note: data.form.notes || "",
+        created_by: user?.id ?? 0,
+        lines: data.lineItems.map((p) => ({
+          id: p.id,
+          product_id: p.product_id,
+          quantity: p.quantity,
+          uom: p.uom,
+        })),
+      };
+      const result = await dispatch(
+        updateIssueStockMoveThunk({ id: selectedStockMove.id, data: payload })
+      ).unwrap();
+      console.log("Edited stock move:", result);
+      toast.success("Stock Receipt Move Edited!");
+      setOpenEditIssueModal(false);
+    } catch (error) {
+      console.log(">>> Error caught:", error);
+      console.log(">>>> ERROR TYPE:", typeof error);
+      toast.error(getErrorMessage(error));
+    }
+  };
+
   const handleDelete = async () => {
+    if (!selectedStockMove) return;
     try {
       setDeleting(true);
+      await dispatch(deleteStockMoveThunk(selectedStockMove.id)).unwrap();
       toast.success("Deleted successfully!");
       setConfirmOpen(false);
-    } catch (err) {
-      console.log(err);
-      toast.error("Delete failed!");
+      dispatch(fetchStockMovesThunk());
+    } catch (error) {
+      console.log(">>> Error caught:", error);
+      console.log(">>>> ERROR TYPE:", typeof error);
+      toast.error(getErrorMessage(error));
     } finally {
       setDeleting(false);
     }
@@ -438,26 +672,39 @@ export default function StockMovePages() {
           itemsPerPage={7}
           columns={columns}
           loading={loading}
-          onView={(item) => console.log("Xem:", item)}
+          onView={(item) => navigate(`/inventory/stock_move/view/${item.id}`)}
           onEdit={(item) => {
-            setSelectedStockMove(item);
-            switch (item.type) {
-              case "receipt":
-                setOpenEditReceiptModal(true);
-                break;
-              case "transfer":
-                setOpenEditTransferModal(true);
-                break;
-              default:
-                toast.warn("Unknown stock move type:");
+            try {
+              setSelectedStockMove(item);
+              switch (item.type) {
+                case "receipt":
+                  setOpenEditReceiptModal(true);
+                  break;
+                case "transfer":
+                  setOpenEditTransferModal(true);
+                  break;
+                case "adjustment":
+                  setOpenEditAdjustmentModal(true);
+                  break;
+                case "issue":
+                  setOpenEditIssueModal(true);
+                  break;
+                default:
+                  toast.warn("Unknown stock move type");
+              }
+            } catch (error) {
+              console.log(error);
+              toast.error("Failed to load stock move detail");
             }
           }}
           onDelete={(item) => {
             setSelectedStockMove(item);
             setConfirmOpen(true);
           }}
-          canEdit={(item) => item.status === "draft"}
-          canDelete={(item) => item.status === "draft"}
+          canEdit={(item) => item.status === "draft" && role === Roles.WHSTAFF}
+          canDelete={(item) =>
+            item.status === "draft" && role === Roles.WHSTAFF
+          }
         />
       </div>
       {confirmOpen && (
@@ -496,10 +743,23 @@ export default function StockMovePages() {
         onClose={() => setOpenCreateTransferModal(false)}
       />
       <CreateReceiptModal
-        open={openReceiptModal}
+        open={openCreateReceiptModal}
         warehouses={warehouses}
         onSubmit={handleCreateReceiptSubmit}
-        onClose={() => setOpenReceiptModal(false)}
+        onClose={() => setOpenCreateReceiptModal(false)}
+      />
+
+      <CreateIssueModal
+        open={openCreateIssueModal}
+        warehouses={warehouses}
+        onSubmit={handleCreateIssueSubmit}
+        onClose={() => setOpenCreateIssueModal(false)}
+      />
+      <CreateAdjustmentModal
+        open={openCreateAdjustmentModal}
+        warehouses={warehouses}
+        onSubmit={handleCreateAdjustmentSubmit}
+        onClose={() => setOpenCreateAdjustmentModal(false)}
       />
       <EditTransferModal
         open={openEditTransferModal}
@@ -515,6 +775,22 @@ export default function StockMovePages() {
         data={selectedStockMove}
         onSubmit={handleEditReceiptSubmit}
         onClose={() => setOpenEditReceiptModal(false)}
+      />
+
+      <EditIssueModal
+        open={openEditIssueModal}
+        warehouses={warehouses}
+        saleOrder={saleOrder}
+        data={selectedStockMove}
+        onSubmit={handleEditIssueSubmit}
+        onClose={() => setOpenEditIssueModal(false)}
+      />
+      <EditAdjustmentModal
+        open={openEditAdjustmentModal}
+        warehouses={warehouses}
+        data={selectedStockMove}
+        onSubmit={handleEditAdjustmentSubmit}
+        onClose={() => setOpenEditAdjustmentModal(false)}
       />
     </div>
   );

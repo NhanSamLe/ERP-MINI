@@ -5,11 +5,11 @@ import { DataTable } from "../../../components/ui/DataTable";
 import { Button } from "../../../components/ui/Button";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { Roles } from "@/types/enum";
 
 import {
   fetchPurchaseOrdersThunk,
   deletePurchaseOrderThunk,
-  fetchPurchaseOrderByIdThunk,
 } from "../store/purchaseOrder.thunks";
 
 import { PurchaseOrder } from "../store/purchaseOrder.types";
@@ -23,13 +23,13 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
+import { getErrorMessage } from "@/utils/ErrorHelper";
 
 export default function PurchaseOrderPage() {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
 
-  const role = useSelector((state: RootState) => state.auth.user?.role.name);
-  console.log("User Role:", role);
+  const role = useSelector((state: RootState) => state.auth.user?.role.code);
 
   const { items: purchaseOrders, loading } = useSelector(
     (state: RootState) => state.purchaseOrder
@@ -45,24 +45,15 @@ export default function PurchaseOrderPage() {
 
   const handleDelete = async () => {
     if (!selectedPO) return;
-    const checkStatusOrder = await dispatch(
-      fetchPurchaseOrderByIdThunk(Number(selectedPO.id))
-    ).unwrap();
-    if (checkStatusOrder.status !== "draft") {
-      toast.error("This Purchase Order is no longer editable.");
-      dispatch(fetchPurchaseOrdersThunk());
-      setConfirmOpen(false);
-      return;
-    }
-
     setDeleting(true);
     try {
       await dispatch(deletePurchaseOrderThunk(selectedPO.id)).unwrap();
       toast.success("Purchase Order deleted successfully!");
       setConfirmOpen(false);
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to delete Purchase Order!");
+    } catch (error) {
+      console.log(">>> Error caught:", error);
+      console.log(">>>> ERROR TYPE:", typeof error);
+      toast.error(getErrorMessage(error));
     } finally {
       setDeleting(false);
     }
@@ -79,6 +70,11 @@ export default function PurchaseOrderPage() {
           : "—",
     },
     {
+      key: "Creator",
+      label: "Created By",
+      render: (po: PurchaseOrder) => po.creator.full_name,
+    },
+    {
       key: "total_after_tax",
       label: "Total",
       render: (po: PurchaseOrder) =>
@@ -89,17 +85,25 @@ export default function PurchaseOrderPage() {
       label: "Status",
       render: (po: PurchaseOrder) => (
         <span
-          className={`px-2 py-1 rounded text-xs font-medium ${
-            po.status === "draft"
-              ? "bg-gray-100 text-gray-500"
-              : po.status === "confirmed"
-              ? "bg-blue-100 text-blue-700"
-              : po.status === "received"
-              ? "bg-green-100 text-green-700"
-              : "bg-red-100 text-red-700"
-          }`}
+          className={`px-2 py-1 rounded text-xs font-medium
+    ${
+      po.status === "draft"
+        ? "bg-gray-100 text-gray-600"
+        : po.status === "waiting_approval"
+        ? "bg-amber-100 text-amber-700"
+        : po.status === "confirmed"
+        ? "bg-blue-100 text-blue-700"
+        : po.status === "partially_received"
+        ? "bg-indigo-100 text-indigo-700"
+        : po.status === "completed"
+        ? "bg-green-100 text-green-700"
+        : po.status === "cancelled"
+        ? "bg-red-100 text-red-700"
+        : "bg-gray-100 text-gray-600"
+    }
+  `}
         >
-          {po.status.toUpperCase()}
+          {po.status.replace("_", " ")}
         </span>
       ),
     },
@@ -186,14 +190,14 @@ export default function PurchaseOrderPage() {
             : undefined
         }
         onDelete={
-          role === "Purchasing Staff"
+          role === Roles.PURCHASE
             ? (item) => {
                 setSelectedPO(item);
                 setConfirmOpen(true);
               }
             : undefined
         }
-        canEdit={(item) => item.status === "draft"}
+        canEdit={(item) => item.status === "draft" && role === Roles.PURCHASE}
         canDelete={(item) => item.status === "draft"}
       />
 

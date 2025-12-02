@@ -1,8 +1,19 @@
 import { StockBalance } from "../models/stockBalance.model";
+import { JwtPayload } from "../../../core/types/jwt";
+import { Warehouse } from "../models/warehouse.model";
 
 export const stockBalanceService = {
-  async getAll() {
-    return await StockBalance.findAll();
+  async getAll(user: JwtPayload) {
+    return await StockBalance.findAll({
+      include: [
+        {
+          model: Warehouse,
+          as: "warehouse",
+          where: { branch_id: user.branch_id },
+          attributes: [],
+        },
+      ],
+    });
   },
 
   async getById(id: number) {
@@ -32,5 +43,11 @@ export const stockBalanceService = {
 
   async findByProduct(productId: number) {
     return await StockBalance.findAll({ where: { product_id: productId } });
+  },
+
+  async findByProductAndWarehouse(productId: number, warehouseId: number) {
+    return await StockBalance.findOne({
+      where: { product_id: productId, warehouse_id: warehouseId },
+    });
   },
 };

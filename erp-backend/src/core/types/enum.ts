@@ -1,4 +1,22 @@
 // =====================
+// ROLE
+// =====================
+
+export enum Role {
+  ADMIN = "ADMIN",
+  CEO = "CEO",
+  SALESMANAGER = "SALESMANAGER",
+  SALES = "SALES",
+  WHMANAGER = "WHMANAGER",
+  WHSTAFF = "WHSTAFF",
+  CHACC = "CHACC",
+  ACCOUNT = "ACCOUNT",
+  HRMANAGER = "HRMANAGER",
+  PURCHASE = "PURCHASE",
+  PURCHASEMANAGER = "PURCHASEMANAGER",
+}
+
+// =====================
 // AUTH & USER
 // =====================
 export enum UserStatus {

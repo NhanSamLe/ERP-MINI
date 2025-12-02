@@ -3,6 +3,8 @@ import { createAsyncThunk } from "@reduxjs/toolkit";
 import { stockMoveService } from "../../../services/stockMove.service";
 import {
   StockMove,
+  StockMoveAdjustmentCreate,
+  StockMoveAdjustmentUpdate,
   StockMoveCreate,
   StockMoveTransferCreate,
   StockMoveTransferUpdate,
@@ -43,12 +45,34 @@ export const createReceiptStockMoveThunk = createAsyncThunk<
   }
 });
 
+export const createIssueStockMoveThunk = createAsyncThunk<
+  StockMove,
+  StockMoveCreate
+>("stockMove/createIssue", async (data, { rejectWithValue }) => {
+  try {
+    return await stockMoveService.createIsssueStockMove(data);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
 export const createTransferStockMoveThunk = createAsyncThunk<
   StockMove,
   StockMoveTransferCreate
 >("stockMove/createTransfer", async (data, { rejectWithValue }) => {
   try {
     return await stockMoveService.createTransferStockMove(data);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
+export const createAdjustmentStockMoveThunk = createAsyncThunk<
+  StockMove,
+  StockMoveAdjustmentCreate
+>("stockMove/createAdjustment", async (data, { rejectWithValue }) => {
+  try {
+    return await stockMoveService.createAdjustmentStockMove(data);
   } catch (error) {
     return rejectWithValue(getErrorMessage(error));
   }
@@ -65,12 +89,34 @@ export const updateReceiptStockMoveThunk = createAsyncThunk<
   }
 });
 
+export const updateIssueStockMoveThunk = createAsyncThunk<
+  StockMove,
+  { id: number; data: StockMoveUpdate }
+>("stockMove/updateIssue", async ({ id, data }, { rejectWithValue }) => {
+  try {
+    return await stockMoveService.updateIssueStockMove(id, data);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
 export const updateTransferStockMoveThunk = createAsyncThunk<
   StockMove,
   { id: number; data: StockMoveTransferUpdate }
 >("stockMove/updateTransfer", async ({ id, data }, { rejectWithValue }) => {
   try {
     return await stockMoveService.updateTransferStockMove(id, data);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
+export const updateAdjustmentStockMoveThunk = createAsyncThunk<
+  StockMove,
+  { id: number; data: StockMoveAdjustmentUpdate }
+>("stockMove/updateAdjustment", async ({ id, data }, { rejectWithValue }) => {
+  try {
+    return await stockMoveService.updateAdjustmentStockMove(id, data);
   } catch (error) {
     return rejectWithValue(getErrorMessage(error));
   }
@@ -87,3 +133,37 @@ export const deleteStockMoveThunk = createAsyncThunk<number, number>(
     }
   }
 );
+
+export const submitStockMoveThunk = createAsyncThunk<
+  StockMove,
+  number,
+  { rejectValue: string }
+>("stockMove/submitApproval", async (id, { rejectWithValue }) => {
+  try {
+    const res = await stockMoveService.submitForApproval(id);
+    return res;
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
+export const approveStockMoveThunk = createAsyncThunk(
+  "stockMove/approve",
+  async (id: number) => {
+    const data = await stockMoveService.approveStockMove(id);
+    return data;
+  }
+);
+
+export const rejectStockMoveThunk = createAsyncThunk<
+  StockMove,
+  { id: number; rejectReason: string },
+  { rejectValue: string }
+>("stockMove/reject", async ({ id, rejectReason }, { rejectWithValue }) => {
+  try {
+    const res = await stockMoveService.rejectStockMove(id, rejectReason);
+    return res;
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});

@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "../../../components/ui/Button";
-import { Input } from "../../../components/ui/Input";
-import { Textarea } from "../../../components/ui/Textarea";
-import { useDispatch } from "react-redux";
-import { AppDispatch } from "../../../store/store";
+import { Input } from "../../../components/ui/input";
+import { Textarea } from "../../../components/ui/textarea";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "../../../store/store";
 import { Product } from "../../../features/products/store/product.types";
 import { useNavigate } from "react-router-dom";
 
@@ -18,10 +18,10 @@ import { Calendar, Search, Plus, Trash2 } from "lucide-react";
 
 import { searchProductsThunk } from "../../products/store/product.thunks";
 import { fetchTaxRatesByIdThunk } from "../../master-data/store/master-data/tax/tax.thunks";
-import { fetchAllBranchesThunk } from "../../../features/company/store/branch.thunks";
 import { createPurchaseOrderThunk } from "../store/purchaseOrder.thunks";
 import { toast } from "react-toastify";
 import { PurchaseOrderCreate } from "../store";
+import { loadPartners } from "@/features/partner/store/partner.thunks";
 
 interface LineItem {
   id: number;
@@ -46,8 +46,6 @@ export default function CreatePurchaseOrderPage() {
   const [date, setDate] = useState("");
   const [reference, setReference] = useState("");
   const [totalOrderTax, setTotalOrderTax] = useState(0);
-  const [branch, setBranch] = useState("");
-  const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
   const [totalBeforeTax, setTotalBeforeTax] = useState(0);
   const [totalAfterTax, setTotalAfterTax] = useState(0);
   const [description, setDescription] = useState("");
@@ -60,22 +58,22 @@ export default function CreatePurchaseOrderPage() {
 
   const [lines, setLines] = useState<LineItem[]>([]);
 
+  const user = useSelector((state: RootState) => state.auth.user);
+  const partners = useSelector((state: RootState) => state.partners);
+
+  useEffect(() => {
+    dispatch(loadPartners({ type: "supplier" }));
+  }, [dispatch]);
+
   useEffect(() => {
     const today = new Date();
     const y = today.getFullYear();
     const m = String(today.getMonth() + 1).padStart(2, "0");
     const d = String(today.getDate()).padStart(2, "0");
 
-    const randomNumber = Math.floor(Math.random() * 900 + 100); // 100-999
+    const randomNumber = Math.floor(Math.random() * 900 + 100);
     setReference(`PO-${y}${m}${d}-${randomNumber}`);
   }, []);
-
-  useEffect(() => {
-    dispatch(fetchAllBranchesThunk())
-      .unwrap()
-      .then((data) => setBranches(data || []))
-      .catch(() => setBranches([]));
-  }, [dispatch]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -238,7 +236,6 @@ export default function CreatePurchaseOrderPage() {
         alert("Date cannot be in the future!");
         return;
       }
-      if (!branch) return toast.error("Branch is required");
       if (!supplierId) return toast.error("Supplier is required");
       if (!date) return toast.error("Order date is required");
       if (lines.length === 0)
@@ -248,7 +245,7 @@ export default function CreatePurchaseOrderPage() {
       if (invalidLine) return toast.error("Quantity must be greater than 0");
 
       const requestBody: PurchaseOrderCreate = {
-        branch_id: Number(branch),
+        branch_id: user?.branch.id ?? 0,
         po_no: reference,
         supplier_id: Number(supplierId),
         order_date: date,
@@ -287,12 +284,17 @@ export default function CreatePurchaseOrderPage() {
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Supplier Name <span className="text-red-500">*</span>
           </label>
-          <Select value={supplierId} onValueChange={setSupplierId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select" />
+          <Select value={supplierId} onValueChange={(v) => setSupplierId(v)}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select Supplier" />
             </SelectTrigger>
+
             <SelectContent>
-              <SelectItem value="2">ABC Supplies Ltd</SelectItem>
+              {partners.items.map((p) => (
+                <SelectItem key={p.id} value={String(p.id)}>
+                  {p.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -483,18 +485,9 @@ export default function CreatePurchaseOrderPage() {
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Branch
           </label>
-          <Select value={branch} onValueChange={setBranch}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select Branch" />
-            </SelectTrigger>
-            <SelectContent>
-              {branches.map((b) => (
-                <SelectItem key={b.id} value={b.id.toString()}>
-                  {b.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="border rounded px-3 py-2 bg-gray-100 text-gray-700">
+            {user?.branch.name}
+          </div>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">

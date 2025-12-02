@@ -3,7 +3,8 @@ import { warehouseService } from "../services/warehouse.service";
 
 export const WarehouseController = {
   async getAll(req: Request, res: Response) {
-    const data = await warehouseService.getAll();
+    const user = (req as any).user;
+    const data = await warehouseService.getAll(user);
     return res.json(data);
   },
 

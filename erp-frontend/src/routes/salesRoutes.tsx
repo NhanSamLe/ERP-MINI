@@ -94,7 +94,49 @@ const salesRoutes: RouteObject[] = [
   ),
 }
 
+// 💰 AR INVOICE LIST
+  {
+    path: "/sales/invoices",
+    element: (
+      <ProtectedRoute allowedRoles={["ACCOUNT", "CHACC", "BRMN", "CEO", "ADMIN"]}>
+        <InvoiceListPage />
+      </ProtectedRoute>
+    ),
+  },
 
+  // 💰 AR INVOICE DETAIL + POST
+  {
+    path: "/sales/invoices/:id",
+    element: (
+      <ProtectedRoute allowedRoles={["ACCOUNT", "CHACC", "BRMN", "CEO", "ADMIN"]}>
+        <InvoiceDetailPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/sales/receipts",
+    element: (
+      <ProtectedRoute allowedRoles={["ACCOUNT", "CHACC"]}>
+        <ReceiptListPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/sales/receipts/:id",
+    element: (
+      <ProtectedRoute
+        allowedRoles={[
+          "ACCOUNT",
+          "CHACC",
+          "BRANCH_MANAGER",
+          "CEO",
+          "ADMIN",
+        ]}
+      >
+        <ReceiptDetailPage />
+      </ProtectedRoute>
+    ),
+  },
 ];
 
 export default salesRoutes;

@@ -2,14 +2,13 @@
 import { SaleOrder } from "../models/saleOrder.model";
 import { SaleOrderLine } from "../models/saleOrderLine.model";
 import { TaxRate } from "../../master-data/models/taxRate.model";
-import { Branch, Partner,  Product, User } from "../../../models";
+import { Branch, Partner, Product, User } from "../../../models";
 import { ProductImage } from "../../product/models/productImage.model";
 import { Op } from "sequelize";
 import { JwtPayload } from "../../../core/types/jwt";
-import { generateOrderNo
- } from "../utils";
+import { generateOrderNo } from "../utils";
+import { Role } from "../../../core/types/enum";
 export const saleOrderService = {
-    
   /** -----------------------------------------------------
    * HELPER: Tính thuế từng dòng
    * ---------------------------------------------------- */
@@ -51,7 +50,7 @@ export const saleOrderService = {
    * GET ALL — lọc branch + ownership
    * ---------------------------------------------------- */
   async getAll(user: JwtPayload) {
-    const where: any = { branch_id: user.branch_id};
+    const where: any = { branch_id: user.branch_id };
 
     if (user.role === "SALES") {
       where.created_by = user.id;
@@ -59,11 +58,14 @@ export const saleOrderService = {
 
     return SaleOrder.findAll({
       where,
-      include: [{ model: SaleOrderLine, as: "lines" }, {
-        model: User,
-        as: "creator",                           // ⭐ LẤY THÊM NGƯỜI TẠO
-        attributes: ["id", "username", "full_name"],
-      }],
+      include: [
+        { model: SaleOrderLine, as: "lines" },
+        {
+          model: User,
+          as: "creator", // ⭐ LẤY THÊM NGƯỜI TẠO
+          attributes: ["id", "username", "full_name"],
+        },
+      ],
       order: [["id", "DESC"]],
     });
   },
@@ -86,7 +88,7 @@ export const saleOrderService = {
         },
         {
           model: User,
-          as: "creator",   
+          as: "creator",
           attributes: ["id", "username", "full_name"],
         },
         {
@@ -120,11 +122,66 @@ export const saleOrderService = {
       ],
     });
     if (!order) throw new Error("Sale order not found");
-    if (order.branch_id !== user.branch_id) throw new Error("Cross-branch access denied");
+    if (order.branch_id !== user.branch_id)
+      throw new Error("Cross-branch access denied");
     if (user.role === "SALES" && order.created_by !== user.id)
       throw new Error("You can only view your own sale orders");
 
     return order;
+  },
+
+  async getByStatus(status: string, user: any) {
+    const where: any = {
+      branch_id: user.branch_id,
+      status: status,
+    };
+    if (user.role === Role.SALES) {
+      where.created_by = user.id;
+    }
+    return SaleOrder.findAll({
+      where,
+      include: [
+        {
+          model: Partner,
+          as: "customer",
+          attributes: ["id", "name", "email", "phone", "tax_code", "address"],
+        },
+        {
+          model: User,
+          as: "creator",
+          attributes: ["id", "username", "full_name"],
+        },
+        {
+          model: User,
+          as: "approver",
+          attributes: ["id", "username", "full_name"],
+        },
+        {
+          model: SaleOrderLine,
+          as: "lines",
+          include: [
+            {
+              model: Product,
+              as: "product",
+              attributes: ["id", "name", "image_url", "sale_price"],
+              include: [
+                {
+                  model: ProductImage,
+                  as: "images",
+                  attributes: ["id", "image_url"],
+                },
+              ],
+            },
+            {
+              model: TaxRate,
+              as: "taxRate",
+              attributes: ["id", "name", "rate"],
+            },
+          ],
+        },
+      ],
+      order: [["id", "DESC"]],
+    });
   },
 
   /** -----------------------------------------------------
@@ -133,7 +190,7 @@ export const saleOrderService = {
   async create(data: any, user: any) {
     const order = await SaleOrder.create({
       branch_id: user.branch_id,
-      order_no: await generateOrderNo(), 
+      order_no: await generateOrderNo(),
       customer_id: data.customer_id,
       created_by: user.id,
       order_date: data.order_date,
@@ -176,94 +233,95 @@ export const saleOrderService = {
    * UPDATE — Sales nhưng chỉ khi DRAFT + same branch
    * ---------------------------------------------------- */
   async update(id: number, data: any, user: any) {
-        const order = await SaleOrder.findByPk(id);
-        if (!order) throw new Error("Order not found");
+    const order = await SaleOrder.findByPk(id);
+    if (!order) throw new Error("Order not found");
 
-        // Permission Checks
-        if (order.approval_status !== "draft")
-            throw new Error("Only draft orders can be updated");
+    // Permission Checks
+    if (order.approval_status !== "draft")
+      throw new Error("Only draft orders can be updated");
 
-        if (order.branch_id !== user.branch_id)
-            throw new Error("Cross-branch denied");
+    if (order.branch_id !== user.branch_id)
+      throw new Error("Cross-branch denied");
 
-        if (user.role === "SALES" && order.created_by !== user.id)
-            throw new Error("You can only modify your own orders");
+    if (user.role === "SALES" && order.created_by !== user.id)
+      throw new Error("You can only modify your own orders");
 
-        // Update order header
-        await order.update({
-            customer_id: data.customer_id,
-            order_date: data.order_date,
+    // Update order header
+    await order.update({
+      customer_id: data.customer_id,
+      order_date: data.order_date,
+    });
+
+    // ============================
+    // Delete removed lines
+    // ============================
+    if (data.deletedLineIds?.length) {
+      await SaleOrderLine.destroy({
+        where: { id: data.deletedLineIds, order_id: order.id },
+      });
+    }
+
+    // ============================
+    // Update / Add lines safely
+    // ============================
+    const updatedLines = [];
+
+    for (const line of data.lines) {
+      // Validate line format
+      const quantity = Number(line.quantity || 0);
+      const unit_price = Number(line.unit_price || 0);
+      if (quantity < 0 || unit_price < 0) throw new Error("Invalid price/qty");
+
+      const taxes = await this.calcLineTax({ ...line, quantity, unit_price });
+
+      if (line.id) {
+        // Validate line belongs to this order
+        const existingLine = await SaleOrderLine.findByPk(line.id);
+        if (!existingLine || existingLine.order_id !== order.id)
+          throw new Error("Invalid order line");
+
+        await existingLine.update({
+          product_id: line.product_id,
+          description: line.description,
+          quantity,
+          unit_price,
+          tax_rate_id: line.tax_rate_id,
+          line_total: taxes.line_total,
+          line_tax: taxes.line_tax,
+          line_total_after_tax: taxes.line_total_after_tax,
         });
 
-        // ============================
-        // Delete removed lines
-        // ============================
-        if (data.deletedLineIds?.length) {
-            await SaleOrderLine.destroy({ where: { id: data.deletedLineIds, order_id: order.id } });
-        }
-
-        // ============================
-        // Update / Add lines safely
-        // ============================
-        const updatedLines = [];
-
-        for (const line of data.lines) {
-            // Validate line format
-            const quantity = Number(line.quantity || 0);
-            const unit_price = Number(line.unit_price || 0);
-            if (quantity < 0 || unit_price < 0) throw new Error("Invalid price/qty");
-
-            const taxes = await this.calcLineTax({ ...line, quantity, unit_price });
-
-            if (line.id) {
-            // Validate line belongs to this order
-            const existingLine = await SaleOrderLine.findByPk(line.id);
-            if (!existingLine || existingLine.order_id !== order.id)
-                throw new Error("Invalid order line");
-
-            await existingLine.update({
-                product_id: line.product_id,
-                description: line.description,
-                quantity,
-                unit_price,
-                tax_rate_id: line.tax_rate_id,
-                line_total: taxes.line_total,
-                line_tax: taxes.line_tax,
-                line_total_after_tax: taxes.line_total_after_tax,
-            });
-
-            updatedLines.push(existingLine);
-            } else {
-            const newLine = await SaleOrderLine.create({
-                order_id: order.id,
-                product_id: line.product_id,
-                description: line.description,
-                quantity,
-                unit_price,
-                tax_rate_id: line.tax_rate_id,
-                line_total: taxes.line_total,
-                line_tax: taxes.line_tax,
-                line_total_after_tax: taxes.line_total_after_tax,
-            });
-
-            updatedLines.push(newLine);
-            }
-        }
-
-        // ============================
-        // Recalculate totals
-        // ============================
-        const totals = await this.calcTotals(updatedLines);
-
-        await order.update({
-            total_before_tax: totals.total_before_tax,
-            total_tax: totals.total_tax,
-            total_after_tax: totals.total_after_tax,
+        updatedLines.push(existingLine);
+      } else {
+        const newLine = await SaleOrderLine.create({
+          order_id: order.id,
+          product_id: line.product_id,
+          description: line.description,
+          quantity,
+          unit_price,
+          tax_rate_id: line.tax_rate_id,
+          line_total: taxes.line_total,
+          line_tax: taxes.line_tax,
+          line_total_after_tax: taxes.line_total_after_tax,
         });
 
-        return this.getById(id, user);
-        },
+        updatedLines.push(newLine);
+      }
+    }
 
+    // ============================
+    // Recalculate totals
+    // ============================
+    const totals = await this.calcTotals(updatedLines);
+
+    await order.update({
+      total_before_tax: totals.total_before_tax,
+      total_tax: totals.total_tax,
+      total_after_tax: totals.total_after_tax,
+    });
+
+    return this.getById(id, user);
+  },
 
   /** -----------------------------------------------------
    * SUBMIT — Sales
@@ -272,9 +330,12 @@ export const saleOrderService = {
     const order = await SaleOrder.findByPk(id);
 
     if (!order) throw new Error("Order not found");
-    if (order.approval_status !== "draft") throw new Error("Order already submitted");
-    if (order.branch_id !== user.branch_id) throw new Error("Cross-branch denied");
-    if (order.created_by !== user.id) throw new Error("Only the creator can submit");
+    if (order.approval_status !== "draft")
+      throw new Error("Order already submitted");
+    if (order.branch_id !== user.branch_id)
+      throw new Error("Cross-branch denied");
+    if (order.created_by !== user.id)
+      throw new Error("Only the creator can submit");
 
     await order.update({
       approval_status: "waiting_approval",
@@ -294,7 +355,8 @@ export const saleOrderService = {
     if (order.approval_status !== "waiting_approval")
       throw new Error("Order not in approval stage");
 
-    if (order.branch_id !== manager.branch_id) throw new Error("Cross-branch denied");
+    if (order.branch_id !== manager.branch_id)
+      throw new Error("Cross-branch denied");
 
     await order.update({
       approval_status: "approved",
@@ -313,9 +375,11 @@ export const saleOrderService = {
     const order = await SaleOrder.findByPk(id);
 
     if (!order) throw new Error("Order not found");
-    if (order.approval_status !== "waiting_approval") throw new Error("Invalid stage");
+    if (order.approval_status !== "waiting_approval")
+      throw new Error("Invalid stage");
 
-    if (order.branch_id !== manager.branch_id) throw new Error("Cross-branch denied");
+    if (order.branch_id !== manager.branch_id)
+      throw new Error("Cross-branch denied");
 
     await order.update({
       approval_status: "rejected",
@@ -327,5 +391,3 @@ export const saleOrderService = {
     return order;
   },
 };
-
-

@@ -1,4 +1,4 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import {
   fetchPurchaseOrdersThunk,
   fetchPurchaseOrderByIdThunk,
@@ -6,8 +6,11 @@ import {
   updatePurchaseOrderThunk,
   deletePurchaseOrderThunk,
   fetchPurchaseOrderByStatus,
+  submitPurchaseOrderThunk,
+  approvePurchaseOrderThunk,
+  cancelPurchaseOrderThunk,
 } from "./purchaseOrder.thunks";
-import { PurchaseOrderState } from "./purchaseOrder.types";
+import { PurchaseOrder, PurchaseOrderState } from "./purchaseOrder.types";
 
 const initialState: PurchaseOrderState = {
   items: [],
@@ -55,9 +58,29 @@ export const purchaseOrderSlice = createSlice({
         );
       })
 
+      .addCase(submitPurchaseOrderThunk.fulfilled, (state, action) => {
+        state.items = state.items.map((po) =>
+          po.id === action.payload.id ? action.payload : po
+        );
+      })
+
       .addCase(deletePurchaseOrderThunk.fulfilled, (state, action) => {
         state.items = state.items.filter((po) => po.id !== action.payload);
-      });
+      })
+      // Approve
+      .addCase(
+        approvePurchaseOrderThunk.fulfilled,
+        (state, action: PayloadAction<PurchaseOrder>) => {
+          state.selectedPO = action.payload;
+        }
+      )
+      // Cancel
+      .addCase(
+        cancelPurchaseOrderThunk.fulfilled,
+        (state, action: PayloadAction<PurchaseOrder>) => {
+          state.selectedPO = action.payload;
+        }
+      );
   },
 });
 

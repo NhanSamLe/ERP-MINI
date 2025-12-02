@@ -1,5 +1,12 @@
 // src/store/slices/saleOrder.slice.ts
-import { createSlice, createAsyncThunk, PayloadAction, isPending, isFulfilled, isRejected } from "@reduxjs/toolkit";
+import {
+  createSlice,
+  createAsyncThunk,
+  PayloadAction,
+  isPending,
+  isFulfilled,
+  isRejected,
+} from "@reduxjs/toolkit";
 import {
   SaleOrderDto,
   CreateSaleOrderDto,
@@ -10,7 +17,7 @@ import * as service from "../service/saleOrder.service";
 // ==============================
 // TYPES
 // ==============================
-interface SaleOrderState {
+export interface SaleOrderState {
   items: SaleOrderDto[];
   selected: SaleOrderDto | null;
   loading: boolean;
@@ -37,15 +44,18 @@ export const fetchSaleOrderDetail = createAsyncThunk<SaleOrderDto, number>(
   async (id) => await service.getSaleOrderById(id)
 );
 
-export const createSaleOrder = createAsyncThunk<SaleOrderDto, CreateSaleOrderDto>(
-  "saleOrders/create",
-  async (data) => await service.createSaleOrder(data)
-);
+export const createSaleOrder = createAsyncThunk<
+  SaleOrderDto,
+  CreateSaleOrderDto
+>("saleOrders/create", async (data) => await service.createSaleOrder(data));
 
 export const updateSaleOrder = createAsyncThunk<
   SaleOrderDto,
   { id: number; data: UpdateSaleOrderDto }
->("saleOrders/update", async ({ id, data }) => await service.updateSaleOrder(id, data));
+>(
+  "saleOrders/update",
+  async ({ id, data }) => await service.updateSaleOrder(id, data)
+);
 
 export const submitSaleOrder = createAsyncThunk<SaleOrderDto, number>(
   "saleOrders/submit",
@@ -60,7 +70,18 @@ export const approveSaleOrder = createAsyncThunk<SaleOrderDto, number>(
 export const rejectSaleOrder = createAsyncThunk<
   SaleOrderDto,
   { id: number; reason: string }
->("saleOrders/reject", async ({ id, reason }) => await service.rejectSaleOrder(id, reason));
+>(
+  "saleOrders/reject",
+  async ({ id, reason }) => await service.rejectSaleOrder(id, reason)
+);
+
+export const fetchSaleOrdersByStatus = createAsyncThunk<SaleOrderDto[], string>(
+  "saleOrders/getByStatus",
+  async (status) => {
+    const res = await service.getSaleOrdersByStatus(status);
+    return res;
+  }
+);
 
 // ==============================
 // SLICE
@@ -78,6 +99,7 @@ export const saleOrderSlice = createSlice({
     builder.addMatcher(
       isFulfilled(
         fetchSaleOrders,
+        fetchSaleOrdersByStatus,
         fetchSaleOrderDetail,
         createSaleOrder,
         updateSaleOrder,
@@ -101,6 +123,7 @@ export const saleOrderSlice = createSlice({
     builder.addMatcher(
       isPending(
         fetchSaleOrders,
+        fetchSaleOrdersByStatus,
         fetchSaleOrderDetail,
         createSaleOrder,
         updateSaleOrder,
@@ -118,6 +141,7 @@ export const saleOrderSlice = createSlice({
     builder.addMatcher(
       isRejected(
         fetchSaleOrders,
+        fetchSaleOrdersByStatus,
         fetchSaleOrderDetail,
         createSaleOrder,
         updateSaleOrder,

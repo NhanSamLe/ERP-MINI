@@ -7,6 +7,13 @@ import {
   deleteStockMoveThunk,
   createTransferStockMoveThunk,
   updateTransferStockMoveThunk,
+  createAdjustmentStockMoveThunk,
+  updateAdjustmentStockMoveThunk,
+  createIssueStockMoveThunk,
+  updateIssueStockMoveThunk,
+  submitStockMoveThunk,
+  approveStockMoveThunk,
+  rejectStockMoveThunk,
 } from "./stockMove.thunks";
 
 import { StockMoveState } from "./stockMove.types";
@@ -58,12 +65,28 @@ export const stockMoveSlice = createSlice({
       state.items.push(action.payload);
     });
 
+    builder.addCase(createIssueStockMoveThunk.fulfilled, (state, action) => {
+      state.items.push(action.payload);
+    });
+
     builder.addCase(createTransferStockMoveThunk.fulfilled, (state, action) => {
       state.items.push(action.payload);
     });
 
+    builder.addCase(
+      createAdjustmentStockMoveThunk.fulfilled,
+      (state, action) => {
+        state.items.push(action.payload);
+      }
+    );
+
     // ---- UPDATE ----
     builder.addCase(updateReceiptStockMoveThunk.fulfilled, (state, action) => {
+      const index = state.items.findIndex((m) => m.id === action.payload.id);
+      if (index !== -1) state.items[index] = action.payload;
+    });
+
+    builder.addCase(updateIssueStockMoveThunk.fulfilled, (state, action) => {
       const index = state.items.findIndex((m) => m.id === action.payload.id);
       if (index !== -1) state.items[index] = action.payload;
     });
@@ -72,11 +95,59 @@ export const stockMoveSlice = createSlice({
       const index = state.items.findIndex((m) => m.id === action.payload.id);
       if (index !== -1) state.items[index] = action.payload;
     });
+    builder.addCase(
+      updateAdjustmentStockMoveThunk.fulfilled,
+      (state, action) => {
+        const index = state.items.findIndex((m) => m.id === action.payload.id);
+        if (index !== -1) state.items[index] = action.payload;
+      }
+    );
 
     // ---- DELETE ----
-    builder.addCase(deleteStockMoveThunk.fulfilled, (state, action) => {
-      state.items = state.items.filter((item) => item.id !== action.payload);
-    });
+    builder
+      .addCase(deleteStockMoveThunk.fulfilled, (state, action) => {
+        state.items = state.items.filter((item) => item.id !== action.payload);
+      })
+
+      // --- Approval and Cancelled
+
+      .addCase(submitStockMoveThunk.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(submitStockMoveThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        state.selected = action.payload;
+      })
+      .addCase(submitStockMoveThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || "Error submitting stock move";
+      })
+      .addCase(approveStockMoveThunk.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(approveStockMoveThunk.fulfilled, (state, action) => {
+        state.selected = action.payload;
+        state.loading = false;
+      })
+      .addCase(approveStockMoveThunk.rejected, (state) => {
+        state.loading = false;
+      })
+
+      .addCase(rejectStockMoveThunk.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(rejectStockMoveThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.items.findIndex((m) => m.id === action.payload.id);
+        if (index !== -1) state.items[index] = action.payload;
+        state.selected = action.payload;
+      })
+      .addCase(rejectStockMoveThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || "Error rejecting stock move";
+      });
   },
 });
 

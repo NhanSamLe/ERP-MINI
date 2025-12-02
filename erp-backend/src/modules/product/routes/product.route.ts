@@ -2,34 +2,48 @@ import { Router } from "express";
 import { productController } from "../controllers/product.controller";
 import { authMiddleware } from "../../../core/middleware/auth";
 import { upload } from "../../../core/middleware/upload";
+import { Role } from "../../../core/types/enum";
 
 const router = Router();
 
 router.get(
   "/",
-  authMiddleware(["ADMIN", "SALES", "PURCHASE"]),
+  authMiddleware([Role.ADMIN, Role.SALES, Role.PURCHASE, Role.PURCHASEMANAGER]),
   productController.getAllProductOnActive
 );
 
 router.get(
   "/all",
-  authMiddleware(["ADMIN", "SALES", "PURCHASE", "WHSTAFF"]),
+  authMiddleware([
+    Role.ADMIN,
+    Role.SALES,
+    Role.PURCHASE,
+    Role.WHSTAFF,
+    Role.PURCHASEMANAGER,
+    Role.WHMANAGER,
+  ]),
   productController.getAllProductAllStatus
 );
 
 router.get(
   "/search",
-  authMiddleware(["PURCHASE", "WHSTAFF"]),
+  authMiddleware([Role.PURCHASE, Role.WHSTAFF]),
   productController.searchProducts
 );
 router.get(
   "/:id",
-  authMiddleware(["ADMIN", "SALES", "PURCHASE", "WHSTAFF"]),
+  authMiddleware([
+    Role.ADMIN,
+    Role.SALES,
+    Role.PURCHASE,
+    Role.WHSTAFF,
+    Role.PURCHASEMANAGER,
+  ]),
   productController.getProductById
 );
 router.post(
   "/",
-  authMiddleware(["ADMIN"]),
+  authMiddleware([Role.ADMIN]),
   upload.fields([
     { name: "thumbnail", maxCount: 1 },
     { name: "gallery", maxCount: 10 },
@@ -38,7 +52,7 @@ router.post(
 );
 router.put(
   "/:id",
-  authMiddleware(["ADMIN"]),
+  authMiddleware([Role.ADMIN]),
   upload.fields([
     { name: "thumbnail", maxCount: 1 },
     { name: "gallery", maxCount: 10 },
@@ -48,7 +62,7 @@ router.put(
 
 router.delete(
   "/:id",
-  authMiddleware(["ADMIN"]),
+  authMiddleware([Role.ADMIN]),
   productController.deleteProduct
 );
 

@@ -4,7 +4,8 @@ import { Request, Response } from "express";
 export const purchaseOrderController = {
   async getAllPO(req: Request, res: Response) {
     try {
-      const data = await purchaseOrderService.getAllPO();
+      const user = (req as any).user;
+      const data = await purchaseOrderService.getAllPO(user);
       res.json(data);
     } catch (e: any) {
       res.status(500).json({ message: e.message });
@@ -12,12 +13,15 @@ export const purchaseOrderController = {
   },
 
   async getByStatus(req: Request, res: Response) {
-    const status = String(req.query.status);
-    if (!status) {
+    const statusParam = req.query.status as string;
+    if (!statusParam) {
       return res.status(400).json({ message: "status is required" });
     }
+
+    const user = (req as any).user;
+    const statusList = statusParam.split(",");
     try {
-      const data = await purchaseOrderService.getByStatus(status);
+      const data = await purchaseOrderService.getByStatus(statusList, user);
       return res.json(data);
     } catch (err) {
       console.error(err);
@@ -37,7 +41,8 @@ export const purchaseOrderController = {
 
   async create(req: Request, res: Response) {
     try {
-      const data = await purchaseOrderService.create(req.body);
+      const user = (req as any).user;
+      const data = await purchaseOrderService.create(req.body, user);
       res.status(201).json(data);
     } catch (e: any) {
       res.status(400).json({ message: e.message });
@@ -47,7 +52,8 @@ export const purchaseOrderController = {
   async update(req: Request, res: Response) {
     try {
       const id = Number(req.params.id);
-      const data = await purchaseOrderService.update(id, req.body);
+      const user = (req as any).user;
+      const data = await purchaseOrderService.update(id, req.body, user);
       res.json(data);
     } catch (e: any) {
       res.status(400).json({ message: e.message });
@@ -56,10 +62,49 @@ export const purchaseOrderController = {
   async deletedPO(req: Request, res: Response) {
     try {
       const id = Number(req.params.id);
-      await purchaseOrderService.delete(id);
+      const user = (req as any).user;
+      await purchaseOrderService.delete(id, user);
       res.status(200).json({ message: "Deleted" });
     } catch (e: any) {
+      const status = e.status || 400;
+      const message = e.message || "Something went wrong";
+      res.status(status).json({ message });
+    }
+  },
+
+  async submitForApproval(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const user = (req as any).user;
+
+      const data = await purchaseOrderService.submitForApproval(id, user);
+      res.json(data);
+    } catch (e: any) {
       res.status(400).json({ message: e.message });
+    }
+  },
+  async approvePO(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const user = (req as any).user;
+
+      const result = await purchaseOrderService.approvalPO(id, user);
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  },
+
+  async cancelPO(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const user = (req as any).user;
+      const { reason } = req.body;
+
+      const result = await purchaseOrderService.cancelPO(id, user, reason);
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
     }
   },
 };
