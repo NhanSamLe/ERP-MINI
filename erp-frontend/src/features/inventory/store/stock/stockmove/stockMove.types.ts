@@ -1,3 +1,5 @@
+import { Warehouse } from "../warehouse/warehouse.types";
+
 export type StockMoveType = "receipt" | "issue" | "transfer" | "adjustment";
 export type ReferenceType =
   | "purchase_order"
@@ -31,7 +33,7 @@ export interface StockMove {
   warehouse_to_id?: number | null;
   reference_type: ReferenceType;
   reference_id: number;
-  status: "draft" | "waiting_approval" | "posted " | "cancelled";
+  status: "draft" | "waiting_approval" | "posted" | "cancelled";
   note?: string;
   created_at: string;
   updated_at: string;
@@ -246,4 +248,35 @@ export interface StockMoveAdjustmentUpdate {
     quantity: number;
     uom: string;
   }[];
+}
+
+// Map Stock Move to View Stock
+
+export interface ViewStockMove extends StockMove {
+  warehouse_from_name?: string;
+  warehouse_to_name?: string;
+  creator_name?: string;
+  approver_name?: string;
+  move_date_formatted?: string;
+  status_label?: string;
+}
+
+export function mapToViewStockMove(raw: StockMove, warehouses: Warehouse[]) {
+  const warehouse_from_name =
+    warehouses.find((w) => w.id === raw.warehouse_from_id)?.name || undefined;
+
+  const warehouse_to_name =
+    warehouses.find((w) => w.id === raw.warehouse_to_id)?.name || undefined;
+
+  const enrichedLines = raw.lines?.map((line: StockMoveLine) => ({
+    ...line,
+    quantity: Number(line.quantity),
+  }));
+
+  return {
+    warehouse_from_name,
+    warehouse_to_name,
+    lines: enrichedLines,
+    ...raw,
+  };
 }

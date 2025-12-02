@@ -108,4 +108,75 @@ export const StockMoveController = {
     }
     return res.json({ message: "Status parameter is required" });
   },
+
+  async submitForApproval(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const updatedStockMove = await stockMoveService.submitForApproval(
+        id,
+        user
+      );
+      return res.status(200).json(updatedStockMove);
+    } catch (err: any) {
+      return res
+        .status(400)
+        .json({ message: err.message || "Error submitting stock move" });
+    }
+  },
+
+  async approve(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      if (!id)
+        return res.status(400).json({ message: "StockMove ID required" });
+
+      const user = (req as any).user;
+      const approvedMove = await stockMoveService.approveStockMove(
+        Number(id),
+        user
+      );
+      res.json({ success: true, data: approvedMove });
+    } catch (err: any) {
+      console.error(err);
+      res.status(400).json({
+        success: false,
+        message: err.message || "Error approving stock move",
+      });
+    }
+  },
+
+  async reject(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const { rejectReason } = req.body;
+      const user = (req as any).user;
+
+      if (!rejectReason || !rejectReason.trim()) {
+        return res.status(400).json({ message: "Reject reason is required" });
+      }
+
+      const rejectedMove = await stockMoveService.rejectStockMove(
+        id,
+        user,
+        rejectReason
+      );
+
+      res.json({
+        success: true,
+        data: rejectedMove,
+        message: "Stock Move rejected",
+      });
+    } catch (err: any) {
+      res
+        .status(400)
+        .json({
+          success: false,
+          message: err.message || "Error rejecting stock move",
+        });
+    }
+  },
 };

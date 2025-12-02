@@ -3,6 +3,7 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import InventoryDashboard from "../features/inventory/InventoryDashboard";
 import StockBalancePages from "../features/inventory/pages/StockBalancePages";
 import StockMovePages from "../features/inventory/pages/StockMovePages";
+import ViewStockMovePage from "@/features/inventory/pages/ViewStockMovePage";
 
 const inventoryRoutes: RouteObject[] = [
   {
@@ -27,6 +28,15 @@ const inventoryRoutes: RouteObject[] = [
     element: (
       <ProtectedRoute allowedRoles={["WHMANAGER", "WHSTAFF"]}>
         <StockMovePages />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/inventory/stock_move/view/:id",
+    element: (
+      <ProtectedRoute allowedRoles={["WHMANAGER", "WHSTAFF"]}>
+        <ViewStockMovePage />
       </ProtectedRoute>
     ),
   },

@@ -12,6 +12,8 @@ export interface StockMoveLineDTO {
   uom: string;
 }
 
+
+
 export interface StockMoveCreateDTO {
   move_no: string;
   move_date: string;

@@ -13,14 +13,15 @@ export const purchaseOrderController = {
   },
 
   async getByStatus(req: Request, res: Response) {
-    const status = String(req.query.status);
-    if (!status) {
+    const statusParam = req.query.status as string;
+    if (!statusParam) {
       return res.status(400).json({ message: "status is required" });
     }
 
     const user = (req as any).user;
+    const statusList = statusParam.split(",");
     try {
-      const data = await purchaseOrderService.getByStatus(status, user);
+      const data = await purchaseOrderService.getByStatus(statusList, user);
       return res.json(data);
     } catch (err) {
       console.error(err);

@@ -133,3 +133,37 @@ export const deleteStockMoveThunk = createAsyncThunk<number, number>(
     }
   }
 );
+
+export const submitStockMoveThunk = createAsyncThunk<
+  StockMove,
+  number,
+  { rejectValue: string }
+>("stockMove/submitApproval", async (id, { rejectWithValue }) => {
+  try {
+    const res = await stockMoveService.submitForApproval(id);
+    return res;
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
+export const approveStockMoveThunk = createAsyncThunk(
+  "stockMove/approve",
+  async (id: number) => {
+    const data = await stockMoveService.approveStockMove(id);
+    return data;
+  }
+);
+
+export const rejectStockMoveThunk = createAsyncThunk<
+  StockMove,
+  { id: number; rejectReason: string },
+  { rejectValue: string }
+>("stockMove/reject", async ({ id, rejectReason }, { rejectWithValue }) => {
+  try {
+    const res = await stockMoveService.rejectStockMove(id, rejectReason);
+    return res;
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});

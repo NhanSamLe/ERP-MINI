@@ -1,5 +1,6 @@
 export interface Warehouse {
   id: number;
+  branch_id: number;
   code: string;
   name: string;
   address: string;

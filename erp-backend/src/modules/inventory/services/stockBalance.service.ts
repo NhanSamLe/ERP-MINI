@@ -1,9 +1,19 @@
-import { where } from "sequelize";
 import { StockBalance } from "../models/stockBalance.model";
+import { JwtPayload } from "../../../core/types/jwt";
+import { Warehouse } from "../models/warehouse.model";
 
 export const stockBalanceService = {
-  async getAll() {
-    return await StockBalance.findAll();
+  async getAll(user: JwtPayload) {
+    return await StockBalance.findAll({
+      include: [
+        {
+          model: Warehouse,
+          as: "warehouse",
+          where: { branch_id: user.branch_id },
+          attributes: [],
+        },
+      ],
+    });
   },
 
   async getById(id: number) {

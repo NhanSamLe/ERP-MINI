@@ -1,5 +1,7 @@
 import { DataTypes, Model, Optional } from "sequelize";
 import { sequelize } from "../../../config/db";
+import { StockMoveLine } from "./stockMoveLine.model";
+import { User } from "../../auth/models/user.model";
 
 export interface StockMoveAttrs {
   id: number;
@@ -44,6 +46,9 @@ export class StockMove
   public submitted_at?: Date | null;
   public approved_at?: Date | null;
   public reject_reason?: string | null;
+  public lines?: StockMoveLine[];
+  public creator?: User;
+  public approver?: User;
 }
 
 StockMove.init(

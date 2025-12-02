@@ -5,8 +5,29 @@ import { Role } from "../../../core/types/enum";
 
 const router = Router();
 
-router.get("/", authMiddleware([Role.WHSTAFF]), StockMoveController.getAll);
-router.get("/:id", authMiddleware([Role.WHSTAFF]), StockMoveController.getById);
+router.get(
+  "/",
+  authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
+  StockMoveController.getAll
+);
+
+router.post(
+  "/:id/approve",
+  authMiddleware([Role.WHMANAGER]),
+  StockMoveController.approve
+);
+
+router.put(
+  "/:id/reject",
+  authMiddleware([Role.WHMANAGER]),
+  StockMoveController.reject
+);
+
+router.get(
+  "/:id",
+  authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
+  StockMoveController.getById
+);
 router.post(
   "/receipt",
   authMiddleware([Role.WHSTAFF]),
@@ -63,13 +84,19 @@ router.delete(
 
 router.get(
   "/type/:type",
-  authMiddleware([Role.WHSTAFF]),
+  authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
   StockMoveController.findByTypeStockMove
 );
 router.get(
   "/status/:status",
-  authMiddleware([Role.WHSTAFF]),
+  authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
   StockMoveController.findByStatus
+);
+
+router.post(
+  "/:id/submit",
+  authMiddleware([Role.WHSTAFF]),
+  StockMoveController.submitForApproval
 );
 
 export default router;

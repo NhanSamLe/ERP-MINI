@@ -59,11 +59,15 @@ import EditAdjustmentModal from "../components/Modal/AdjustmentModal/EditAdjustm
 import CreateIssueModal from "../components/Modal/IssueModal/CreateIssueModal";
 import { fetchSaleOrdersByStatus } from "@/features/sales/store/saleOrder.slice";
 import EditIssueModal from "../components/Modal/IssueModal/EditIssueModal";
+import { useNavigate } from "react-router-dom";
+import { Roles } from "@/types/enum";
 
 export default function StockMovePages() {
   const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
 
   const { items, loading } = useSelector((state: RootState) => state.stockMove);
+  const role = useSelector((state: RootState) => state.auth.user?.role.code);
 
   const warehouses = useSelector((state: RootState) => state.warehouse.items);
   const purchaseOrder = useSelector((state: RootState) => state.purchaseOrder);
@@ -83,6 +87,7 @@ export default function StockMovePages() {
 
   const statusColorMap: Record<string, string> = {
     draft: "bg-gray-100 text-gray-700",
+    waiting_approval: "bg-yellow-100 text-yellow-700",
     posted: "bg-green-100 text-green-700",
     cancelled: "bg-red-100 text-red-700",
   };
@@ -346,13 +351,16 @@ export default function StockMovePages() {
           uom: p.uom,
         })),
       };
-      const result = await dispatch(createTransferStockMoveThunk(payload));
+      const result = await dispatch(
+        createTransferStockMoveThunk(payload)
+      ).unwrap();
       console.log("Created stock move:", result);
       toast.success("Stock Transfer Move created!");
       setOpenCreateTransferModal(false);
     } catch (error) {
-      console.error("Failed to create Stock Transfer Move:", error);
-      toast.error("Failed to create Stock Transfer Move");
+      console.log(">>> Error caught:", error);
+      console.log(">>>> ERROR TYPE:", typeof error);
+      toast.error(getErrorMessage(error));
     }
   };
   const handleCreateAdjustmentSubmit = async (data: {
@@ -664,7 +672,7 @@ export default function StockMovePages() {
           itemsPerPage={7}
           columns={columns}
           loading={loading}
-          onView={(item) => console.log("Xem:", item)}
+          onView={(item) => navigate(`/inventory/stock_move/view/${item.id}`)}
           onEdit={(item) => {
             try {
               setSelectedStockMove(item);
@@ -693,8 +701,10 @@ export default function StockMovePages() {
             setSelectedStockMove(item);
             setConfirmOpen(true);
           }}
-          canEdit={(item) => item.status === "draft"}
-          canDelete={(item) => item.status === "draft"}
+          canEdit={(item) => item.status === "draft" && role === Roles.WHSTAFF}
+          canDelete={(item) =>
+            item.status === "draft" && role === Roles.WHSTAFF
+          }
         />
       </div>
       {confirmOpen && (

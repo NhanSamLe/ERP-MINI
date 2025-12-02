@@ -76,7 +76,7 @@ export default function CreateReceiptModal({
   const [selectedPOId, setSelectedPOId] = useState<string>("");
 
   useEffect(() => {
-    dispatch(fetchPurchaseOrderByStatus("confirmed"));
+    dispatch(fetchPurchaseOrderByStatus("confirmed,partially_received"));
   }, [dispatch]);
 
   useEffect(() => {
