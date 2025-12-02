@@ -1,57 +1,37 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams} from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import SaleOrderDetailHeader from "../components/SaleOrderDetailHeader";
-import SaleOrderDetailInfo from "../components/SaleOrderDetailInfo";
-import SaleOrderDetailLines from "../components/SaleOrderDetailLines";
-import { createInvoice } from "@/features/sales/store/invoice.slice";
+import InvoiceDetailHeader from "../components/ar.components.ts/InvoiceDetailHeader";
+import InvoiceDetailInfo from "../components/ar.components.ts/InvoiceDetailInfo";
+import InvoiceDetailLines from "../components/ar.components.ts/InvoiceDetailLines";
 import {
-  fetchSaleOrderDetail,
-  submitSaleOrder,
-  approveSaleOrder,
-  rejectSaleOrder,
-} from "@/features/sales/store/saleOrder.slice";
+  fetchInvoiceDetail,
+  submitInvoice,
+  approveInvoice,
+  rejectInvoice,
+} from "@/features/sales/store/invoice.slice";
 import RejectReasonModal from "../components/RejectReasonModal";
 import SubmitConfirmModal from "../components/SubmitConfirmModal";
 import ApproveConfirmModal from "../components/ApproveConfirmModal";
 
-export default function SaleOrderDetailPage() {
+export default function InvoiceDetailPage() {
   const { id } = useParams();
-  const navigate = useNavigate();
+//   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
   const [approveModalOpen, setApproveModalOpen] = useState(false);
 
-  const { selected: order, loading } = useAppSelector(
-    (state) => state.saleOrder
+  const { selected: invoice, loading } = useAppSelector(
+    (state) => state.invoice
   );
   const { user } = useAppSelector((state) => state.auth);
-  const handleCreateInvoice = async () => {
-  if (!order || !order.id) {
-    alert("Order không hợp lệ.");
-    return;
-  }
 
-  try {
-    const result = await dispatch(
-      createInvoice({ order_id: order.id })
-    ).unwrap();
-
-    navigate(`/ar/invoices/${result.id}`);
-  } catch (err: unknown) {
-  if (err instanceof Error) {
-    alert(err.message);
-  } else {
-    alert("Không thể tạo hóa đơn");
-  }
-}
- };
   useEffect(() => {
-    if (id) dispatch(fetchSaleOrderDetail(Number(id)));
+    if (id) dispatch(fetchInvoiceDetail(Number(id)));
   }, [dispatch, id]);
 
-  if (loading || !order) {
+  if (loading || !invoice) {
     return (
       <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
         <div className="text-center">
@@ -75,28 +55,26 @@ export default function SaleOrderDetailPage() {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <SaleOrderDetailHeader
-          order={order}
+        <InvoiceDetailHeader
+          invoice={invoice}
           user={user}
-          onEdit={() => navigate(`/sales/orders/${order.id}/edit`)}
           onSubmit={() => setSubmitModalOpen(true)}
           onApprove={() => setApproveModalOpen(true)}
           onReject={() => setRejectModalOpen(true)}
-           onCreateInvoice={handleCreateInvoice}
         />
 
         {/* Info Section */}
-        <SaleOrderDetailInfo order={order} />
+        <InvoiceDetailInfo invoice={invoice} />
 
         {/* Lines Section */}
-        <SaleOrderDetailLines order={order} />
+        <InvoiceDetailLines invoice={invoice} />
 
         {/* Modals */}
         <RejectReasonModal
           open={rejectModalOpen}
           onClose={() => setRejectModalOpen(false)}
           onConfirm={(reason) => {
-            dispatch(rejectSaleOrder({ id: order.id, reason }));
+            dispatch(rejectInvoice({ id: invoice.id, reason }));
             setRejectModalOpen(false);
           }}
         />
@@ -105,7 +83,7 @@ export default function SaleOrderDetailPage() {
           open={submitModalOpen}
           onClose={() => setSubmitModalOpen(false)}
           onConfirm={() => {
-            dispatch(submitSaleOrder(order.id));
+            dispatch(submitInvoice(invoice.id));
             setSubmitModalOpen(false);
           }}
         />
@@ -114,7 +92,7 @@ export default function SaleOrderDetailPage() {
           open={approveModalOpen}
           onClose={() => setApproveModalOpen(false)}
           onConfirm={() => {
-            dispatch(approveSaleOrder(order.id));
+            dispatch(approveInvoice(invoice.id));
             setApproveModalOpen(false);
           }}
         />

@@ -215,3 +215,9 @@ export enum ActivityStatus{
   COMPLETED ="completed",
   CANCELLED ="cancelled"
 }
+export enum ApprovalStatus {
+  DRAFT = "draft",
+  WAITING = "waiting_approval",
+  APPROVED = "approved",
+  REJECTED = "rejected",
+}

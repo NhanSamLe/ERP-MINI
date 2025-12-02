@@ -31,7 +31,8 @@ export const ArInvoiceController = {
   async create(req: Request, res: Response) {
     try {
       const user = (req as any).user;
-      const invoice = await arInvoiceService.create(req.body, user);
+      const {order_id} = req.body
+      const invoice = await arInvoiceService.createFromOrder(order_id, user);
       return res.status(201).json({ message: "Created", data: invoice });
     } catch (err: any) {
       return res.status(400).json({ message: err.message });
@@ -89,4 +90,14 @@ export const ArInvoiceController = {
       return res.status(403).json({ message: err.message });
     }
   },
+  async getAvailableOrders(req: Request, res: Response) {
+    try {
+      const user = (req as any).user;
+      const data = await arInvoiceService.getApprovedOrdersWithoutInvoice(user);
+      return res.json({ data });
+    } catch (err: any) {
+      return res.status(400).json({ message: err.message });
+    }
+  },
+  
 };

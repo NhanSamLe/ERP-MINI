@@ -234,13 +234,14 @@ PayrollItem.belongsTo(Branch, {
   ArInvoice.belongsTo(SaleOrder, { foreignKey: "order_id", as: "order" });
   SaleOrder.hasMany(ArInvoice, { foreignKey: "order_id", as: "invoices" });
 
+  
   // Invoice có nhiều dòng
   ArInvoice.hasMany(ArInvoiceLine, { foreignKey: "invoice_id", as: "lines" });
   ArInvoiceLine.belongsTo(ArInvoice, {
     foreignKey: "invoice_id",
     as: "invoice",
   });
-
+  
   // Mỗi dòng invoice có Product + TaxRate
   ArInvoiceLine.belongsTo(Product, { foreignKey: "product_id", as: "product" });
   Product.hasMany(ArInvoiceLine, {
@@ -257,9 +258,9 @@ PayrollItem.belongsTo(Branch, {
     as: "arInvoiceLines",
   });
 
-  // Receipt thuộc về 1 Customer
-  ArReceipt.belongsTo(Partner, { foreignKey: "customer_id", as: "customer" });
-  Partner.hasMany(ArReceipt, { foreignKey: "customer_id", as: "receipts" });
+  ArInvoice.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
+  Branch.hasMany(ArInvoice, { foreignKey: "branch_id", as: "invoices" });
+
 
   // ReceiptAllocation liên kết Receipt ↔ Invoice
   ArReceiptAllocation.belongsTo(ArReceipt, {
@@ -288,6 +289,15 @@ ArInvoice.belongsTo(User, { as: "approver", foreignKey: "approved_by" });
 
 ArReceipt.belongsTo(User, { as: "creator", foreignKey: "created_by" });
 ArReceipt.belongsTo(User, { as: "approver", foreignKey: "approved_by" });
+ArReceipt.belongsTo(Partner, {
+  foreignKey: "customer_id",
+  as: "customer",
+});
+
+Partner.hasMany(ArReceipt, {
+  foreignKey: "customer_id",
+  as: "receipts",
+});
 
   // =====================
   // PURCHASE & AP

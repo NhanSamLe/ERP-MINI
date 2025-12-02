@@ -6,7 +6,7 @@ const router = Router();
 
 // List invoice
 router.get("/", authMiddleware([]), ArInvoiceController.getAll);
-
+router.get("/available-orders",authMiddleware([]), ArInvoiceController.getAvailableOrders);
 // Detail invoice
 router.get("/:id", authMiddleware([]), ArInvoiceController.getOne);
 
@@ -24,5 +24,7 @@ router.post("/:id/approve", authMiddleware([]), ArInvoiceController.approve);
 
 // Reject invoice
 router.post("/:id/reject", authMiddleware([]), ArInvoiceController.reject);
+
+
 
 export default router;

@@ -1,18 +1,25 @@
 // arReceipt.controller.ts
 import { Request, Response } from "express";
 import { arReceiptService } from "../services/arReceipt.service";
+import { ArReceiptAllocation } from "../models/arReceiptAllocation.model";
+import { ArInvoice } from "../models/arInvoice.model";
+import { SaleOrder } from "../models/saleOrder.model";
+import { Partner } from "../../../models";
 
 export const ArReceiptController = {
   /** LIST */
   async getAll(req: Request, res: Response) {
-    try {
-      const user = (req as any).user;
-      const receipts = await arReceiptService.getAll(user);
-      return res.json({ data: receipts });
-    } catch (err: any) {
-      return res.status(400).json({ message: err.message });
-    }
-  },
+  try {
+    const user = (req as any).user;
+    const filters = req.query;
+
+    const data = await arReceiptService.getAll(user, filters);
+
+    return res.json(data);
+  } catch (e: any) {
+    return res.status(400).json({ message: e.message });
+  }
+}, 
 
   /** DETAIL */
   async getOne(req: Request, res: Response) {
@@ -103,4 +110,126 @@ export const ArReceiptController = {
       return res.status(403).json({ message: err.message });
     }
   },
+async getUnpaidInvoices(req: Request, res: Response) {
+  try {
+    const customerId = Number(req.params.customer_id);
+    if (!customerId)
+      return res.status(400).json({ message: "customer_id is required" });
+
+    // 1) Lấy all invoices của khách này qua SaleOrder
+    const invoices = await ArInvoice.findAll({
+      where: {
+        status: "posted",  // chỉ invoice đã posted, chưa paid
+      },
+      include: [
+        // ✔ Lấy SaleOrder để filter theo customer
+        {
+          model: SaleOrder,
+          as: "order",
+          where: { customer_id: customerId },
+          attributes: ["id", "order_no", "order_date"],
+        },
+
+        // ✔ Lấy allocation từ bảng ar_receipt_allocations
+        {
+          model: ArReceiptAllocation,
+          as: "allocations",
+          attributes: ["applied_amount"],
+        }
+      ],
+      order: [["id", "DESC"]],
+    });
+
+    const result = invoices.map((inv: any) => {
+      const allocations = inv.allocations || [];
+
+      const allocated = allocations.reduce(
+        (sum: number, a: any) => sum + Number(a.applied_amount || 0),
+        0
+      );
+
+      const total = Number(inv.total_after_tax || 0);
+      const unpaid = total - allocated;
+
+      return {
+        invoice_id: inv.id,
+        invoice_no: inv.invoice_no,
+        invoice_date: inv.invoice_date,
+        total_after_tax: total,
+        allocated,
+        unpaid,
+        order: inv.order,
+      };
+    });
+
+    return res.json({ data: result });
+
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message });
+  }
+},
+async getCustomersWithDebt(req: Request, res: Response) {
+  try {
+    const invoicesRaw = await ArInvoice.findAll({
+      where: { status: ["posted", "approved"] },
+      include: [
+        {
+          model: SaleOrder,
+          as: "order",
+          include: [
+            {
+              model: Partner,
+              as: "customer",
+              attributes: ["id", "name"],
+            },
+          ],
+        },
+        {
+          model: ArReceiptAllocation,
+          as: "allocations",
+          attributes: ["applied_amount"],
+        },
+      ],
+    });
+
+    // Convert to plain objects
+    const invoices = invoicesRaw.map(inv =>
+      inv.get({ plain: true }) as {
+        id: number;
+        total_after_tax: number;
+
+        allocations?: { applied_amount?: number }[];
+        order?: {
+          customer?: { id: number; name: string };
+        };
+      }
+    );
+
+    const map = new Map<number, { id: number; name: string; total: number }>();
+
+    for (const inv of invoices) {
+      const allocated = (inv.allocations ?? []).reduce(
+        (sum, a) => sum + Number(a.applied_amount || 0),
+        0
+      );
+
+      const unpaid = inv.total_after_tax - allocated;
+      if (unpaid <= 0) continue;
+
+      const cust = inv.order?.customer;
+      if (!cust) continue;
+
+      if (!map.has(cust.id)) {
+        map.set(cust.id, { id: cust.id, name: cust.name, total: unpaid });
+      } else {
+        map.get(cust.id)!.total += unpaid;
+      }
+    }
+
+    return res.json({ data: Array.from(map.values()) });
+  } catch (err) {
+    return res.status(500).json({ message: (err as Error).message });
+  }
+}
+
 };

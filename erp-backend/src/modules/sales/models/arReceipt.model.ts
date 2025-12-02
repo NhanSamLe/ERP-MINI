@@ -59,3 +59,4 @@ ArReceipt.init(
   },
   { sequelize, tableName: "ar_receipts", timestamps: true, createdAt: "created_at", updatedAt: "updated_at" }
 );
+

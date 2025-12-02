@@ -10,6 +10,7 @@ interface Props {
   onSubmit: () => void;
   onApprove: () => void;
   onReject: () => void;
+  onCreateInvoice: () => void;
 }
 
 export default function SaleOrderActionButtons({
@@ -19,6 +20,7 @@ export default function SaleOrderActionButtons({
   onSubmit,
   onApprove,
   onReject,
+  onCreateInvoice
 }: Props) {
   const role = user.role.code;
 
@@ -72,6 +74,16 @@ export default function SaleOrderActionButtons({
             Reject
           </button>
         </>
+      )}
+      {role === "ACCOUNT" &&
+        order.approval_status === "approved" &&
+        order.status === "confirmed" && (
+          <button
+            onClick={onCreateInvoice}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+          >
+            Tạo hóa đơn
+          </button>
       )}
     </div>
   );

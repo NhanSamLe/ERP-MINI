@@ -3,9 +3,12 @@ import {
   CreateReceiptDto,
   UpdateReceiptDto,
   AllocateReceiptDto,
+  ReceiptFilterDto,
 } from "../dto/receipt.dto";
 
-export const getReceipts = () => axiosClient.get("/ar/receipts");
+export const searchReceipts = (filters: ReceiptFilterDto) =>
+  axiosClient.get("/ar/receipts", { params: filters });
+
 
 export const getReceiptById = (id: number) =>
   axiosClient.get(`/ar/receipts/${id}`);
@@ -27,3 +30,9 @@ export const rejectReceipt = (id: number, reason: string) =>
 
 export const allocateReceipt = (id: number, allocations: AllocateReceiptDto[]) =>
   axiosClient.post(`/ar/receipts/${id}/allocate`, { allocations });
+
+export const getCustomerUnpaidInvoices = (customerId: number) =>
+  axiosClient.get(`/ar/receipts/customer/${customerId}/unpaid`);
+
+export const apiGetCustomersWithDebt = () =>
+  axiosClient.get("/ar/receipts/customers/debt");

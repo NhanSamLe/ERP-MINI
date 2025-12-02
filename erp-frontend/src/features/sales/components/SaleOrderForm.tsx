@@ -5,7 +5,7 @@ import { Product } from '@/features/products/store/product.types';
 import { Partner } from '@/features/partner/store/partner.types';
 import QuantityControl from './QuantityControl';
 import { formatVND } from '@/utils/currency.helper';
-import { useSaleOrderCalculation } from '../hooks/useSaleOrderCalculation';
+import { useSaleOrderCalculation } from '../hook/useSaleOrderCalculation';
 
 interface SaleOrderFormDto {
   id?: number;

@@ -1,27 +1,110 @@
 // arReceipt.service.ts
+import { ArInvoice, Partner, User } from "../../../models";
 import { ArReceipt } from "../models/arReceipt.model";
 import { ArReceiptAllocation } from "../models/arReceiptAllocation.model";
-
+import { generateReceiptNo } from "../../../core/utils/receipt.util";
+import { Op } from "sequelize";
 export const arReceiptService = {
   /** GET ALL — lọc theo branch và quyền */
-  async getAll(user: any) {
-    const where: any = { branch_id: user.branch_id };
+async getAll(user: any, filters: any = {}) {
 
-    if (user.role === "ACCOUNT") {
-      where.created_by = user.id;
-    }
+  // Extract pagination input
+  const page = Number(filters.page) || 1;
+  const pageSize = Number(filters.page_size) || 20;
+  const offset = (page - 1) * pageSize;
+  const limit = pageSize;
 
-    return ArReceipt.findAll({
-      where,
-      include: [{ model: ArReceiptAllocation, as: "allocations" }],
-      order: [["id", "DESC"]],
-    });
-  },
+  // Default filter
+  const where: any = {
+    branch_id: user.branch_id
+  };
+  console.log("FILTER WHERE:", where);
 
+
+  if (user.role === "ACCOUNT") {
+    where.created_by = user.id;
+  }
+
+  // ========== Search & filters ==========
+  if (filters.search) {
+    where.receipt_no = { [Op.like]: `%${filters.search}%` };
+  }
+
+  if (filters.customer_id) {
+    where.customer_id = Number(filters.customer_id);
+  }
+
+  if (filters.status) {
+    where.status = filters.status;
+  }
+
+  if (filters.approval_status) {
+    where.approval_status = filters.approval_status;
+  }
+
+  if (filters.date_from || filters.date_to) {
+    where.receipt_date = {};
+    if (filters.date_from) where.receipt_date[Op.gte] = filters.date_from;
+    if (filters.date_to) where.receipt_date[Op.lte] = filters.date_to;
+  }
+
+  // Query with pagination
+  const { count, rows } = await ArReceipt.findAndCountAll({
+    where,
+    include: [
+      { model: Partner, as: "customer", attributes: ["id", "name"] },
+      { model: User, as: "creator", attributes: ["id", "username", "full_name"] },
+      { model: User, as: "approver", attributes: ["id", "username", "full_name"] },
+      {
+        model: ArReceiptAllocation,
+        as: "allocations",
+        include: [{ model: ArInvoice, as: "invoice", attributes: ["id", "invoice_no", "total_after_tax"] }]
+      }
+    ],
+    order: [["id", "DESC"]],
+    offset,
+    limit
+  });
+
+  return {
+    items: rows,
+    total: count,
+    page,
+    page_size: pageSize,
+    total_pages: Math.ceil(count / pageSize),
+  };
+},
   /** GET DETAIL */
   async getById(id: number, user: any) {
     const receipt = await ArReceipt.findByPk(id, {
-      include: [{ model: ArReceiptAllocation, as: "allocations" }],
+    include: [
+      {
+        model: Partner,
+        as: "customer",
+        attributes: ["id", "name","phone"],
+      },
+      {
+        model: User,
+        as: "creator",
+        attributes: ["id", "username", "full_name"],
+      },
+      {
+        model: User,
+        as: "approver",
+        attributes: ["id", "username", "full_name"],
+      },
+      {
+        model: ArReceiptAllocation,
+        as: "allocations",
+        include: [
+          {
+            model: ArInvoice,
+            as: "invoice",
+            attributes: ["id", "invoice_no", "total_after_tax","total_before_tax", "total_tax"],
+          },
+        ],
+      },
+    ],
     });
 
     if (!receipt) throw new Error("Receipt not found");
@@ -36,17 +119,18 @@ export const arReceiptService = {
 
   /** CREATE — Accountant */
   async create(data: any, user: any) {
-    return ArReceipt.create({
-      branch_id: user.branch_id,
-      receipt_no: data.receipt_no,
-      receipt_date: data.receipt_date,
-      customer_id: data.customer_id,
-      amount: data.amount,
-      method: data.method,
-      created_by: user.id,
-      approval_status: "draft",
-      status: "draft",
-    });
+  const receipt_no = await generateReceiptNo(); // auto
+  return ArReceipt.create({
+    branch_id: user.branch_id,
+    receipt_no,
+    receipt_date: data.receipt_date,
+    customer_id: data.customer_id,
+    amount: data.amount,
+    method: data.method,
+    created_by: user.id,
+    approval_status: "draft",
+    status: "draft",
+  });
   },
 
   /** SUBMIT — Accountant */
@@ -106,7 +190,7 @@ export const arReceiptService = {
   /** ALLOCATE into Invoices — Accountant only after approved */
   async allocate(receiptId: number, allocations: any[], user: any) {
     const receipt = await ArReceipt.findByPk(receiptId);
-
+    console.log("FE user:", user);
     if (!receipt) throw new Error("Receipt not found");
     if (receipt.branch_id !== user.branch_id)
       throw new Error("Cross-branch denied");
@@ -150,5 +234,6 @@ async update(id: number, data: any, user: any) {
 
   return this.getById(id, user);
 },
+
 
 };

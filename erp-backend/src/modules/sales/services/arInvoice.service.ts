@@ -1,8 +1,20 @@
 // arInvoice.service.ts
-import { ArInvoice } from "../models/arInvoice.model";
-import { ArInvoiceLine } from "../models/arInvoiceLine.model";
-import { TaxRate } from "../../master-data/models/taxRate.model";
-
+import { fn, literal, Op, QueryTypes } from "sequelize";
+import { 
+  ArInvoice,
+  ArInvoiceLine,
+  Product,
+  TaxRate,
+  Partner,
+  User,
+  Branch,
+  SaleOrder,
+  SaleOrderLine,
+  sequelize
+} from "../../../models";
+import { ArInvoiceStatus, ApprovalStatus} from "../../../core/types/enum";
+import { generateInvoiceNo
+ } from "../utils";
 export const arInvoiceService = {
   /** tính thuế từng dòng */
   async calcLineTax(line: any) {
@@ -48,42 +60,192 @@ export const arInvoiceService = {
 
     return ArInvoice.findAll({
       where,
-      include: [{ model: ArInvoiceLine, as: "lines" }],
-      order: [["id", "DESC"]],
+      include: [
+        {
+        model: SaleOrder,
+        as: "order", // << alias đúng
+        attributes: ["id", "order_no", "order_date"],
+        include: [
+          {
+            model: Partner,
+            as: "customer",
+            attributes: ["id", "name", "phone", "email"],
+          }
+        ]
+      },
+      {
+        model: Branch,
+        as: "branch",
+        attributes: ["id", "name"],
+      },
+      {
+        model: User,
+        as: "creator",
+        attributes: ["id", "username", "full_name"],
+      },
+      {
+        model: User,
+        as: "approver",
+        attributes: ["id", "username", "full_name"],
+      },
+      {
+        model: ArInvoiceLine,
+        as: "lines",
+        include: [
+          {
+            model: Product,
+            as: "product",
+            attributes: ["id", "name", "image_url", "sale_price", "tax_rate_id", "uom", "sku"],
+            include: [
+              {
+                model: TaxRate,
+                 as: "taxRate",
+                attributes: ["id", "name", "rate"],
+              },
+            ],
+          },
+          {
+            model: TaxRate,
+            as: "taxRate",
+            attributes: ["id", "name", "rate"],
+          },
+        ],
+      },
+    ],
+    order: [["id", "DESC"]],
     });
   },
 
   /** GET DETAIL — chặn cross-branch */
   async getById(id: number, user: any) {
     const inv = await ArInvoice.findByPk(id, {
-      include: [{ model: ArInvoiceLine, as: "lines" }],
+      include: [
+      {
+        model: SaleOrder,
+        as: "order", // << alias đúng
+        attributes: ["id", "order_no", "order_date"],
+        include: [
+          {
+            model: Partner,
+            as: "customer",
+            attributes: ["id", "name", "phone", "email"],
+          }
+        ]
+      },
+      {
+        model: Branch,
+        as: "branch",
+        attributes: ["id", "name"],
+      },
+      {
+        model: User,
+        as: "creator",
+        attributes: ["id", "username", "full_name"],
+      },
+      {
+        model: User,
+        as: "approver",
+        attributes: ["id", "username", "full_name"],
+      },
+      {
+        model: ArInvoiceLine,
+        as: "lines",
+        include: [
+          {
+            model: Product,
+            as: "product",
+            attributes: ["id", "name", "image_url", "sale_price", "tax_rate_id"],
+            include: [
+              {
+                model: TaxRate,
+                as: "taxRate",   // ✅ alias đúng
+                attributes: ["id", "name", "rate"],
+              },
+            ],
+          },
+          {
+            model: TaxRate,
+            as: "taxRate",
+            attributes: ["id", "name", "rate"],
+          },
+        ],
+      },
+    ],
     });
 
     if (!inv) throw new Error("Invoice not found");
     if (inv.branch_id !== user.branch_id) throw new Error("Cross-branch denied");
-    if (user.role === "ACCOUNT" && inv.created_by !== user.id)
-      throw new Error("You can only view your own invoices");
+    if (user.role !== "ACCOUNT" && user.role !== "CHACC") {
+    throw new Error("Permission denied");
+  }
+
+  // 3) ACCOUNT → chỉ xem hóa đơn của mình
+  if (user.role === "ACCOUNT" && inv.created_by !== user.id) {
+    throw new Error("You can only view your own invoices");
+  }
 
     return inv;
   },
 
   /** CREATE — Accountant */
-  async create(data: any, user: any) {
-    const invoice = await ArInvoice.create({
-      branch_id: user.branch_id,
-      order_id: data.order_id,
-      invoice_no: data.invoice_no,
-      invoice_date: data.invoice_date,
-      created_by: user.id,
-      approval_status: "draft",
-      status: "draft",
+  async createFromOrder(orderId: number, user: any) {
+    if (!orderId) throw new Error("order_id is required");
+
+    // 1. Lấy Sale Order + Lines
+    const order = await SaleOrder.findByPk(orderId, {
+      include: [{ model: SaleOrderLine, as: "lines" }],
     });
 
-    const lines = [];
+    if (!order) throw new Error("Sale order not found");
+    if (order.branch_id !== user.branch_id)
+      throw new Error("Cross-branch denied");
 
-    for (const line of data.lines) {
-      const t = await this.calcLineTax(line);
+    // Chỉ kế toán được sửa
+    if (user.role !== "ACCOUNT" && user.role !== "CHACC")
+      throw new Error("Permission denied");
+    
+    if (order.approval_status !== "approved")
+      throw new Error("Sale order must be approved before invoicing");
 
+    // 2. Kiểm tra invoice trùng (nhưng cho phép tạo lại nếu invoice trước bị reject)
+    const existing = await ArInvoice.findOne({
+      where: { order_id: orderId },
+      order: [["id", "DESC"]],
+    });
+
+    if (
+      existing &&
+      existing.approval_status !== "rejected" &&
+      existing.status !== "cancelled"
+    ) {
+      throw new Error("Invoice already exists for this order");
+    }
+
+    // 3. Generate invoice_no tự động
+    const invoice_no = await generateInvoiceNo();
+    let approval = ApprovalStatus.DRAFT
+    let status = ArInvoiceStatus.DRAFT
+    if(user.role ==="CHACC")
+    {
+      approval = ApprovalStatus.APPROVED,
+      status =ArInvoiceStatus.POSTED
+    }
+    // 4. Tạo Invoice Header
+    const invoice = await ArInvoice.create({
+      branch_id: user.branch_id,
+      order_id: order.id,
+      invoice_no,
+      invoice_date: new Date(),   // auto today
+      created_by: user.id,
+      approval_status: approval,
+      status: status,
+    });
+
+    // 5. Copy lines từ Sale Order sang Invoice Line
+    const createdLines = [];
+    const orderAny = order as any;
+
+    for (const line of orderAny.lines) {
       const newLine = await ArInvoiceLine.create({
         invoice_id: invoice.id,
         product_id: line.product_id,
@@ -91,15 +253,24 @@ export const arInvoiceService = {
         quantity: line.quantity,
         unit_price: line.unit_price,
         tax_rate_id: line.tax_rate_id,
-        line_total: t.line_total,
-        line_tax: t.line_tax,
-        line_total_after_tax: t.line_total_after_tax,
+        line_total: line.line_total,
+        line_tax: line.line_tax,
+        line_total_after_tax: line.line_total_after_tax,
       });
 
-      lines.push(newLine);
+      createdLines.push(newLine);
     }
 
-    const totals = await this.calcTotals(lines);
+    // 6. Tính tổng tiền
+    const totals = createdLines.reduce(
+      (acc, l) => {
+        acc.total_before_tax += Number(l.line_total);
+        acc.total_tax += Number(l.line_tax);
+        acc.total_after_tax += Number(l.line_total_after_tax);
+        return acc;
+      },
+      { total_before_tax: 0, total_tax: 0, total_after_tax: 0 }
+    );
 
     await invoice.update({
       total_before_tax: totals.total_before_tax,
@@ -117,13 +288,13 @@ export const arInvoiceService = {
     if (!invoice) throw new Error("Invoice not found");
     if (invoice.approval_status !== "draft") throw new Error("Already submitted");
     if (invoice.branch_id !== user.branch_id) throw new Error("Cross-branch denied");
-
+   
     await invoice.update({
       approval_status: "waiting_approval",
       submitted_at: new Date(),
     });
 
-    return invoice;
+    return this.getById(invoice.id, user);
   },
 
   /** APPROVE — Chief Accountant */
@@ -135,6 +306,10 @@ export const arInvoiceService = {
       throw new Error("Wrong approval stage");
     if (invoice.branch_id !== approver.branch_id)
       throw new Error("Cross-branch denied");
+      if (approver.role !== "CHACC") {
+    throw new Error("Permission denied");
+  }
+
 
     await invoice.update({
       approval_status: "approved",
@@ -143,7 +318,7 @@ export const arInvoiceService = {
       status: "posted",
     });
 
-    return invoice;
+    return this.getById(invoice.id, approver); 
   },
 
   /** REJECT — Chief Accountant */
@@ -151,6 +326,10 @@ export const arInvoiceService = {
     const invoice = await ArInvoice.findByPk(id);
 
     if (!invoice) throw new Error("Invoice not found");
+      if (approver.role !== "CHACC") {
+    throw new Error("Permission denied");
+  }
+
 
     await invoice.update({
       approval_status: "rejected",
@@ -159,7 +338,7 @@ export const arInvoiceService = {
       status: "draft",
     });
 
-    return invoice;
+     return this.getById(invoice.id, approver); 
   },
   // UPDATE INVOICE — only when draft
 async update(id: number, data: any, user: any) {
@@ -260,6 +439,71 @@ async update(id: number, data: any, user: any) {
   });
 
   return this.getById(id, user);
-},
+}, 
+async getApprovedOrdersWithoutInvoice(user: any) {
+  // 1) Lấy tất cả order đã approved trong chi nhánh
+  const orders = await SaleOrder.findAll({
+    where: {
+      branch_id: user.branch_id,
+      approval_status: "approved",
+    },
+    include: [
+      { model: Partner, as: "customer" }
+    ],
+    order: [["id", "DESC"]],
+  });
+
+  if (orders.length === 0) return [];
+
+  // 2) Lấy danh sách order_id
+  const orderIds = orders
+    .map(o => Number(o.id))
+    .filter(id => !isNaN(id));    // CHẶN NaN TẠI ĐÂY
+
+  if (orderIds.length === 0) return [];
+
+  // 3) Lấy tất cả invoices 1 lần
+  const invoices = await ArInvoice.findAll({
+    where: { order_id: orderIds },
+    order: [["id", "DESC"]],
+  });
+
+  // Map để lấy invoice mới nhất cho mỗi order
+  const latestInvoice = new Map<number, ArInvoice>();
+
+  for (const inv of invoices) {
+    const id = Number(inv.order_id);
+    if (!latestInvoice.has(id)) {
+      latestInvoice.set(id, inv);
+    }
+  }
+
+  // 4) Lọc đúng nghiệp vụ
+  const result = [];
+
+  for (const o of orders) {
+    const orderId = Number(o.id);
+
+    if (isNaN(orderId)) continue;
+
+    const inv = latestInvoice.get(orderId);
+
+    // ❗ Chưa có invoice
+    if (!inv) {
+      result.push(o);
+      continue;
+    }
+
+    // ❗ Có invoice nhưng bị reject → được tạo mới
+    if (inv.approval_status === "rejected") {
+      result.push(o);
+      continue;
+    }
+
+    // ❌ Có invoice ở trạng thái hợp lệ → không thêm
+  }
+
+  return result;
+}
 
 };

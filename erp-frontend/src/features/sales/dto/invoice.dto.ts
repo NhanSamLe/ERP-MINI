@@ -1,5 +1,7 @@
 // invoice.dto.ts
 
+import { Product } from "@/features/products/store";
+
 export type InvoiceApprovalStatus =
   "draft" | "waiting_approval" | "approved" | "rejected";
 
@@ -8,11 +10,21 @@ export type InvoiceStatus =
 
 export interface ArInvoiceLineDto {
   id?: number;
+
   product_id: number;
+  product?: Product
+
   description?: string;
+
   quantity: number;
   unit_price: number;
+
   tax_rate_id?: number;
+  taxRate?: {
+    id: number;
+    name: string;
+    rate: number;
+  } | null;
 
   line_total?: number;
   line_tax?: number;
@@ -21,15 +33,35 @@ export interface ArInvoiceLineDto {
 
 export interface ArInvoiceDto {
   id: number;
+
   branch_id: number;
+  branch?: {
+    id: number;
+    name: string;
+  };
+
   invoice_no: string;
   invoice_date: string;
 
   approval_status: InvoiceApprovalStatus;
   status: InvoiceStatus;
 
+  // ❌ Không còn customer_id tại Invoice
+  // customer lấy qua SaleOrder
+
   created_by: number;
+  creator?: {
+    id: number;
+    username: string;
+    full_name?: string;
+  };
+
   approved_by?: number | null;
+  approver?: {
+    id: number;
+    username: string;
+    full_name?: string;
+  } | null;
 
   submitted_at?: string | null;
   approved_at?: string | null;
@@ -39,22 +71,31 @@ export interface ArInvoiceDto {
   total_tax: number;
   total_after_tax: number;
 
+  // ✔ 1) Sale Order (thêm)
+  order?: {
+    id: number;
+    order_no: string;
+    order_date?: string;
+
+    // ✔ 2) Customer từ SaleOrder
+    customer?: {
+      id: number;
+      name: string;
+      phone?: string;
+      email?: string;
+      tax_code?: string;
+      address?: string;
+    };
+  };
+
+  // ✔ 3) Invoice Lines
   lines: ArInvoiceLineDto[];
 }
+
 
 export interface CreateInvoiceDto {
-  order_id: number;
-  invoice_no: string;
-  invoice_date: string;
-  lines: ArInvoiceLineDto[];
+  order_id?: number | null;
 }
-
-export interface UpdateInvoiceDto {
-  invoice_date: string;
-  deletedLineIds?: number[];
-  lines: ArInvoiceLineDto[];
-}
-
 export interface RejectInvoiceDto {
   reason: string;
 }

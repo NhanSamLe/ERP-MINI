@@ -4,12 +4,22 @@ import {
   CreateReceiptDto,
   UpdateReceiptDto,
   AllocateReceiptDto,
+  UnpaidInvoiceDto,
+  ReceiptFilterDto,
+  CustomerWithDebtDto,
 } from "../dto/receipt.dto";
 
-export async function getReceipts(): Promise<ArReceiptDto[]> {
-  const res = await api.getReceipts();
-  return res.data.data as ArReceiptDto[];
+export async function searchReceipts(filters: ReceiptFilterDto): Promise<{
+  items: ArReceiptDto[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}> {
+  const res = await api.searchReceipts(filters);
+  return res.data; // BE trả đúng format pagination
 }
+
 
 export async function getReceiptById(id: number): Promise<ArReceiptDto> {
   const res = await api.getReceiptById(id);
@@ -55,4 +65,15 @@ export async function allocateReceipt(
 ): Promise<ArReceiptDto> {
   const res = await api.allocateReceipt(id, allocations);
   return res.data.data as ArReceiptDto;
+}
+
+export async function getCustomerUnpaidInvoicesService(
+  customerId: number
+): Promise<UnpaidInvoiceDto[]> {
+  const res = await api.getCustomerUnpaidInvoices(customerId);
+  return res.data.data as UnpaidInvoiceDto[];
+}
+export async function getCustomersWithDebtService(): Promise<CustomerWithDebtDto[]> {
+  const res = await api.apiGetCustomersWithDebt();
+  return res.data.data as CustomerWithDebtDto[];
 }

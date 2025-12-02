@@ -12,6 +12,7 @@ interface Props {
   onSubmit: () => void;
   onApprove: () => void;
   onReject: () => void;
+  onCreateInvoice: () => void;
 }
 
 export default function SaleOrderDetailHeader({
@@ -21,6 +22,7 @@ export default function SaleOrderDetailHeader({
   onSubmit,
   onApprove,
   onReject,
+  onCreateInvoice
 }: Props) {
   return (
     <div className="mb-8">
@@ -42,10 +44,12 @@ export default function SaleOrderDetailHeader({
           onSubmit={onSubmit}
           onApprove={onApprove}
           onReject={onReject}
+          onCreateInvoice={onCreateInvoice}
         />
       </div>
 
-      <SaleOrderStatusCards order={order} />
+      <SaleOrderStatusCards order={order} />  
+      
     </div>
   );
 }

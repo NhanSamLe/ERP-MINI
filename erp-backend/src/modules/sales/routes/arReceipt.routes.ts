@@ -4,8 +4,11 @@ import { authMiddleware } from "../../../core/middleware/auth";
 
 const router = Router();
 
+
 // List receipts
 router.get("/", authMiddleware([]), ArReceiptController.getAll);
+router.get("/customer/:customer_id/unpaid", authMiddleware([]), ArReceiptController.getUnpaidInvoices);
+router.get("/customers/debt", authMiddleware([]), ArReceiptController.getCustomersWithDebt);
 
 // Detail
 router.get("/:id", authMiddleware([]), ArReceiptController.getOne);

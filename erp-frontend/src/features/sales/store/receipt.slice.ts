@@ -5,28 +5,38 @@ import {
   CreateReceiptDto,
   UpdateReceiptDto,
   AllocateReceiptDto,
+  UnpaidInvoiceDto,
+  ReceiptFilterDto,
+  CustomerWithDebtDto,
 } from "../dto/receipt.dto";
 import * as service from "../service/receipt.service";
 
 interface ReceiptState {
   items: ArReceiptDto[];
+  unpaidInvoices: UnpaidInvoiceDto[];
+  customersWithDebt: CustomerWithDebtDto[];
   selected: ArReceiptDto | null;
   loading: boolean;
   error: string | null;
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
 }
 
 const initialState: ReceiptState = {
   items: [],
+  unpaidInvoices: [],
+  customersWithDebt: [],
   selected: null,
   loading: false,
   error: null,
+  total: 0,
+  page: 1,
+  page_size: 20,
+  total_pages: 1,
 };
 
-// Async
-export const fetchReceipts = createAsyncThunk<ArReceiptDto[]>(
-  "receipts/getAll",
-  async () => await service.getReceipts()
-);
 
 export const fetchReceiptDetail = createAsyncThunk<ArReceiptDto, number>(
   "receipts/getOne",
@@ -64,6 +74,25 @@ export const allocateReceipt = createAsyncThunk<
 >("receipts/allocate", async ({ id, allocations }) => {
   return await service.allocateReceipt(id, allocations);
 });
+export const fetchUnpaidInvoices = createAsyncThunk<
+  UnpaidInvoiceDto[],
+  number
+>("receipts/unpaidInvoices", async (customerId) => {
+  return await service.getCustomerUnpaidInvoicesService(customerId);
+});
+export const fetchFilteredReceipts = createAsyncThunk(
+  "receipts/filter",
+  async (filters: ReceiptFilterDto) => {
+    return await service.searchReceipts(filters);
+  }
+);
+export const fetchCustomersWithDebt = createAsyncThunk<
+  CustomerWithDebtDto[]
+>("receipts/customersDebt", async () => {
+  return await service.getCustomersWithDebtService();
+});
+
+
 
 // Slice
 export const receiptSlice = createSlice({
@@ -75,9 +104,26 @@ export const receiptSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
+    builder.addCase(fetchCustomersWithDebt.fulfilled, (state, action) => {
+      state.customersWithDebt = action.payload;
+    });
+    builder.addCase(fetchUnpaidInvoices.fulfilled, (state, action) => {
+    state.unpaidInvoices = action.payload;
+  });
+  builder.addCase(fetchFilteredReceipts.fulfilled, (state, action) => {
+      state.loading = false;
+      state.error = null;
+
+  
+      state.items = action.payload.items;
+      state.total = action.payload.total;
+      state.page = action.payload.page;
+      state.page_size = action.payload.page_size;
+      state.total_pages = action.payload.total_pages;
+    });
+
     builder.addMatcher(
       isFulfilled(
-        fetchReceipts,
         fetchReceiptDetail,
         createReceipt,
         updateReceipt,
@@ -97,7 +143,7 @@ export const receiptSlice = createSlice({
 
     builder.addMatcher(
       isPending(
-        fetchReceipts,
+       
         fetchReceiptDetail,
         createReceipt,
         updateReceipt,
@@ -114,7 +160,7 @@ export const receiptSlice = createSlice({
 
     builder.addMatcher(
       isRejected(
-        fetchReceipts,
+      
         fetchReceiptDetail,
         createReceipt,
         updateReceipt,
