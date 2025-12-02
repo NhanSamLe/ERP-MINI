@@ -6,8 +6,6 @@ import CreatePuchaseOrderPage from "../features/purchase/pages/CreatePurchaseOrd
 import EditPurchaseOrderPage from "../features/purchase/pages/EditPurchaseOrderPage";
 import ViewPurchaseOrderPage from "../features/purchase/pages/ViewPurchaseOrderPage";
 import { Roles } from "@/types/enum";
-import ApInvoiceListPage from "@/features/purchase/pages/ApInvoiceListPage";
-import ApInvoiceDetailPage from "@/features/purchase/pages/ApInvoiceDetailPage";
 
 const purchaseRoutes: RouteObject[] = [
   {
@@ -51,24 +49,7 @@ const purchaseRoutes: RouteObject[] = [
       </ProtectedRoute>
     ),
   },
-  {
-    path: "/purchase/bills",
-    element: (
-      <ProtectedRoute allowedRoles={["PUR", "PURM", "ACCOUNT", "CHACC"]}>
-        <ApInvoiceListPage />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/purchase/bills/:id",
-    element: (
-      <ProtectedRoute
-        allowedRoles={["PUR", "PURM", "ACCOUNT", "CHACC", "CEO", "BRMN", "ADMIN"]}
-      >
-        <ApInvoiceDetailPage />
-      </ProtectedRoute>
-    ),
-  },
+  
 ];
 
 export default purchaseRoutes;
