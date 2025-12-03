@@ -10,6 +10,7 @@ interface UserFormModalProps {
   editUser?: User | null;
   roles: Role[];
   branches: Branch[];
+  error?: string | null;
 }
 
 export function UserFormModal({
@@ -20,6 +21,7 @@ export function UserFormModal({
   editUser,
   roles,
   branches,
+  error,
 }: UserFormModalProps) {
   const [formData, setFormData] = useState({
     username: "",
@@ -109,7 +111,11 @@ export function UserFormModal({
         <h2 className="text-xl font-semibold mb-4 text-gray-900">
           {editUser ? "Edit User" : "Add New User"}
         </h2>
-
+        {error && (
+  <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+    {error}
+  </div>
+)}
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Username */}
           <div>

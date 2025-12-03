@@ -1,6 +1,7 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import * as userService from "../user.service";
 import { getErrorMessage } from "../../../utils/ErrorHelper";
+import { updateUserDTO } from "../dto/userDTO";
 
 export const fetchAllUsers = createAsyncThunk("user/fetchAllUsers", async (_, { rejectWithValue }) => {
   try {
@@ -45,17 +46,7 @@ export const createUserThunk = createAsyncThunk(
 // Cập nhật người dùng
 export const updateUserThunk = createAsyncThunk(
   "user/updateUser",
-  async (
-    data: {
-      username: string;
-      full_name?: string;
-      email?: string;
-      phone?: string;
-      role_id?: number;
-      branch_id?: number;
-    },
-    { rejectWithValue }
-  ) => {
+  async (data: updateUserDTO, { rejectWithValue }) => {
     try {
       return await userService.updateUser(data);
     } catch (err) {
@@ -69,7 +60,8 @@ export const deleteUserThunk = createAsyncThunk(
   "user/deleteUser",
   async (id: number, { rejectWithValue }) => {
     try {
-      return await userService.deleteUser(id);
+      await userService.deleteUser(id); // không cần dùng res.data
+      return id;                       // trả lại id để reducer filter
     } catch (err) {
       return rejectWithValue(getErrorMessage(err));
     }

@@ -1,11 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import {
-  fetchPartners,
-  fetchPartnerById,
-  createPartnerApi,
-  updatePartnerApi,
-  deletePartnerApi,
-} from "../api/partner.api";
+import { partnerApi } from "../api/partner.api";
 import { Partner, PartnerFilter } from "./partner.types";
 
 export const loadPartners = createAsyncThunk<
@@ -13,7 +7,7 @@ export const loadPartners = createAsyncThunk<
   PartnerFilter | undefined
 >("partners/load", async (filter, { rejectWithValue }) => {
   try {
-    return await fetchPartners(filter);
+    return await partnerApi.getAllPartners(filter);
   } catch (e: any) {
     return rejectWithValue(e.response?.data?.message || e.message);
   }
@@ -23,7 +17,7 @@ export const loadPartnerDetail = createAsyncThunk<Partner, number>(
   "partners/loadOne",
   async (id, { rejectWithValue }) => {
     try {
-      return await fetchPartnerById(id);
+      return await partnerApi.getPartnerById(id);
     } catch (e: any) {
       return rejectWithValue(e.response?.data?.message || e.message);
     }
@@ -35,7 +29,7 @@ export const createPartnerThunk = createAsyncThunk<
   Partial<Partner>
 >("partners/create", async (payload, { rejectWithValue }) => {
   try {
-    return await createPartnerApi(payload);
+    return await partnerApi.createPartner(payload);
   } catch (e: any) {
     return rejectWithValue(e.response?.data?.message || e.message);
   }
@@ -46,7 +40,7 @@ export const updatePartnerThunk = createAsyncThunk<
   { id: number; data: Partial<Partner> }
 >("partners/update", async ({ id, data }, { rejectWithValue }) => {
   try {
-    return await updatePartnerApi(id, data);
+    return await partnerApi.updatePartner(id, data);
   } catch (e: any) {
     return rejectWithValue(e.response?.data?.message || e.message);
   }
@@ -56,7 +50,7 @@ export const deletePartnerThunk = createAsyncThunk<number, number>(
   "partners/delete",
   async (id, { rejectWithValue }) => {
     try {
-      await deletePartnerApi(id);
+      await partnerApi.deletePartner(id);
       return id;
     } catch (e: any) {
       return rejectWithValue(e.response?.data?.message || e.message);

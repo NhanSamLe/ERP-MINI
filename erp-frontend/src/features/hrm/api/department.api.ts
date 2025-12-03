@@ -1,26 +1,25 @@
 import axiosClient from "../../../api/axiosClient";
-import { DepartmentDTO, DepartmentFilter } from "../dto/department.dto";
-
-const BASE = "/departments";
+import { Department, DepartmentFilter } from "../store/department/department.type";
 
 export const departmentApi = {
   async getAll(filter?: DepartmentFilter) {
-    return axiosClient.get(BASE, { params: filter }).then((res) => res.data);
+    const res = await axiosClient.get("/hrm/departments", {
+      params: filter,
+    });
+    return res.data;
   },
 
-  async getById(id: number) {
-    return axiosClient.get(`${BASE}/${id}`).then((res) => res.data);
+  async create(data: Department) {
+    const res = await axiosClient.post("/hrm/departments", data);
+    return res.data;
   },
 
-  async create(payload: DepartmentDTO) {
-    return axiosClient.post(BASE, payload).then((res) => res.data);
-  },
-
-  async update(id: number, payload: Partial<DepartmentDTO>) {
-    return axiosClient.put(`${BASE}/${id}`, payload).then((res) => res.data);
+  async update(id: number, data: Partial<Department>) {
+    const res = await axiosClient.put(`/hrm/departments/${id}`, data);
+    return res.data;
   },
 
   async remove(id: number) {
-    return axiosClient.delete(`${BASE}/${id}`).then((res) => res.data);
+    await axiosClient.delete(`/hrm/departments/${id}`);
   },
 };

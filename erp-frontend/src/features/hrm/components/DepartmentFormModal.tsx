@@ -1,4 +1,3 @@
-// src/features/hrm/components/DepartmentFormModal.tsx
 import { useState, useEffect } from "react";
 import { DepartmentDTO } from "../dto/department.dto";
 import { Branch, fetchBranches } from "../../company/branch.service";

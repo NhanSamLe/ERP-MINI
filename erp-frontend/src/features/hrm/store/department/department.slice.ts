@@ -43,6 +43,5 @@ const departmentSlice = createSlice({
   },
 });
 
-// ✅ export cả 2 kiểu
 export const departmentReducer = departmentSlice.reducer;
 export default departmentSlice.reducer;

@@ -60,18 +60,21 @@ export const editPosition = createAsyncThunk<
 
 // Delete
 export const removePosition = createAsyncThunk<
-  number,
-  number,
-  { rejectValue: string }
->("position/removePosition", async (id, { rejectWithValue }) => {
-  try {
-    await deletePosition(id);
-    return id;
-  } catch (err: any) {
-    const msg =
-      err?.response?.data?.message ||
-      err?.message ||
-      "Error deleting position";
-    return rejectWithValue(msg);
+  number,          // kiểu payload khi fulfilled
+  number,          // kiểu tham số (id)
+  { rejectValue: string } // kiểu lỗi custom
+>(
+  "position/removePosition",
+  async (id, { rejectWithValue }) => {
+    try {
+      await deletePosition(id);
+      return id;
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Error deleting position";
+      return rejectWithValue(msg); // 👈 để unwrap() nhận string này
+    }
   }
-});
+);

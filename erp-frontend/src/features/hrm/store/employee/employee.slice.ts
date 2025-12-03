@@ -29,12 +29,12 @@ export const employeeSlice = createSlice({
         state.employees.push(action.payload);
       })
       .addCase(updateEmployee.fulfilled, (state, action) => {
-        state.employees = state.employees.map((x) =>
-          x.id === action.payload.id ? action.payload : x
+        state.employees = state.employees.map((e) =>
+          e.id === action.payload.id ? action.payload : e
         );
       })
       .addCase(deleteEmployee.fulfilled, (state, action) => {
-        state.employees = state.employees.filter((x) => x.id !== action.payload);
+        state.employees = state.employees.filter((e) => e.id !== action.payload);
       });
   },
 });

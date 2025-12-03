@@ -1,31 +1,39 @@
-import axios from "axios";
-import { Partner, PartnerFilter } from "../store/partner.types";
+import axiosClient from "../../../api/axiosClient";
+import { Partner, PartnerType, PartnerStatus } from "../store/partner.types";
 
-const baseUrl = "/api/partners";
-
-export async function fetchPartners(filter?: PartnerFilter): Promise<Partner[]> {
-  const res = await axios.get<Partner[]>(baseUrl, { params: filter });
-  return res.data;
+export interface PartnerQuery {
+  type?: PartnerType;       // "customer" | "supplier" | "internal"
+  status?: PartnerStatus;   // "active" | "inactive"
+  search?: string;          // tên / SĐT / email / MST
 }
 
-export async function fetchPartnerById(id: number): Promise<Partner> {
-  const res = await axios.get<Partner>(`${baseUrl}/${id}`);
-  return res.data;
-}
+export const partnerApi = {
+  /** Lấy danh sách đối tác (có filter) */
+  getAllPartners: async (params?: PartnerQuery): Promise<Partner[]> => {
+    const res = await axiosClient.get("/partners", { params });
+    return res.data;
+  },
 
-export async function createPartnerApi(payload: Partial<Partner>): Promise<Partner> {
-  const res = await axios.post<Partner>(baseUrl, payload);
-  return res.data;
-}
+  /** Lấy 1 đối tác theo id */
+  getPartnerById: async (id: number): Promise<Partner> => {
+    const res = await axiosClient.get(`/partners/${id}`);
+    return res.data;
+  },
 
-export async function updatePartnerApi(
-  id: number,
-  payload: Partial<Partner>
-): Promise<Partner> {
-  const res = await axios.put<Partner>(`${baseUrl}/${id}`, payload);
-  return res.data;
-}
+  /** Tạo mới đối tác */
+  createPartner: async (data: Partial<Partner>): Promise<Partner> => {
+    const res = await axiosClient.post("/partners", data);
+    return res.data;
+  },
 
-export async function deletePartnerApi(id: number): Promise<void> {
-  await axios.delete(`${baseUrl}/${id}`);
-}
+  /** Cập nhật đối tác */
+  updatePartner: async (id: number, data: Partial<Partner>): Promise<Partner> => {
+    const res = await axiosClient.put(`/partners/${id}`, data);
+    return res.data;
+  },
+
+  /** Xóa đối tác */
+  deletePartner: async (id: number): Promise<void> => {
+    await axiosClient.delete(`/partners/${id}`);
+  },
+};

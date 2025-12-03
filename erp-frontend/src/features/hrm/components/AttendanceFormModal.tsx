@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { AttendanceDTO } from "../dto/attendance.dto";
+import { useAppSelector } from "../../../store/hooks";
 
 interface AttendanceFormModalProps {
   open: boolean;
@@ -27,6 +28,20 @@ const AttendanceFormModal: React.FC<AttendanceFormModalProps> = ({
 }) => {
   const [form, setForm] = useState<AttendanceDTO>(defaultForm);
 
+ const branches =
+  useAppSelector((s) => (s.branch as any).branches || (s.branch as any).items || []) || [];
+
+const employees =
+  useAppSelector((s) => {
+    const anyState = s as any;
+    return (
+      anyState.employee?.items ||
+      anyState.employee?.employees ||
+      []
+    );
+  }) || [];
+
+
   useEffect(() => {
     if (initialValue) {
       setForm({
@@ -42,14 +57,18 @@ const AttendanceFormModal: React.FC<AttendanceFormModalProps> = ({
   if (!open) return null;
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
   ) => {
     const { name, value } = e.target;
     setForm((prev) => ({
       ...prev,
       [name]:
         name === "branch_id" || name === "employee_id" || name === "working_hours"
-          ? Number(value)
+          ? value === ""
+            ? ("" as any) // để select về rỗng, khi submit bạn có thể check lại nếu cần
+            : Number(value)
           : value,
     }));
   };
@@ -72,32 +91,50 @@ const AttendanceFormModal: React.FC<AttendanceFormModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-4 space-y-3">
+          {/* Branch & Employee */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium mb-1">Branch ID</label>
-              <input
-                type="number"
+              <label className="block text-sm font-medium mb-1">
+                Branch
+              </label>
+              <select
                 name="branch_id"
-                value={form.branch_id}
+                value={form.branch_id || ""}
                 onChange={handleChange}
-                className="border rounded px-2 py-1 w-full"
+                className="border rounded px-2 py-1 w-full text-sm"
                 required
-              />
+              >
+                <option value="">Chọn chi nhánh</option>
+                {branches.map((b: any) => (
+                  <option key={b.id} value={b.id}>
+                    {b.code ? `${b.code} - ${b.name}` : b.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Employee ID</label>
-              <input
-                type="number"
+              <label className="block text-sm font-medium mb-1">
+                Employee
+              </label>
+              <select
                 name="employee_id"
-                value={form.employee_id}
+                value={form.employee_id || ""}
                 onChange={handleChange}
-                className="border rounded px-2 py-1 w-full"
+                className="border rounded px-2 py-1 w-full text-sm"
                 required
-              />
+              >
+                <option value="">Chọn nhân viên</option>
+                {employees.map((e: any) => (
+                  <option key={e.id} value={e.id}>
+                    {e.full_name || e.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
+          {/* Ngày làm việc */}
           <div>
             <label className="block text-sm font-medium mb-1">Ngày làm việc</label>
             <input
@@ -110,6 +147,7 @@ const AttendanceFormModal: React.FC<AttendanceFormModalProps> = ({
             />
           </div>
 
+          {/* Check in / out */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">Check in</label>
@@ -133,6 +171,7 @@ const AttendanceFormModal: React.FC<AttendanceFormModalProps> = ({
             </div>
           </div>
 
+          {/* Working hours & Status */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">
@@ -164,6 +203,7 @@ const AttendanceFormModal: React.FC<AttendanceFormModalProps> = ({
             </div>
           </div>
 
+          {/* Note */}
           <div>
             <label className="block text-sm font-medium mb-1">Ghi chú</label>
             <textarea

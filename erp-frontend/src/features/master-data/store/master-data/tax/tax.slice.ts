@@ -38,24 +38,49 @@ const taxSlice = createSlice({
       })
 
       // ------- Create -------
+      .addCase(createTaxRateThunk.pending, (state) => {
+        state.loading = true;
+      })
       .addCase(createTaxRateThunk.fulfilled, (state, action: PayloadAction<Tax>) => {
+        state.loading = false;
         state.Taxes.push(action.payload);
+      })
+      .addCase(createTaxRateThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
       })
 
       // ------- Update -------
+      .addCase(updateTaxRateThunk.pending, (state) => {
+        state.loading = true;
+      })
       .addCase(updateTaxRateThunk.fulfilled, (state, action: PayloadAction<Tax>) => {
+        state.loading = false;
         const updated = action.payload;
         state.Taxes = state.Taxes.map((item) =>
           item.id === updated.id ? updated : item
         );
       })
+      .addCase(updateTaxRateThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
 
       // ------- Delete -------
+      .addCase(deleteTaxRateThunk.pending, (state) => {
+        state.loading = true;
+      })
       .addCase(deleteTaxRateThunk.fulfilled, (state, action: PayloadAction<number>) => {
+        state.loading = false;
         state.Taxes = state.Taxes.filter((item) => item.id !== action.payload);
+      })
+      .addCase(deleteTaxRateThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
       });
   },
 });
+
 
 export const { clearTaxError } = taxSlice.actions;
 export default taxSlice.reducer;

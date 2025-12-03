@@ -1,14 +1,15 @@
 import * as api from "../user/api/user.api";
 // import {User, Role} from "../../types/User";
+import { updateUserDTO } from "./dto/userDTO";
 
-export async function updateUser(data: { username: string; full_name?: string; email?: string; phone?: string; roleId?: number; branchId?: number }) {
+export async function updateUser(data: updateUserDTO) {
   const res = await api.updateUser({
     username: data.username,
     full_name: data.full_name,
     email: data.email,
     phone: data.phone,
-    role_id: data.roleId,
-    branch_id: data.branchId,
+    role_id: data.role_id,
+    branch_id: data.branch_id,
   });
   return res.data.user;
 }
