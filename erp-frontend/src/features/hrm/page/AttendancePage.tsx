@@ -18,6 +18,8 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { fetchEmployees } from "../store/employee/employee.thunks";
+import {fetchAllBranchesThunk  } from "../../company/store/branch.thunks";
 
 const AttendancePage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -35,7 +37,11 @@ const AttendancePage: React.FC = () => {
 
   useEffect(() => {
     dispatch(fetchAttendances({}));
+    // ⭐ load thêm danh sách nhân viên & chi nhánh cho combobox
+  dispatch(fetchEmployees({} as any));   // hoặc {} as EmployeeFilter
+  dispatch(fetchAllBranchesThunk());  
   }, [dispatch]);
+  
 
   // Reset về trang 1 khi search hoặc filter thay đổi
   useEffect(() => {
@@ -60,18 +66,18 @@ const AttendancePage: React.FC = () => {
   };
 
   const handleSubmit = async (values: AttendanceDTO | Partial<AttendanceDTO>) => {
-    if (editing?.id) {
-      await dispatch(
-        updateAttendance({
-          id: editing.id,
-          data: values,
-        })
-      );
-    } else {
-      await dispatch(createAttendance(values as AttendanceDTO));
-    }
-    setModalOpen(false);
-  };
+  if (editing?.id) {
+    await dispatch(updateAttendance({ id: editing.id, data: values }));
+  } else {
+    await dispatch(createAttendance(values as AttendanceDTO));
+  }
+
+  // ⭐ Tải lại danh sách để lấy record có đầy đủ branch + employee
+  await dispatch(fetchAttendances({}));
+
+  setModalOpen(false);
+};
+
 
   // Lọc dữ liệu theo search, employee và date
   const filteredList = list.filter((item) => {

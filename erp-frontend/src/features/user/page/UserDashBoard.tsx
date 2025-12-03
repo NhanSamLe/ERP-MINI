@@ -1,7 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../../store/store";
-import { fetchAllUsers, fetchAllRoles, createUserThunk, updateUserThunk, deleteUserThunk,  } from "../store";
+import {
+  fetchAllUsers,
+  fetchAllRoles,
+  createUserThunk,
+  updateUserThunk,
+  deleteUserThunk,
+} from "../store";
+import { setError } from "../store/user.slice";
+
 import { User } from "../../../types/User";
 import { createUserDTO, updateUserDTO } from "../dto/userDTO";
 import { Column } from "../../../types/common";
@@ -18,8 +26,11 @@ import {
 
 export default function UserDashboard() {
   const dispatch = useDispatch<AppDispatch>();
-  const { users, roles, loading } = useSelector((state: RootState) => state.user);
+  const { users, roles, loading, error } = useSelector(
+    (state: RootState) => state.user
+  );
   const { branches } = useSelector((state: RootState) => state.branch);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
 
@@ -30,22 +41,52 @@ export default function UserDashboard() {
   }, [dispatch]);
 
   const handleCreate = async (data: createUserDTO) => {
-    await dispatch(createUserThunk(data));
+    dispatch(setError(null));
+
+    const resultAction = await dispatch(createUserThunk(data));
+
+    if (createUserThunk.rejected.match(resultAction)) {
+      // Có lỗi -> không đóng modal
+      return;
+    }
+
     setIsModalOpen(false);
   };
 
   const handleUpdate = async (data: updateUserDTO) => {
-    await dispatch(updateUserThunk(data));
+    dispatch(setError(null));
+    const resultAction = await dispatch(updateUserThunk(data));
+
+    if (updateUserThunk.rejected.match(resultAction)) {
+      return;
+    }
+
     setIsModalOpen(false);
     setEditUser(null);
   };
-  const handleDelete = async (id: number) => {
-    const user = users.find((user) => user.id === id);
-    if (user && window.confirm(`Are you sure you want to delete ${user.full_name}?`)) {
-      await dispatch(deleteUserThunk(user.id));
-    }
-  };
 
+  const handleDelete = async (id: number) => {
+  const user = users.find((u) => u.id === id);
+  if (
+    user &&
+    window.confirm(
+      `Are you sure you want to delete ${user.full_name || user.username}?`
+    )
+  ) {
+    const resultAction = await dispatch(deleteUserThunk(user.id));
+
+    if (deleteUserThunk.rejected.match(resultAction)) {
+      // BE trả lỗi (vd: đang liên kết dữ liệu, hoặc tự xóa chính mình)
+      alert(resultAction.payload as string);
+      return;
+    }
+
+    // Thành công thì không cần làm gì thêm, reducer đã filter rồi
+  }
+};
+
+
+  // KHÔNG tạo cột actions nữa
   const columns: Column<User>[] = [
     {
       key: "full_name",
@@ -56,7 +97,9 @@ export default function UserDashboard() {
           <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-sm font-medium">
             {user.full_name?.charAt(0) || user.username.charAt(0)}
           </div>
-          <span className="font-medium">{user.full_name || user.username}</span>
+          <span className="font-medium">
+            {user.full_name || user.username}
+          </span>
         </div>
       ),
     },
@@ -97,7 +140,9 @@ export default function UserDashboard() {
           <div className="flex justify-between items-center mb-6">
             <div>
               <h1 className="text-2xl font-semibold text-gray-900">Users</h1>
-              <p className="text-sm text-gray-600 mt-1">Manage your users</p>
+              <p className="text-sm text-gray-600 mt-1">
+                Manage your users
+              </p>
             </div>
             <div className="flex items-center space-x-3">
               <button
@@ -117,6 +162,7 @@ export default function UserDashboard() {
               </button>
               <button
                 onClick={() => {
+                  dispatch(setError(null));
                   setEditUser(null);
                   setIsModalOpen(true);
                 }}
@@ -135,21 +181,26 @@ export default function UserDashboard() {
             loading={loading}
             searchable
             searchKeys={["full_name", "email", "phone"]}
+            itemsPerPage={10}
+            showSelection={false}
+            showActions={true}
             onEdit={(user) => {
               setEditUser(user);
               setIsModalOpen(true);
             }}
-           onDelete={(user) => handleDelete(user.id)}
-            itemsPerPage={10}
-            showSelection={false}
+            onDelete={(user) => handleDelete(user.id)}
+            // ⭐ BẮT BUỘC: cho phép edit/delete
+            canEdit={() => true}
+            canDelete={() => true}
           />
         </div>
       </div>
 
       {/* MODAL */}
-       <UserFormModal
+      <UserFormModal
         isOpen={isModalOpen}
         onClose={() => {
+          dispatch(setError(null));
           setIsModalOpen(false);
           setEditUser(null);
         }}
@@ -158,6 +209,7 @@ export default function UserDashboard() {
         editUser={editUser}
         roles={roles || []}
         branches={branches || []}
+        error={error}
       />
     </div>
   );

@@ -20,15 +20,15 @@ export default function TaxFormModal({
 }: Props) {
   const isEdit = !!data?.id;
   const TAX_TYPE_OPTIONS: TaxType[] = [
-  "VAT",
-  "CIT",
-  "PIT",
-  "IMPORT",
-  "EXPORT",
-  "EXCISE",
-  "ENVIRONMENTAL",
-  "OTHER",
-];
+    "VAT",
+    "CIT",
+    "PIT",
+    "IMPORT",
+    "EXPORT",
+    "EXCISE",
+    "ENVIRONMENTAL",
+    "OTHER",
+  ];
   const APPLIES_OPTIONS: AppliesTo[] = ["sale", "purchase", "both"];
 
   const [form, setForm] = useState<CreateTaxRateDto>({
@@ -37,9 +37,9 @@ export default function TaxFormModal({
     type: "VAT",
     rate: 0,
     applies_to: "both",
-    is_vat: false,
+    // is_vat: false,  // Đã loại bỏ: sẽ tính tự động dựa trên type
     effective_date: "",
-    expiry_date: null,
+    expiry_date: undefined,  // Fix: undefined thay vì null
     status: "active",
   });
 
@@ -53,9 +53,9 @@ export default function TaxFormModal({
         type: data.type,
         rate: data.rate,
         applies_to: data.applies_to,
-        is_vat: data.is_vat,
+        // is_vat: data.is_vat,  // Đã loại bỏ: sẽ tính lại trong handleSubmit
         effective_date: data.effective_date ? data.effective_date.split("T")[0] : "",
-        expiry_date: data.expiry_date ? data.expiry_date.split("T")[0] : "",
+        expiry_date: data.expiry_date ? data.expiry_date.split("T")[0] : undefined,  // Fix: undefined thay vì null
         status: data.status,
       });
     }
@@ -69,15 +69,11 @@ export default function TaxFormModal({
   };
 
   const handleSubmit = () => {
-    if (!form.name || (!isEdit && !form.code)) {
-      setError("Code & Name are required!");
+    if (!form.name || (!isEdit && !form.code) || !form.effective_date) {
+      setError("Code, Name, and Effective Date are required!");
       return;
     }
-    let isVat= false;
-    if(form.applies_to.toString() =="VAT")
-    {
-      isVat = true;
-    }
+    const isVat = form.type === "VAT";  // Tính tự động dựa trên type
     setError(null);
 
     if (isEdit) {
@@ -88,12 +84,16 @@ export default function TaxFormModal({
         applies_to: form.applies_to,
         is_vat: isVat,
         effective_date: form.effective_date,
-        expiry_date: form.expiry_date,
+        expiry_date: form.expiry_date,  // Đã normalize thành undefined
         status: form.status,
       };
       onSubmitUpdate(data!.id, dto);
     } else {
-      onSubmitCreate(form);
+      const dto: CreateTaxRateDto = {
+        ...form,
+        is_vat: isVat,
+      };
+      onSubmitCreate(dto);
     }
   };
 
@@ -110,7 +110,6 @@ export default function TaxFormModal({
 
         {/* RESPONSIVE GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
           {/* CODE */}
           <div className="md:col-span-2">
             <FormInput
@@ -159,7 +158,7 @@ export default function TaxFormModal({
           {/* APPLIES TO */}
           <div>
             <label className="text-sm font-medium">Applies To</label>
-             <select
+            <select
               className="border p-2 w-full rounded mt-1"
               value={form.applies_to}
               onChange={(e) => updateField("applies_to", e.target.value as AppliesTo)}
@@ -191,8 +190,9 @@ export default function TaxFormModal({
           <FormInput
             label="Effective Date"
             type="date"
+            required
             value={form.effective_date ?? ""}
-            onChange={(v) => updateField("effective_date", v)}
+            onChange={(v) => updateField("effective_date", v === "" ? undefined : v)}  // Fix: undefined thay vì null (nhưng vì required, ít dùng)
           />
 
           {/* EXPIRY DATE */}
@@ -200,10 +200,8 @@ export default function TaxFormModal({
             label="Expiry Date"
             type="date"
             value={form.expiry_date ?? ""}
-            onChange={(v) => updateField("expiry_date", v)}
+            onChange={(v) => updateField("expiry_date", v === "" ? undefined : v)}  // Fix: undefined thay vì null
           />
-
-          
         </div>
 
         {/* ACTION BUTTONS */}
