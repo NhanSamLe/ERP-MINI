@@ -91,8 +91,8 @@ export default function InvoiceDetailPage() {
         <ApproveConfirmModal
           open={approveModalOpen}
           onClose={() => setApproveModalOpen(false)}
-          onConfirm={() => {
-            dispatch(approveInvoice(invoice.id));
+          onConfirm={async () => {
+            await dispatch(approveInvoice(invoice.id));
             setApproveModalOpen(false);
           }}
         />

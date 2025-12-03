@@ -8,7 +8,7 @@ const router = Router();
 
 router.get(
   "/",
-  authMiddleware([Role.ADMIN, Role.SALES, Role.PURCHASE, Role.PURCHASEMANAGER]),
+  authMiddleware([Role.ADMIN, Role.SALES, Role.PURCHASE, Role.PURCHASEMANAGER, Role.WHSTAFF, Role.WHMANAGER]),
   productController.getAllProductOnActive
 );
 

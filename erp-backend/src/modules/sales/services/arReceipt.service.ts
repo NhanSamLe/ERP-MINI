@@ -281,25 +281,60 @@ async approve(id: number, approver: any) {
   },
 
   /** ALLOCATE into Invoices — Accountant only after approved */
-  async allocate(receiptId: number, allocations: any[], user: any) {
-    const receipt = await ArReceipt.findByPk(receiptId);
-    console.log("FE user:", user);
-    if (!receipt) throw new Error("Receipt not found");
-    if (receipt.branch_id !== user.branch_id)
-      throw new Error("Cross-branch denied");
-    if (receipt.status !== "posted")
-      throw new Error("Receipt must be posted before allocation");
+ async allocate(receiptId: number, allocations: any[], user: any) {
+  const receipt = await ArReceipt.findByPk(receiptId);
+  
+  if (!receipt) throw new Error("Receipt not found");
+  if (receipt.branch_id !== user.branch_id)
+    throw new Error("Cross-branch denied");
+  if (receipt.status !== "posted")
+    throw new Error("Receipt must be posted before allocation");
 
-    for (const a of allocations) {
-      await ArReceiptAllocation.create({
-        receipt_id: receiptId,
-        invoice_id: a.invoice_id,
-        applied_amount: a.applied_amount,
-      });
+  // 🔴 FIX 1: Validate total allocation
+  const totalAlloc = allocations.reduce((sum, a) => sum + (a.applied_amount || 0), 0);
+  if (totalAlloc > (receipt.amount ?? 0)) {
+    throw new Error(`Total allocation ${totalAlloc} exceeds receipt amount ${receipt.amount}`);
+  }
+
+  // 🔴 FIX 2: Validate từng invoice + calculate unpaid
+  for (const a of allocations) {
+    if (!a.invoice_id || !a.applied_amount || a.applied_amount <= 0) {
+      throw new Error("Invalid allocation data");
     }
 
-    return this.getById(receiptId, user);
-  },
+    // Check invoice tồn tại
+    const invoice = await ArInvoice.findByPk(a.invoice_id);
+    if (!invoice) {
+      throw new Error(`Invoice ${a.invoice_id} not found`);
+    }
+
+    // Calculate current unpaid (tất cả allocations cho invoice này)
+    const totalAllocatedForInvoice = await ArReceiptAllocation.sum('applied_amount', {
+      where: { invoice_id: a.invoice_id }
+    }) || 0;
+
+    const unpaid = invoice.total_after_tax ?? 0 - totalAllocatedForInvoice;
+
+    // Check allocation không vượt unpaid
+    if (a.applied_amount > unpaid) {
+      throw new Error(
+        `Allocation for invoice ${invoice.invoice_no} (${a.applied_amount}) ` +
+        `exceeds unpaid amount (${unpaid})`
+      );
+    }
+  }
+
+  // Create allocations
+  for (const a of allocations) {
+    await ArReceiptAllocation.create({
+      receipt_id: receiptId,
+      invoice_id: a.invoice_id,
+      applied_amount: a.applied_amount,
+    });
+  }
+
+  return this.getById(receiptId, user);
+},
   // UPDATE RECEIPT — only when draft
 async update(id: number, data: any, user: any) {
   const receipt = await ArReceipt.findByPk(id);

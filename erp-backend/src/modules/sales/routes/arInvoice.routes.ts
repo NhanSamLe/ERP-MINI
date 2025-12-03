@@ -20,7 +20,7 @@ router.put("/:id", authMiddleware([]), ArInvoiceController.update);
 router.post("/:id/submit", authMiddleware([]), ArInvoiceController.submit);
 
 // Approve invoice
-router.post("/:id/approve", authMiddleware([]), ArInvoiceController.approve);
+router.post("/:id/approve", authMiddleware(["CHACC"]), ArInvoiceController.approve);
 
 // Reject invoice
 router.post("/:id/reject", authMiddleware([]), ArInvoiceController.reject);

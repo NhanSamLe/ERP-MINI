@@ -14,7 +14,7 @@ import { Activity } from "../dto/activity.dto";
 import { Button } from "@/components/ui/buttonn";
 import { Alert } from "@/components/ui/Alert";
 
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Separator } from "@/components/ui/separator";
 
 import {
@@ -95,7 +95,7 @@ export default function TaskDetailPage() {
     if (!window.confirm("Bạn có chắc muốn xóa task này?")) return;
     try {
       await deleteActivity(taskId);
-      navigate("/crm/activities/task");
+      navigate("/crm/activities/tasks");
     } catch {
       setAlert({ type: "error", message: "Không thể xóa task" });
     }

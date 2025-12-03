@@ -1,12 +1,13 @@
 import { Router } from "express";
 import { productCategoryController } from "../controllers/productCategory.controller";
 import { authMiddleware } from "../../../core/middleware/auth";
+import { Role } from "../../../core/types/enum";
 
 const router = Router();
 
 router.get(
   "/",
-  authMiddleware(["ADMIN", "SALES", "PURCHASE"]),
+  authMiddleware(["ADMIN", "SALES", "PURCHASE", Role.WHSTAFF, Role.WHMANAGER]),
   productCategoryController.getCategoryAll
 );
 router.get(

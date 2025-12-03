@@ -8,7 +8,7 @@ const router = Router();
 
 router.get(
   "/",
-  authMiddleware([Role.PURCHASE, Role.PURCHASEMANAGER]),
+  authMiddleware([Role.PURCHASE, Role.PURCHASEMANAGER, Role.WHSTAFF, Role.WHMANAGER, Role.ACCOUNT]),
   purchaseOrderController.getAllPO
 );
 
@@ -24,7 +24,7 @@ router.get(
 );
 router.get(
   "/:id",
-  authMiddleware([Role.PURCHASE, Role.PURCHASEMANAGER]),
+  authMiddleware([Role.PURCHASE, Role.PURCHASEMANAGER, Role.WHSTAFF, Role.WHMANAGER, Role.ACCOUNT]),
   purchaseOrderController.getPOById
 );
 

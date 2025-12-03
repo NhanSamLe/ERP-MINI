@@ -38,12 +38,12 @@ export default function SaleOrderDetailPage() {
       createInvoice({ order_id: order.id })
     ).unwrap();
 
-    navigate(`/ar/invoices/${result.id}`);
+    navigate(`/invoices/${result.id}`);
   } catch (err: unknown) {
   if (err instanceof Error) {
     alert(err.message);
   } else {
-    alert("Không thể tạo hóa đơn");
+    alert("Hóa đơn đã tồn tại rồi, không cần tạo");
   }
 }
  };

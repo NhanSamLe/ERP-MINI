@@ -527,7 +527,7 @@ async postArInvoiceToGL(invoice: ArInvoice, t: Transaction) {
     // Tránh post trùng
     const existed = await GlEntry.findOne({
       where: {
-        reference_type: "ar_invoice",
+        reference_type: "AR_INVOICE",
         reference_id: invoice.id,
       },
       transaction: t,

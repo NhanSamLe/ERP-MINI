@@ -22,7 +22,7 @@ const salesRoutes: RouteObject[] = [
    {
     path: "/sales/orders",
     element: (
-      <ProtectedRoute allowedRoles={["SALES", "SALESMANAGER",  "ACCOUNT"]}>
+      <ProtectedRoute allowedRoles={["SALES", "SALESMANAGER",  "ACCOUNT", "WHSTAFF","CEO"]}>
         <SaleOrderListPage />
       </ProtectedRoute>
     ),
@@ -39,7 +39,7 @@ const salesRoutes: RouteObject[] = [
   path: "/sales/orders/:id",
   element: (
     <ProtectedRoute allowedRoles={[
-      "SALES", "SALESMANAGER", "BRMN", "CEO", "ADMIN", "ACCOUNT", "CHACC"
+      "SALES", "SALESMANAGER", "BRANCH_MANAGER", "CEO", "ADMIN", "ACCOUNT", "CHACC","WHSTAFF"
     ]}>
       <SaleOrderDetailPage />
     </ProtectedRoute>

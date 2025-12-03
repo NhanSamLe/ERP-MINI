@@ -74,6 +74,7 @@ export const ArInvoiceController = {
       const result = await arInvoiceService.approve(id, user);
       return res.json({ message: "Approved", data: result });
     } catch (err: any) {
+       console.error("🔥 APPROVE ERROR:", err);
       return res.status(403).json({ message: err.message });
     }
   },

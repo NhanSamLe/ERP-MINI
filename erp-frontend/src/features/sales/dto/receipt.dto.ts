@@ -78,7 +78,7 @@ export interface AllocateReceiptDto {
   applied_amount: number;
 }
 export interface UnpaidInvoiceDto {
-  id: number;
+  invoice_id: number;
   invoice_no: string;
   total_after_tax: number;
   allocated: number;

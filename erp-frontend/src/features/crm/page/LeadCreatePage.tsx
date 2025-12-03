@@ -68,7 +68,7 @@ export default function LeadCreatePage() {
       setAlert({ type: 'success', message: 'Lead created successfully!' });
       setTimeout(() => {
         // Navigate to lead detail page
-        window.location.href = `/crm/lead/${result.id}`;
+        window.location.href = `/crm/leads/${result.id}`;
       }, 1500);
     } catch (error) {
       setAlert({type: 'error',

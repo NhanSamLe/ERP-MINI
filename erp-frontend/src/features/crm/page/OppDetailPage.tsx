@@ -15,7 +15,7 @@ import * as activityService from "../service/activity.service";
 
 import { Activity, TimelineEvent } from "../dto/activity.dto";
 
-import { Card, CardHeader, CardContent } from "../../../components/ui/card";
+import { Card, CardHeader, CardContent } from "../../../components/ui/Card";
 import { Separator } from "../../../components/ui/separator";
 import { Alert } from "../../../components/ui/Alert";
 

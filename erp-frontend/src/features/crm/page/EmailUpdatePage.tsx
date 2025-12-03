@@ -13,7 +13,7 @@ import { Activity } from "../dto/activity.dto";
 
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/buttonn";
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Separator } from "@/components/ui/separator";
 import { FormInput } from "@/components/ui/FormInput";
 

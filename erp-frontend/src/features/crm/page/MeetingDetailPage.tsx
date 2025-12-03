@@ -14,7 +14,7 @@ import { Activity } from "../dto/activity.dto";
 
 import { Button } from "@/components/ui/buttonn";
 import { Alert } from "@/components/ui/Alert";
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Separator } from "@/components/ui/separator";
 
 import {
@@ -111,7 +111,7 @@ export default function MeetingDetailPage() {
     if (!window.confirm("Xóa cuộc họp này?")) return;
     try {
       await deleteActivity(meetingId);
-      navigate("/crm/activities/meeting");
+      navigate("/crm/activities/meetings");
     } catch {
       setAlert({ type: "error", message: "Không thể xóa cuộc họp" });
     }

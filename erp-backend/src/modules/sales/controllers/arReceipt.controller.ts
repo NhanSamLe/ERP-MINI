@@ -60,56 +60,112 @@ export const ArReceiptController = {
   },
 
   /** SUBMIT */
-  async submit(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const user = (req as any).user;
+  /** SUBMIT */
+async submit(req: Request, res: Response) {
+  try {
+    const id = Number(req.params.id);
+    const user = (req as any).user;
 
-      const result = await arReceiptService.submit(id, user);
-      return res.json({ message: "Submitted", data: result });
-    } catch (err: any) {
-      return res.status(400).json({ message: err.message });
-    }
-  },
+    const result = await arReceiptService.submit(id, user);
+    return res.json({ message: "Submitted", data: result });
 
-  /** APPROVE */
-  async approve(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const user = (req as any).user;
+  } catch (err: any) {
+    console.error("🔥 SUBMIT RECEIPT ERROR:", {
+      message: err.message,
+      name: err.name,
+      errors: err.errors,
+      parent: err.parent,
+      stack: err.stack,
+      sql: err.sql,
+    });
 
-      const result = await arReceiptService.approve(id, user);
-      return res.json({ message: "Approved", data: result });
-    } catch (err: any) {
-      return res.status(403).json({ message: err.message });
-    }
-  },
+    return res.status(400).json({
+      message: err.message,
+      name: err.name,
+      errors: err.errors,
+    });
+  }
+},
 
-  /** REJECT */
-  async reject(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const user = (req as any).user;
+/** APPROVE */
+async approve(req: Request, res: Response) {
+  try {
+    const id = Number(req.params.id);
+    const user = (req as any).user;
 
-      const result = await arReceiptService.reject(id, user, req.body.reason);
-      return res.json({ message: "Rejected", data: result });
-    } catch (err: any) {
-      return res.status(403).json({ message: err.message });
-    }
-  },
+    const result = await arReceiptService.approve(id, user);
+    return res.json({ message: "Approved", data: result });
 
-  /** ALLOCATE TO INVOICE */
-  async allocate(req: Request, res: Response) {
-    try {
-      const id = Number(req.params.id);
-      const user = (req as any).user;
+  } catch (err: any) {
+    console.error("🔥 APPROVE RECEIPT ERROR:", {
+      message: err.message,
+      name: err.name,
+      errors: err.errors,
+      parent: err.parent,
+      stack: err.stack,
+      sql: err.sql,
+    });
 
-      const result = await arReceiptService.allocate(id, req.body.allocations, user);
-      return res.json({ message: "Allocated", data: result });
-    } catch (err: any) {
-      return res.status(403).json({ message: err.message });
-    }
-  },
+    return res.status(403).json({
+      message: err.message,
+      name: err.name,
+      errors: err.errors,
+    });
+  }
+},
+
+/** REJECT */
+async reject(req: Request, res: Response) {
+  try {
+    const id = Number(req.params.id);
+    const user = (req as any).user;
+
+    const result = await arReceiptService.reject(id, user, req.body.reason);
+    return res.json({ message: "Rejected", data: result });
+
+  } catch (err: any) {
+    console.error("🔥 REJECT RECEIPT ERROR:", {
+      message: err.message,
+      name: err.name,
+      errors: err.errors,
+      parent: err.parent,
+      stack: err.stack,
+      sql: err.sql,
+    });
+
+    return res.status(403).json({
+      message: err.message,
+      name: err.name,
+      errors: err.errors,
+    });
+  }
+},
+/** ALLOCATE */
+async allocate(req: Request, res: Response) {
+  try {
+    const id = Number(req.params.id);
+    const user = (req as any).user;
+
+    const result = await arReceiptService.allocate(id, req.body.allocations, user);
+    return res.json({ message: "Allocated", data: result });
+
+  } catch (err: any) {
+    console.error("🔥 ALLOCATE RECEIPT ERROR:", {
+      message: err.message,
+      name: err.name,
+      errors: err.errors,
+      parent: err.parent,
+      stack: err.stack,
+      sql: err.sql,
+    });
+
+    return res.status(403).json({
+      message: err.message,
+      name: err.name,
+      errors: err.errors,
+    });
+  }
+},
 async getUnpaidInvoices(req: Request, res: Response) {
   try {
     const customerId = Number(req.params.customer_id);

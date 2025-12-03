@@ -66,6 +66,9 @@ export default function SaleOrderEditPage() {
       console.error('Failed to update order:', err);
     }
   };
+  const handleCancel = () => {
+    navigate(-1); // Go back to previous page
+  };
 
   return (
     <SaleOrderForm
@@ -73,6 +76,7 @@ export default function SaleOrderEditPage() {
       defaultValue={normalizedOrder}
       onSubmit={handleUpdate}
       customers={customers}
+      onCancel={handleCancel}
       products={products}
       loading={loading}
     />

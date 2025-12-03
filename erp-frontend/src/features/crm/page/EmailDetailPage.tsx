@@ -14,7 +14,7 @@ import { Activity } from "../dto/activity.dto";
 import { OwnerInfoCard } from "../components/OwnerInfoCard";
 import { Button } from "@/components/ui/buttonn";
 import { Alert } from "@/components/ui/Alert";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Separator } from "@/components/ui/separator";
 
 import {
@@ -93,7 +93,7 @@ export default function EmailDetailPage() {
     if (!window.confirm("Delete this email? This cannot be undone.")) return;
     try {
       await deleteActivity(emailId);
-      navigate("/crm/activities/email");
+      navigate("/crm/activities/emails");
     } catch {
       setAlert({ type: "error", message: "Unable to delete email" });
     }

@@ -11,7 +11,7 @@ import {
 import {ActivityMetaInfoCard} from "../components/ActivityMetaInfoCard"
 import { Button } from "@/components/ui/buttonn";
 import { Alert } from "@/components/ui/Alert";
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Separator } from "@/components/ui/separator";
 import { Activity } from "../dto/activity.dto";
 import {
@@ -76,7 +76,7 @@ const [alert, setAlert] = useState<{
     if (!window.confirm("Xóa cuộc gọi? Hành động này không thể hoàn tác.")) return;
     try {
       await deleteActivity(callId);
-      navigate("/crm/activities/call");
+      navigate("/crm/activities/calls");
     } catch {
       setAlert({ type: "error", message: "Không thể xóa cuộc gọi" });
     }

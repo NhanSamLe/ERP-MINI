@@ -19,7 +19,7 @@ const purchaseRoutes: RouteObject[] = [
   {
     path: "purchase/orders",
     element: (
-      <ProtectedRoute allowedRoles={[Roles.PURCHASE, Roles.PURCHASEMANAGER]}>
+      <ProtectedRoute allowedRoles={[Roles.PURCHASE, Roles.PURCHASEMANAGER, Roles.ACCOUNT, Roles.WHSTAFF, Roles.CEO]}>
         <PurchaseOrderPage />
       </ProtectedRoute>
     ),
@@ -44,7 +44,7 @@ const purchaseRoutes: RouteObject[] = [
   {
     path: "purchase-orders/view/:id",
     element: (
-      <ProtectedRoute allowedRoles={[Roles.PURCHASE, Roles.PURCHASEMANAGER]}>
+      <ProtectedRoute allowedRoles={[Roles.PURCHASE, Roles.PURCHASEMANAGER, Roles.WHSTAFF, Roles.ACCOUNT]}>
         <ViewPurchaseOrderPage />
       </ProtectedRoute>
     ),
