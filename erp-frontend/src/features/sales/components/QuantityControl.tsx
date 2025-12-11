@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import { memo } from 'react';
 import { Plus, Minus } from 'lucide-react';
 
 interface QuantityControlProps {

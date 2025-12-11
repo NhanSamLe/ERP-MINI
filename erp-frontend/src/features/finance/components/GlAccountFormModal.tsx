@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { GlAccountDTO, GlAccountType, NormalSide } from "../dto/glAccount.dto";
+import { GlAccountDTO, GlAccountType } from "../dto/glAccount.dto";
 
 interface Props {
   open: boolean;

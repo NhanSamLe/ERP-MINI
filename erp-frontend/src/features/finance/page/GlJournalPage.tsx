@@ -177,7 +177,7 @@ const GlJournalPage: React.FC = () => {
                     </td>
                   </tr>
                 ) : (
-                  filteredData.map((row, index) => (
+                  filteredData.map((row) => (
                     <tr 
                       key={row.id} 
                       className="hover:bg-slate-50 transition-colors duration-150"

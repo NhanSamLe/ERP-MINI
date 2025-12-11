@@ -22,7 +22,6 @@ const PartnerList: FC = () => {
   const [search, setSearch] = useState("");
   const [type, setType] = useState<PartnerType | "">("");
   const [page, setPage] = useState(1);
-  const [showFilters, setShowFilters] = useState(false);
   const pageSize = 10;
   const [searchParams] = useSearchParams();
 

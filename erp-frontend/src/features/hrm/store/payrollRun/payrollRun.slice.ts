@@ -11,7 +11,6 @@ import {
 } from "./payrollRun.thunks";
 import {
   PayrollRunDTO,
-  PayrollRunLineDTO,
 } from "../../dto/payrollRun.dto";
 
 interface PayrollRunState {

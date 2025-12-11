@@ -1,5 +1,5 @@
 import { employeeApi } from "../api/employee.api";
-import { EmployeeDTO, EmployeeFilter, EmployeeFormPayload } from "../dto/employee.dto";
+import { EmployeeFilter, EmployeeFormPayload } from "../dto/employee.dto";
 
 // GET list
 export async function fetchEmployees(filter?: EmployeeFilter) {
