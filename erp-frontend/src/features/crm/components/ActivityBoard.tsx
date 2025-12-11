@@ -1,5 +1,5 @@
 import { Activity } from "../dto/activity.dto";
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Separator } from "@/components/ui/separator";
 import ActivityCardMini from "./ActivityCardMini";
 

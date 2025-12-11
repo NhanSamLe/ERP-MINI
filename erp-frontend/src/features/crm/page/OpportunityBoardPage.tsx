@@ -1,5 +1,5 @@
 // src/features/crm/pages/OpportunityBoardPage.tsx
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 import { RootState } from "../../../store/store";

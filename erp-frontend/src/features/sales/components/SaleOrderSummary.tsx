@@ -1,4 +1,4 @@
-import React from "react";
+
 import { SaleOrderDto } from "../dto/saleOrder.dto";
 
 interface Props {

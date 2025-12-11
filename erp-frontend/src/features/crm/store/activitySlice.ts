@@ -157,12 +157,7 @@ export const completeTask = createAsyncThunk(
     return await service.completeTask(activityId);
   }
 );
-export const completeActivity = createAsyncThunk(
-  "activity/completeActivity",
-  async (params: { activityId: number; notes?: string }) => {
-    return await service.completeActivity(params.activityId, params.notes);
-  }
-);
+
 /* =============================
     3. Slice
 ============================== */
@@ -243,18 +238,6 @@ export const activitySlice = createSlice({
             state.detail.task.status = "Completed";
         }
         })
-        .addCase(completeActivity.fulfilled, (state, action) => {
-        const updated = action.payload;
-        state.detail = updated;
-
-        state.all = state.all.map((a) => (a.id === updated.id ? updated : a));
-        state.mine = state.mine.map((a) => (a.id === updated.id ? updated : a));
-        state.today = state.today.map((a) => (a.id === updated.id ? updated : a));
-        state.related = state.related.map((a) => (a.id === updated.id ? updated : a));
-
-        state.loading = false;
-      })
-
         // Update call/email/meeting/task detail
         .addCase(updateCallDetail.fulfilled, (state, action) => {
         if (state.detail) state.detail.call = action.payload;

@@ -1,4 +1,4 @@
-import React from "react";
+
 import { Partner } from "@/features/partner/store/partner.types";
 
 interface Props {

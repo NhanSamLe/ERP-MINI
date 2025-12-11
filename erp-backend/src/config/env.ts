@@ -31,5 +31,8 @@ export const env = {
     name: process.env.CLOUDINARY_CLOUD_NAME!,
     key: process.env.CLOUDINARY_API_KEY!,
     secret: process.env.CLOUDINARY_API_SECRET!,
-  }
+  },
+  cors: {
+  origins: (process.env.CORS_ORIGINS || "").split(","),
+  },
 };

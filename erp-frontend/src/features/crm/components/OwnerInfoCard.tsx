@@ -1,6 +1,6 @@
 // src/features/crm/components/OwnerInfoCard.tsx
 
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Separator } from "@/components/ui/separator";
 import { User, Phone, Mail } from "lucide-react";
 

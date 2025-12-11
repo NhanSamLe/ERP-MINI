@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import  { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { createSaleOrder } from '@/features/sales/store/saleOrder.slice';
 import SaleOrderForm from '../components/SaleOrderForm';
@@ -38,6 +38,5 @@ export default function SaleOrderCreatePage() {
       customers={customers}
       products={products}
       loading={loading}
-    />
-  );
+    /> 
 }

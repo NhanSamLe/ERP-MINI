@@ -9,8 +9,6 @@ import {
 } from "../service/employee.service";
 
 import EmployeeFormModal from "../components/EmployeeFormModal";
-import { useSelector } from "react-redux";
-import { RootState } from "../../../store/store";
 import UserFormModal from "..//components/UserFormModal";
 
 import {
@@ -19,7 +17,6 @@ import {
   Trash2,
   Search,
   Users,
-  AlertCircle,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -27,9 +24,9 @@ import { useNavigate } from "react-router-dom";
 
 export default function EmployeePage() {
   const nav = useNavigate();
-  const auth = useSelector((state: RootState) => state.auth.user);
-  const roleCode = auth?.role?.code;
-  const isHR = roleCode === "HR_STAFF";
+  // const auth = useSelector((state: RootState) => state.auth.user);
+  // const roleCode = auth?.role?.code;
+  // const isHR = roleCode === "HR_STAFF";
 
   const [employees, setEmployees] = useState<EmployeeDTO[]>([]);
   const [search, setSearch] = useState("");

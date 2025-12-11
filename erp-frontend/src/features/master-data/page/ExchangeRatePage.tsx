@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { getExchangeRates, updateExchangeRates } from "../service/currency.service";
 import { DataTable } from "../../../components/ui/DataTable";
 import { Column } from "../../../types/common";

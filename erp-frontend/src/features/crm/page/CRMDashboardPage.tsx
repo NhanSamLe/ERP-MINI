@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { fetchDashboard,  } from "../service/activity.service";
 import { SalesDashboardData } from "../dto/dashboard.dto";
 import {Lead} from "../dto/lead.dto"

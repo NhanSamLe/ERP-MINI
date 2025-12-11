@@ -1,4 +1,4 @@
-import React from "react";
+
 import { SaleOrderDto } from "../dto/saleOrder.dto";
 import SaleOrderLineItem from "./SaleOrderLineItem";
 import SaleOrderSummary from "./SaleOrderSummary";

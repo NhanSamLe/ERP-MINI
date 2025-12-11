@@ -1,6 +1,6 @@
 // src/features/crm/pages/TaskBoardPage.tsx
 
-import React, { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { getAllActivities } from "../service/activity.service";

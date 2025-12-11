@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { SaleOrderLineDto, CreateSaleOrderDto, UpdateSaleOrderDto , CreateSaleOrderLineDto} from '../dto/saleOrder.dto';
 import { Product } from '@/features/products/store/product.types';
@@ -19,7 +19,7 @@ interface Props {
   mode: 'create' | 'edit';
   defaultValue?: SaleOrderFormDto;
   onSubmit: (data: CreateSaleOrderDto | UpdateSaleOrderDto) => Promise<void>;
-  onCancel: () => void;
+  onCancel?: () => void;
   customers: Partner[];
   products: Product[];
   loading?: boolean;

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import  { useState } from "react";
 import { SaleOrderDto } from "../dto/saleOrder.dto";
 import SaleOrderStatusBadge from "./SaleOrderStatusBadge";
 import { Link } from "react-router-dom";

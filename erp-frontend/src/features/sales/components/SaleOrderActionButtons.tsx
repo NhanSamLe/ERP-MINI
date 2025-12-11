@@ -1,4 +1,3 @@
-import React from "react";
 import { SaleOrderDto } from "../dto/saleOrder.dto";
 import { User } from "../../../types/User";
 import { Download, Edit2 } from "lucide-react";

@@ -15,10 +15,9 @@ import {
   PayrollRunLineDTO,
   PayrollRunStatus,
 } from "../dto/payrollRun.dto";
-import { clearPayrollRunError, clearCurrentRun } from "../store/payrollRun/payrollRun.slice";
+import { clearCurrentRun } from "../store/payrollRun/payrollRun.slice";
 
 import {
-  Calendar,
   Plus,
   Filter,
   AlertCircle,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { CreateTaxRateDto, Tax, UpdateTaxRateDto } from "../dto/tax.dto";
 import { Button } from "../../../components/ui/Button";
 import { FormInput } from "../../../components/ui/FormInput";

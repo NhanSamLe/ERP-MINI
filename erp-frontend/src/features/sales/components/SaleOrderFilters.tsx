@@ -1,4 +1,4 @@
-import React from "react";
+
 import { Search, RotateCcw } from "lucide-react";
 
 interface Props {
