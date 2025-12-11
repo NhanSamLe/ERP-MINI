@@ -8,7 +8,7 @@ import {
   Card,
   CardHeader,
   CardContent
-} from "../../../components/ui/card";
+} from "../../../components/ui/Card";
 import { Separator } from "../../../components/ui/separator";
 
 import {
