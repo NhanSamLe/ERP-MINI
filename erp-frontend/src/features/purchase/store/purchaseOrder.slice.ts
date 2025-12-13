@@ -9,12 +9,14 @@ import {
   submitPurchaseOrderThunk,
   approvePurchaseOrderThunk,
   cancelPurchaseOrderThunk,
+  getPurchaseOrdersAvailableForInvoiceThunk,
 } from "./purchaseOrder.thunks";
 import { PurchaseOrder, PurchaseOrderState } from "./purchaseOrder.types";
 
 const initialState: PurchaseOrderState = {
   items: [],
   selectedPO: undefined,
+  availableForInvoice: [],
   loading: false,
   error: null,
 };
@@ -79,6 +81,25 @@ export const purchaseOrderSlice = createSlice({
         cancelPurchaseOrderThunk.fulfilled,
         (state, action: PayloadAction<PurchaseOrder>) => {
           state.selectedPO = action.payload;
+        }
+      )
+
+      // ================= AVAILABLE FOR INVOICE =================
+      .addCase(getPurchaseOrdersAvailableForInvoiceThunk.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(
+        getPurchaseOrdersAvailableForInvoiceThunk.fulfilled,
+        (state, action) => {
+          state.loading = false;
+          state.availableForInvoice = action.payload;
+        }
+      )
+      .addCase(
+        getPurchaseOrdersAvailableForInvoiceThunk.rejected,
+        (state, action) => {
+          state.loading = false;
+          state.error = action.payload as string;
         }
       );
   },

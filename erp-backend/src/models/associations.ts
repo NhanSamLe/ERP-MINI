@@ -233,14 +233,13 @@ export function applyAssociations() {
   ArInvoice.belongsTo(SaleOrder, { foreignKey: "order_id", as: "order" });
   SaleOrder.hasMany(ArInvoice, { foreignKey: "order_id", as: "invoices" });
 
-  
   // Invoice có nhiều dòng
   ArInvoice.hasMany(ArInvoiceLine, { foreignKey: "invoice_id", as: "lines" });
   ArInvoiceLine.belongsTo(ArInvoice, {
     foreignKey: "invoice_id",
     as: "invoice",
   });
-  
+
   // Mỗi dòng invoice có Product + TaxRate
   ArInvoiceLine.belongsTo(Product, { foreignKey: "product_id", as: "product" });
   Product.hasMany(ArInvoiceLine, {
@@ -259,7 +258,6 @@ export function applyAssociations() {
 
   ArInvoice.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
   Branch.hasMany(ArInvoice, { foreignKey: "branch_id", as: "invoices" });
-
 
   // ReceiptAllocation liên kết Receipt ↔ Invoice
   ArReceiptAllocation.belongsTo(ArReceipt, {
@@ -288,15 +286,15 @@ export function applyAssociations() {
 
   ArReceipt.belongsTo(User, { as: "creator", foreignKey: "created_by" });
   ArReceipt.belongsTo(User, { as: "approver", foreignKey: "approved_by" });
-ArReceipt.belongsTo(Partner, {
-  foreignKey: "customer_id",
-  as: "customer",
-});
+  ArReceipt.belongsTo(Partner, {
+    foreignKey: "customer_id",
+    as: "customer",
+  });
 
-Partner.hasMany(ArReceipt, {
-  foreignKey: "customer_id",
-  as: "receipts",
-});
+  Partner.hasMany(ArReceipt, {
+    foreignKey: "customer_id",
+    as: "receipts",
+  });
 
   // =====================
   // PURCHASE & AP
@@ -310,10 +308,32 @@ Partner.hasMany(ArReceipt, {
     foreignKey: "po_id",
     as: "order",
   });
+  // PurchaseOrder ↔ Product
+
+  PurchaseOrderLine.belongsTo(Product, {
+    foreignKey: "product_id",
+    as: "product",
+  });
+  Product.hasMany(PurchaseOrderLine, {
+    foreignKey: "product_id",
+    as: "purchaseOrderLines",
+  });
 
   // PurchaseOrder ↔ Invoice
-  PurchaseOrder.hasMany(ApInvoice, { foreignKey: "po_id", as: "invoices" });
+  PurchaseOrder.hasOne(ApInvoice, { foreignKey: "po_id", as: "invoice" });
   ApInvoice.belongsTo(PurchaseOrder, { foreignKey: "po_id", as: "order" });
+
+  // PurchaseOrder ↔ Partner (Supplier)
+
+  PurchaseOrder.belongsTo(Partner, {
+    foreignKey: "supplier_id",
+    as: "supplier",
+  });
+
+  Partner.hasMany(PurchaseOrder, {
+    foreignKey: "supplier_id",
+    as: "purchaseOrders",
+  });
 
   // PurchaseOrder ↔ user
   User.hasMany(PurchaseOrder, {
@@ -362,6 +382,15 @@ Partner.hasMany(ArReceipt, {
     foreignKey: "ap_invoice_id",
     as: "invoice",
   });
+
+  ApInvoice.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
+  Branch.hasMany(ApInvoice, { foreignKey: "branch_id", as: "apInvoices" });
+
+  ApInvoice.belongsTo(User, { as: "creator", foreignKey: "created_by" });
+  ApInvoice.belongsTo(User, { as: "approver", foreignKey: "approved_by" });
+
+  ApPayment.belongsTo(User, { as: "creator", foreignKey: "created_by" });
+  ApPayment.belongsTo(User, { as: "approver", foreignKey: "approved_by" });
 
   // =====================
   // INVENTORY

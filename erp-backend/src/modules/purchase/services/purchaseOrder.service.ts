@@ -5,9 +5,9 @@ import { StockMoveLine } from "../../inventory/models/stockMoveLine.model";
 import { StockMove } from "../../inventory/models/stockMove.model";
 import { productService } from "../../product/services/product.service";
 import { JwtPayload } from "../../../core/types/jwt";
-import { User } from "../../../models";
+import { ApInvoice, Branch, Partner, User } from "../../../models";
 import { Role } from "../../../core/types/enum";
-import { Op } from "sequelize";
+import { literal, Op } from "sequelize";
 
 export const purchaseOrderService = {
   async getAllPO(user: JwtPayload) {
@@ -349,5 +349,38 @@ export const purchaseOrderService = {
         message: `Sản phẩm ${productResult?.name} vượt quá số lượng Purchase Order còn lại. Còn lại: ${remaining}, nhập: ${inputQty}`,
       };
     }
+  },
+
+  async getAvailablePurchaseOrders(user: any) {
+    return PurchaseOrder.findAll({
+      where: {
+        branch_id: user.branch_id,
+        status: "confirmed",
+        "$invoice.id$": { [Op.is]: null }, // 👈 filter PO chưa có invoice
+      },
+      include: [
+        {
+          model: ApInvoice,
+          as: "invoice",
+          required: false,
+        },
+        {
+          model: User,
+          as: "creator",
+          attributes: ["id", "full_name", "email", "phone", "avatar_url"],
+        },
+        {
+          model: User,
+          as: "approver",
+          attributes: ["id", "email", "full_name", "phone", "avatar_url"],
+        },
+        {
+          model: Partner,
+          as: "supplier",
+          attributes: ["id", "email", "name", "phone"],
+        },
+      ],
+      order: [["created_at", "DESC"]],
+    });
   },
 };
