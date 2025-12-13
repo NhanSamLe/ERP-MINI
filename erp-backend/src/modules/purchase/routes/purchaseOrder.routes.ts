@@ -8,8 +8,19 @@ const router = Router();
 
 router.get(
   "/",
-  authMiddleware([Role.PURCHASE, Role.PURCHASEMANAGER, Role.WHSTAFF, Role.WHMANAGER, Role.ACCOUNT]),
+  authMiddleware([
+    Role.PURCHASE,
+    Role.PURCHASEMANAGER,
+    Role.WHSTAFF,
+    Role.WHMANAGER,
+    Role.ACCOUNT,
+  ]),
   purchaseOrderController.getAllPO
+);
+router.get(
+  "/available-for-invoice",
+  authMiddleware([Role.PURCHASE, Role.ACCOUNT]),
+  purchaseOrderController.getAvailableForInvoice
 );
 
 router.get(
@@ -24,7 +35,13 @@ router.get(
 );
 router.get(
   "/:id",
-  authMiddleware([Role.PURCHASE, Role.PURCHASEMANAGER, Role.WHSTAFF, Role.WHMANAGER, Role.ACCOUNT]),
+  authMiddleware([
+    Role.PURCHASE,
+    Role.PURCHASEMANAGER,
+    Role.WHSTAFF,
+    Role.WHMANAGER,
+    Role.ACCOUNT,
+  ]),
   purchaseOrderController.getPOById
 );
 

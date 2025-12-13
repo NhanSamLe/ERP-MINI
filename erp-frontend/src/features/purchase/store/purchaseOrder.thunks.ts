@@ -1,6 +1,7 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { purchaseOrderService } from "../purchaseOrder.service";
+import { purchaseOrderService } from "./services/purchaseOrder.service";
 import {
+  PurchaseOrder,
   PurchaseOrderCreate,
   PurchaseOrderUpdate,
 } from "./purchaseOrder.types";
@@ -17,6 +18,18 @@ export const fetchPurchaseOrdersThunk = createAsyncThunk(
     }
   }
 );
+
+export const getPurchaseOrdersAvailableForInvoiceThunk = createAsyncThunk<
+  PurchaseOrder[],
+  void,
+  { rejectValue: string }
+>("purchaseOrder/getAvailableForInvoice", async (_, { rejectWithValue }) => {
+  try {
+    return await purchaseOrderService.getAvailableForInvoice();
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
 
 export const fetchPurchaseOrderByIdThunk = createAsyncThunk(
   "purchaseOrder/fetchOne",

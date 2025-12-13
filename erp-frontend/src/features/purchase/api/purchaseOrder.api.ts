@@ -11,6 +11,11 @@ export const purchaseOrderApi = {
     return res.data;
   },
 
+  getAvailableForInvoice: async (): Promise<PurchaseOrder[]> => {
+    const res = await axiosClient.get("/purchase-order/available-for-invoice");
+    return res.data.data;
+  },
+
   getById: async (id: number): Promise<PurchaseOrder> => {
     const res = await axiosClient.get(`/purchase-order/${id}`);
     return res.data;
