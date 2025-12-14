@@ -32,6 +32,7 @@ import payrollItemReducer from "../features/hrm/store/payrollItem/payrollItem.sl
 import payrollRunReducer from "../features/hrm/store/payrollRun/payrollRun.slice";
 import { employeeReducer } from "../features/hrm/store/employee/employee.slice";
 import apInvoiceRouter from "../features/purchase/store/apInvoice/apInvoice.slice";
+import apPaymentReducer from "@/features/purchase/store/apPayment";
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -62,6 +63,7 @@ const rootReducer = combineReducers({
   payrollRun: payrollRunReducer,
   employee: employeeReducer,
   apInvoice: apInvoiceRouter,
+  apPayment: apPaymentReducer
 });
 
 export default rootReducer;

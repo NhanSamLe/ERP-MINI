@@ -118,4 +118,41 @@ export const apInvoiceController = {
       });
     }
   },
+  async getPostedSummaryBySupplier(req: Request, res: Response) {
+    const user = (req as any).user;
+
+    try {
+      const supplierId = Number(req.query.supplier_id);
+      if (!supplierId) {
+        return res.status(400).json({
+          success: false,
+          message: "supplier_id is required",
+        });
+      }
+
+      const result = await apInvoiceService.getPostedSummaryBySupplier(
+        supplierId,
+        user
+      );
+
+      return res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message || "Internal server error",
+      });
+    }
+  },
+  async getPostedSuppliers(req: Request, res: Response) {
+    const user = (req as any).user;
+    try {
+      const data = await apInvoiceService.getPostedSuppliers(user);
+      res.json({ success: true, data });
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e.message });
+    }
+  },
 };

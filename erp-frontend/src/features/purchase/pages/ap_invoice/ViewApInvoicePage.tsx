@@ -143,6 +143,7 @@ export default function ViewApInvoicePage() {
       setSubmitting(true);
       await dispatch(approveApInvoiceThunk(invoice.id)).unwrap();
       toast.success("Invoice approved successfully");
+      setOpenApproveModal(false);
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {

@@ -8,6 +8,8 @@ import ViewPurchaseOrderPage from "../features/purchase/pages/ViewPurchaseOrderP
 import { Roles } from "@/types/enum";
 import ApInvoicePages from "@/features/purchase/pages/ap_invoice/ApInvoicePages";
 import ViewApInvoicePage from "@/features/purchase/pages/ap_invoice/ViewApInvoicePage";
+import ApPaymentPages from "@/features/purchase/pages/ap_payment/ApPaymentPages";
+import ViewApPaymentPage from "@/features/purchase/pages/ap_payment/ViewApPaymentPage";
 
 const purchaseRoutes: RouteObject[] = [
   {
@@ -40,6 +42,24 @@ const purchaseRoutes: RouteObject[] = [
     element: (
       <ProtectedRoute allowedRoles={[Roles.ACCOUNT, Roles.CHACC]}>
         <ApInvoicePages />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "purchase/payments",
+    element: (
+      <ProtectedRoute allowedRoles={[Roles.ACCOUNT, Roles.CHACC]}>
+        <ApPaymentPages />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "purchase/payments/:id",
+    element: (
+      <ProtectedRoute allowedRoles={[Roles.ACCOUNT, Roles.CHACC]}>
+        <ViewApPaymentPage />
       </ProtectedRoute>
     ),
   },

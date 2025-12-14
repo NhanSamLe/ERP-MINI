@@ -392,6 +392,25 @@ export function applyAssociations() {
   ApInvoice.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
   Branch.hasMany(ApInvoice, { foreignKey: "branch_id", as: "apInvoices" });
 
+  ApPayment.belongsTo(Branch, {
+    foreignKey: "branch_id",
+    as: "branch",
+  });
+
+  Branch.hasMany(ApPayment, {
+    foreignKey: "branch_id",
+    as: "ap_payments",
+  });
+
+  ApPayment.belongsTo(Partner, {
+    foreignKey: "supplier_id",
+    as: "supplier",
+  });
+
+  Partner.hasMany(ApPayment, {
+    foreignKey: "supplier_id",
+    as: "payments",
+  });
   ApInvoice.belongsTo(User, { as: "creator", foreignKey: "created_by" });
   ApInvoice.belongsTo(User, { as: "approver", foreignKey: "approved_by" });
 

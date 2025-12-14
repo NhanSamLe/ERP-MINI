@@ -1,8 +1,9 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { apInvoiceApi } from "../../api/apInvoice.api";
-import { ApInvoice } from "./apInvoice.types";
+import { ApInvoice, ApPostedSummary } from "./apInvoice.types";
 import { getErrorMessage } from "@/utils/ErrorHelper";
 import { apInvoiceService } from "../services/apInvoice.service";
+import { Partner } from "@/features/partner/store/partner.types";
 
 /* ================= GET ALL ================= */
 export const getAllApInvoicesThunk = createAsyncThunk<
@@ -79,5 +80,29 @@ export const rejectApInvoiceThunk = createAsyncThunk<
     return await apInvoiceApi.reject(id, reason);
   } catch (error) {
     return rejectWithValue(getErrorMessage(error));
+  }
+});
+
+export const fetchApPostedSummaryThunk = createAsyncThunk<
+  ApPostedSummary,
+  number,
+  { rejectValue: string }
+>("apInvoice/fetchPostedSummary", async (supplierId, { rejectWithValue }) => {
+  try {
+    return await apInvoiceService.getPostedSummaryBySupplier(supplierId);
+  } catch (e) {
+    return rejectWithValue(getErrorMessage(e));
+  }
+});
+
+export const fetchPostedSuppliersThunk = createAsyncThunk<
+  Partner[],
+  void,
+  { rejectValue: string }
+>("apInvoice/fetchPostedSuppliers", async (_, { rejectWithValue }) => {
+  try {
+    return await apInvoiceService.getPostedSuppliers();
+  } catch (e) {
+    return rejectWithValue(getErrorMessage(e));
   }
 });

@@ -275,4 +275,83 @@ export const apInvoiceService = {
 
     return this.getById(invoice.id, user);
   },
+
+  async getPostedSummaryBySupplier(supplierId: number, user: any) {
+    const invoices = await ApInvoice.findAll({
+      where: {
+        branch_id: user.branch_id,
+        status: "posted",
+      },
+      include: [
+        {
+          model: PurchaseOrder,
+          as: "order",
+          required: true,
+          where: {
+            supplier_id: supplierId,
+          },
+          attributes: ["id", "po_no", "supplier_id"],
+          include: [
+            {
+              model: Partner,
+              as: "supplier",
+              attributes: ["id", "name"],
+            },
+          ],
+        },
+      ],
+      attributes: [
+        "id",
+        "invoice_no",
+        "invoice_date",
+        "total_after_tax",
+        "po_id",
+      ],
+      order: [["invoice_date", "ASC"]],
+    });
+
+    const totalAmount = invoices.reduce(
+      (sum, inv: any) => sum + Number(inv.total_after_tax),
+      0
+    );
+
+    return {
+      invoices,
+      total_amount: totalAmount,
+    };
+  },
+
+  async getPostedSuppliers(user: any) {
+    const invoices = await ApInvoice.findAll({
+      where: {
+        branch_id: user.branch_id,
+        status: "posted",
+      },
+      include: [
+        {
+          model: PurchaseOrder,
+          as: "order",
+          required: true,
+          include: [
+            {
+              model: Partner,
+              as: "supplier",
+            },
+          ],
+        },
+      ],
+    });
+    console.log("CHECK: ", invoices);
+
+    const map = new Map<number, any>();
+
+    invoices.forEach((inv: any) => {
+      const supplier = inv.order?.supplier;
+      if (supplier && !map.has(supplier.id)) {
+        map.set(supplier.id, supplier);
+      }
+    });
+
+    return Array.from(map.values());
+  },
 };
