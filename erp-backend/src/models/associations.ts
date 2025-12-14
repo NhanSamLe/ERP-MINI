@@ -364,6 +364,12 @@ export function applyAssociations() {
     as: "invoice",
   });
 
+  // ApInvoice ↔ Product
+  ApInvoiceLine.belongsTo(Product, {
+    foreignKey: "product_id",
+    as: "product",
+  });
+
   // ApPayment ↔ Allocations
   ApPayment.hasMany(ApPaymentAllocation, {
     foreignKey: "payment_id",

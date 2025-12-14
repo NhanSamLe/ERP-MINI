@@ -60,6 +60,7 @@ export default function CreatePurchaseOrderPage() {
 
   const user = useSelector((state: RootState) => state.auth.user);
   const partners = useSelector((state: RootState) => state.partners);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     dispatch(loadPartners({ type: "supplier" }));
@@ -229,11 +230,15 @@ export default function CreatePurchaseOrderPage() {
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting) return; // ⛔ chống spam click
+
     try {
+      setIsSubmitting(true);
+
       const today = new Date().toISOString().split("T")[0];
 
       if (date > today) {
-        alert("Date cannot be in the future!");
+        toast.error("Date cannot be in the future!");
         return;
       }
       if (!supplierId) return toast.error("Supplier is required");
@@ -253,7 +258,7 @@ export default function CreatePurchaseOrderPage() {
         total_tax: totalOrderTax,
         total_after_tax: totalAfterTax,
         status: "draft",
-        description: description,
+        description,
         lines: lines.map((l) => ({
           product_id: Number(l.product_id),
           quantity: Number(l.quantity),
@@ -262,13 +267,18 @@ export default function CreatePurchaseOrderPage() {
           line_total: Number(l.line_total),
         })),
       };
+
       console.log("➡️ SUBMIT BODY:", requestBody);
+
       await dispatch(createPurchaseOrderThunk(requestBody)).unwrap();
+
       toast.success("Purchase Order created!");
       navigate("/purchase/orders");
     } catch (error) {
       console.error("Failed to create Purchase Order:", error);
       toast.error("Failed to create Purchase Order");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -533,10 +543,18 @@ export default function CreatePurchaseOrderPage() {
           Cancel
         </Button>
         <Button
-          className="bg-orange-500 hover:bg-orange-600 px-8"
+          className="bg-orange-500 hover:bg-orange-600 px-8 flex items-center gap-2"
           onClick={handleSubmit}
+          disabled={isSubmitting}
         >
-          Submit
+          {isSubmitting ? (
+            <>
+              <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+              Submitting...
+            </>
+          ) : (
+            "Submit"
+          )}
         </Button>
       </div>
     </div>

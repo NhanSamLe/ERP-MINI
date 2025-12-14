@@ -34,7 +34,23 @@ export interface UserLite {
   phone: string;
   avatar_url: string | null;
 }
+export interface ApInvoiceLine {
+  id: number;
+  product_id?: number;
+  description?: string;
+  quantity?: number;
+  unit_price?: string;
+  tax_rate_id?: number;
+  line_total?: string;
+  line_tax?: string;
+  line_total_after_tax?: string;
 
+  product?: {
+    id: number;
+    name: string;
+    image_url?: string | null;
+  };
+}
 export interface ApInvoice {
   id: number;
   po_id: number | null;
@@ -65,6 +81,7 @@ export interface ApInvoice {
   creator: UserLite;
   approver: UserLite | null;
   order?: PurchaseOrder;
+  lines?: ApInvoiceLine[];
 }
 
 export interface ApInvoiceCreate {

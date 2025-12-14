@@ -74,6 +74,7 @@ export default function EditPurchaseOrderPage() {
   const [branch, setBranch] = useState<Branch | null>(null);
 
   const [lines, setLines] = useState<LineItem[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (id) dispatch(fetchPurchaseOrderByIdThunk(Number(id)));
@@ -318,19 +319,24 @@ export default function EditPurchaseOrderPage() {
   };
 
   const handleSubmit = async () => {
-    const checkStatusOrder = await dispatch(
-      fetchPurchaseOrderByIdThunk(Number(id))
-    ).unwrap();
-    if (checkStatusOrder.status !== "draft") {
-      toast.error("This Purchase Order is no longer editable.");
-      navigate("/purchase/orders");
-      return;
-    }
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
     try {
+      const checkStatusOrder = await dispatch(
+        fetchPurchaseOrderByIdThunk(Number(id))
+      ).unwrap();
+
+      if (checkStatusOrder.status !== "draft") {
+        toast.error("This Purchase Order is no longer editable.");
+        navigate("/purchase/orders");
+        return;
+      }
+
       const today = new Date().toISOString().split("T")[0];
 
       if (date > today) {
-        alert("Date cannot be in the future!");
+        toast.error("Date cannot be in the future!");
         return;
       }
       if (!branch) return toast.error("Branch is required");
@@ -371,12 +377,10 @@ export default function EditPurchaseOrderPage() {
         ),
         total_tax: lines.reduce((sum, l) => sum + l.tax_amount, 0),
         total_after_tax: lines.reduce((sum, l) => sum + l.line_total, 0),
-        description: description,
+        description,
         lines: updatedLines,
         deletedLineIds: deletedLineIds.length ? deletedLineIds : undefined,
       };
-
-      console.log("➡️ UPDATE BODY:", requestBody);
 
       await dispatch(
         updatePurchaseOrderThunk({ id: Number(id), body: requestBody })
@@ -387,6 +391,8 @@ export default function EditPurchaseOrderPage() {
     } catch (error) {
       console.error("Failed to update Purchase Order:", error);
       toast.error("Failed to update Purchase Order");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -654,10 +660,18 @@ export default function EditPurchaseOrderPage() {
           Cancel
         </Button>
         <Button
-          className="bg-orange-500 hover:bg-orange-600 px-8"
+          className="bg-orange-500 hover:bg-orange-600 px-8 flex items-center gap-2"
           onClick={handleSubmit}
+          disabled={isSubmitting}
         >
-          Submit
+          {isSubmitting ? (
+            <>
+              <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+              Submitting...
+            </>
+          ) : (
+            "Submit"
+          )}
         </Button>
       </div>
     </div>

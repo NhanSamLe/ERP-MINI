@@ -1,7 +1,12 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { getApInvoiceByIdThunk } from "../../store/apInvoice/apInvoice.thunks";
+import {
+  approveApInvoiceThunk,
+  getApInvoiceByIdThunk,
+  rejectApInvoiceThunk,
+  submitApInvoiceThunk,
+} from "../../store/apInvoice/apInvoice.thunks";
 import {
   Loader2,
   FileText,
@@ -21,6 +26,13 @@ import {
 
 import { useNavigate } from "react-router-dom";
 import { Roles } from "@/types/enum";
+import { toast } from "react-toastify";
+import { getErrorMessage } from "@/utils/ErrorHelper";
+import {
+  ApInvoiceApprovalStatus,
+  ApInvoiceStatus,
+} from "../../store/apInvoice/apInvoice.types";
+import { PurchaseOrderStatus } from "../../store/purchaseOrder.types";
 
 export default function ViewApInvoicePage() {
   const { id } = useParams();
@@ -28,6 +40,12 @@ export default function ViewApInvoicePage() {
   const { selected, loading } = useAppSelector((s) => s.apInvoice);
   const navigate = useNavigate();
   const { user } = useAppSelector((s) => s.auth);
+
+  const [openSubmitModal, setOpenSubmitModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [openApproveModal, setOpenApproveModal] = useState(false);
+  const [openRejectModal, setOpenRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
 
   useEffect(() => {
     if (id) dispatch(getApInvoiceByIdThunk(Number(id)));
@@ -63,14 +81,99 @@ export default function ViewApInvoicePage() {
     invoice.created_by === user.id &&
     invoice.approval_status === "draft";
 
-  const getStatusBadge = (status: string) => {
-    const colors = {
-      approved: "bg-emerald-50 text-emerald-700 border-emerald-200",
-      pending: "bg-amber-50 text-amber-700 border-amber-200",
-      rejected: "bg-red-50 text-red-700 border-red-200",
+  const canApproveOrReject =
+    user?.role.code === Roles.CHACC &&
+    invoice.approval_status === "waiting_approval" &&
+    invoice.created_by !== user.id &&
+    user?.branch.id === invoice.branch_id;
+
+  const getInvoiceStatusBadge = (status: ApInvoiceStatus) => {
+    const colors: Record<ApInvoiceStatus, string> = {
       draft: "bg-gray-50 text-gray-700 border-gray-200",
+      posted: "bg-blue-50 text-blue-700 border-blue-200",
+      paid: "bg-emerald-50 text-emerald-700 border-emerald-200",
+      cancelled: "bg-red-50 text-red-700 border-red-200",
     };
-    return colors[status.toLowerCase() as keyof typeof colors] || colors.draft;
+
+    return colors[status];
+  };
+
+  const getApprovalStatusBadge = (status: ApInvoiceApprovalStatus) => {
+    const colors: Record<ApInvoiceApprovalStatus, string> = {
+      draft: "bg-gray-50 text-gray-700 border-gray-200",
+      waiting_approval: "bg-amber-50 text-amber-700 border-amber-200",
+      approved: "bg-emerald-50 text-emerald-700 border-emerald-200",
+      rejected: "bg-red-50 text-red-700 border-red-200",
+    };
+
+    return colors[status];
+  };
+
+  const getPoStatusBadge = (status: PurchaseOrderStatus) => {
+    const map: Record<PurchaseOrderStatus, string> = {
+      draft: "bg-gray-50 text-gray-700 border-gray-200",
+      waiting_approval: "bg-amber-50 text-amber-700 border-amber-200",
+      confirmed: "bg-blue-50 text-blue-700 border-blue-200",
+      partially_received: "bg-purple-50 text-purple-700 border-purple-200",
+      completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
+      cancelled: "bg-red-50 text-red-700 border-red-200",
+    };
+    return map[status];
+  };
+
+  const handleSubmitForApproval = async () => {
+    if (!invoice?.id || submitting) return;
+
+    try {
+      setSubmitting(true);
+      await dispatch(submitApInvoiceThunk(invoice.id)).unwrap();
+      toast.success("Invoice submitted for approval successfully");
+      setOpenSubmitModal(false);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleApprove = async () => {
+    if (!invoice?.id) return;
+
+    try {
+      setSubmitting(true);
+      await dispatch(approveApInvoiceThunk(invoice.id)).unwrap();
+      toast.success("Invoice approved successfully");
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  const handleReject = async () => {
+    if (!invoice?.id) return;
+
+    if (!rejectReason.trim()) {
+      toast.warning("Please enter reject reason");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      await dispatch(
+        rejectApInvoiceThunk({
+          id: invoice.id,
+          reason: rejectReason.trim(),
+        })
+      ).unwrap();
+
+      toast.success("Invoice rejected successfully");
+      setOpenRejectModal(false);
+      setRejectReason("");
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -106,15 +209,36 @@ export default function ViewApInvoicePage() {
             {canSubmitForApproval && (
               <button
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500 text-white font-semibold text-sm shadow-md hover:bg-orange-600 transition"
-                onClick={() => {
-                  // TODO: dispatch submit thunk
-                  console.log("Submit for approval", invoice.id);
-                }}
+                onClick={() => setOpenSubmitModal(true)}
               >
                 <Send className="w-4 h-4" />
                 Submit for approval
               </button>
             )}
+            {/* CHACC ACTIONS */}
+            {canApproveOrReject && (
+              <>
+                {/* APPROVE */}
+                <button
+                  disabled={submitting}
+                  onClick={() => setOpenApproveModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 text-white font-semibold text-sm shadow-md hover:bg-emerald-600 transition disabled:opacity-60"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  Approve
+                </button>
+
+                {/* REJECT */}
+                <button
+                  disabled={submitting}
+                  onClick={() => setOpenRejectModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500 text-white font-semibold text-sm shadow-md hover:bg-red-600 transition disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+              </>
+            )}
+
             {/* BACK BUTTON */}
             <button
               onClick={() => navigate("/purchase/invoices")}
@@ -126,7 +250,7 @@ export default function ViewApInvoicePage() {
 
             {/* STATUS */}
             <div
-              className={`px-4 py-2 rounded-xl border-2 font-semibold text-sm flex items-center gap-2 ${getStatusBadge(
+              className={`px-4 py-2 rounded-xl border-2 font-semibold text-sm flex items-center gap-2   ${getInvoiceStatusBadge(
                 invoice.status
               )}`}
             >
@@ -135,7 +259,7 @@ export default function ViewApInvoicePage() {
             </div>
 
             <div
-              className={`px-4 py-2 rounded-xl border-2 font-semibold text-sm flex items-center gap-2 ${getStatusBadge(
+              className={`px-4 py-2 rounded-xl border-2 font-semibold text-sm flex items-center gap-2  ${getApprovalStatusBadge(
                 invoice.approval_status
               )}`}
             >
@@ -187,6 +311,25 @@ export default function ViewApInvoicePage() {
                 value={invoice.approver.full_name}
               />
             )}
+            {invoice.approval_status === "rejected" &&
+              invoice.reject_reason && (
+                <div className="mt-4 rounded-xl border-2 border-red-200 bg-red-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-red-500 flex items-center justify-center flex-shrink-0">
+                      <Clock className="w-4 h-4 text-white" />
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-bold text-red-700 mb-1">
+                        Rejection Reason
+                      </p>
+                      <p className="text-sm text-red-800 whitespace-pre-line">
+                        {invoice.reject_reason}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
           </div>
         </div>
 
@@ -223,7 +366,7 @@ export default function ViewApInvoicePage() {
                 label="Status"
                 value={
                   <span
-                    className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusBadge(
+                    className={`px-3 py-1 rounded-full text-xs font-bold ${getPoStatusBadge(
                       po.status
                     )}`}
                   >
@@ -308,7 +451,7 @@ export default function ViewApInvoicePage() {
       )}
 
       {/* ================= PO LINES ================= */}
-      {po?.lines && po.lines.length > 0 && (
+      {invoice.lines && invoice.lines.length > 0 && (
         <div className="bg-white rounded-2xl border-2 border-gray-100 shadow-sm overflow-hidden">
           <div className="bg-gradient-to-r from-gray-50 to-white p-6 border-b-2 border-gray-100">
             <div className="flex items-center gap-3">
@@ -316,8 +459,12 @@ export default function ViewApInvoicePage() {
                 <Package className="w-5 h-5 text-orange-600" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-gray-900">Order Items</h2>
-                <p className="text-sm text-gray-500">{po.lines.length} items</p>
+                <h2 className="text-lg font-bold text-gray-900">
+                  Invoice Items
+                </h2>
+                <p className="text-sm text-gray-500">
+                  {invoice.lines.length} items
+                </p>
               </div>
             </div>
           </div>
@@ -342,7 +489,7 @@ export default function ViewApInvoicePage() {
               </thead>
 
               <tbody className="divide-y divide-gray-100">
-                {po.lines?.map((line, idx) => (
+                {invoice.lines?.map((line, idx) => (
                   <tr
                     key={line.id}
                     className="hover:bg-orange-50/30 transition-colors"
@@ -431,6 +578,154 @@ export default function ViewApInvoicePage() {
           />
         </div>
       </div>
+      {openSubmitModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 animate-in fade-in zoom-in">
+            {/* HEADER */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center">
+                <Send className="w-6 h-6 text-orange-600" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">
+                Submit for approval?
+              </h3>
+            </div>
+
+            {/* CONTENT */}
+            <p className="text-sm text-gray-600 mb-6">
+              Once submitted, this invoice will be sent for approval and you
+              will not be able to edit it anymore.
+            </p>
+
+            {/* ACTIONS */}
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setOpenSubmitModal(false)}
+                className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={submitting}
+                onClick={handleSubmitForApproval}
+                className={`px-4 py-2 rounded-xl font-semibold shadow-md transition
+    ${
+      submitting
+        ? "bg-orange-300 cursor-not-allowed"
+        : "bg-orange-500 hover:bg-orange-600 text-white"
+    }`}
+              >
+                {submitting ? "Submitting..." : "Confirm Submit"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {openApproveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            {/* HEADER */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-emerald-600" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">
+                Approve this invoice?
+              </h3>
+            </div>
+
+            {/* CONTENT */}
+            <p className="text-sm text-gray-600 mb-6">
+              This action will approve the invoice and allow further processing.
+            </p>
+
+            {/* ACTIONS */}
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setOpenApproveModal(false)}
+                className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                disabled={submitting}
+                onClick={async () => {
+                  await handleApprove();
+                  setOpenApproveModal(false);
+                }}
+                className={`px-4 py-2 rounded-xl font-semibold shadow-md transition
+            ${
+              submitting
+                ? "bg-emerald-300 cursor-not-allowed"
+                : "bg-emerald-500 hover:bg-emerald-600 text-white"
+            }`}
+              >
+                Confirm Approve
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {openRejectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 animate-in fade-in zoom-in">
+            {/* HEADER */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center">
+                <Clock className="w-6 h-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">
+                Reject this invoice?
+              </h3>
+            </div>
+
+            {/* CONTENT */}
+            <p className="text-sm text-gray-600 mb-3">
+              Please provide a reason for rejecting this invoice.
+            </p>
+
+            {/* REASON INPUT */}
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              rows={4}
+              placeholder="Enter reject reason..."
+              className="w-full rounded-xl border border-gray-300 p-3 text-sm
+        focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-red-400
+        resize-none"
+            />
+
+            {/* ACTIONS */}
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setOpenRejectModal(false);
+                  setRejectReason("");
+                }}
+                className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+
+              <button
+                disabled={submitting}
+                onClick={handleReject}
+                className={`px-4 py-2 rounded-xl font-semibold shadow-md transition
+            ${
+              submitting
+                ? "bg-red-300 cursor-not-allowed"
+                : "bg-red-500 hover:bg-red-600 text-white"
+            }`}
+              >
+                {submitting ? "Rejecting..." : "Confirm Reject"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

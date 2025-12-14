@@ -51,4 +51,71 @@ export const apInvoiceController = {
       res.status(status).json({ message: e.message });
     }
   },
+
+  async submitForApproval(req: Request, res: Response) {
+    const user = (req as any).user;
+    try {
+      const invoiceId = Number(req.params.id);
+
+      const data = await apInvoiceService.submitForApproval(invoiceId, user);
+
+      res.json({
+        success: true,
+        message: "Invoice submitted for approval successfully",
+        data,
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
+
+  async approve(req: Request, res: Response) {
+    const user = (req as any).user;
+    try {
+      const id = Number(req.params.id);
+      const data = await apInvoiceService.approve(id, user);
+
+      res.json({
+        success: true,
+        message: "Invoice approved successfully",
+        data,
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
+
+  async reject(req: Request, res: Response) {
+    const user = (req as any).user;
+    try {
+      const id = Number(req.params.id);
+      const { reason } = req.body;
+
+      if (!reason || !reason.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Reject reason is required",
+        });
+      }
+
+      const data = await apInvoiceService.reject(id, reason, user);
+
+      res.json({
+        success: true,
+        message: "Invoice rejected successfully",
+        data,
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
 };

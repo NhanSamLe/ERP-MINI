@@ -18,19 +18,17 @@ export const apInvoiceApi = {
   },
 
   submitForApproval: async (id: number): Promise<ApInvoice> => {
-    const res = await axiosClient.patch(`ap/invoices/${id}/submit`);
-    return res.data;
+    const res = await axiosClient.post(`ap/invoices/${id}/submit`);
+    return res.data.data;
   },
 
   approve: async (id: number): Promise<ApInvoice> => {
     const res = await axiosClient.put(`ap/invoices/${id}/approve`);
-    return res.data;
+    return res.data.data;
   },
 
   reject: async (id: number, reason: string): Promise<ApInvoice> => {
-    const res = await axiosClient.put(`ap/invoices/${id}/reject`, {
-      reason,
-    });
-    return res.data;
+    const res = await axiosClient.put(`ap/invoices/${id}/reject`, { reason });
+    return res.data.data;
   },
 };

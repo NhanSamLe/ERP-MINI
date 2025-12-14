@@ -22,4 +22,22 @@ router.post(
   apInvoiceController.createFromPO
 );
 
+router.post(
+  "/:id/submit",
+  authMiddleware([Role.ACCOUNT]),
+  apInvoiceController.submitForApproval
+);
+
+router.put(
+  "/:id/approve",
+  authMiddleware([Role.CHACC]),
+  apInvoiceController.approve
+);
+
+router.put(
+  "/:id/reject",
+  authMiddleware([Role.CHACC]),
+  apInvoiceController.reject
+);
+
 export default router;
