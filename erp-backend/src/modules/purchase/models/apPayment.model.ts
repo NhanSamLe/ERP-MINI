@@ -8,7 +8,7 @@ export interface ApPaymentAttrs {
   payment_date?: Date;
   amount?: number;
   method: "cash" | "bank" | "transfer";
-  status: "draft" | "posted";
+  status: "draft" | "posted" | "cancelled";
   approval_status: "draft" | "waiting_approval" | "approved" | "rejected";
   created_by: number;
   approved_by?: number | null;
@@ -30,7 +30,7 @@ export class ApPayment
   public payment_date?: Date;
   public amount?: number;
   public method!: "cash" | "bank" | "transfer";
-  public status!: "draft" | "posted";
+  public status!: "draft" | "posted" | "cancelled";
   public approval_status!:
     | "draft"
     | "waiting_approval"
@@ -55,7 +55,10 @@ ApPayment.init(
       type: DataTypes.ENUM("cash", "bank", "transfer"),
       allowNull: false,
     },
-    status: { type: DataTypes.ENUM("draft", "posted"), defaultValue: "draft" },
+    status: {
+      type: DataTypes.ENUM("draft", "posted", "cancelled"),
+      defaultValue: "draft",
+    },
     approval_status: {
       type: DataTypes.ENUM("draft", "waiting_approval", "approved", "rejected"),
       defaultValue: "draft",

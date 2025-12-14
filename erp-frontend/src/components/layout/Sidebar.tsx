@@ -106,6 +106,11 @@ const menuItems: MenuItem[] = [
         allowedRoles: ["ACCOUNT", "CHACC"],
       },
       {
+        name: "Payments",
+        path: "purchase/payments",
+        allowedRoles: ["ACCOUNT", "CHACC"],
+      },
+      {
         name: "Vendors",
         path: "/purchase/vendors",
         allowedRoles: ["PURCHASE", "PURCHASEMANAGER"],

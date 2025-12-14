@@ -1,5 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { ApInvoice } from "./apInvoice.types";
+import { ApInvoice, ApPostedSummary } from "./apInvoice.types";
 import {
   getAllApInvoicesThunk,
   getApInvoiceByIdThunk,
@@ -7,11 +7,13 @@ import {
   approveApInvoiceThunk,
   rejectApInvoiceThunk,
   createApInvoiceFromPoThunk,
+  fetchApPostedSummaryThunk,
 } from "./apInvoice.thunks";
 
 interface ApInvoiceState {
   list: ApInvoice[];
   selected?: ApInvoice;
+  postedSummary?: ApPostedSummary;
   loading: boolean;
   error?: string;
 }
@@ -73,6 +75,18 @@ const apInvoiceSlice = createSlice({
       })
       .addCase(rejectApInvoiceThunk.fulfilled, (state, action) => {
         updateInvoiceInState(state, action.payload);
+      })
+
+      .addCase(fetchApPostedSummaryThunk.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchApPostedSummaryThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        state.postedSummary = action.payload;
+      })
+      .addCase(fetchApPostedSummaryThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       });
   },
 });

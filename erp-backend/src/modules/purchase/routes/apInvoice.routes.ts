@@ -11,6 +11,16 @@ router.get(
   apInvoiceController.getAll
 );
 router.get(
+  "/posted-summary",
+  authMiddleware([Role.ACCOUNT, Role.CHACC]),
+  apInvoiceController.getPostedSummaryBySupplier
+);
+router.get(
+  "/posted-suppliers",
+  authMiddleware([Role.ACCOUNT, Role.CHACC]),
+  apInvoiceController.getPostedSuppliers
+);
+router.get(
   "/:id",
   authMiddleware([Role.ACCOUNT, Role.CHACC]),
   apInvoiceController.getById

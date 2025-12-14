@@ -1,5 +1,6 @@
+import { Partner } from "@/features/partner/store/partner.types";
 import { apInvoiceApi } from "../../api/apInvoice.api";
-import { ApInvoice } from "../apInvoice/apInvoice.types";
+import { ApInvoice, ApPostedSummary } from "../apInvoice/apInvoice.types";
 
 export const apInvoiceService = {
   /* ================= GET ALL ================= */
@@ -25,5 +26,15 @@ export const apInvoiceService = {
 
   async reject(id: number, reason: string) {
     return apInvoiceApi.reject(id, reason);
+  },
+
+  async getPostedSummaryBySupplier(
+    supplierId: number
+  ): Promise<ApPostedSummary> {
+    return await apInvoiceApi.getPostedSummaryBySupplier(supplierId);
+  },
+
+  async getPostedSuppliers(): Promise<Partner[]> {
+    return await apInvoiceApi.getPostedSuppliers();
   },
 };

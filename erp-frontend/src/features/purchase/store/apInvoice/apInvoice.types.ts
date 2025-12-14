@@ -83,37 +83,24 @@ export interface ApInvoice {
   order?: PurchaseOrder;
   lines?: ApInvoiceLine[];
 }
-
-export interface ApInvoiceCreate {
-  po_id?: number | null;
-
+export interface ApInvoiceSummary {
+  id: number;
   invoice_no: string;
   invoice_date: string;
-  due_date: string;
-
-  total_before_tax: number;
-  total_tax: number;
-  total_after_tax: number;
-
-  branch_id: number;
-
-  status?: ApInvoiceStatus;
-  approval_status?: ApInvoiceApprovalStatus;
+  total_after_tax: string;
+  po_id: number;
+  order: {
+    id: number;
+    po_no: string;
+    supplier_id: number;
+    supplier: {
+      id: number;
+      name: string;
+    };
+  };
 }
 
-export interface ApInvoiceUpdate {
-  po_id?: number | null;
-
-  invoice_no?: string;
-  invoice_date?: string;
-  due_date?: string;
-
-  total_before_tax?: number;
-  total_tax?: number;
-  total_after_tax?: number;
-
-  status?: ApInvoiceStatus;
-  approval_status?: ApInvoiceApprovalStatus;
-
-  reject_reason?: string;
+export interface ApPostedSummary {
+  invoices: ApInvoiceSummary[];
+  total_amount: number;
 }
