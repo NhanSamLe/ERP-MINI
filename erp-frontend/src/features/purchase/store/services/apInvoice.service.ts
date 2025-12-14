@@ -14,4 +14,16 @@ export const apInvoiceService = {
   async createFromPO(poId: number): Promise<ApInvoice> {
     return await apInvoiceApi.createFromPO(poId);
   },
+
+  async submit(id: number) {
+    return apInvoiceApi.submitForApproval(id);
+  },
+
+  async approve(id: number) {
+    return apInvoiceApi.approve(id);
+  },
+
+  async reject(id: number, reason: string) {
+    return apInvoiceApi.reject(id, reason);
+  },
 };

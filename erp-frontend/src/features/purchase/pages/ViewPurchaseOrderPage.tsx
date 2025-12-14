@@ -182,7 +182,6 @@ export default function ViewPurchaseOrderPage() {
         fetchPurchaseOrderByIdThunk(finalPO.id)
       ).unwrap();
       console.log(">>> Refreshed PO:", refreshedPO);
-      toast.success("Submit susscess");
       setConfirmSubmit(false);
     } catch (error) {
       console.log(">>> Error caught:", error);

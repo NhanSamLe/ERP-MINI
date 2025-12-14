@@ -1,5 +1,5 @@
 import { Role } from "../../../core/types/enum";
-import { Partner, Product } from "../../../models";
+import { ApInvoiceLine, Partner, Product } from "../../../models";
 import { User } from "../../auth/models/user.model";
 import { Branch } from "../../company/models/branch.model";
 import { ApInvoice } from "../models/apInvoice.model";
@@ -66,20 +66,21 @@ export const apInvoiceService = {
         },
 
         {
+          model: ApInvoiceLine,
+          as: "lines",
+          include: [
+            {
+              model: Product,
+              as: "product",
+              attributes: ["id", "name", "image_url"],
+            },
+          ],
+        },
+
+        {
           model: PurchaseOrder,
           as: "order",
           include: [
-            {
-              model: PurchaseOrderLine,
-              as: "lines",
-              include: [
-                {
-                  model: Product,
-                  as: "product",
-                  attributes: ["id", "name", "image_url"],
-                },
-              ],
-            },
             {
               model: Partner,
               as: "supplier",
@@ -158,9 +159,120 @@ export const apInvoiceService = {
         reject_reason: null,
         branch_id: po.branch_id,
       });
+
+      const poLines = await PurchaseOrderLine.findAll({
+        where: { po_id: po.id },
+      });
+
+      if (!poLines.length) {
+        throw {
+          status: 400,
+          message: "Purchase Order has no line items",
+        };
+      }
+
+      const invoiceLines = poLines.map((line) => {
+        const base: any = {
+          ap_invoice_id: invoice.id,
+          product_id: line.product_id,
+          quantity: line.quantity,
+          unit_price: line.unit_price,
+          tax_rate_id: line.tax_rate_id,
+          line_total: line.line_total,
+          line_tax: line.line_tax,
+          line_total_after_tax: line.line_total_after_tax,
+        };
+
+        if (po.description) {
+          base.description = po.description;
+        }
+
+        return base;
+      });
+
+      await ApInvoiceLine.bulkCreate(invoiceLines);
       return this.getById(invoice.id, user);
     } catch (err) {
       throw err;
     }
+  },
+
+  async submitForApproval(id: number, user: any) {
+    const apInvoice = await this.getById(id, user);
+    if (!apInvoice) throw new Error("ApInvoice order not found");
+
+    if (apInvoice.branch_id !== user.branch_id) {
+      throw new Error("You cannot submit a invoice for another branch.");
+    }
+
+    if (apInvoice.status !== "draft") {
+      throw new Error("Only draft invoice can be submitted.");
+    }
+
+    if (apInvoice.created_by !== user.id)
+      throw new Error("Only the creator can submit");
+
+    apInvoice.approval_status = "waiting_approval";
+    apInvoice.submitted_at = new Date();
+
+    await apInvoice.save();
+
+    return this.getById(apInvoice.id, user);
+  },
+
+  async approve(id: number, user: any) {
+    if (user.role !== Role.CHACC) {
+      throw new Error("Only Chief Accountant can approve");
+    }
+
+    const invoice = await ApInvoice.findByPk(id);
+
+    if (!invoice) throw new Error("AP Invoice not found");
+
+    if (invoice.branch_id !== user.branch_id) {
+      throw new Error("You cannot approve invoice from another branch");
+    }
+
+    if (invoice.approval_status !== "waiting_approval") {
+      throw new Error("Invoice is not waiting for approval");
+    }
+
+    invoice.approval_status = "approved";
+    invoice.status = "posted";
+    invoice.approved_by = user.id;
+    invoice.approved_at = new Date();
+    invoice.reject_reason = null;
+
+    await invoice.save();
+
+    return this.getById(invoice.id, user);
+  },
+
+  async reject(id: number, reason: string, user: any) {
+    if (user.role !== Role.CHACC) {
+      throw new Error("Only Chief Accountant can reject");
+    }
+
+    const invoice = await ApInvoice.findByPk(id);
+
+    if (!invoice) throw new Error("AP Invoice not found");
+
+    if (invoice.branch_id !== user.branch_id) {
+      throw new Error("You cannot reject invoice from another branch");
+    }
+
+    if (invoice.approval_status !== "waiting_approval") {
+      throw new Error("Invoice is not waiting for approval");
+    }
+
+    invoice.approval_status = "rejected";
+    invoice.status = "cancelled";
+    invoice.approved_by = user.id;
+    invoice.approved_at = new Date();
+    invoice.reject_reason = reason;
+
+    await invoice.save();
+
+    return this.getById(invoice.id, user);
   },
 };
