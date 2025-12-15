@@ -1,13 +1,18 @@
-import { purchaseOrderApi } from "./api/purchaseOrder.api";
+import { purchaseOrderApi } from "../../api/purchaseOrder.api";
 import {
   PurchaseOrder,
   PurchaseOrderCreate,
   PurchaseOrderUpdate,
-} from "./store/purchaseOrder.types";
+} from "../purchaseOrder.types";
 
 export const purchaseOrderService = {
   async getAllPO(): Promise<PurchaseOrder[]> {
     const res = await purchaseOrderApi.getAll();
+    return res;
+  },
+
+  async getAvailableForInvoice(): Promise<PurchaseOrder[]> {
+    const res = await purchaseOrderApi.getAvailableForInvoice();
     return res;
   },
 

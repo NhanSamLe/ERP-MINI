@@ -18,7 +18,11 @@ import { positionReducer } from "../features/hrm/store/position/position.slice";
 import { stockBalanceReducer } from "../features/inventory/store";
 import { warehouseReducer } from "../features/inventory/store";
 import { stockMoveReducer } from "../features/inventory/store";
-import { leadReducer, opportunityReducer, activityReducer } from "../features/crm/store";
+import {
+  leadReducer,
+  opportunityReducer,
+  activityReducer,
+} from "../features/crm/store";
 import saleOrderReducer from "@/features/sales/store/saleOrder.slice";
 import invoiceReducer from "@/features/sales/store/invoice.slice";
 import receiptReducer from "@/features/sales/store/receipt.slice";
@@ -27,6 +31,8 @@ import payrollPeriodReducer from "../features/hrm/store/payrollPeriod/payrollPer
 import payrollItemReducer from "../features/hrm/store/payrollItem/payrollItem.slice";
 import payrollRunReducer from "../features/hrm/store/payrollRun/payrollRun.slice";
 import { employeeReducer } from "../features/hrm/store/employee/employee.slice";
+import apInvoiceRouter from "../features/purchase/store/apInvoice/apInvoice.slice";
+import apPaymentReducer from "@/features/purchase/store/apPayment";
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -56,6 +62,8 @@ const rootReducer = combineReducers({
   payrollItem: payrollItemReducer,
   payrollRun: payrollRunReducer,
   employee: employeeReducer,
+  apInvoice: apInvoiceRouter,
+  apPayment: apPaymentReducer
 });
 
 export default rootReducer;

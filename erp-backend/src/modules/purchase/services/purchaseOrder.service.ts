@@ -5,9 +5,16 @@ import { StockMoveLine } from "../../inventory/models/stockMoveLine.model";
 import { StockMove } from "../../inventory/models/stockMove.model";
 import { productService } from "../../product/services/product.service";
 import { JwtPayload } from "../../../core/types/jwt";
-import { User } from "../../../models";
+import {
+  ApInvoice,
+  Branch,
+  Partner,
+  sequelize,
+  TaxRate,
+  User,
+} from "../../../models";
 import { Role } from "../../../core/types/enum";
-import { Op } from "sequelize";
+import { literal, Op } from "sequelize";
 
 export const purchaseOrderService = {
   async getAllPO(user: JwtPayload) {
@@ -61,7 +68,6 @@ export const purchaseOrderService = {
 
   async create(data: any, user: any) {
     const allowedRoles = ["PURCHASE"];
-
     if (!allowedRoles.includes(user.role)) {
       throw new Error("You do not have permission to create purchase orders.");
     }
@@ -69,33 +75,66 @@ export const purchaseOrderService = {
     if (data.branch_id !== user.branch_id) {
       throw new Error("You cannot create a purchase order for another branch.");
     }
-    const po = await PurchaseOrder.create({
-      branch_id: data.branch_id,
-      po_no: data.po_no,
-      supplier_id: data.supplier_id,
-      order_date: data.order_date,
-      created_by: user.id,
-      total_before_tax: data.total_before_tax,
-      total_tax: data.total_tax,
-      total_after_tax: data.total_after_tax,
-      status: "draft",
-      description: data.description,
+
+    // 👉 chỉ return poId trong transaction
+    const poId = await sequelize.transaction(async (t) => {
+      let totalBeforeTax = 0;
+      let totalTax = 0;
+      let totalAfterTax = 0;
+
+      const po = await PurchaseOrder.create(
+        {
+          branch_id: data.branch_id,
+          po_no: data.po_no,
+          supplier_id: data.supplier_id,
+          order_date: data.order_date,
+          created_by: user.id,
+          status: "draft",
+          description: data.description,
+        },
+        { transaction: t }
+      );
+
+      for (const line of data.lines) {
+        const calc = await this.calculateLine(line);
+
+        totalBeforeTax += calc.line_total;
+        totalTax += calc.line_tax;
+        totalAfterTax += calc.line_total_after_tax;
+
+        await PurchaseOrderLine.create(
+          {
+            po_id: po.id,
+            product_id: line.product_id,
+            quantity: line.quantity,
+            unit_price: line.unit_price,
+            tax_rate_id: line.tax_rate_id,
+            line_total: calc.line_total,
+            line_tax: calc.line_tax,
+            line_total_after_tax: calc.line_total_after_tax,
+          },
+          { transaction: t }
+        );
+      }
+
+      await po.update(
+        {
+          total_before_tax: totalBeforeTax,
+          total_tax: totalTax,
+          total_after_tax: totalAfterTax,
+        },
+        { transaction: t }
+      );
+
+      return po.id; // ✅ chỉ return id
     });
 
-    // 4. Tạo line
-    for (const line of data.lines) {
-      await PurchaseOrderLine.create({
-        ...line,
-        po_id: po.id,
-      });
-    }
-
-    return this.getPOById(po.id);
+    // 👉 transaction COMMIT xong mới query
+    return this.getPOById(poId);
   },
 
   async update(id: number, data: PurchaseOrderUpdateDto, user: any) {
     const allowedRoles = ["PURCHASE"];
-
     if (!allowedRoles.includes(user.role)) {
       throw new Error("You do not have permission to edit purchase orders.");
     }
@@ -120,48 +159,79 @@ export const purchaseOrderService = {
     if (po.created_by !== user.id)
       throw new Error("You can only modify your own orders");
 
-    await po.update({
-      branch_id: data.branch_id,
-      po_no: data.po_no,
-      supplier_id: data.supplier_id,
-      order_date: new Date(data.order_date),
-      total_before_tax: data.total_before_tax,
-      total_tax: data.total_tax,
-      total_after_tax: data.total_after_tax,
-      description: data.description,
-    });
+    await sequelize.transaction(async (t) => {
+      let totalBeforeTax = 0;
+      let totalTax = 0;
+      let totalAfterTax = 0;
 
-    if (data.deletedLineIds?.length) {
-      await PurchaseOrderLine.destroy({
-        where: { id: data.deletedLineIds, po_id: id },
-      });
-    }
+      await po.update(
+        {
+          branch_id: data.branch_id,
+          po_no: data.po_no,
+          supplier_id: data.supplier_id,
+          order_date: new Date(data.order_date),
+          description: data.description,
+        },
+        { transaction: t }
+      );
 
-    if (data.lines?.length) {
-      for (const line of data.lines) {
-        if (line.id) {
-          await PurchaseOrderLine.update(
-            {
-              product_id: line.product_id,
-              quantity: line.quantity,
-              unit_price: line.unit_price,
-              tax_rate_id: line.tax_rate_id,
-              line_total: line.line_total,
-            },
-            { where: { id: line.id, po_id: id } }
-          );
-        } else {
-          await PurchaseOrderLine.create({
-            po_id: id,
-            product_id: line.product_id,
-            quantity: line.quantity,
-            unit_price: line.unit_price,
-            tax_rate_id: line.tax_rate_id,
-            line_total: line.line_total,
-          });
+      if (data.deletedLineIds?.length) {
+        await PurchaseOrderLine.destroy({
+          where: { id: data.deletedLineIds, po_id: id },
+          transaction: t,
+        });
+      }
+
+      if (data.lines?.length) {
+        for (const line of data.lines) {
+          const calc = await this.calculateLine(line);
+
+          totalBeforeTax += calc.line_total;
+          totalTax += calc.line_tax;
+          totalAfterTax += calc.line_total_after_tax;
+
+          if (line.id) {
+            await PurchaseOrderLine.update(
+              {
+                product_id: line.product_id,
+                quantity: line.quantity,
+                unit_price: line.unit_price,
+                tax_rate_id: line.tax_rate_id,
+                line_total: calc.line_total,
+                line_tax: calc.line_tax,
+                line_total_after_tax: calc.line_total_after_tax,
+              },
+              { where: { id: line.id, po_id: id }, transaction: t }
+            );
+          } else {
+            await PurchaseOrderLine.create(
+              {
+                po_id: id,
+                product_id: line.product_id,
+                quantity: line.quantity,
+                unit_price: line.unit_price,
+                tax_rate_id: line.tax_rate_id,
+                line_total: calc.line_total,
+                line_tax: calc.line_tax,
+                line_total_after_tax: calc.line_total_after_tax,
+              },
+              { transaction: t }
+            );
+          }
         }
       }
-    }
+
+      await po.update(
+        {
+          total_before_tax: totalBeforeTax,
+          total_tax: totalTax,
+          total_after_tax: totalAfterTax,
+        },
+        { transaction: t }
+      );
+    });
+
+    // ✅ query sau commit
     return this.getPOById(id);
   },
 
@@ -349,5 +419,55 @@ export const purchaseOrderService = {
         message: `Sản phẩm ${productResult?.name} vượt quá số lượng Purchase Order còn lại. Còn lại: ${remaining}, nhập: ${inputQty}`,
       };
     }
+  },
+
+  async getAvailablePurchaseOrders(user: any) {
+    return PurchaseOrder.findAll({
+      where: {
+        branch_id: user.branch_id,
+        status: "confirmed",
+        "$invoice.id$": { [Op.is]: null }, // 👈 filter PO chưa có invoice
+      },
+      include: [
+        {
+          model: ApInvoice,
+          as: "invoice",
+          required: false,
+        },
+        {
+          model: User,
+          as: "creator",
+          attributes: ["id", "full_name", "email", "phone", "avatar_url"],
+        },
+        {
+          model: User,
+          as: "approver",
+          attributes: ["id", "email", "full_name", "phone", "avatar_url"],
+        },
+        {
+          model: Partner,
+          as: "supplier",
+          attributes: ["id", "email", "name", "phone"],
+        },
+      ],
+      order: [["created_at", "DESC"]],
+    });
+  },
+  async calculateLine(line: any) {
+    const taxRate = line.tax_rate_id
+      ? await TaxRate.findByPk(line.tax_rate_id)
+      : null;
+
+    const rate = taxRate ? Number(taxRate.rate) : 0;
+
+    const lineTotal = Number(line.quantity) * Number(line.unit_price);
+    const lineTax = (lineTotal * rate) / 100;
+    const lineTotalAfterTax = lineTotal + lineTax;
+
+    return {
+      line_total: lineTotal,
+      line_tax: lineTax,
+      line_total_after_tax: lineTotalAfterTax,
+    };
   },
 };

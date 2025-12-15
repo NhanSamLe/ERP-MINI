@@ -10,12 +10,16 @@ export interface ApInvoiceLineAttrs {
   unit_price?: number;
   tax_rate_id?: number;
   line_total?: number;
+  line_tax?: number; // tiền VAT từng dòng
+  line_total_after_tax?: number;
 }
 
 type ApInvoiceLineCreation = Optional<ApInvoiceLineAttrs, "id">;
 
-export class ApInvoiceLine extends Model<ApInvoiceLineAttrs, ApInvoiceLineCreation>
-  implements ApInvoiceLineAttrs {
+export class ApInvoiceLine
+  extends Model<ApInvoiceLineAttrs, ApInvoiceLineCreation>
+  implements ApInvoiceLineAttrs
+{
   public id!: number;
   public ap_invoice_id!: number;
   public product_id?: number;
@@ -24,6 +28,8 @@ export class ApInvoiceLine extends Model<ApInvoiceLineAttrs, ApInvoiceLineCreati
   public unit_price?: number;
   public tax_rate_id?: number;
   public line_total?: number;
+  public line_tax?: number;
+  public line_total_after_tax?: number;
 }
 
 ApInvoiceLine.init(
@@ -32,10 +38,18 @@ ApInvoiceLine.init(
     ap_invoice_id: { type: DataTypes.BIGINT, allowNull: false },
     product_id: { type: DataTypes.BIGINT },
     description: { type: DataTypes.STRING(255) },
-    quantity: { type: DataTypes.DECIMAL(18,3) },
-    unit_price: { type: DataTypes.DECIMAL(18,2) },
+    quantity: { type: DataTypes.DECIMAL(18, 3) },
+    unit_price: { type: DataTypes.DECIMAL(18, 2) },
     tax_rate_id: { type: DataTypes.BIGINT },
-    line_total: { type: DataTypes.DECIMAL(18,2) },
+    line_total: { type: DataTypes.DECIMAL(18, 2) },
+    line_tax: { type: DataTypes.DECIMAL(18, 2) },
+    line_total_after_tax: { type: DataTypes.DECIMAL(18, 2) },
   },
-  { sequelize, tableName: "ap_invoice_lines", timestamps: true, createdAt: "created_at", updatedAt: "updated_at" }
+  {
+    sequelize,
+    tableName: "ap_invoice_lines",
+    timestamps: true,
+    createdAt: "created_at",
+    updatedAt: "updated_at",
+  }
 );

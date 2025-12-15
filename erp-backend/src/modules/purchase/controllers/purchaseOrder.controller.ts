@@ -107,4 +107,13 @@ export const purchaseOrderController = {
       res.status(400).json({ message: error.message });
     }
   },
+  async getAvailableForInvoice(req: Request, res: Response) {
+    const user = (req as any).user;
+
+    const data = await purchaseOrderService.getAvailablePurchaseOrders(user);
+    return res.json({
+      success: true,
+      data,
+    });
+  },
 };

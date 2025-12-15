@@ -6,6 +6,10 @@ import CreatePuchaseOrderPage from "../features/purchase/pages/CreatePurchaseOrd
 import EditPurchaseOrderPage from "../features/purchase/pages/EditPurchaseOrderPage";
 import ViewPurchaseOrderPage from "../features/purchase/pages/ViewPurchaseOrderPage";
 import { Roles } from "@/types/enum";
+import ApInvoicePages from "@/features/purchase/pages/ap_invoice/ApInvoicePages";
+import ViewApInvoicePage from "@/features/purchase/pages/ap_invoice/ViewApInvoicePage";
+import ApPaymentPages from "@/features/purchase/pages/ap_payment/ApPaymentPages";
+import ViewApPaymentPage from "@/features/purchase/pages/ap_payment/ViewApPaymentPage";
 
 const purchaseRoutes: RouteObject[] = [
   {
@@ -19,8 +23,52 @@ const purchaseRoutes: RouteObject[] = [
   {
     path: "purchase/orders",
     element: (
-      <ProtectedRoute allowedRoles={[Roles.PURCHASE, Roles.PURCHASEMANAGER, Roles.ACCOUNT, Roles.WHSTAFF, Roles.CEO]}>
+      <ProtectedRoute
+        allowedRoles={[
+          Roles.PURCHASE,
+          Roles.PURCHASEMANAGER,
+          Roles.ACCOUNT,
+          Roles.WHSTAFF,
+          Roles.CEO,
+        ]}
+      >
         <PurchaseOrderPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "purchase/invoices",
+    element: (
+      <ProtectedRoute allowedRoles={[Roles.ACCOUNT, Roles.CHACC]}>
+        <ApInvoicePages />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "purchase/payments",
+    element: (
+      <ProtectedRoute allowedRoles={[Roles.ACCOUNT, Roles.CHACC]}>
+        <ApPaymentPages />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "purchase/payments/:id",
+    element: (
+      <ProtectedRoute allowedRoles={[Roles.ACCOUNT, Roles.CHACC]}>
+        <ViewApPaymentPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "purchase/invoices/:id",
+    element: (
+      <ProtectedRoute allowedRoles={[Roles.ACCOUNT, Roles.CHACC]}>
+        <ViewApInvoicePage />
       </ProtectedRoute>
     ),
   },
@@ -44,12 +92,18 @@ const purchaseRoutes: RouteObject[] = [
   {
     path: "purchase-orders/view/:id",
     element: (
-      <ProtectedRoute allowedRoles={[Roles.PURCHASE, Roles.PURCHASEMANAGER, Roles.WHSTAFF, Roles.ACCOUNT]}>
+      <ProtectedRoute
+        allowedRoles={[
+          Roles.PURCHASE,
+          Roles.PURCHASEMANAGER,
+          Roles.WHSTAFF,
+          Roles.ACCOUNT,
+        ]}
+      >
         <ViewPurchaseOrderPage />
       </ProtectedRoute>
     ),
   },
-  
 ];
 
 export default purchaseRoutes;

@@ -5,6 +5,7 @@ import { Button } from "../../../components/ui/Button";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState, AppDispatch } from "../../../store/store";
 import {
+  PreviewItem,
   Product,
   ProductUpdateInput,
 } from "../../../features/products/store/product.types";
@@ -54,8 +55,12 @@ export default function EditProductPage() {
     productData?.image_url || null
   );
 
-  const [previewGallery, setPreviewGallery] = useState<string[]>(
-    productData?.images?.map((img) => img.image_url) || []
+  const [previewGallery, setPreviewGallery] = useState<PreviewItem[]>(
+    productData?.images?.map<PreviewItem>((img) => ({
+      type: "old",
+      id: img.id,
+      url: img.image_url,
+    })) || []
   );
 
   const [deletedImageIds, setDeletedImageIds] = useState<number[]>([]);
@@ -92,7 +97,7 @@ export default function EditProductPage() {
 
   useEffect(() => {
     return () => {
-      previewGallery.forEach((url) => URL.revokeObjectURL(url));
+      previewGallery.forEach((p) => URL.revokeObjectURL(p.url));
       if (previewThumbnail) URL.revokeObjectURL(previewThumbnail);
     };
   }, [previewGallery, previewThumbnail]);
@@ -359,23 +364,32 @@ export default function EditProductPage() {
             </label>
 
             <div className="flex flex-wrap gap-4">
-              {previewGallery.map((url, i) => (
+              {previewGallery.map((p, i) => (
                 <div
                   key={i}
                   className="relative w-32 h-32 border rounded-xl overflow-hidden"
                 >
                   <img
-                    src={url}
+                    src={p.url}
                     alt={`Gallery ${i}`}
                     className="object-cover w-full h-full"
                   />
                   <button
                     type="button"
                     onClick={() => {
-                      const imgToDelete = productData?.images?.[i];
-                      if (imgToDelete) {
-                        setDeletedImageIds((prev) => [...prev, imgToDelete.id]);
+                      const item = previewGallery[i];
+
+                      if (item.type === "old" && item.id) {
+                        setDeletedImageIds((prev) => [...prev, item.id!]);
                       }
+
+                      if (item.type === "new" && item.file) {
+                        setProduct((prev) => ({
+                          ...prev,
+                          gallery: prev.gallery.filter((f) => f !== item.file),
+                        }));
+                      }
+
                       setPreviewGallery((prev) =>
                         prev.filter((_, idx) => idx !== i)
                       );
@@ -402,16 +416,17 @@ export default function EditProductPage() {
                     const files = e.target.files
                       ? Array.from(e.target.files)
                       : [];
-                    if (files.length > 0) {
-                      setProduct((prev) => {
-                        const newGallery = [...prev.gallery, ...files];
-                        setPreviewGallery([
-                          ...previewGallery,
-                          ...files.map((f) => URL.createObjectURL(f)),
-                        ]);
-                        return { ...prev, gallery: newGallery };
-                      });
-                    }
+                    const newPreviews: PreviewItem[] = files.map((file) => ({
+                      id: Date.now(),
+                      type: "new" as const,
+                      url: URL.createObjectURL(file),
+                      file,
+                    }));
+                    setPreviewGallery((prev) => [...prev, ...newPreviews]);
+                    setProduct((prev) => ({
+                      ...prev,
+                      gallery: [...prev.gallery, ...files], // chỉ lưu ảnh mới
+                    }));
                   }}
                 />
               </label>

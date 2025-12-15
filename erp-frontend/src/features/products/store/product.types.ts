@@ -1,4 +1,3 @@
-
 export interface Product {
   id: number;
   category_id?: number;
@@ -80,4 +79,11 @@ export interface ProductState {
   selectedProduct?: Product;
   loading: boolean;
   error: string | null;
+}
+
+export interface PreviewItem {
+  type: "old" | "new";
+  id?: number;
+  url: string;
+  file?: File;
 }

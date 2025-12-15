@@ -25,6 +25,8 @@ import payrollItemRoutes from "../modules/hrm/routes/payrollItem.routes";
 import payrollRunRoutes from "../modules/hrm/routes/payrollRun.routes";
 import glAccountRoutes from "../modules/finance/routes/glAccount.routes";
 import glJournalRoutes from "../modules/finance/routes/glJournal.routes";
+import apInvoiceRoutes from "../modules/purchase/routes/apInvoice.routes";
+import apPaymentRoutes from "../modules/purchase/routes/apPayment.route";
 const router = express.Router();
 
 router.use("/auth", authRoutes);
@@ -54,5 +56,8 @@ router.use("/hrm/payroll-items", payrollItemRoutes);
 router.use("/hrm/payroll-runs", payrollRunRoutes);
 router.use("/finance/gl-accounts", glAccountRoutes);
 router.use("/finance/gl-journals", glJournalRoutes);
+
+router.use("/ap/invoices", apInvoiceRoutes);
+router.use("/ap/payments", apPaymentRoutes);
 
 export default router;

@@ -9,12 +9,16 @@ export interface PurchaseOrderLineAttrs {
   unit_price?: number;
   tax_rate_id?: number;
   line_total?: number;
+  line_tax?: number;
+  line_total_after_tax?: number;
 }
 
 type PurchaseOrderLineCreation = Optional<PurchaseOrderLineAttrs, "id">;
 
-export class PurchaseOrderLine extends Model<PurchaseOrderLineAttrs, PurchaseOrderLineCreation>
-  implements PurchaseOrderLineAttrs {
+export class PurchaseOrderLine
+  extends Model<PurchaseOrderLineAttrs, PurchaseOrderLineCreation>
+  implements PurchaseOrderLineAttrs
+{
   public id!: number;
   public po_id!: number;
   public product_id?: number;
@@ -22,6 +26,8 @@ export class PurchaseOrderLine extends Model<PurchaseOrderLineAttrs, PurchaseOrd
   public unit_price?: number;
   public tax_rate_id?: number;
   public line_total?: number;
+  public line_tax?: number;
+  public line_total_after_tax?: number;
 }
 
 PurchaseOrderLine.init(
@@ -29,10 +35,18 @@ PurchaseOrderLine.init(
     id: { type: DataTypes.BIGINT, autoIncrement: true, primaryKey: true },
     po_id: { type: DataTypes.BIGINT, allowNull: false },
     product_id: { type: DataTypes.BIGINT },
-    quantity: { type: DataTypes.DECIMAL(18,3) },
-    unit_price: { type: DataTypes.DECIMAL(18,2) },
+    quantity: { type: DataTypes.DECIMAL(18, 3) },
+    unit_price: { type: DataTypes.DECIMAL(18, 2) },
     tax_rate_id: { type: DataTypes.BIGINT },
-    line_total: { type: DataTypes.DECIMAL(18,2) },
+    line_total: { type: DataTypes.DECIMAL(18, 2) },
+    line_tax: { type: DataTypes.DECIMAL(18, 2) },
+    line_total_after_tax: { type: DataTypes.DECIMAL(18, 2) },
   },
-  { sequelize, tableName: "purchase_order_lines", timestamps: true, createdAt: "created_at", updatedAt: "updated_at" }
+  {
+    sequelize,
+    tableName: "purchase_order_lines",
+    timestamps: true,
+    createdAt: "created_at",
+    updatedAt: "updated_at",
+  }
 );

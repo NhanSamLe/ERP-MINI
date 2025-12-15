@@ -37,6 +37,13 @@ export interface PurchaseOrder {
     phone: string;
     avatar_url: string;
   };
+
+  supplier?: {
+    id: number;
+    name: string;
+    email: string;
+    phone: string;
+  };
   lines?: PurchaseOrderLine[];
 }
 
@@ -47,11 +54,18 @@ export interface PurchaseOrderLine {
   unit_price: number;
   tax_rate_id?: number;
   line_total: number;
+  product?: ProductLite;
+}
+export interface ProductLite {
+  id: number;
+  name: string;
+  image_url: string;
 }
 
 export interface PurchaseOrderState {
   items: PurchaseOrder[];
   selectedPO?: PurchaseOrder;
+  availableForInvoice: PurchaseOrder[];
   loading: boolean;
   error?: string | null;
 }
