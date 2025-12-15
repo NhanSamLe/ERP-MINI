@@ -102,7 +102,6 @@ export function UserFormModal({
         branch_id: formData.branch_id,
       };
       onCreate(payload);
-      toast.success("Tạo người dùng thành công");
     }
   };
 
