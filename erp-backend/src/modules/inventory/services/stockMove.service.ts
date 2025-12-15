@@ -1010,13 +1010,6 @@ export const stockMoveService = {
       ? await Warehouse.findByPk(move.warehouse_to_id)
       : null;
 
-    if (!warehouseFrom) {
-      throw {
-        status: 400,
-        message: "Warehouse From not found",
-      };
-    }
-
     if (move.type === "receipt") {
       if (!warehouseTo) {
         throw { status: 400, message: "Warehouse To not found" };
@@ -1030,6 +1023,12 @@ export const stockMoveService = {
     }
 
     if (["issue", "adjustment"].includes(move.type)) {
+      if (!warehouseFrom) {
+        throw {
+          status: 400,
+          message: "Warehouse From not found",
+        };
+      }
       if (warehouseFrom.branch_id !== user.branch_id) {
         throw {
           status: 403,
@@ -1039,6 +1038,12 @@ export const stockMoveService = {
     }
     // 5. Check branch for TRANSFER (both sides must match)
     if (move.type === "transfer") {
+      if (!warehouseFrom) {
+        throw {
+          status: 400,
+          message: "Warehouse From not found",
+        };
+      }
       if (!warehouseTo) {
         throw { status: 400, message: "Warehouse To not found" };
       }
@@ -1255,13 +1260,6 @@ export const stockMoveService = {
       ? await Warehouse.findByPk(move.warehouse_to_id)
       : null;
 
-    if (!warehouseFrom) {
-      throw {
-        status: 400,
-        message: "Warehouse From not found",
-      };
-    }
-
     if (move.type === "receipt") {
       if (!warehouseTo) {
         throw { status: 400, message: "Warehouse To not found" };
@@ -1275,6 +1273,12 @@ export const stockMoveService = {
     }
 
     if (["issue", "adjustment"].includes(move.type)) {
+      if (!warehouseFrom) {
+        throw {
+          status: 400,
+          message: "Warehouse From not found",
+        };
+      }
       if (warehouseFrom.branch_id !== user.branch_id) {
         throw {
           status: 403,
@@ -1284,6 +1288,12 @@ export const stockMoveService = {
     }
     // 5. Check branch for TRANSFER (both sides must match)
     if (move.type === "transfer") {
+      if (!warehouseFrom) {
+        throw {
+          status: 400,
+          message: "Warehouse From not found",
+        };
+      }
       if (!warehouseTo) {
         throw { status: 400, message: "Warehouse To not found" };
       }

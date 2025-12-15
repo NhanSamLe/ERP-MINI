@@ -6,6 +6,9 @@ import {
   submitApPaymentThunk,
   approveApPaymentThunk,
   rejectApPaymentThunk,
+  getApPaymentAvailableAmountThunk,
+  getApPaymentUnpaidInvoicesThunk,
+  allocateApPaymentThunk,
 } from "../../store/apPayment/apPayment.thunks";
 import {
   Loader2,
@@ -21,6 +24,7 @@ import {
 import { toast } from "react-toastify";
 import { getErrorMessage } from "@/utils/ErrorHelper";
 import { Roles } from "@/types/enum";
+import { UnpaidInvoice } from "../../store/apPayment/apPayment.types";
 
 export default function ViewApPaymentPage() {
   const { id } = useParams();
@@ -36,10 +40,11 @@ export default function ViewApPaymentPage() {
   const [openApproveModal, setOpenApproveModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
 
+  const [openAllocateModal, setOpenAllocateModal] = useState(false);
+
   useEffect(() => {
     if (id) dispatch(getApPaymentByIdThunk(Number(id)));
   }, [id, dispatch]);
-
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-32">
@@ -59,12 +64,19 @@ export default function ViewApPaymentPage() {
   const canSubmit =
     user?.role.code === Roles.ACCOUNT &&
     payment.approval_status === "draft" &&
+    payment.status === "draft" &&
     payment.created_by === user.id;
 
   const canApproveReject =
     user?.role.code === Roles.CHACC &&
     payment.approval_status === "waiting_approval" &&
     payment.created_by !== user.id;
+
+  const canAllocate =
+    user?.role.code === Roles.ACCOUNT &&
+    payment.status === "posted" &&
+    payment.approval_status === "approved" &&
+    payment.created_by === user.id;
 
   /* ================= HANDLERS ================= */
   const handleSubmit = async () => {
@@ -173,6 +185,18 @@ export default function ViewApPaymentPage() {
                   Reject
                 </button>
               </>
+            )}
+
+            {canAllocate && (
+              <button
+                onClick={() => setOpenAllocateModal(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl
+               bg-purple-500 text-white font-semibold text-sm
+               shadow-md hover:bg-purple-600"
+              >
+                <CreditCard className="w-4 h-4" />
+                Allocate to Invoices
+              </button>
             )}
 
             <button
@@ -402,6 +426,13 @@ export default function ViewApPaymentPage() {
           </div>
         </div>
       )}
+
+      {openAllocateModal && (
+        <AllocateModal
+          paymentId={payment.id}
+          onClose={() => setOpenAllocateModal(false)}
+        />
+      )}
     </div>
   );
 }
@@ -454,6 +485,216 @@ function UserCard({
       ) : (
         <p className="italic text-gray-400">{empty}</p>
       )}
+    </div>
+  );
+}
+
+function AllocateModal({
+  paymentId,
+  onClose,
+}: {
+  paymentId: number;
+  onClose: () => void;
+}) {
+  const dispatch = useAppDispatch();
+
+  const [availableAmount, setAvailableAmount] = useState<number>(0);
+  const [localInvoices, setLocalInvoices] = useState<UnpaidInvoice[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  /* ===== LOAD DATA ===== */
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+
+        const result = await dispatch(
+          getApPaymentAvailableAmountThunk(paymentId)
+        ).unwrap();
+
+        const invoices = await dispatch(
+          getApPaymentUnpaidInvoicesThunk(paymentId)
+        ).unwrap();
+
+        setAvailableAmount(result.available_amount);
+        setLocalInvoices(invoices.map((i) => ({ ...i, allocate_amount: 0 })));
+      } catch (e) {
+        toast.error(getErrorMessage(e));
+        onClose();
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, [dispatch, paymentId, onClose]);
+
+  /* ===== CALCULATIONS ===== */
+  const totalAllocate = localInvoices.reduce(
+    (sum, i) => sum + Number(i.allocate_amount || 0),
+    0
+  );
+
+  const remaining = availableAmount - totalAllocate;
+
+  const invalid =
+    totalAllocate <= 0 ||
+    totalAllocate > availableAmount ||
+    localInvoices.some(
+      (i) => i.allocate_amount! < 0 || i.allocate_amount! > i.unpaid_amount
+    );
+
+  /* ===== HANDLERS ===== */
+  const handleChange = (id: number, value: string) => {
+    const num = Number(value);
+    setLocalInvoices((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, allocate_amount: num } : i))
+    );
+  };
+
+  const handleSubmit = async () => {
+    try {
+      setSubmitting(true);
+
+      const allocations = localInvoices
+        .filter((i) => i.allocate_amount! > 0)
+        .map((i) => ({
+          invoice_id: i.id,
+          amount: i.allocate_amount,
+        }));
+
+      await dispatch(
+        allocateApPaymentThunk({
+          paymentId,
+          allocations,
+        })
+      ).unwrap();
+
+      toast.success("Allocation completed");
+      onClose();
+
+      dispatch(getApPaymentByIdThunk(paymentId));
+    } catch (e) {
+      toast.error(getErrorMessage(e));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
+        <div className="bg-white p-6 rounded-xl flex items-center gap-3">
+          <Loader2 className="animate-spin" />
+          Loading allocation data...
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
+      {submitting && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/70 backdrop-blur-sm rounded-2xl">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+            <p className="text-sm font-semibold text-gray-700">
+              Allocating payment...
+            </p>
+          </div>
+        </div>
+      )}
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-4xl p-6">
+        {/* HEADER */}
+        <div className="flex justify-between mb-4">
+          <h3 className="text-xl font-bold">Allocate Payment</h3>
+          <button
+            onClick={onClose}
+            disabled={submitting}
+            className={submitting ? "opacity-50 cursor-not-allowed" : ""}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* AVAILABLE */}
+        <div className="mb-4 flex justify-between">
+          <div>
+            Available Amount:{" "}
+            <span className="font-bold text-blue-600">
+              {availableAmount.toLocaleString()}
+            </span>
+          </div>
+        </div>
+
+        {/* TABLE */}
+        <table className="w-full border text-sm">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="p-2 border">Invoice</th>
+              <th className="p-2 border text-right">Total</th>
+              <th className="p-2 border text-right">Unpaid</th>
+              <th className="p-2 border text-right">Allocate</th>
+            </tr>
+          </thead>
+          <tbody>
+            {localInvoices.map((inv) => (
+              <tr key={inv.id}>
+                <td className="p-2 border">{inv.invoice_no}</td>
+                <td className="p-2 border text-right">
+                  {inv.total_after_tax.toLocaleString()}
+                </td>
+                <td className="p-2 border text-right">
+                  {inv.unpaid_amount.toLocaleString()}
+                </td>
+                <td className="p-2 border text-right">
+                  <input
+                    type="number"
+                    min={0}
+                    max={inv.unpaid_amount}
+                    value={inv.allocate_amount}
+                    onChange={(e) => handleChange(inv.id, e.target.value)}
+                    className="w-28 border rounded px-2 py-1 text-right"
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {/* FOOTER */}
+        <div className="mt-4 flex justify-between">
+          <div>
+            Remaining:{" "}
+            <span
+              className={`font-bold ${
+                remaining < 0 ? "text-red-600" : "text-green-600"
+              }`}
+            >
+              {remaining.toLocaleString()}
+            </span>
+          </div>
+
+          <div className="flex gap-3">
+            <button onClick={onClose} className="border px-4 py-2 rounded">
+              Cancel
+            </button>
+            <button
+              disabled={invalid || submitting}
+              onClick={handleSubmit}
+              className={`px-4 py-2 rounded text-white flex items-center gap-2 ${
+                invalid || submitting
+                  ? "bg-gray-300 cursor-not-allowed"
+                  : "bg-purple-500 hover:bg-purple-600"
+              }`}
+            >
+              {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+              {submitting ? "Allocating..." : "Allocate"}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
