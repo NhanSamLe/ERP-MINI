@@ -19,4 +19,5 @@ export interface DataTableProps<T> {
   showSelection?: boolean;
   showActions?: boolean;
   onRowClick?: (row: T) => void;
+  extraActions?: (item: T) => React.ReactNode;
 }

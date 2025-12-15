@@ -16,11 +16,11 @@ import {
   FileText,
   FileSpreadsheet,
   RotateCw,
-  ChevronUp,
-  Upload,
+
   Plus,
   Trash2,
 } from "lucide-react";
+import { formatMoney } from "@/utils/currency.helper";
 
 export default function ProductsPage() {
   const dispatch = useDispatch<AppDispatch>();
@@ -84,7 +84,7 @@ export default function ProductsPage() {
     {
       key: "sale_price",
       label: "Giá bán",
-      render: (p: Product) => (p.sale_price ? `$${p.sale_price}` : "—"),
+      render: (p: Product) => (p.sale_price ? `${formatMoney(p.sale_price, "VND")}` : "—"),
     },
     {
       key: "status",
@@ -130,11 +130,7 @@ export default function ProductsPage() {
           >
             <RotateCw className="w-4 h-4" />
           </button>
-
-          {/* Toggle */}
-          <button className="flex items-center gap-1 border border-gray-300 bg-gray-50 text-gray-600 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-100 transition">
-            <ChevronUp className="w-4 h-4" />
-          </button>
+    
 
           {/* Add Product */}
           <Link to="/inventory/products/create">
@@ -143,11 +139,6 @@ export default function ProductsPage() {
               Add Product
             </Button>
           </Link>
-          {/* Import Products */}
-          <Button className="flex items-center gap-1 bg-[#1a1d29] hover:bg-[#0f111a] text-white px-4 py-2 rounded-lg shadow text-sm font-medium transition">
-            <Upload className="w-4 h-4" />
-            Import Products
-          </Button>
         </div>
       </div>
 
@@ -166,7 +157,7 @@ export default function ProductsPage() {
         data={products}
         columns={columns}
         loading={loading}
-        onView={(item) => console.log("Xem:", item)}
+        // onView={(item) => console.log("Xem:", item)}
         onEdit={(item) =>
           navigate(`/inventory/products/edit/${item.id}`, {
             state: { product: item },
@@ -179,6 +170,8 @@ export default function ProductsPage() {
         canEdit={() => true}
         canDelete={() => role === "ADMIN"}
         searchKeys={["sku", "name"]}
+        showSelection={false}
+
       />
 
       {confirmOpen && (

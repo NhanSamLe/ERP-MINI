@@ -32,17 +32,17 @@ interface MenuItem {
 
 
 const menuItems: MenuItem[] = [
-  {
-    name: "Dashboard",
-    icon: LayoutDashboard,
-    path: "/dashboard",
-    allowedRoles: [
-      "ADMIN","CEO","SALESMANAGER","SALES",
-      "WHMANAGER","WHSTAFF","CHACC","ACCOUNT",
-      "HRMANAGER","PURCHASE","PURCHASEMANAGER",
-      "BRANCH_MANAGER","HR_STAFF",
-    ],
-  },
+  // {
+  //   name: "Dashboard",
+  //   icon: LayoutDashboard,
+  //   path: "/dashboard",
+  //   allowedRoles: [
+  //     "ADMIN","CEO","SALESMANAGER","SALES",
+  //     "WHMANAGER","WHSTAFF","CHACC","ACCOUNT",
+  //     "HRMANAGER","PURCHASE","PURCHASEMANAGER",
+  //     "BRANCH_MANAGER","HR_STAFF",
+  //   ],
+  // },
 
   // ---------------- SALES ----------------
   {

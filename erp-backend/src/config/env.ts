@@ -35,4 +35,7 @@ export const env = {
   cors: {
   origins: (process.env.CORS_ORIGINS || "").split(","),
   },
+  frontend: {
+    url: process.env.FRONTEND_URL || "http://localhost:3000",
+  },
 };

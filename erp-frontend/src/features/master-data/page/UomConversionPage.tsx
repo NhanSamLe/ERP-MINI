@@ -7,6 +7,7 @@ import {
   updateConversionThunk,
   deleteConversionThunk,
 } from "../store/master-data/conversion/conversion.thunks";
+import { formatNumber } from "../../../utils/currency.helper";
 
 import { fetchAllUomsThunk } from "../store/master-data/uom/uom.thunks";
 
@@ -97,7 +98,7 @@ export default function UomConversionPage() {
       sortable: true,
       render: (row) => (
         <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 font-semibold text-sm">
-          ×{row.factor}
+           ×{formatNumber(row.factor, 6)}
         </span>
       ),
     },

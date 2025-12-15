@@ -4,10 +4,11 @@ import { JwtPayload } from "../../../core/types/jwt";
 import { generateAccessToken, generateRefreshToken } from "../../../core/utils/jwt";  
 import { UserWithRole } from "../../../core/types/User";
 import crypto from "crypto";
-import { sendEmail , resetPasswordTemplate} from "../../../core/utils/email";
+import { sendEmail , resetPasswordTemplate,newEmployeeAccountTemplate} from "../../../core/utils/email";
 import { uploadBufferToCloudinary, deleteFromCloudinary } from "../../../core/utils/uploadCloudinary";
 import { Op } from "sequelize";
 import {getRelations, hasLinkedData} from "../../../core/utils/getRelation";
+import{env} from "../../../config/env"
 export async function createUser(data: {
   branch_id: number;
   username: string;
@@ -30,6 +31,7 @@ export async function createUser(data: {
   if (checkPhone) throw new Error("Phone number already exists");
 
   const hash = await hashPassword(data.password);
+  const resetToken = crypto.randomBytes(32).toString("hex");
   const user = await model.User.create({
     branch_id: data.branch_id,
     username: data.username,
@@ -39,8 +41,25 @@ export async function createUser(data: {
     ...(data.phone ? { phone: data.phone } : {}),
     role_id: data.role_id,
     is_active: false,
+    reset_token: resetToken,
+    reset_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
   });
   await user.save();
+  if (user.email) {
+    const resetLink = `${env.frontend.url}/reset-password?token=${resetToken}`;
+    const template = newEmployeeAccountTemplate(
+    user.username,
+    user.full_name,
+    resetLink
+  );
+
+  await sendEmail(
+    user.email!,
+    template.subject,
+    template.text,
+    template.html
+  );
+  }
   await user.reload({
   attributes: { exclude: ["password_hash"] },
   include: [
@@ -173,6 +192,9 @@ export async function login(username: string, password: string) {
   if (!isValid) {
     throw new Error("Invalid password");
   }
+  if (!user.is_active) {
+    throw new Error("Account is not activated. Please set your password.");
+  }
   const payload: JwtPayload = {
     id: user.id,
     username: user.username,
@@ -191,11 +213,14 @@ export async function requestPasswordReset(username: string) {
     where:  { username: username },
   });
   if (!user) throw new Error("User not found");
+  if (!user.is_active) {
+    throw new Error("Account is inactive or not activated");
+  }
   const token = crypto.randomBytes(32).toString("hex");
   user.reset_token = token;
   user.reset_expires_at = new Date(Date.now() + 10 * 60 * 1000); // 10 phút
   await user.save();
-  const resetLink = `http://localhost:3000/reset-password?token=${token}`;
+  const resetLink = `${env.frontend.url}/reset-password?token=${token}`;
   const template = resetPasswordTemplate(user.username, resetLink);
   await sendEmail(user.email!, template.subject, template.text, template.html);
   return { message: "Reset link sent to email" };
@@ -219,6 +244,7 @@ export async function resetPassword(token: string, newPassword: string) {
   user.password_hash = await hashPassword(newPassword);
   user.reset_token = null;
   user.reset_expires_at = null;
+  user.is_active = true;
   await user.save();
   return { message: "Password updated successfully" };
 }

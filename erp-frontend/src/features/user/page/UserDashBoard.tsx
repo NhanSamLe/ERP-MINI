@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../../store/store";
+import { requestPasswordReset } from "../../auth/auth.service"
+import { exportExcelReport } from "../../../utils/excel/exportExcelReport";
 import {
   fetchAllUsers,
   fetchAllRoles,
@@ -9,19 +11,22 @@ import {
   deleteUserThunk,
 } from "../store";
 import { setError } from "../store/user.slice";
+import { confirmAction } from "../../../utils/alert";
 
 import { User } from "../../../types/User";
 import { createUserDTO, updateUserDTO } from "../dto/userDTO";
 import { Column } from "../../../types/common";
 import { DataTable } from "../../../components/ui/DataTable";
 import { UserFormModal } from "../components/userFormModal";
+import { toast } from "react-toastify";
 import {
   Download,
-  Upload,
   RefreshCw,
-  Settings,
   Plus,
+  KeyRound,
 } from "lucide-react";
+import Swal from "sweetalert2";
+
 // import { fetchAllBranchesThunk } from "../../company/store";
 
 export default function UserDashboard() {
@@ -47,9 +52,10 @@ export default function UserDashboard() {
 
     if (createUserThunk.rejected.match(resultAction)) {
       // Có lỗi -> không đóng modal
+      toast.error(resultAction.payload as string);
       return;
     }
-
+    toast.success("Tạo người dùng thành công. Email kích hoạt đã được gửi ");
     setIsModalOpen(false);
   };
 
@@ -58,33 +64,129 @@ export default function UserDashboard() {
     const resultAction = await dispatch(updateUserThunk(data));
 
     if (updateUserThunk.rejected.match(resultAction)) {
+       toast.error(resultAction.payload as string);
       return;
     }
-
+    toast.success("Cập nhật người dùng thành công");
     setIsModalOpen(false);
     setEditUser(null);
   };
+  const handleResetPassword = async (user: User) => {
+  if (!user.email) {
+    toast.error("Người dùng chưa có email");
+    return;
+  }
 
-  const handleDelete = async (id: number) => {
-  const user = users.find((u) => u.id === id);
-  if (
-    user &&
-    window.confirm(
-      `Are you sure you want to delete ${user.full_name || user.username}?`
-    )
-  ) {
-    const resultAction = await dispatch(deleteUserThunk(user.id));
+  if (!user.is_active) {
+    toast.error("Tài khoản chưa được kích hoạt");
+    return;
+  }
 
-    if (deleteUserThunk.rejected.match(resultAction)) {
-      // BE trả lỗi (vd: đang liên kết dữ liệu, hoặc tự xóa chính mình)
-      alert(resultAction.payload as string);
-      return;
+  const confirmed = await confirmAction(
+    "Gửi email đặt lại mật khẩu?",
+    `Bạn có chắc muốn gửi email đặt lại mật khẩu cho ${
+      user.full_name || user.username
+    } không?`
+  );
+  if (!confirmed) return;
+
+  try {
+    await requestPasswordReset(user.username);
+    toast.success("Đã gửi email đặt lại mật khẩu 📧");
+  } catch (err) {
+    let message =  "Gửi email đặt lại mật khẩu thất bại";
+    if(err instanceof Error)
+    {
+      message = err.message;
     }
-
-    // Thành công thì không cần làm gì thêm, reducer đã filter rồi
+    toast.error(
+     message
+    );
   }
 };
+  const handleDelete = async (id: number) => {
+  const user = users.find((u) => u.id === id);
+  if (!user) return;
 
+  const result = await Swal.fire({
+    title: "Xóa người dùng?",
+    text: `Bạn có chắc muốn xóa ${
+      user.full_name || user.username
+    } không? Hành động này không thể hoàn tác.`,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#ef4444", // đỏ
+    cancelButtonColor: "#9ca3af",  // xám
+    confirmButtonText: "Xóa",
+    cancelButtonText: "Hủy",
+    reverseButtons: true,
+  });
+
+  if (!result.isConfirmed) return;
+
+  const resultAction = await dispatch(deleteUserThunk(user.id));
+
+  if (deleteUserThunk.rejected.match(resultAction)) {
+    toast.error(resultAction.payload as string);
+    return;
+  }
+
+  toast.success("Xóa người dùng thành công");
+};
+const exportUserReport = () => {
+  exportExcelReport<User>({
+    title: "DANH SÁCH TÀI KHOẢN NGƯỜI DÙNG",
+    subtitle: "Hệ thống ERP",
+    meta: {
+      "Ngày xuất": new Date().toLocaleDateString("vi-VN"),
+      "Tổng số": users.length.toString(),
+    },
+    columns: [
+      {
+        header: "Tên đăng nhập",
+        key: "username",
+        width: 20,
+      },
+      {
+        header: "Họ tên",
+        key: "full_name",
+        width: 25,
+      },
+      {
+        header: "Email",
+        key: "email",
+        width: 30,
+      },
+      {
+        header: "Số điện thoại",
+        key: "phone",
+        width: 15,
+      },
+       {
+        header: "Vai trò",
+        key: "id", 
+        width: 20,
+        formatter: (_, row) => row.role?.name ?? "—",
+      },
+      {
+        header: "Chi nhánh",
+        key: "id", 
+        width: 25,
+        formatter: (_, row) => row.branch?.name ?? "—",
+      },
+      {
+        header: "Trạng thái",
+        key: "is_active",
+        width: 15,
+        align: "center",
+        formatter: (value) =>
+          value ? "Hoạt động" : "Ngưng",
+      },
+    ],
+    data: users, // ✅ giữ nguyên User[]
+    fileName: "Danh_sach_tai_khoan.xlsx",
+  });
+};
 
   // KHÔNG tạo cột actions nữa
   const columns: Column<User>[] = [
@@ -151,15 +253,12 @@ export default function UserDashboard() {
               >
                 <RefreshCw className="w-5 h-5" />
               </button>
-              <button className="p-2 text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg">
-                <Download className="w-5 h-5" />
-              </button>
-              <button className="p-2 text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg">
-                <Upload className="w-5 h-5" />
-              </button>
-              <button className="p-2 text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg">
-                <Settings className="w-5 h-5" />
-              </button>
+              <button
+                  onClick={exportUserReport}
+                  className="p-2 text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg"
+                >
+                  <Download className="w-5 h-5" />
+                </button>
               <button
                 onClick={() => {
                   dispatch(setError(null));
@@ -192,6 +291,17 @@ export default function UserDashboard() {
             // ⭐ BẮT BUỘC: cho phép edit/delete
             canEdit={() => true}
             canDelete={() => true}
+            extraActions={(user) =>
+              user.is_active && user.email ? (
+                <button
+                  onClick={() => handleResetPassword(user)}
+                  title="Send reset password email"
+                  className="text-blue-600 hover:text-blue-800 ml-2"
+                >
+                  <KeyRound className="w-4 h-4" />
+                </button>
+              ) : null
+            }
           />
         </div>
       </div>

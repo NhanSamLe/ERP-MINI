@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { User, Role } from "../../../types/User";
 import { createUserDTO, updateUserDTO } from "../dto/userDTO";
 import { Branch } from "../../company/store";
+
 interface UserFormModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -88,6 +89,7 @@ export function UserFormModal({
         branch_id: formData.branch_id,
       };
       onUpdate(payload);
+     
     } else {
       // Gọi create
       const payload: createUserDTO = {
@@ -100,6 +102,7 @@ export function UserFormModal({
         branch_id: formData.branch_id,
       };
       onCreate(payload);
+      toast.success("Tạo người dùng thành công");
     }
   };
 

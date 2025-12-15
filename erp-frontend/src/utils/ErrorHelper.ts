@@ -18,3 +18,6 @@ export function getErrorMessage(error: unknown): string {
   }
   return "Unexpected error";
 }
+export interface ApiErrorResponse {
+  message?: string;
+}

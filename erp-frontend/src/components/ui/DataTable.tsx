@@ -25,6 +25,7 @@ export function DataTable<T extends { id: number }>({
   showSelection = true,
   showActions = true,
   onRowClick,
+  extraActions,
 }: DataTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -181,6 +182,14 @@ export function DataTable<T extends { id: number }>({
                         <Trash2 className="w-4 h-4" />
                       </span>
                     ))}
+                    {extraActions && (
+                      <span
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center"
+                      >
+                        {extraActions(item)}
+                      </span>
+                    )}
                 </td>
               </tr>
             ))}

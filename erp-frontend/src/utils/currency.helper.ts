@@ -28,3 +28,48 @@ export function formatVND(value: number | null | undefined): string {
   const num = Number(value);
   return num.toLocaleString('vi-VN') + ' ₫';
 }
+
+export function formatMoney(
+  value?: number | string | null,
+  currency = "VND",
+  locale = "vi-VN"
+): string {
+  if (value === null || value === undefined || value === "") return "—";
+
+  const num =
+    typeof value === "string"
+      ? Number(value.replace(/[^\d.-]/g, ""))
+      : value;
+
+  if (Number.isNaN(num)) return "—";
+
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    currencyDisplay: "symbol",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(num);
+}
+
+export function formatNumber(
+  value: number | string,
+  fractionDigits = 2
+): string {
+  const num = Number(value);
+  if (isNaN(num)) return "0";
+
+  return new Intl.NumberFormat("vi-VN", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: fractionDigits,
+  }).format(num);
+}
+export function formatPercent(
+  value: number | string,
+  fractionDigits = 2
+): string {
+  const num = Number(value);
+  if (isNaN(num)) return "0%";
+
+  return `${formatNumber(num, fractionDigits)}%`;
+}

@@ -17,8 +17,6 @@ import {
   FileText,
   FileSpreadsheet,
   RotateCw,
-  ChevronUp,
-  Upload,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -166,10 +164,6 @@ export default function CategoriesPage() {
             <RotateCw className="w-4 h-4" />
           </button>
 
-          <button className="flex items-center gap-1 border border-gray-300 bg-gray-50 text-gray-600 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-100 transition">
-            <ChevronUp className="w-4 h-4" />
-          </button>
-
           <Button
             onClick={() => setOpenAddModal(true)}
             className="flex items-center gap-1 bg-[#ff8c00] hover:bg-[#ff7700] text-white px-4 py-2 rounded-lg shadow text-sm font-medium transition"
@@ -178,10 +172,6 @@ export default function CategoriesPage() {
             Add Category
           </Button>
 
-          <Button className="flex items-center gap-1 bg-[#1a1d29] hover:bg-[#0f111a] text-white px-4 py-2 rounded-lg shadow text-sm font-medium transition">
-            <Upload className="w-4 h-4" />
-            Import
-          </Button>
         </div>
       </div>
 
@@ -190,7 +180,6 @@ export default function CategoriesPage() {
         data={categories}
         columns={columns}
         loading={loading}
-        onView={(item) => console.log("View:", item)}
         onEdit={(item) => {
           openModalEditCategory(item);
         }}
@@ -201,6 +190,7 @@ export default function CategoriesPage() {
         canEdit={() => true}
         canDelete={() => role === "ADMIN"}
         searchKeys={["name"]}
+        showSelection={false}
       />
 
       {confirmOpen && (

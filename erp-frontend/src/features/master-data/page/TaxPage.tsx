@@ -6,6 +6,7 @@ import {
   updateTaxRateThunk,
   deleteTaxRateThunk,
 } from "../store/master-data/tax/tax.thunks";
+import { formatPercent } from "../../../utils/currency.helper";
 
 import { Tax, CreateTaxRateDto, UpdateTaxRateDto } from "../dto/tax.dto";
 import { DataTable } from "../../../components/ui/DataTable";
@@ -87,7 +88,7 @@ export default function TaxPage() {
       label: "Rate (%)", 
       sortable: true,
       render: (row) => (
-        <span className="font-medium text-gray-900">{row.rate}%</span>
+        <span className="font-medium text-gray-900">{formatPercent(row.rate, 2)}</span>
       ),
     },
     { 
