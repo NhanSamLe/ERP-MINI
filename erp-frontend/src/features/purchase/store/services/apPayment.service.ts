@@ -1,5 +1,5 @@
 import { apPaymentApi } from "../../api/apPayment.api";
-import { ApPayment } from "../apPayment/apPayment.types";
+import { ApPayment, UnpaidInvoice } from "../apPayment/apPayment.types";
 
 export const apPaymentService = {
   async getAll(): Promise<ApPayment[]> {
@@ -24,5 +24,23 @@ export const apPaymentService = {
 
   async reject(id: number, reason: string): Promise<ApPayment> {
     return apPaymentApi.reject(id, reason);
+  },
+
+  async getAvailableAmount(id: number): Promise<{
+    payment_id: number;
+    available_amount: number;
+  }> {
+    return apPaymentApi.getAvailableAmount(id);
+  },
+
+  async getUnpaidInvoices(id: number): Promise<UnpaidInvoice[]> {
+    return apPaymentApi.getUnpaidInvoices(id);
+  },
+
+  async allocate(
+    id: number,
+    allocations: { invoice_id: number; amount: number }[]
+  ): Promise<{ success: boolean }> {
+    return apPaymentApi.allocate(id, allocations);
   },
 };

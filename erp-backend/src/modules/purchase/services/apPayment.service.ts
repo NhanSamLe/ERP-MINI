@@ -2,7 +2,13 @@ import { Role } from "../../../core/types/enum";
 import { ApPayment } from "../models/apPayment.model";
 import { User } from "../../auth/models/user.model";
 import { Branch } from "../../company/models/branch.model";
-import { Partner } from "../../../models";
+import {
+  ApInvoice,
+  ApPaymentAllocation,
+  Partner,
+  sequelize,
+} from "../../../models";
+import { QueryTypes } from "sequelize";
 
 export const apPaymentService = {
   async getAll(query: any, user: any) {
@@ -182,5 +188,193 @@ export const apPaymentService = {
 
     await payment.save();
     return this.getById(payment.id, user);
+  },
+
+  async getAvailableAmount(id: number, user: any) {
+    const payment = await ApPayment.findOne({
+      where: {
+        id,
+        branch_id: user.branch_id,
+        status: "posted",
+        approval_status: "approved",
+      },
+    });
+
+    if (!payment) {
+      throw new Error("Payment not available for allocation");
+    }
+
+    const [result]: any = await sequelize.query(
+      `
+    SELECT
+      ap.amount - COALESCE(SUM(apa.applied_amount), 0) AS available_amount
+    FROM ap_payments ap
+    LEFT JOIN ap_payment_allocations apa
+      ON apa.payment_id = ap.id
+    WHERE ap.id = ?
+    GROUP BY ap.id
+    `,
+      { replacements: [id], type: "SELECT" }
+    );
+
+    return {
+      payment_id: id,
+      available_amount: Number(result.available_amount),
+    };
+  },
+
+  async getUnpaidInvoices(paymentId: number, user: any) {
+    const payment = await ApPayment.findOne({
+      where: {
+        id: paymentId,
+        branch_id: user.branch_id,
+        status: "posted",
+        approval_status: "approved",
+      },
+    });
+
+    if (!payment) {
+      throw new Error("Payment not available for allocation");
+    }
+
+    const rows = await sequelize.query(
+      `
+  SELECT
+    ai.id,
+    ai.invoice_no,
+    ai.total_after_tax,
+    COALESCE(SUM(apa.applied_amount), 0) AS allocated_amount,
+    ai.total_after_tax - COALESCE(SUM(apa.applied_amount), 0) AS unpaid_amount
+  FROM ap_invoices ai
+  JOIN purchase_orders po ON po.id = ai.po_id
+  LEFT JOIN ap_payment_allocations apa ON apa.ap_invoice_id = ai.id
+  WHERE ai.status = 'posted'
+    AND po.supplier_id = ?
+  GROUP BY ai.id
+  HAVING unpaid_amount > 0
+  `,
+      {
+        replacements: [payment.supplier_id],
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    return rows;
+  },
+
+  async allocate(
+    paymentId: number,
+    allocations: { invoice_id: number; amount: number }[],
+    user: any
+  ) {
+    const t = await sequelize.transaction();
+
+    try {
+      const payment = await ApPayment.findOne({
+        where: {
+          id: paymentId,
+          branch_id: user.branch_id,
+          status: "posted",
+          approval_status: "approved",
+        },
+        lock: t.LOCK.UPDATE,
+        transaction: t,
+      });
+
+      if (!payment) {
+        throw new Error("Payment not available for allocation");
+      }
+
+      // available amount
+      const [result]: any = await sequelize.query(
+        `
+      SELECT
+        ap.amount - COALESCE(SUM(apa.applied_amount), 0) AS available_amount
+      FROM ap_payments ap
+      LEFT JOIN ap_payment_allocations apa
+        ON apa.payment_id = ap.id
+      WHERE ap.id = ?
+      GROUP BY ap.id
+      `,
+        { replacements: [paymentId], transaction: t, type: "SELECT" }
+      );
+
+      const availableAmount = Number(result.available_amount);
+
+      const totalAllocate = allocations.reduce(
+        (sum, a) => sum + Number(a.amount),
+        0
+      );
+
+      if (totalAllocate <= 0) {
+        throw new Error("Allocation amount must be greater than zero");
+      }
+
+      if (totalAllocate > availableAmount) {
+        throw new Error("Allocated amount exceeds available payment amount");
+      }
+
+      // process each invoice
+      for (const item of allocations) {
+        if (item.amount <= 0) continue;
+
+        // unpaid amount of invoice
+        const [invoice]: any = await sequelize.query(
+          `
+        SELECT
+          ai.id,
+          ai.total_after_tax -
+          COALESCE(SUM(apa.applied_amount), 0) AS unpaid_amount
+        FROM ap_invoices ai
+        LEFT JOIN ap_payment_allocations apa
+          ON apa.ap_invoice_id = ai.id
+        WHERE ai.id = ?
+        GROUP BY ai.id
+        `,
+          { replacements: [item.invoice_id], transaction: t, type: "SELECT" }
+        );
+
+        if (!invoice) {
+          throw new Error(`Invoice ${item.invoice_id} not found`);
+        }
+
+        if (item.amount > invoice.unpaid_amount) {
+          throw new Error(
+            `Allocated amount exceeds unpaid amount of invoice ${item.invoice_id}`
+          );
+        }
+
+        await ApPaymentAllocation.create(
+          {
+            payment_id: paymentId,
+            ap_invoice_id: item.invoice_id,
+            applied_amount: item.amount,
+          },
+          { transaction: t }
+        );
+
+        // update invoice status if fully paid
+        if (invoice.unpaid_amount - item.amount === 0) {
+          await sequelize.query(
+            `UPDATE ap_invoices SET status = 'paid' WHERE id = ?`,
+            { replacements: [item.invoice_id], transaction: t }
+          );
+        }
+      }
+
+      // check remaining
+      const remaining = availableAmount - totalAllocate;
+
+      if (remaining === 0) {
+        payment.status = "completed";
+        await payment.save({ transaction: t });
+      }
+
+      await t.commit();
+      return { success: true };
+    } catch (err) {
+      await t.rollback();
+      throw err;
+    }
   },
 };

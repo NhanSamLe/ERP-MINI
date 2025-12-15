@@ -31,4 +31,22 @@ export const apPaymentApi = {
     const res = await axiosClient.put(`ap/payments/${id}/reject`, { reason });
     return res.data.data;
   },
+
+  getAvailableAmount: (id: number) =>
+    axiosClient
+      .get(`/ap/payments/${id}/available`)
+      .then((res) => res.data.data),
+
+  getUnpaidInvoices: (id: number) =>
+    axiosClient
+      .get(`/ap/payments/${id}/unpaid-invoices`)
+      .then((res) => res.data.data),
+
+  allocate: (
+    id: number,
+    allocations: { invoice_id: number; amount: number }[]
+  ) =>
+    axiosClient
+      .post(`/ap/payments/${id}/allocate`, { allocations })
+      .then((res) => res.data.data),
 };

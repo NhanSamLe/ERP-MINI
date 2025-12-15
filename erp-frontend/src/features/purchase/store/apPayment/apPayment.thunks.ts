@@ -80,3 +80,53 @@ export const rejectApPaymentThunk = createAsyncThunk<
     return rejectWithValue(getErrorMessage(error));
   }
 });
+
+export const getApPaymentAvailableAmountThunk = createAsyncThunk<
+  { payment_id: number; available_amount: number },
+  number,
+  { rejectValue: string }
+>("apPayment/getAvailableAmount", async (id, { rejectWithValue }) => {
+  try {
+    return await apPaymentService.getAvailableAmount(id);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
+/* ===== GET UNPAID INVOICES ===== */
+export const getApPaymentUnpaidInvoicesThunk = createAsyncThunk<
+  {
+    id: number;
+    invoice_no: string;
+    total_after_tax: number;
+    allocated_amount: number;
+    unpaid_amount: number;
+  }[],
+  number,
+  { rejectValue: string }
+>("apPayment/getUnpaidInvoices", async (id, { rejectWithValue }) => {
+  try {
+    return await apPaymentService.getUnpaidInvoices(id);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
+/* ===== ALLOCATE ===== */
+export const allocateApPaymentThunk = createAsyncThunk<
+  { success: boolean },
+  {
+    paymentId: number;
+    allocations: { invoice_id: number; amount: number }[];
+  },
+  { rejectValue: string }
+>(
+  "apPayment/allocate",
+  async ({ paymentId, allocations }, { rejectWithValue }) => {
+    try {
+      return await apPaymentService.allocate(paymentId, allocations);
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  }
+);
