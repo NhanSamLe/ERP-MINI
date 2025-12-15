@@ -119,10 +119,11 @@ export default function ReceiptDetailPage() {
   };
 
   const handleAllocate = () => {
-    dispatch(fetchUnpaidInvoices(receipt.customer_id));
-    setShowAllocPanel(true);
-    setAlloc({});
-  };
+  if (isFullyAllocated) return;
+  dispatch(fetchUnpaidInvoices(receipt.customer_id));
+  setShowAllocPanel(true);
+  setAlloc({});
+};
 
   const handleApplyAllocation = async () => {
     const allocations = Object.entries(alloc)
@@ -165,15 +166,14 @@ export default function ReceiptDetailPage() {
     }
 
     const totalAlloc = allocations.reduce((sum, a) => sum + a.applied_amount, 0);
-
-    if (totalAlloc > remainingAmount) {
+    
+    if (totalAlloc !== remainingAmount) {
       setMessage({
         type: "error",
-        text: `Total allocation (${formatCurrency(totalAlloc)}) exceeds remaining amount (${formatCurrency(remainingAmount)})`,
+        text: `You must allocate exactly ${formatCurrency(remainingAmount)}`
       });
       return;
     }
-
     try {
       setActionLoading(true);
       await dispatch(allocateReceipt({ id: receiptId, allocations })).unwrap();
@@ -189,13 +189,14 @@ export default function ReceiptDetailPage() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return amount.toLocaleString("vi-VN", {
-      style: "currency",
-      currency: "VND",
-      minimumFractionDigits: 0,
-    });
-  };
+ const formatCurrency = (amount?: number | null) => {
+  const safeAmount = Number(amount) || 0;
+  return safeAmount.toLocaleString("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    minimumFractionDigits: 0,
+  });
+};
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("vi-VN");
@@ -206,7 +207,10 @@ export default function ReceiptDetailPage() {
     : 0;
 
   const remainingAmount = Math.max(0, receipt.amount - totalAllocated);
-  const isFullyAllocated = remainingAmount === 0;
+  const totalAllocInput = Object.values(alloc).reduce((s, v) => s + v, 0);
+  const allocationStatus = receipt.allocation_status; // NEW
+  const isUnallocated = allocationStatus === "unallocated";
+  const isFullyAllocated = allocationStatus === "fully_allocated";
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -286,18 +290,20 @@ export default function ReceiptDetailPage() {
                 </button>
               )}
 
-              {isAccountant && isPosted && isApproved && !isFullyAllocated && (
-                <button
-                  onClick={handleAllocate}
-                  disabled={actionLoading}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-purple-500 transition font-medium"
-                >
-                  Allocate to Invoices
-                </button>
-              )}
+              {isAccountant && isPosted && isApproved && isUnallocated && (
+                  <button
+                    onClick={handleAllocate}
+                    disabled={actionLoading}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg
+                              hover:bg-purple-700 disabled:bg-purple-500 transition font-medium"
+                  >
+                    Allocate to Invoices
+                  </button>
+                )}
 
               {isAccountant && isPosted && isApproved && isFullyAllocated && (
-                <span className="px-4 py-2 bg-green-100 text-green-800 rounded-lg text-sm font-medium border border-green-300">
+                <span className="px-4 py-2 bg-green-100 text-green-800 rounded-lg
+                                text-sm font-semibold border border-green-300">
                   ✓ Fully Allocated
                 </span>
               )}
@@ -592,6 +598,22 @@ export default function ReceiptDetailPage() {
                       {receipt.approval_status.replace("_", " ").toUpperCase()}
                     </span>
                   </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase font-semibold mb-2">
+                      Allocation
+                    </p>
+                    <span
+                      className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                        allocationStatus === "fully_allocated"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      {allocationStatus === "fully_allocated"
+                        ? "FULLY ALLOCATED"
+                        : "NOT ALLOCATED"}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -616,7 +638,7 @@ export default function ReceiptDetailPage() {
 
                 <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <p className="text-xs text-blue-600 uppercase font-semibold">
-                    Available Amount
+                    Amount to Allocate (Must be fully allocated)
                   </p>
                   <p className="text-2xl font-bold text-blue-700 mt-2">
                     {formatCurrency(remainingAmount)}
@@ -655,15 +677,24 @@ export default function ReceiptDetailPage() {
                           onChange={(e) => {
                             const value = parseFloat(e.target.value) || 0;
                             const unpaidAmount = inv.unpaid || inv.total_after_tax;
-                            
-                            if (value > unpaidAmount) {
+
+                            const otherTotal = Object.entries(alloc)
+                              .filter(([id]) => Number(id) !== inv.invoice_id)
+                              .reduce((s, [, v]) => s + v, 0);
+
+                            const maxAllowed = Math.min(
+                              unpaidAmount,
+                              remainingAmount - otherTotal
+                            );
+
+                            if (value > maxAllowed) {
                               setMessage({
-                                type: 'error',
-                                text: `Cannot exceed unpaid amount (${formatCurrency(unpaidAmount)})`
+                                type: "error",
+                                text: `Max allowed is ${formatCurrency(maxAllowed)}`
                               });
                               return;
                             }
-                            
+
                             setAlloc({
                               ...alloc,
                               [inv.invoice_id]: value,
@@ -688,18 +719,42 @@ export default function ReceiptDetailPage() {
                   )}
                 </div>
 
-                {Object.values(alloc).some((v) => v > 0) && (
-                  <div className="mb-6 p-4 bg-green-50 rounded-lg border border-green-200">
-                    <p className="text-xs text-green-600 uppercase font-semibold">
-                      Total Allocation
-                    </p>
-                    <p className="text-2xl font-bold text-green-700 mt-2">
-                      {formatCurrency(
-                        Object.values(alloc).reduce((sum, v) => sum + v, 0)
+               {totalAllocInput > 0 && (
+                    <div
+                      className={`mb-6 p-4 rounded-lg border
+                        ${totalAllocInput === remainingAmount
+                          ? 'bg-green-50 border-green-200'
+                          : 'bg-red-50 border-red-200'
+                        }`}
+                    >
+                      <p
+                        className={`text-xs uppercase font-semibold
+                          ${totalAllocInput === remainingAmount
+                            ? 'text-green-600'
+                            : 'text-red-600'
+                          }`}
+                      >
+                        Total Allocation
+                      </p>
+
+                      <p
+                        className={`text-2xl font-bold mt-2
+                          ${totalAllocInput === remainingAmount
+                            ? 'text-green-700'
+                            : 'text-red-700'
+                          }`}
+                      >
+                        {formatCurrency(totalAllocInput)}
+                      </p>
+
+                      {totalAllocInput !== remainingAmount && (
+                        <p className="text-sm text-red-600 mt-2 font-semibold">
+                          ⚠ Allocation must equal {formatCurrency(remainingAmount)}
+                        </p>
                       )}
-                    </p>
-                  </div>
-                )}
+                    </div>
+                  )}
+                
 
                 <div className="flex gap-3">
                   <button
@@ -710,8 +765,12 @@ export default function ReceiptDetailPage() {
                   </button>
                   <button
                     onClick={handleApplyAllocation}
-                    disabled={actionLoading}
-                    className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-purple-400 transition font-medium"
+                    disabled={
+                      actionLoading ||
+                      totalAllocInput !== remainingAmount
+                    }
+                    className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg
+                              hover:bg-purple-700 disabled:bg-purple-400 transition font-medium"
                   >
                     {actionLoading ? 'Processing...' : 'Apply Allocation'}
                   </button>

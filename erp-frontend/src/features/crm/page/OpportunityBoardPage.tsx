@@ -8,7 +8,7 @@ import { Opportunity } from "../dto/opportunity.dto";
 import { OpportunityStage } from "../../../types/enum";
 import { Button } from "../../../components/ui/Button";
 import { Alert } from "../../../components/ui/Alert";
-
+import { formatVND } from "../../../utils/currency.helper";
 const COLUMNS: { key: OpportunityStage; label: string; color: string }[] = [
   { key: "prospecting", label: "Prospecting", color: "bg-blue-50" },
   { key: "negotiation", label: "Negotiation/Review", color: "bg-yellow-50" },
@@ -64,8 +64,8 @@ export default function OpportunityBoardPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {COLUMNS.map((col) => {
             const list = grouped[col.key];
-            const total = list.reduce(
-              (sum, o) => sum + (o.expected_value || 0),
+         const total = list.reduce(
+              (sum, o) => sum + Number(o.expected_value || 0),
               0
             );
 
@@ -79,7 +79,7 @@ export default function OpportunityBoardPage() {
                     <span className="text-gray-500">({list.length})</span>
                   </span>
                   <span className="text-xs text-gray-500">
-                    ₫ {total.toLocaleString("vi-VN")}
+                    {formatVND(total)}
                   </span>
                 </div>
                 <div className="flex-1 overflow-y-auto p-3 space-y-3">
@@ -105,7 +105,7 @@ export default function OpportunityBoardPage() {
                       </p>
                       <div className="flex justify-between items-center mt-1">
                         <span className="text-xs font-medium text-gray-600">
-                          ₫ { (opp.expected_value || 0).toLocaleString("vi-VN") }
+                         {formatVND(opp.expected_value)}
                         </span>
                         <span className="text-xs text-gray-500">
                           {opp.closing_date

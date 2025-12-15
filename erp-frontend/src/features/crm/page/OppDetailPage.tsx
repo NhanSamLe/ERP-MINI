@@ -26,7 +26,7 @@ import OppStageActions from "../components/OppStageActions";
 import StatCards from "../components/StatCards";
 
 import { ArrowLeft, User, ChevronRight } from "lucide-react";
-
+import { formatVND,formatPercent } from "../../../utils/currency.helper";
 export default function OppDetailPage() {
   const { id } = useParams();
   const oppId = Number(id);
@@ -195,20 +195,13 @@ export default function OppDetailPage() {
 
                 <InfoItem
                   label="Expected Value"
-                  value={
-                    opp.expected_value
-                      ? `${opp.expected_value.toLocaleString("vi-VN")} ₫`
-                      : "-"
-                  }
+                  value={formatVND(opp.expected_value)}
                 />
 
                 <InfoItem
                   label="Probability"
-                  value={
-                    opp.probability !== null && opp.probability !== undefined
-                      ? `${opp.probability}%`
-                      : "-"
-                  }
+                  value={formatPercent(opp.probability??0)}
+              
                 />
 
                 <InfoItem

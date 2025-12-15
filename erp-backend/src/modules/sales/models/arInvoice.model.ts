@@ -9,7 +9,7 @@ export interface ArInvoiceAttrs {
   total_before_tax?: number;
   total_tax?: number;
   total_after_tax?: number;
-  status: "draft" | "posted" | "paid" | "cancelled";
+  status: "draft" | "posted" |"partially_paid"| "paid" | "cancelled";
   approval_status: "draft" | "waiting_approval" | "approved" | "rejected";
   created_by: number;
   approved_by?: number | null;
@@ -29,7 +29,7 @@ export class ArInvoice extends Model<ArInvoiceAttrs, ArInvoiceCreation> implemen
   public total_before_tax?: number;
   public total_tax?: number;
   public total_after_tax?: number;
-  public status!: "draft" | "posted" | "paid" | "cancelled";
+  public status!: "draft" | "posted" |"partially_paid"| "paid" | "cancelled";
   public approval_status!: "draft" | "waiting_approval" | "approved" | "rejected";
   public created_by!: number;
   public approved_by?: number | null;
@@ -49,7 +49,7 @@ ArInvoice.init(
     total_before_tax: { type: DataTypes.DECIMAL(18,2) },
     total_tax: { type: DataTypes.DECIMAL(18,2) },
     total_after_tax: { type: DataTypes.DECIMAL(18,2) },
-    status: { type: DataTypes.ENUM("draft","posted","paid","cancelled"), defaultValue: "draft" },
+    status: { type: DataTypes.ENUM("draft","posted","partially_paid","paid","cancelled"), defaultValue: "draft" },
     approval_status: {
       type: DataTypes.ENUM("draft", "waiting_approval", "approved", "rejected"),
       defaultValue: "draft",

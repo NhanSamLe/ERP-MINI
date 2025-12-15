@@ -10,6 +10,7 @@ export interface ArReceiptAttrs {
   method: "cash" | "bank" | "transfer";
   status: "draft" | "posted";
   approval_status: "draft" | "waiting_approval" | "approved" | "rejected";
+  allocation_status: "unallocated"|"fully_allocated";
   created_by: number;
   approved_by?: number | null;
   submitted_at?: Date | null;
@@ -29,6 +30,9 @@ export class ArReceipt extends Model<ArReceiptAttrs, ArReceiptCreation> implemen
   public method!: "cash" | "bank" | "transfer";
   public status!: "draft" | "posted";
   public approval_status!: "draft" | "waiting_approval" | "approved" | "rejected";
+  public allocation_status!:
+    | "unallocated"
+    | "fully_allocated";
   public created_by!: number;
   public approved_by?: number | null;
   public submitted_at?: Date | null;
@@ -49,6 +53,14 @@ ArReceipt.init(
      approval_status: {
       type: DataTypes.ENUM("draft", "waiting_approval", "approved", "rejected"),
       defaultValue: "draft",
+    },
+    allocation_status: {
+    type: DataTypes.ENUM(
+      "unallocated",
+      "fully_allocated"
+    ),
+    allowNull: false,
+    defaultValue: "unallocated",
     },
     created_by: { type: DataTypes.BIGINT, allowNull: false },
     approved_by: { type: DataTypes.BIGINT },

@@ -93,6 +93,7 @@ export default function InvoiceDetailPage() {
           onClose={() => setApproveModalOpen(false)}
           onConfirm={async () => {
             await dispatch(approveInvoice(invoice.id));
+            dispatch(fetchInvoiceDetail(invoice.id));
             setApproveModalOpen(false);
           }}
         />

@@ -5,6 +5,15 @@ export type ReceiptApprovalStatus =
 
 export type ReceiptStatus =
   "draft" | "posted";
+export type InvoiceStatus =
+  | "draft"
+  | "posted"
+  | "partially_paid"
+  | "paid"
+  | "cancelled";
+export type ReceiptAllocationStatus =
+  | "unallocated"
+  | "fully_allocated";
 
 export interface ArReceiptDto {
   id: number;
@@ -39,7 +48,7 @@ export interface ArReceiptDto {
     username: string;
     full_name?: string;
   } | null;
-
+  allocation_status: ReceiptAllocationStatus;
   submitted_at?: string | null;
   approved_at?: string | null;
   reject_reason?: string | null;
@@ -56,6 +65,7 @@ export interface ArReceiptAllocationDto {
     invoice_no: string;
     total_after_tax: number;
   };
+   status: InvoiceStatus;
 }
 
 

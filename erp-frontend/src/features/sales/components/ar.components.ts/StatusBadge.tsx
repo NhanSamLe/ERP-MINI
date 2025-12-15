@@ -11,6 +11,7 @@ const StatusBadge = ({ status, type }: Props) => {
     status: {
       draft: { label: 'Draft', bg: 'bg-gray-100', text: 'text-gray-700', icon: FileText },
       posted: { label: 'Posted', bg: 'bg-orange-100', text: 'text-orange-700', icon: FileText },
+       partially_paid: {label: "Partially Paid",bg: "bg-orange-100",text: "text-orange-800",icon: Clock},
       paid: { label: 'Paid', bg: 'bg-emerald-100', text: 'text-emerald-700', icon: CheckCircle },
       cancelled: { label: 'Cancelled', bg: 'bg-gray-200', text: 'text-gray-600', icon: XCircle }
     },

@@ -6,7 +6,9 @@ export type InvoiceApprovalStatus =
   "draft" | "waiting_approval" | "approved" | "rejected";
 
 export type InvoiceStatus =
-  "draft" | "posted" | "paid" | "cancelled";
+  "draft" | "posted" | "paid" | "cancelled" | "partially_paid";
+
+  
 
 export interface ArInvoiceLineDto {
   id?: number;
@@ -45,9 +47,6 @@ export interface ArInvoiceDto {
 
   approval_status: InvoiceApprovalStatus;
   status: InvoiceStatus;
-
-  // ❌ Không còn customer_id tại Invoice
-  // customer lấy qua SaleOrder
 
   created_by: number;
   creator?: {

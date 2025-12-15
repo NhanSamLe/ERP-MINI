@@ -342,7 +342,7 @@ export const saleOrderService = {
       submitted_at: new Date(),
     });
 
-    return order;
+   return this.getById(order.id, user);
   },
 
   /** -----------------------------------------------------
@@ -365,7 +365,7 @@ export const saleOrderService = {
       status: "confirmed",
     });
 
-    return order;
+   return this.getById(order.id, manager);
   },
 
   /** -----------------------------------------------------
@@ -387,7 +387,6 @@ export const saleOrderService = {
       approved_by: manager.id,
       status: "draft",
     });
-
-    return order;
+   return this.getById(order.id, manager);
   },
 };

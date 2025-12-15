@@ -135,6 +135,7 @@ async getAll(user: any, filters: any = {}) {
     method: data.method,
     created_by: user.id,
     approval_status: "draft",
+    allocation_status:"unallocated",
     status: "draft",
   });
   },
@@ -280,60 +281,117 @@ async approve(id: number, approver: any) {
     return receipt;
   },
 
-  /** ALLOCATE into Invoices — Accountant only after approved */
- async allocate(receiptId: number, allocations: any[], user: any) {
-  const receipt = await ArReceipt.findByPk(receiptId);
-  
-  if (!receipt) throw new Error("Receipt not found");
-  if (receipt.branch_id !== user.branch_id)
-    throw new Error("Cross-branch denied");
-  if (receipt.status !== "posted")
-    throw new Error("Receipt must be posted before allocation");
+  async allocate(receiptId: number, allocations: any[], user: any) {
+  const t = await sequelize.transaction();
 
-  // 🔴 FIX 1: Validate total allocation
-  const totalAlloc = allocations.reduce((sum, a) => sum + (a.applied_amount || 0), 0);
-  if (totalAlloc > (receipt.amount ?? 0)) {
-    throw new Error(`Total allocation ${totalAlloc} exceeds receipt amount ${receipt.amount}`);
-  }
+  try {
+    /* ===============================
+     * 1. Load receipt & validate
+     * =============================== */
+    const receipt = await ArReceipt.findByPk(receiptId, { transaction: t });
+    if (!receipt) throw new Error("Receipt not found");
 
-  // 🔴 FIX 2: Validate từng invoice + calculate unpaid
-  for (const a of allocations) {
-    if (!a.invoice_id || !a.applied_amount || a.applied_amount <= 0) {
-      throw new Error("Invalid allocation data");
+    if (receipt.status !== "posted") {
+      throw new Error("Receipt must be posted before allocation");
     }
 
-    // Check invoice tồn tại
-    const invoice = await ArInvoice.findByPk(a.invoice_id);
-    if (!invoice) {
-      throw new Error(`Invoice ${a.invoice_id} not found`);
+    const receiptAmount = Number(receipt.amount || 0);
+    if (receiptAmount <= 0) {
+      throw new Error("Receipt amount must be greater than 0");
     }
 
-    // Calculate current unpaid (tất cả allocations cho invoice này)
-    const totalAllocatedForInvoice = await ArReceiptAllocation.sum('applied_amount', {
-      where: { invoice_id: a.invoice_id }
-    }) || 0;
+    const totalAllocInput = allocations.reduce(
+      (s, a) => s + Number(a.applied_amount || 0),
+      0
+    );
 
-    const unpaid = invoice.total_after_tax ?? 0 - totalAllocatedForInvoice;
-
-    // Check allocation không vượt unpaid
-    if (a.applied_amount > unpaid) {
+    if (totalAllocInput !== receiptAmount) {
       throw new Error(
-        `Allocation for invoice ${invoice.invoice_no} (${a.applied_amount}) ` +
-        `exceeds unpaid amount (${unpaid})`
+        `Total allocation (${totalAllocInput}) must equal receipt amount (${receiptAmount})`
       );
     }
-  }
 
-  // Create allocations
-  for (const a of allocations) {
-    await ArReceiptAllocation.create({
-      receipt_id: receiptId,
-      invoice_id: a.invoice_id,
-      applied_amount: a.applied_amount,
-    });
-  }
+    /* ===============================
+     * 2. Allocation từng invoice
+     * =============================== */
+    let totalAllocated = 0;
 
-  return this.getById(receiptId, user);
+    for (const a of allocations) {
+      if (!a.invoice_id || !a.applied_amount) continue;
+
+      const invoice = await ArInvoice.findByPk(a.invoice_id, {
+        transaction: t,
+      });
+      if (!invoice) throw new Error("Invoice not found");
+
+      if (invoice.status === "paid") {
+        throw new Error(
+          `Invoice ${invoice.invoice_no} has already been fully paid`
+        );
+      }
+
+      const prevAllocated =
+        (await ArReceiptAllocation.sum("applied_amount", {
+          where: { invoice_id: a.invoice_id },
+          transaction: t,
+        })) || 0;
+
+      const invoiceTotal = Number(invoice.total_after_tax || 0);
+      const unpaid = invoiceTotal - prevAllocated;
+
+      if (a.applied_amount > unpaid) {
+        throw new Error(
+          `Allocation exceeds unpaid amount for invoice ${invoice.invoice_no}`
+        );
+      }
+
+      // Create allocation
+      await ArReceiptAllocation.create(
+        {
+          receipt_id: receiptId,
+          invoice_id: a.invoice_id,
+          applied_amount: a.applied_amount,
+        },
+        { transaction: t }
+      );
+
+      totalAllocated += Number(a.applied_amount);
+   
+      const newAllocated = prevAllocated + Number(a.applied_amount);
+      const remaining = invoiceTotal - newAllocated;
+      let newInvoiceStatus: ArInvoice["status"] = "posted";
+
+      if (remaining <= 0) {
+        newInvoiceStatus = "paid";
+      } else if (remaining < invoiceTotal) {
+        newInvoiceStatus = "partially_paid";
+      }
+
+      await invoice.update(
+        { status: newInvoiceStatus },
+        { transaction: t }
+      );
+    }
+    let allocationStatus: ArReceipt["allocation_status"] = "unallocated";
+
+    if (totalAllocated === receiptAmount) {
+      allocationStatus = "fully_allocated";
+    } 
+    await receipt.update(
+      { allocation_status: allocationStatus },
+      { transaction: t }
+    );
+
+    /* ===============================
+     * 5. Commit
+     * =============================== */
+    await t.commit();
+
+    return this.getById(receiptId, user);
+  } catch (e) {
+    await t.rollback();
+    throw e;
+  }
 },
   // UPDATE RECEIPT — only when draft
 async update(id: number, data: any, user: any) {

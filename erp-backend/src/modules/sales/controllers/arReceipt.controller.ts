@@ -148,7 +148,6 @@ async allocate(req: Request, res: Response) {
 
     const result = await arReceiptService.allocate(id, req.body.allocations, user);
     return res.json({ message: "Allocated", data: result });
-
   } catch (err: any) {
     console.error("🔥 ALLOCATE RECEIPT ERROR:", {
       message: err.message,
