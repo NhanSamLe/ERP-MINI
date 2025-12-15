@@ -12,6 +12,22 @@ router.get(
 );
 
 router.get(
+  "/:id/available",
+  authMiddleware([Role.ACCOUNT, Role.CHACC]),
+  apPaymentController.getAvailableAmount
+);
+router.get(
+  "/:id/unpaid-invoices",
+  authMiddleware([Role.ACCOUNT, Role.CHACC]),
+  apPaymentController.getUnpaidInvoices
+);
+router.post(
+  "/:id/allocate",
+  authMiddleware([Role.ACCOUNT, Role.CHACC]),
+  apPaymentController.allocate
+);
+
+router.get(
   "/:id",
   authMiddleware([Role.ACCOUNT, Role.CHACC]),
   apPaymentController.getById

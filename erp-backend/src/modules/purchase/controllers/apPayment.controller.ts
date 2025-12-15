@@ -102,4 +102,53 @@ export const apPaymentController = {
       res.status(400).json({ success: false, message: error.message });
     }
   },
+
+  async getAvailableAmount(req: Request, res: Response) {
+    const user = (req as any).user;
+    try {
+      const data = await apPaymentService.getAvailableAmount(
+        Number(req.params.id),
+        user
+      );
+      res.json({ success: true, data });
+    } catch (error: any) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  },
+
+  async getUnpaidInvoices(req: Request, res: Response) {
+    const user = (req as any).user;
+    try {
+      const data = await apPaymentService.getUnpaidInvoices(
+        Number(req.params.id),
+        user
+      );
+      res.json({ success: true, data });
+    } catch (error: any) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  },
+
+  async allocate(req: Request, res: Response) {
+    const user = (req as any).user;
+    try {
+      const { allocations } = req.body;
+
+      if (!Array.isArray(allocations) || !allocations.length) {
+        return res.status(400).json({
+          success: false,
+          message: "Allocations are required",
+        });
+      }
+
+      await apPaymentService.allocate(Number(req.params.id), allocations, user);
+
+      res.json({
+        success: true,
+        message: "Allocation applied successfully",
+      });
+    } catch (error: any) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  },
 };

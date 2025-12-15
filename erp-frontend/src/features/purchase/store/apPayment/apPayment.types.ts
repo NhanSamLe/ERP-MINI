@@ -1,4 +1,4 @@
-export type PaymentStatus = "draft" | "posted" | "cancelled";
+export type PaymentStatus = "draft" | "posted" | "completed" | "cancelled";
 export type ApprovalStatus =
   | "draft"
   | "waiting_approval"
@@ -65,4 +65,18 @@ export interface ApPayment {
 
   created_at: string;
   updated_at: string;
+}
+
+export interface UnpaidInvoice {
+  id: number;
+  invoice_no: string;
+  total_after_tax: number;
+  allocated_amount: number;
+  unpaid_amount: number;
+  allocate_amount: number;
+}
+
+export interface AvailableAmount {
+  payment_id: number;
+  available_amount: number;
 }

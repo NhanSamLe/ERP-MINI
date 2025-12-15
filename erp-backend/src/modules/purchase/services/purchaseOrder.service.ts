@@ -425,8 +425,10 @@ export const purchaseOrderService = {
     return PurchaseOrder.findAll({
       where: {
         branch_id: user.branch_id,
-        status: "confirmed",
-        "$invoice.id$": { [Op.is]: null }, // 👈 filter PO chưa có invoice
+        status: {
+          [Op.in]: ["confirmed", "completed"],
+        },
+        "$invoice.id$": { [Op.is]: null },
       },
       include: [
         {

@@ -38,6 +38,7 @@ export default function ApPaymentPages() {
     draft: "bg-gray-100 text-gray-700",
     posted: "bg-green-100 text-green-700",
     cancelled: "bg-red-100 text-red-700",
+    completed: "bg-indigo-100 text-indigo-700",
   };
 
   const approvalBadge: Record<ApPayment["approval_status"], string> = {
