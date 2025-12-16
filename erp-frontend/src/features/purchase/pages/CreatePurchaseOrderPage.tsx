@@ -265,6 +265,8 @@ export default function CreatePurchaseOrderPage() {
           unit_price: Number(l.sale_price ?? 0),
           tax_rate_id: Number(l.tax_rate_id),
           line_total: Number(l.line_total),
+          line_tax: l.tax_amount ?? 0,
+          line_total_after_tax: l.line_total,
         })),
       };
 
@@ -375,7 +377,7 @@ export default function CreatePurchaseOrderPage() {
                     >
                       <div className="font-medium text-sm">{p.name}</div>
                       <div className="text-xs text-gray-500">
-                        SKU: {p.sku} • Sale Price: ${p.sale_price?.toFixed(0)}
+                        SKU: {p.sku} • Sale Price: {p.sale_price?.toFixed(0)}
                       </div>
                     </div>
                   ))
@@ -445,7 +447,7 @@ export default function CreatePurchaseOrderPage() {
                       />
                     </td>
                     <td className="px-4 py-3 text-center capitalize">
-                      ${line.sale_price?.toFixed(2)}
+                      {line.sale_price?.toFixed(2)}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <Input
@@ -466,11 +468,11 @@ export default function CreatePurchaseOrderPage() {
                     <td className="px-4 py-3 text-center">{line.tax_rate}%</td>
 
                     <td className="px-4 py-3 text-right font-medium">
-                      ${line.tax_amount.toFixed(2)}
+                      {line.tax_amount.toFixed(2)}
                     </td>
 
                     <td className="px-4 py-3 text-right font-bold text-orange-600">
-                      ${line.line_total.toFixed(2)}
+                      {line.line_total.toFixed(2)}
                     </td>
                   </tr>
                 ))
@@ -485,11 +487,7 @@ export default function CreatePurchaseOrderPage() {
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Total Order Tax
           </label>
-          <Input
-            value={"$" + totalOrderTax.toString()}
-            onChange={(v) => setTotalOrderTax(Number(v) || 0)}
-            disabled
-          />
+          <Input value={totalOrderTax.toString()} disabled />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -504,7 +502,7 @@ export default function CreatePurchaseOrderPage() {
             Total Before Tax *
           </label>
           <Input
-            value={"$" + totalBeforeTax.toString()}
+            value={totalBeforeTax.toString()}
             onChange={(v) => setTotalBeforeTax(Number(v) || 0)}
             disabled
           />
@@ -514,7 +512,7 @@ export default function CreatePurchaseOrderPage() {
             Total After Tax *
           </label>
           <Input
-            value={"$" + totalAfterTax.toString()}
+            value={totalAfterTax.toString()}
             onChange={(v) => setTotalAfterTax(Number(v) || 0)}
             disabled
           />

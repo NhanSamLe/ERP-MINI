@@ -228,7 +228,7 @@ export default function EditPurchaseOrderPage() {
             tax_rate: tax?.rate || 0,
             tax_rate_id: product.tax_rate_id,
             tax_type: tax?.type || "VAT",
-            tax_amount: l.line_tax,
+            tax_amount: Number(l.line_tax || 0),
             line_total: Number(l.line_total_after_tax || 0),
           };
         })
