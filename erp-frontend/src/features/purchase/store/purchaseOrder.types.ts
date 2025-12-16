@@ -54,6 +54,9 @@ export interface PurchaseOrderLine {
   unit_price: number;
   tax_rate_id?: number;
   line_total: number;
+  line_tax: number;
+  line_total_after_tax: number;
+
   product?: ProductLite;
 }
 export interface ProductLite {
