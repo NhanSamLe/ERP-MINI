@@ -1,5 +1,5 @@
 import { Role } from "../../../core/types/enum";
-import { ApInvoiceLine, Partner, Product } from "../../../models";
+import { ApInvoiceLine, Partner, Product, sequelize } from "../../../models";
 import { User } from "../../auth/models/user.model";
 import { Branch } from "../../company/models/branch.model";
 import { ApInvoice } from "../models/apInvoice.model";
@@ -114,10 +114,11 @@ export const apInvoiceService = {
         };
       }
 
-      if (po.status !== "confirmed") {
+      if (po.status !== "confirmed" && po.status !== "completed") {
         throw {
           status: 400,
-          message: "Only CONFIRMED Purchase Orders can create AP Invoice",
+          message:
+            "Only CONFIRMED And COMPLETED Purchase Orders can create AP Invoice",
         };
       }
 
@@ -277,41 +278,46 @@ export const apInvoiceService = {
   },
 
   async getPostedSummaryBySupplier(supplierId: number, user: any) {
-    const invoices = await ApInvoice.findAll({
-      where: {
-        branch_id: user.branch_id,
-        status: "posted",
-      },
-      include: [
-        {
-          model: PurchaseOrder,
-          as: "order",
-          required: true,
-          where: {
-            supplier_id: supplierId,
-          },
-          attributes: ["id", "po_no", "supplier_id"],
-          include: [
-            {
-              model: Partner,
-              as: "supplier",
-              attributes: ["id", "name"],
-            },
-          ],
+    const invoices: any[] = await sequelize.query(
+      `
+    SELECT
+      ai.id,
+      ai.invoice_no,
+      ai.invoice_date,
+      ai.total_after_tax,
+      ai.po_id,
+
+      COALESCE(ai.total_after_tax - SUM(apa.applied_amount), ai.total_after_tax)
+        AS outstanding_amount,
+
+      po.po_no,
+      p.id   AS supplier_id,
+      p.name AS supplier_name
+    FROM ap_invoices ai
+    JOIN purchase_orders po
+      ON po.id = ai.po_id
+    JOIN partners p
+      ON p.id = po.supplier_id
+    LEFT JOIN ap_payment_allocations apa
+      ON apa.ap_invoice_id = ai.id
+    WHERE ai.branch_id = :branchId
+      AND ai.status IN ('posted')
+      AND po.supplier_id = :supplierId
+    GROUP BY
+      ai.id, po.id, p.id
+    ORDER BY ai.invoice_date ASC
+    `,
+      {
+        replacements: {
+          branchId: user.branch_id,
+          supplierId,
         },
-      ],
-      attributes: [
-        "id",
-        "invoice_no",
-        "invoice_date",
-        "total_after_tax",
-        "po_id",
-      ],
-      order: [["invoice_date", "ASC"]],
-    });
+        type: "SELECT",
+      }
+    );
 
     const totalAmount = invoices.reduce(
-      (sum, inv: any) => sum + Number(inv.total_after_tax),
+      (sum, inv) => sum + Number(inv.outstanding_amount),
       0
     );
 

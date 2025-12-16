@@ -152,8 +152,9 @@ export default function ViewPurchaseOrderPage() {
         0
       );
       const tax = enrichedLines.reduce((s, l) => s + l.tax_amount, 0);
-      const after = enrichedLines.reduce((s, l) => s + l.line_total, 0);
+      // const after = enrichedLines.reduce((s, l) => s + l.line_total, 0);
 
+      const after = finalPO?.total_after_tax ?? 0;
       setTotalBeforeTax(before);
       setTotalOrderTax(tax);
       setTotalAfterTax(after);
@@ -807,7 +808,7 @@ export default function ViewPurchaseOrderPage() {
                       />
                     </td>
                     <td className="px-4 py-3 text-center capitalize">
-                      ${line.sale_price?.toFixed(2)}
+                      {line.sale_price?.toFixed(2)}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <Input
@@ -825,11 +826,11 @@ export default function ViewPurchaseOrderPage() {
                     <td className="px-4 py-3 text-center">{line.tax_rate}%</td>
 
                     <td className="px-4 py-3 text-right font-medium">
-                      ${line.tax_amount.toFixed(2)}
+                      {line.tax_amount.toFixed(2)}
                     </td>
 
                     <td className="px-4 py-3 text-right font-bold text-orange-600">
-                      ${line.line_total.toFixed(2)}
+                      {line.line_total.toFixed(2)}
                     </td>
                   </tr>
                 ))
@@ -845,21 +846,21 @@ export default function ViewPurchaseOrderPage() {
           <label className="text-sm font-medium text-gray-600">
             Total Before Tax
           </label>
-          <Input className="mt-1" value={`$${totalBeforeTax}`} disabled />
+          <Input className="mt-1" value={`${totalBeforeTax}`} disabled />
         </div>
 
         <div>
           <label className="text-sm font-medium text-gray-600">
             Order Tax Total
           </label>
-          <Input className="mt-1" value={`$${totalOrderTax}`} disabled />
+          <Input className="mt-1" value={`${totalOrderTax}`} disabled />
         </div>
 
         <div>
           <label className="text-sm font-medium text-gray-600">
             Total After Tax
           </label>
-          <Input className="mt-1" value={`$${totalAfterTax}`} disabled />
+          <Input className="mt-1" value={`${totalAfterTax}`} disabled />
         </div>
       </div>
 

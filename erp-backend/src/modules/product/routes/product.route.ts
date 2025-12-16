@@ -8,7 +8,14 @@ const router = Router();
 
 router.get(
   "/",
-  authMiddleware([Role.ADMIN, Role.SALES, Role.PURCHASE, Role.PURCHASEMANAGER, Role.WHSTAFF, Role.WHMANAGER]),
+  authMiddleware([
+    Role.ADMIN,
+    Role.SALES,
+    Role.PURCHASE,
+    Role.PURCHASEMANAGER,
+    Role.WHSTAFF,
+    Role.WHMANAGER,
+  ]),
   productController.getAllProductOnActive
 );
 
@@ -38,6 +45,7 @@ router.get(
     Role.PURCHASE,
     Role.WHSTAFF,
     Role.PURCHASEMANAGER,
+    Role.ACCOUNT,
   ]),
   productController.getProductById
 );
