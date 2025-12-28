@@ -432,6 +432,7 @@ export default function StockMovePages() {
           uom: p.uom,
         })),
       };
+      console.log("Payload:", payload);
       const result = await dispatch(
         updateReceiptStockMoveThunk({ id: selectedStockMove.id, data: payload })
       ).unwrap();

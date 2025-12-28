@@ -138,7 +138,7 @@ export interface StockMoveUpdate {
   reject_reason?: string;
   lines: {
     id: number | undefined;
-    product_id: number;
+    product_id: number | undefined;
     quantity: number;
     uom: string;
   }[];

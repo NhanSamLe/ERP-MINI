@@ -347,7 +347,7 @@ export const purchaseOrderService = {
     if (!lines.length) {
       throw {
         status: 400,
-        message: "Purchase Order không có dòng sản phẩm.",
+        message: "The Purchase Order has no product lines.",
       };
     }
 
@@ -398,7 +398,7 @@ export const purchaseOrderService = {
       const productResult = await productService.getById(productId);
       throw {
         status: 400,
-        message: `Sản phẩm  ${productResult?.name} không có trong Purchase Order.`,
+        message: `Product ${productResult?.name} is not included in the Purchase Order.`,
       };
     }
     return poLine;
@@ -416,7 +416,7 @@ export const purchaseOrderService = {
       const productResult = await productService.getById(productId);
       throw {
         status: 400,
-        message: `Sản phẩm ${productResult?.name} vượt quá số lượng Purchase Order còn lại. Còn lại: ${remaining}, nhập: ${inputQty}`,
+        message: `Product ${productResult?.name} exceeds the remaining quantity in the Purchase Order. Remaining: ${remaining}, entered: ${inputQty}`,
       };
     }
   },

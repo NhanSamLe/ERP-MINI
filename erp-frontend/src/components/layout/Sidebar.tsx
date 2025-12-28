@@ -127,6 +127,11 @@ const menuItems: MenuItem[] = [
         allowedRoles: ["WHMANAGER", "WHSTAFF", "ADMIN"],
       },
       {
+        name: "Warehouses",
+        path: "/inventory/warehouses",
+        allowedRoles: ["ADMIN"],
+      },
+      {
         name: "Category",
         path: "/inventory/categories",
         allowedRoles: ["WHMANAGER", "ADMIN", "WHSTAFF"],
