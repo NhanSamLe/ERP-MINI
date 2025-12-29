@@ -3,6 +3,8 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import FinanceDashboard from "../features/finance/FinanceDashboard";
 import GlAccountPage from "../features/finance/page/GlAccountPage";
 import GlJournalPage from "../features/finance/page/GlJournalPage";
+import GlEntryListPage from "../features/finance/page/GlEntryListPage";
+import GlEntryDetailPage from "../features/finance/page/GlEntryDetailPage";
 
 const financeRoutes: RouteObject[] = [
   {
@@ -29,15 +31,22 @@ const financeRoutes: RouteObject[] = [
       </ProtectedRoute>
     ),
   },
-  // sau này bạn thêm:
-  // {
-  //   path: "/finance/journals",
-  //   element: (
-  //     <ProtectedRoute allowedRoles={["CHACC", "ACCOUNT"]}>
-  //       <GlJournalPage />
-  //     </ProtectedRoute>
-  //   ),
-  // },
+  {
+    path: "/finance/journals/:journalId/entries",
+    element: (
+      <ProtectedRoute allowedRoles={["ADMIN", "CHACC", "ACCOUNT"]}>
+        <GlEntryListPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/finance/entries/:entryId",
+    element: (
+      <ProtectedRoute allowedRoles={["ADMIN", "CHACC", "ACCOUNT"]}>
+        <GlEntryDetailPage />
+      </ProtectedRoute>
+    ),
+  },
 ];
 
 export default financeRoutes;
