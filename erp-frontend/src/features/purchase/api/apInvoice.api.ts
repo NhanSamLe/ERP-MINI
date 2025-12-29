@@ -15,7 +15,7 @@ export const apInvoiceApi = {
 
   createFromPO: async (poId: number): Promise<ApInvoice> => {
     const res = await axiosClient.post(`ap/invoices/from-po/${poId}`);
-    return res.data;
+    return res.data.data;
   },
 
   submitForApproval: async (id: number): Promise<ApInvoice> => {
