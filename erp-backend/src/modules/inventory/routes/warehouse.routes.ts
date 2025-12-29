@@ -7,14 +7,17 @@ const router = Router();
 
 router.get(
   "/",
-  authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
+  authMiddleware([Role.ADMIN, Role.WHSTAFF, Role.WHMANAGER]),
   WarehouseController.getAll
 );
-router.get("/:id", authMiddleware([Role.WHSTAFF]), WarehouseController.getById);
 router.get(
   "/branch/:branchId",
-  authMiddleware([Role.WHSTAFF]),
+  authMiddleware([Role.ADMIN, Role.WHSTAFF]),
   WarehouseController.getByBranch
 );
 router.get("/code/:code", WarehouseController.findByCode);
+router.get("/:id", authMiddleware([Role.ADMIN]), WarehouseController.getById);
+router.post("/", authMiddleware([Role.ADMIN]), WarehouseController.create);
+router.put("/:id", authMiddleware([Role.ADMIN]), WarehouseController.update);
+router.delete("/:id", authMiddleware([Role.ADMIN]), WarehouseController.delete);
 export default router;

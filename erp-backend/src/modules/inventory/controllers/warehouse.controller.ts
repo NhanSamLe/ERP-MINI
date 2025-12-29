@@ -18,22 +18,23 @@ export const WarehouseController = {
   },
 
   async create(req: Request, res: Response) {
-    const data = await warehouseService.create(req.body);
+    const user = (req as any).user;
+    const data = await warehouseService.create(req.body, user);
     return res.status(201).json(data);
   },
 
   async update(req: Request, res: Response) {
     const id = Number(req.params.id);
-    const updated = await warehouseService.update(id, req.body);
-
+    const user = (req as any).user;
+    const updated = await warehouseService.update(id, req.body, user);
     if (!updated) return res.status(404).json({ message: "Not found" });
-
     return res.json(updated);
   },
 
   async delete(req: Request, res: Response) {
     const id = Number(req.params.id);
-    const ok = await warehouseService.delete(id);
+    const user = (req as any).user;
+    const ok = await warehouseService.delete(id, user);
 
     if (!ok) return res.status(404).json({ message: "Not found" });
 

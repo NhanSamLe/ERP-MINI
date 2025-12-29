@@ -160,7 +160,8 @@ export default function EditReceiptModal({
             ).unwrap(); // ép return type là Product
 
             return {
-              id: result.id,
+              id: undefined,
+              product_id: result.id,
               name: result.name,
               sku: result.sku,
               uom: result.uom,
