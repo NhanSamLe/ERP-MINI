@@ -23,9 +23,15 @@ import { ImageUpload } from "../../../components/ui/ImageUpload";
 import { fetchAllTaxRatesThunk } from "@/features/master-data/store/master-data/tax/tax.thunks";
 
 export default function CreateProductPage() {
+  const generateSKU = () => {
+    const date = new Date();
+    const ymd = date.toISOString().slice(0, 10).replace(/-/g, "");
+    const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+    return `PRD-${ymd}-${random}`;
+  };
   const [product, setProduct] = useState<ProductCreateInput>({
     category_id: 0,
-    sku: "",
+    sku: generateSKU(),
     name: "",
     barcode:
       Date.now().toString().slice(-5) +
@@ -142,7 +148,12 @@ export default function CreateProductPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button className="flex items-center justify-center border border-gray-300 bg-gray-50 text-gray-600 p-2 rounded-lg hover:bg-gray-100 transition">
+          <button
+            onClick={() =>
+              setProduct((prev) => ({ ...prev, sku: generateSKU() }))
+            }
+            className="flex items-center justify-center border border-gray-300 bg-gray-50 text-gray-600 p-2 rounded-lg hover:bg-gray-100 transition"
+          >
             <RotateCw className="w-4 h-4" />
           </button>
 
@@ -190,6 +201,7 @@ export default function CreateProductPage() {
               label="SKU"
               value={product.sku}
               onChange={(v) => handleChange("sku", v)}
+              readOnly
               placeholder="Enter SKU"
             />
             <div>

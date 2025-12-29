@@ -21,10 +21,10 @@ export const productService = {
           attributes: ["id", "image_url", "image_public_id"],
         },
         {
-        model: TaxRate,
-        as: "taxRate",   // ✔ alias đúng
-        attributes: ["id", "name", "rate"],
-      },
+          model: TaxRate,
+          as: "taxRate", // ✔ alias đúng
+          attributes: ["id", "name", "rate"],
+        },
       ],
       order: [["id", "DESC"]],
     });
@@ -40,10 +40,10 @@ export const productService = {
           attributes: ["id", "image_url", "image_public_id"],
         },
         {
-        model: TaxRate,
-        as: "taxRate",   // ✔ alias đúng
-        attributes: ["id", "name", "rate"],
-      },
+          model: TaxRate,
+          as: "taxRate", // ✔ alias đúng
+          attributes: ["id", "name", "rate"],
+        },
       ],
       order: [["id", "DESC"]],
     });
@@ -59,6 +59,18 @@ export const productService = {
     data: any,
     files?: { [fieldname: string]: Express.Multer.File[] }
   ) {
+    if (data.sku) {
+      const existedSku = await Product.findOne({
+        where: { sku: data.sku },
+      });
+
+      if (existedSku) {
+        throw {
+          status: 409,
+          message: "SKU already exists",
+        };
+      }
+    }
     let thumbnailUrl: string | null = null;
     let thumbnailPublicId: string | null = null;
 
