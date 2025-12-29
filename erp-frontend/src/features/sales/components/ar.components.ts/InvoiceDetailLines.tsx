@@ -1,4 +1,5 @@
-
+import { formatVND } from "@/utils/currency.helper";
+import { formatDateTime } from "@/utils/time.helper";
 import { ArInvoiceDto } from "../../dto/invoice.dto";
 import InvoiceExportToolbar from "./InvoiceExportToolbar";
 
@@ -7,13 +8,6 @@ interface Props {
 }
 
 export default function InvoiceDetailLines({ invoice }: Props) {
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
 
   return (
     <div>
@@ -70,7 +64,7 @@ export default function InvoiceDetailLines({ invoice }: Props) {
                       {Number(line.quantity)}{line.product?.uom}
                     </td>
                     <td className="px-6 py-4 text-right text-gray-900">
-                      {formatCurrency(line.unit_price)}
+                      {formatVND(line.unit_price)}
                     </td>
                     <td className="px-6 py-4 text-center">
                       {line.taxRate ? (
@@ -83,10 +77,10 @@ export default function InvoiceDetailLines({ invoice }: Props) {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="text-gray-900 font-semibold">
-                        {formatCurrency(line.line_total_after_tax || 0)}
+                        {formatVND(line.line_total_after_tax || 0)}
                       </div>
                       <p className="text-xs text-gray-500 mt-1">
-                        Before tax: {formatCurrency(line.line_total || 0)}
+                        Before tax: {formatVND(line.line_total || 0)}
                       </p>
                     </td>
                   </tr>
@@ -109,7 +103,7 @@ export default function InvoiceDetailLines({ invoice }: Props) {
               <div className="flex justify-between items-center pb-4 border-b border-gray-200">
                 <span className="text-sm text-gray-600">Total Before Tax</span>
                 <span className="text-sm font-semibold text-gray-900">
-                  {formatCurrency(invoice.total_before_tax)}
+                  {formatVND(invoice.total_before_tax)}
                 </span>
               </div>
 
@@ -117,7 +111,7 @@ export default function InvoiceDetailLines({ invoice }: Props) {
               <div className="flex justify-between items-center pb-4 border-b border-gray-200">
                 <span className="text-sm text-gray-600">Total Tax</span>
                 <span className="text-sm font-semibold text-gray-900">
-                  {formatCurrency(invoice.total_tax)}
+                  {formatVND(invoice.total_tax)}
                 </span>
               </div>
 
@@ -125,7 +119,7 @@ export default function InvoiceDetailLines({ invoice }: Props) {
               <div className="flex justify-between items-center pt-2 pb-4">
                 <span className="text-base font-bold text-gray-900">Total After Tax</span>
                 <span className="text-xl font-bold text-indigo-600">
-                  {formatCurrency(invoice.total_after_tax)}
+                  {formatVND(invoice.total_after_tax)}
                 </span>
               </div>
             </div>

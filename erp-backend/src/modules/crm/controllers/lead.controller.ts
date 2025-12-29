@@ -24,21 +24,21 @@ export const getLeads = async (req: Request, res: Response) => {
   }
 };
 export const getLeadById = async (req: Request, res: Response) => {
-    try {
+  try {
     const leadId = Number(req.params.leadId);
     const lead = await leadService.getLeadById(leadId);
     return res.json({
-        message: "Lấy chi tiết Lead thành công",    
-        data: lead,
+      message: "Lấy chi tiết Lead thành công",
+      data: lead,
     });
   } catch (err: any) {
     return res.status(400).json({ message: err.message });
-  } 
+  }
 };
 export const createLead = async (req: Request, res: Response) => {
   try {
     const assigned_to = (req as any).user.id;
-    const { name, email, phone, source} = req.body;
+    const { name, email, phone, source } = req.body;
 
     const lead = await leadService.createLead({
       name,
@@ -64,7 +64,7 @@ export const updateLeadBasic = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
     const leadId = Number(req.params.leadId);
-     const role = (req as any).user.role;
+    const role = (req as any).user.role;
     const updated = await leadService.updateLeadBasic(leadId, req.body, userId, role);
 
     return res.json({
@@ -82,8 +82,8 @@ export const updateLeadBasic = async (req: Request, res: Response) => {
 export const updateLeadEvaluation = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
-     const role = (req as any).user.role;
-    const updated = await leadService.updateLeadEvaluation(userId,role, req.body);
+    const role = (req as any).user.role;
+    const updated = await leadService.updateLeadEvaluation(userId, role, req.body);
 
     return res.json({
       message: "Cập nhật thông tin đánh giá Lead thành công",
@@ -100,9 +100,9 @@ export const updateLeadEvaluation = async (req: Request, res: Response) => {
 export const convertToCustomer = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
-    const leadId = Number(req.params.leadId); 
-     const role = (req as any).user.role;
-    const result = await leadService.convertToCustomer(leadId, userId,role);
+    const leadId = Number(req.params.leadId);
+    const role = (req as any).user.role;
+    const result = await leadService.convertToCustomer(leadId, userId, role);
 
     return res.json({
       message: "Convert Lead sang Customer thành công",
@@ -120,8 +120,8 @@ export const markAsLost = async (req: Request, res: Response) => {
   try {
     const { leadId, reason } = req.body;
     const userId = (req as any).user.id;
-     const role = (req as any).user.role;
-    const lead = await leadService.markAsLost(leadId, userId, role,reason);
+    const role = (req as any).user.role;
+    const lead = await leadService.markAsLost(leadId, userId, role, reason);
 
     return res.json({
       message: "Lead đã được chuyển sang LOST",
@@ -206,6 +206,7 @@ export const deleteLead = async (req: Request, res: Response) => {
   }
 };
 
+
 export const getTodayLead = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
@@ -216,5 +217,23 @@ export const getTodayLead = async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     return res.status(400).json({ message: err.message });
-}
+  }
+};
+
+export const importLeads = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    if (!req.file) {
+      return res.status(400).json({ message: "Vui lòng upload file Excel" });
+    }
+
+    const result = await leadService.importLeadsFromExcel(req.file.buffer, user, req.app);
+
+    return res.json({
+      message: "Import leads thành công",
+      data: result,
+    });
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message });
+  }
 };

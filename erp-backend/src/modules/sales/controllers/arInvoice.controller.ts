@@ -31,7 +31,7 @@ export const ArInvoiceController = {
   async create(req: Request, res: Response) {
     try {
       const user = (req as any).user;
-      const {order_id} = req.body
+      const { order_id } = req.body
       const invoice = await arInvoiceService.createFromOrder(order_id, user);
       return res.status(201).json({ message: "Created", data: invoice });
     } catch (err: any) {
@@ -58,7 +58,7 @@ export const ArInvoiceController = {
       const id = Number(req.params.id);
       const user = (req as any).user;
 
-      const result = await arInvoiceService.submit(id, user);
+      const result = await arInvoiceService.submit(id, user, req.app);
       return res.json({ message: "Submitted", data: result });
     } catch (err: any) {
       return res.status(400).json({ message: err.message });
@@ -71,10 +71,10 @@ export const ArInvoiceController = {
       const id = Number(req.params.id);
       const user = (req as any).user;
 
-      const result = await arInvoiceService.approve(id, user);
+      const result = await arInvoiceService.approve(id, user, req.app);
       return res.json({ message: "Approved", data: result });
     } catch (err: any) {
-       console.error("🔥 APPROVE ERROR:", err);
+      console.error("🔥 APPROVE ERROR:", err);
       return res.status(403).json({ message: err.message });
     }
   },
@@ -85,7 +85,7 @@ export const ArInvoiceController = {
       const id = Number(req.params.id);
       const user = (req as any).user;
 
-      const result = await arInvoiceService.reject(id, user, req.body.reason);
+      const result = await arInvoiceService.reject(id, user, req.body.reason, req.app);
       return res.json({ message: "Rejected", data: result });
     } catch (err: any) {
       return res.status(403).json({ message: err.message });
@@ -100,5 +100,5 @@ export const ArInvoiceController = {
       return res.status(400).json({ message: err.message });
     }
   },
-  
+
 };

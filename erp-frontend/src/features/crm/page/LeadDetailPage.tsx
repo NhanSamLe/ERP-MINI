@@ -209,7 +209,7 @@ export default function LeadDetailPage() {
 
     try {
       await dispatch(deleteLead(leadId)).unwrap();
-      navigate("/crm/lead");
+      navigate("/crm/leads");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Delete failed";
       setAlert({ type: "error", message: msg });
@@ -308,8 +308,8 @@ export default function LeadDetailPage() {
               </CardHeader>
               <Separator />
               <CardContent className="pt-5">
-                
-        {!basicEdit ? (
+
+                {!basicEdit ? (
                   <div className="grid grid-cols-2 gap-6">
                     <InfoItem label="Email" value={lead.email ?? "-"} />
                     <InfoItem label="Phone" value={lead.phone ?? "-"} />
@@ -335,20 +335,20 @@ export default function LeadDetailPage() {
               <CardHeader className="flex justify-between items-center">
                 <h2 className="text-lg font-semibold">Evaluation</h2>
                 <div className="ml-auto">
-                {!evalEdit ? (
-                  <button onClick={() => setEvalEdit(true)} className="p-2 hover:bg-gray-100 rounded-lg transition">
-                    <Edit2 className="w-5 h-5 text-gray-600" />
-                  </button>
-                ) : (
-                  <div className="flex gap-2">
-                    <button onClick={handleSaveEval} className="p-2 hover:bg-green-100 rounded-lg transition">
-                      <Check className="w-5 h-5 text-green-600" />
+                  {!evalEdit ? (
+                    <button onClick={() => setEvalEdit(true)} className="p-2 hover:bg-gray-100 rounded-lg transition">
+                      <Edit2 className="w-5 h-5 text-gray-600" />
                     </button>
-                    <button onClick={() => setEvalEdit(false)} className="p-2 hover:bg-red-100 rounded-lg transition">
-                      <X className="w-5 h-5 text-red-600" />
-                    </button>
-                  </div>
-                )}
+                  ) : (
+                    <div className="flex gap-2">
+                      <button onClick={handleSaveEval} className="p-2 hover:bg-green-100 rounded-lg transition">
+                        <Check className="w-5 h-5 text-green-600" />
+                      </button>
+                      <button onClick={() => setEvalEdit(false)} className="p-2 hover:bg-red-100 rounded-lg transition">
+                        <X className="w-5 h-5 text-red-600" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </CardHeader>
               <Separator />
@@ -409,7 +409,7 @@ export default function LeadDetailPage() {
               </CardHeader>
               <Separator />
               <CardContent className="pt-5">
-               <CompactTimeline items={timeline} />
+                <CompactTimeline items={timeline} />
               </CardContent>
             </Card>
           </div>
@@ -614,15 +614,14 @@ function ActivityCardMini({
             <div className="flex items-center gap-1.5">
               <p className="text-xs font-semibold text-gray-500 uppercase">{getActivityTypeLabel()}</p>
               <span
-                className={`px-1.5 py-0.5 text-xs rounded-full font-medium ${
-                  a.status === "completed"
+                className={`px-1.5 py-0.5 text-xs rounded-full font-medium ${a.status === "completed"
                     ? "bg-green-100 text-green-700"
                     : a.status === "cancelled"
-                    ? "bg-red-100 text-red-700"
-                    : a.status === "in_progress"
-                    ? "bg-blue-100 text-blue-700"
-                    : "bg-yellow-100 text-yellow-700"
-                }`}
+                      ? "bg-red-100 text-red-700"
+                      : a.status === "in_progress"
+                        ? "bg-blue-100 text-blue-700"
+                        : "bg-yellow-100 text-yellow-700"
+                  }`}
               >
                 {a.status}
               </span>

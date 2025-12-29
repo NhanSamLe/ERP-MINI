@@ -8,6 +8,7 @@ import { Op } from "sequelize";
 import { JwtPayload } from "../../../core/types/jwt";
 import { generateOrderNo } from "../utils";
 import { Role } from "../../../core/types/enum";
+import { notificationService } from "../../../core/services/notification.service";
 export const saleOrderService = {
   /** -----------------------------------------------------
    * HELPER: Tính thuế từng dòng
@@ -326,7 +327,7 @@ export const saleOrderService = {
   /** -----------------------------------------------------
    * SUBMIT — Sales
    * ---------------------------------------------------- */
-  async submit(id: number, user: any) {
+  async submit(id: number, user: any, app?: any) {
     const order = await SaleOrder.findByPk(id);
 
     if (!order) throw new Error("Order not found");
@@ -342,13 +343,28 @@ export const saleOrderService = {
       submitted_at: new Date(),
     });
 
-   return this.getById(order.id, user);
+    // Gửi thông báo
+    if (app) {
+      const io = app.get("io");
+      await notificationService.createNotification({
+        type: "SUBMIT",
+        referenceType: "SALE_ORDER",
+        referenceId: order.id!,
+        referenceNo: order.order_no!,
+        branchId: order.branch_id!,
+        submitterId: user.id,
+        submitterName: user.fullName || user.username,
+        io,
+      });
+    }
+
+    return this.getById(order.id, user);
   },
 
   /** -----------------------------------------------------
    * APPROVE — Sale Manager
    * ---------------------------------------------------- */
-  async approve(id: number, manager: any) {
+  async approve(id: number, manager: any, app?: any) {
     const order = await SaleOrder.findByPk(id);
 
     if (!order) throw new Error("Order not found");
@@ -365,13 +381,28 @@ export const saleOrderService = {
       status: "confirmed",
     });
 
-   return this.getById(order.id, manager);
+    // Gửi thông báo
+    if (app && order.created_by) {
+      const io = app.get("io");
+      await notificationService.createNotification({
+        type: "APPROVE",
+        referenceType: "SALE_ORDER",
+        referenceId: order.id!,
+        referenceNo: order.order_no!,
+        branchId: order.branch_id!,
+        submitterId: order.created_by,
+        approverName: manager.fullName || manager.username,
+        io,
+      });
+    }
+
+    return this.getById(order.id, manager);
   },
 
   /** -----------------------------------------------------
    * REJECT — Sale Manager
    * ---------------------------------------------------- */
-  async reject(id: number, manager: any, reason: string) {
+  async reject(id: number, manager: any, reason: string, app?: any) {
     const order = await SaleOrder.findByPk(id);
 
     if (!order) throw new Error("Order not found");
@@ -387,6 +418,23 @@ export const saleOrderService = {
       approved_by: manager.id,
       status: "draft",
     });
-   return this.getById(order.id, manager);
+
+    // Gửi thông báo
+    if (app && order.created_by) {
+      const io = app.get("io");
+      await notificationService.createNotification({
+        type: "REJECT",
+        referenceType: "SALE_ORDER",
+        referenceId: order.id!,
+        referenceNo: order.order_no!,
+        branchId: order.branch_id!,
+        submitterId: order.created_by,
+        approverName: manager.fullName || manager.username,
+        rejectReason: reason,
+        io,
+      });
+    }
+
+    return this.getById(order.id, manager);
   },
 };

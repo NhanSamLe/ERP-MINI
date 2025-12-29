@@ -1,9 +1,10 @@
-import  { useState } from "react";
+import { useState } from "react";
 import { SaleOrderDto } from "../dto/saleOrder.dto";
 import SaleOrderStatusBadge from "./SaleOrderStatusBadge";
 import { Link } from "react-router-dom";
 import { Eye, Edit, Send, CheckCircle, XCircle } from "lucide-react";
 import { formatVND } from "@/utils/currency.helper";
+import { formatDateTime } from "@/utils/time.helper";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   submitSaleOrder,
@@ -87,14 +88,14 @@ export default function SaleOrderTable({ items }: Props) {
               <td className="p-3">{item.creator?.full_name}</td>
 
               <td className="p-3">
-                {new Date(item.created_at || "").toLocaleString()}
+                {formatDateTime(item.created_at)}
               </td>
 
               <td className="p-3 text-right flex items-center justify-end gap-2">
                 {/* VIEW */}
                 <Link
                   to={`/sales/orders/${item.id}`}
-                  className="p-1.5 border rounded text-blue-600 hover:bg-blue-50"
+                  className="p-1.5 border border-gray-300 rounded text-blue-600 hover:bg-blue-50 transition"
                   title="View"
                 >
                   <Eye size={16} />
@@ -104,7 +105,7 @@ export default function SaleOrderTable({ items }: Props) {
                 {canEdit(item) && (
                   <Link
                     to={`/sales/orders/${item.id}/edit`}
-                    className="p-1.5 border rounded text-gray-600 hover:bg-gray-100"
+                    className="p-1.5 border border-gray-300 rounded text-gray-600 hover:bg-gray-100 transition"
                     title="Edit"
                   >
                     <Edit size={16} />
@@ -122,7 +123,7 @@ export default function SaleOrderTable({ items }: Props) {
                         });
                       }
                     }}
-                    className="p-1.5 border rounded text-yellow-600 hover:bg-yellow-50 transition"
+                    className="p-1.5 border border-gray-300 rounded text-yellow-600 hover:bg-yellow-50 transition"
                     title="Submit for Approval"
                   >
                     <Send size={16} />
@@ -140,7 +141,7 @@ export default function SaleOrderTable({ items }: Props) {
                         });
                       }
                     }}
-                    className="p-1.5 border rounded text-green-600 hover:bg-green-50 transition"
+                    className="p-1.5 border border-gray-300 rounded text-green-600 hover:bg-green-50 transition"
                     title="Approve"
                   >
                     <CheckCircle size={16} />
@@ -154,7 +155,7 @@ export default function SaleOrderTable({ items }: Props) {
                       setSelectedOrderId(item.id);
                       setRejectModalOpen(true);
                     }}
-                    className="p-1.5 border rounded text-red-600 hover:bg-red-50 transition"
+                    className="p-1.5 border border-gray-300 rounded text-red-600 hover:bg-red-50 transition"
                     title="Reject"
                   >
                     <XCircle size={16} />

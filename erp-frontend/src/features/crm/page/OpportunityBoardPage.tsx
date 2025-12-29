@@ -9,6 +9,9 @@ import { OpportunityStage } from "../../../types/enum";
 import { Button } from "../../../components/ui/Button";
 import { Alert } from "../../../components/ui/Alert";
 import { formatVND } from "../../../utils/currency.helper";
+import { Download } from "lucide-react";
+import { exportExcelReport } from "../../../utils/excel/exportExcelReport";
+
 const COLUMNS: { key: OpportunityStage; label: string; color: string }[] = [
   { key: "prospecting", label: "Prospecting", color: "bg-blue-50" },
   { key: "negotiation", label: "Negotiation/Review", color: "bg-yellow-50" },
@@ -23,10 +26,65 @@ export default function OpportunityBoardPage() {
   const { allOpportunities, loading, error } = useAppSelector(
     (s: RootState) => s.opportunity
   );
+  const user = useAppSelector((s: RootState) => s.auth.user);
 
   useEffect(() => {
     dispatch(fetchAllOpportunities());
   }, [dispatch]);
+
+  const handleExport = async () => {
+    try {
+      await exportExcelReport({
+        title: "BÁO CÁO CƠ HỘI BÁN HÀNG (DEALS PIPELINE)",
+        columns: [
+          { header: "Mã Deal", key: "id", width: 10 },
+          { header: "Tên Cơ hội", key: "name", width: 30 },
+          {
+            header: "Khách hàng",
+            key: "customer",
+            width: 25,
+            formatter: (_: any, row: Opportunity) => row.customer?.name || row.lead?.name || "-"
+          },
+          { header: "Giai đoạn", key: "stage", width: 15, formatter: (val) => String(val).toUpperCase() },
+          {
+            header: "Giá trị kỳ vọng",
+            key: "expected_value",
+            width: 20,
+            format: "currency",
+            align: "right"
+          },
+          {
+            header: "Xác suất (%)",
+            key: "probability",
+            width: 15,
+            align: "center",
+            formatter: (val) => val ? `${val}%` : "-"
+          },
+          {
+            header: "Ngày chốt dự kiến",
+            key: "closing_date",
+            width: 15,
+            formatter: (val) => val ? new Date(String(val)).toLocaleDateString('vi-VN') : ""
+          },
+          {
+            header: "Người phụ trách",
+            key: "owner",
+            width: 20,
+            formatter: (val: any) => val?.full_name || "-"
+          }
+        ],
+        data: allOpportunities,
+        fileName: `Bao_Cao_Co_Hoi_Ban_Hang_${new Date().getTime()}.xlsx`,
+        footer: {
+          creator: user?.full_name || "Admin"
+        }
+      });
+    } catch (err) {
+      console.error("Export Error:", err);
+      // Optional: Add simple alert logic here if needed, but Page uses redux error only
+      alert("Lỗi xuất file excel");
+    }
+  };
 
   const grouped: Record<OpportunityStage, Opportunity[]> = {
     prospecting: [],
@@ -49,12 +107,23 @@ export default function OpportunityBoardPage() {
               Pipeline deals theo từng stage.
             </p>
           </div>
-          <Button
-            variant="primary"
-            onClick={() => navigate("/crm/opportunities/create")}
-          >
-            + New Deal
-          </Button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleExport}
+              className="flex items-center gap-2 px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition"
+              title="Export Excel"
+            >
+              <Download className="w-5 h-5" />
+              <span>Export Excel</span>
+            </button>
+
+            <Button
+              variant="primary"
+              onClick={() => navigate("/crm/opportunities/create")}
+            >
+              + New Deal
+            </Button>
+          </div>
         </div>
 
         {error && (
@@ -64,7 +133,7 @@ export default function OpportunityBoardPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {COLUMNS.map((col) => {
             const list = grouped[col.key];
-         const total = list.reduce(
+            const total = list.reduce(
               (sum, o) => sum + Number(o.expected_value || 0),
               0
             );
@@ -105,13 +174,13 @@ export default function OpportunityBoardPage() {
                       </p>
                       <div className="flex justify-between items-center mt-1">
                         <span className="text-xs font-medium text-gray-600">
-                         {formatVND(opp.expected_value)}
+                          {formatVND(opp.expected_value)}
                         </span>
                         <span className="text-xs text-gray-500">
                           {opp.closing_date
                             ? new Date(opp.closing_date).toLocaleDateString(
-                                "vi-VN"
-                              )
+                              "vi-VN"
+                            )
                             : "—"}
                         </span>
                       </div>

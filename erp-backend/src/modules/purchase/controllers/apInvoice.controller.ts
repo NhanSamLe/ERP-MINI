@@ -55,28 +55,26 @@ export const apInvoiceController = {
   async submitForApproval(req: Request, res: Response) {
     const user = (req as any).user;
     try {
-      const invoiceId = Number(req.params.id);
-
-      const data = await apInvoiceService.submitForApproval(invoiceId, user);
+      const data = await apInvoiceService.submitForApproval(
+        Number(req.params.id),
+        user,
+        req.app
+      );
 
       res.json({
         success: true,
-        message: "Invoice submitted for approval successfully",
+        message: "Invoice submitted for approval",
         data,
       });
     } catch (error: any) {
-      res.status(400).json({
-        success: false,
-        message: error.message,
-      });
+      res.status(400).json({ success: false, message: error.message });
     }
   },
 
   async approve(req: Request, res: Response) {
     const user = (req as any).user;
     try {
-      const id = Number(req.params.id);
-      const data = await apInvoiceService.approve(id, user);
+      const data = await apInvoiceService.approve(Number(req.params.id), user, req.app);
 
       res.json({
         success: true,
@@ -84,27 +82,27 @@ export const apInvoiceController = {
         data,
       });
     } catch (error: any) {
-      res.status(400).json({
-        success: false,
-        message: error.message,
-      });
+      res.status(400).json({ success: false, message: error.message });
     }
   },
 
   async reject(req: Request, res: Response) {
     const user = (req as any).user;
     try {
-      const id = Number(req.params.id);
       const { reason } = req.body;
-
-      if (!reason || !reason.trim()) {
+      if (!reason?.trim()) {
         return res.status(400).json({
           success: false,
           message: "Reject reason is required",
         });
       }
 
-      const data = await apInvoiceService.reject(id, reason, user);
+      const data = await apInvoiceService.reject(
+        Number(req.params.id),
+        reason,
+        user,
+        req.app
+      );
 
       res.json({
         success: true,
@@ -112,10 +110,7 @@ export const apInvoiceController = {
         data,
       });
     } catch (error: any) {
-      res.status(400).json({
-        success: false,
-        message: error.message,
-      });
+      res.status(400).json({ success: false, message: error.message });
     }
   },
   async getPostedSummaryBySupplier(req: Request, res: Response) {

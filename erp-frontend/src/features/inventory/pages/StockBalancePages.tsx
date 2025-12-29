@@ -15,6 +15,9 @@ import {
   SelectContent,
   SelectItem,
 } from "../../../components/ui/Select";
+import { Download } from "lucide-react";
+import { exportExcelReport } from "@/utils/excel/exportExcelReport";
+import { toast } from "react-toastify";
 
 export default function StockBalancePages() {
   const dispatch = useDispatch<AppDispatch>();
@@ -24,6 +27,7 @@ export default function StockBalancePages() {
   );
   const warehouses = useSelector((state: RootState) => state.warehouse.items);
   const products = useSelector((state: RootState) => state.product.items);
+  const user = useSelector((state: RootState) => state.auth.user);
 
   const [search] = useState("");
   const [warehouseId, setWarehouseId] = useState<string>("");
@@ -57,6 +61,28 @@ export default function StockBalancePages() {
 
     return matchSearch && matchWarehouse && matchProduct;
   });
+
+  const handleExport = async () => {
+    try {
+      await exportExcelReport({
+        title: "BÁO CÁO TỒN KHO (STOCK ON HAND)",
+        columns: [
+          { header: "Kho", key: "warehouse_id", width: 20, formatter: (val) => getWarehouseName(Number(val)) },
+          { header: "Sản phẩm", key: "product_id", width: 30, formatter: (val) => getProduct(Number(val))?.name || "-" },
+          { header: "Số lượng tồn", key: "quantity", width: 15, align: "right" },
+          { header: "Cập nhật lần cuối", key: "updated_at", width: 20, formatter: (val) => val ? new Date(String(val)).toLocaleDateString('vi-VN') : "" },
+        ],
+        data: filteredData,
+        fileName: `Bao_Cao_Ton_Kho_${new Date().getTime()}.xlsx`,
+        footer: {
+          creator: user?.full_name || "Admin"
+        }
+      });
+    } catch (err) {
+      console.error(err);
+      toast.error("Lỗi xuất báo cáo Excel");
+    }
+  };
 
   const columns = [
     {
@@ -143,6 +169,14 @@ export default function StockBalancePages() {
             </SelectContent>
           </Select>
         </div>
+
+        <button
+          onClick={handleExport}
+          className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg transition-colors text-sm font-medium"
+        >
+          <Download className="w-5 h-5" />
+          Export Excel
+        </button>
       </div>
       <div className="bg-white p-4 rounded-xl shadow-sm border">
         <DataTable

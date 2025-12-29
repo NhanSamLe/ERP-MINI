@@ -1,6 +1,7 @@
 import { ArInvoiceDto } from "../../dto/invoice.dto";
 import StatusBadge from "./StatusBadge";
 import { Eye, Download, FileText } from "lucide-react";
+import { formatVND } from "@/utils/currency.helper";
 
 interface Props {
   invoices: ArInvoiceDto[];
@@ -35,7 +36,7 @@ export default function InvoiceTable({ invoices, onView }: Props) {
             </td>
 
             <td className="px-6 py-4 font-semibold">
-              {inv.total_after_tax.toLocaleString("vi-VN")}
+              {formatVND(inv.total_after_tax)}
             </td>
 
             <td className="px-6 py-4">
@@ -48,13 +49,19 @@ export default function InvoiceTable({ invoices, onView }: Props) {
 
             <td className="px-6 py-4">
               <div className="flex gap-2">
-                <button onClick={() => onView(inv.id)}>
-                  <Eye size={18} />
+                <button
+                  onClick={() => onView(inv.id)}
+                  className="p-1.5 border border-gray-300 rounded text-blue-600 hover:bg-blue-50 transition"
+                  title="View Invoice"
+                >
+                  <Eye size={16} />
                 </button>
 
-
-                <button>
-                  <Download size={18} />
+                <button
+                  className="p-1.5 border border-gray-300 rounded text-gray-600 hover:bg-gray-50 transition"
+                  title="Download PDF"
+                >
+                  <Download size={16} />
                 </button>
               </div>
             </td>

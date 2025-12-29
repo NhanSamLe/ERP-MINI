@@ -1,25 +1,28 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../../store/store";
 import { fetchAllLeads, fetchTodayLeads, deleteLead } from "../store/lead/lead.thunks";
+import { importLeads } from "../api/lead.api";
 import { DataTable } from "../../../components/ui/DataTable";
 import { Alert } from "../../../components/ui/Alert";
 import { Column } from "../../../types/common";
 import { Lead } from "../dto/lead.dto";
-import { RefreshCw, Plus, Phone, Mail, User } from "lucide-react";
+import { RefreshCw, Plus, Phone, Mail, User, Upload, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { exportExcelReport } from "../../../utils/excel/exportExcelReport";
 
 export default function LeadDashboard() {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
-  
+
   const { allLeads, todayLeads, loading, error } = useSelector(
     (state: RootState) => state.lead
   );
-//   const user = useSelector((s: RootState) => s.auth.user);
+  const user = useSelector((s: RootState) => s.auth.user);
 
   const [selectedView, setSelectedView] = useState<"all" | "today">("all");
   const [alert, setAlert] = useState<{ type: 'success' | 'error' | 'info' | 'warning'; message: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     dispatch(fetchAllLeads());
@@ -38,9 +41,69 @@ export default function LeadDashboard() {
   };
 
   const formatStage = (stage: string) => {
-    return stage.split('_').map(word => 
+    return stage.split('_').map(word =>
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ');
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleExport = async () => {
+    try {
+      await exportExcelReport({
+        title: "DANH SÁCH KHÁCH HÀNG TIỀM NĂNG (LEADS)",
+        columns: [
+          { header: "Mã Lead", key: "id", width: 10 },
+          { header: "Tên Lead", key: "name", width: 30 },
+          { header: "Email", key: "email", width: 25 },
+          { header: "SĐT", key: "phone", width: 15 },
+          { header: "Nguồn", key: "source", width: 15 },
+          { header: "Giai đoạn", key: "stage", width: 15, formatter: (val: any) => String(val).toUpperCase() },
+          { header: "Người phụ trách", key: "assignedUser", width: 25, formatter: (val: any) => val?.full_name || "-" },
+          {
+            header: "Ngày tạo", key: "created_at", width: 15,
+            formatter: (val: any) => val ? new Date(val).toLocaleDateString('vi-VN') : ""
+          }
+        ],
+        data: displayLeads,
+        fileName: `Bao_Cao_Leads_${new Date().getTime()}.xlsx`,
+        footer: {
+          creator: user?.full_name || "Admin"
+        }
+      });
+      setAlert({ type: 'success', message: 'Xuất báo cáo thành công' });
+      setTimeout(() => setAlert(null), 3000);
+    } catch (err) {
+      console.error(err);
+      setAlert({ type: 'error', message: 'Lỗi xuất báo cáo' });
+      setTimeout(() => setAlert(null), 3000);
+    }
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      await importLeads(file);
+      setAlert({ type: 'success', message: 'Import Leads thành công!' });
+
+      // Refresh list
+      dispatch(fetchAllLeads());
+      dispatch(fetchTodayLeads());
+
+      setTimeout(() => setAlert(null), 3000);
+    } catch (err: any) {
+      setAlert({ type: 'error', message: err.message || 'Lỗi khi import leads' });
+      setTimeout(() => setAlert(null), 3000);
+    } finally {
+      // Reset input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
   };
 
   const columns: Column<Lead>[] = [
@@ -163,20 +226,12 @@ export default function LeadDashboard() {
       setTimeout(() => setAlert(null), 3000);
     } catch (error) {
       setAlert({
-                type: 'error',
-                message: (error as string) || 'Failed to refresh leads'
-                });
+        type: 'error',
+        message: (error as string) || 'Failed to refresh leads'
+      });
       setTimeout(() => setAlert(null), 3000);
     }
   };
-
-  // const handleView = (lead: Lead) => {
-  //   navigate(`/crm/lead/${lead.id}`);
-  // };
-
-  // const handleEdit = (lead: Lead) => {
-  //   navigate(`/crm/lead/${lead.id}/edit`);
-  // };
 
   const handleDelete = async (lead: Lead) => {
     if (window.confirm(`Are you sure you want to delete lead "${lead.name}"?`)) {
@@ -185,7 +240,7 @@ export default function LeadDashboard() {
         setAlert({ type: 'success', message: `Lead "${lead.name}" deleted successfully!` });
         setTimeout(() => setAlert(null), 3000);
       } catch (error) {
-        setAlert({ type: 'error', message:  (error as string) ||'Failed to delete lead' });
+        setAlert({ type: 'error', message: (error as string) || 'Failed to delete lead' });
         setTimeout(() => setAlert(null), 3000);
       }
     }
@@ -225,25 +280,49 @@ export default function LeadDashboard() {
                 <div className="flex bg-gray-100 rounded-lg p-1">
                   <button
                     onClick={() => setSelectedView("all")}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                      selectedView === "all"
-                        ? "bg-white text-gray-900 shadow-sm"
-                        : "text-gray-600 hover:text-gray-900"
-                    }`}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${selectedView === "all"
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900"
+                      }`}
                   >
                     All Leads ({allLeads.length})
                   </button>
                   <button
                     onClick={() => setSelectedView("today")}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                      selectedView === "today"
-                        ? "bg-white text-gray-900 shadow-sm"
-                        : "text-gray-600 hover:text-gray-900"
-                    }`}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${selectedView === "today"
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900"
+                      }`}
                   >
                     Today ({todayLeads.length})
                   </button>
                 </div>
+
+                {/* Import Button */}
+                <input
+                  type="file"
+                  hidden
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept=".xlsx, .xls"
+                />
+                <button
+                  onClick={handleImportClick}
+                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 border border-gray-300 rounded-lg transition-colors"
+                  title="Import Excel"
+                  disabled={loading}
+                >
+                  <Upload className="w-5 h-5" />
+                </button>
+
+                {/* Export Button */}
+                <button
+                  onClick={handleExport}
+                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 border border-gray-300 rounded-lg transition-colors"
+                  title="Export Excel"
+                >
+                  <Download className="w-5 h-5" />
+                </button>
 
                 <button
                   onClick={handleRefresh}
@@ -306,7 +385,7 @@ export default function LeadDashboard() {
               showActions={false}
               // onView={handleView}
               // onEdit={handleEdit}
-            //   onDelete={user?.role.code === "SALESMANAGER" ? handleDelete : undefined}
+              //   onDelete={user?.role.code === "SALESMANAGER" ? handleDelete : undefined}
               onDelete={handleDelete}
               onRowClick={(lead) => navigate(`/crm/leads/${lead.id}`)}
               itemsPerPage={10}

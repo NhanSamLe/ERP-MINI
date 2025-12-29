@@ -89,7 +89,7 @@ const menuItems: MenuItem[] = [
       {
         name: "Purchase Orders",
         path: "/purchase/orders",
-        allowedRoles: ["PURCHASE", "PURCHASEMANAGER", "ACCOUNT"],
+        allowedRoles: ["PURCHASE", "PURCHASEMANAGER", "ACCOUNT", "WHSTAFF"],
       },
       {
         name: "Invoices",
@@ -424,10 +424,9 @@ export default function Sidebar() {
                   }
                   className={`
                     flex items-center justify-between px-4 py-2.5 mx-2 rounded-lg cursor-pointer
-                    ${
-                      isModuleActive(item)
-                        ? "bg-orange-50 text-orange-600"
-                        : "text-gray-700 hover:bg-gray-50"
+                    ${isModuleActive(item)
+                      ? "bg-orange-50 text-orange-600"
+                      : "text-gray-700 hover:bg-gray-50"
                     }
                     transition-colors
                   `}
@@ -471,11 +470,10 @@ export default function Sidebar() {
                           to={targetPath}
                           className={`
                               block px-4 py-2 text-sm rounded-lg
-                              ${
-                                isActive(targetPath)
-                                  ? "bg-orange-50 text-orange-600 font-medium"
-                                  : "text-gray-600 hover:bg-gray-50"
-                              }
+                              ${isActive(targetPath)
+                              ? "bg-orange-50 text-orange-600 font-medium"
+                              : "text-gray-600 hover:bg-gray-50"
+                            }
                               transition-colors
                             `}
                         >

@@ -5,6 +5,7 @@ import { Branch } from "../../company/models/branch.model";
 import { ApInvoice } from "../models/apInvoice.model";
 import { PurchaseOrder } from "../models/purchaseOrder.model";
 import { PurchaseOrderLine } from "../models/purchaseOrderLine.model";
+import { notificationService } from "../../../core/services/notification.service";
 
 export const apInvoiceService = {
   async getAll(query: any, user: any) {
@@ -197,7 +198,7 @@ export const apInvoiceService = {
     }
   },
 
-  async submitForApproval(id: number, user: any) {
+  async submitForApproval(id: number, user: any, app?: any) {
     const apInvoice = await this.getById(id, user);
     if (!apInvoice) throw new Error("ApInvoice order not found");
 
@@ -217,10 +218,25 @@ export const apInvoiceService = {
 
     await apInvoice.save();
 
+    // Gửi thông báo
+    if (app) {
+      const io = app.get("io");
+      await notificationService.createNotification({
+        type: "SUBMIT",
+        referenceType: "AP_INVOICE",
+        referenceId: apInvoice.id!,
+        referenceNo: apInvoice.invoice_no!,
+        branchId: apInvoice.branch_id!,
+        submitterId: user.id,
+        submitterName: user.fullName || user.username,
+        io,
+      });
+    }
+
     return this.getById(apInvoice.id, user);
   },
 
-  async approve(id: number, user: any) {
+  async approve(id: number, user: any, app?: any) {
     if (user.role !== Role.CHACC) {
       throw new Error("Only Chief Accountant can approve");
     }
@@ -245,10 +261,25 @@ export const apInvoiceService = {
 
     await invoice.save();
 
+    // Gửi thông báo
+    if (app && invoice.created_by) {
+      const io = app.get("io");
+      await notificationService.createNotification({
+        type: "APPROVE",
+        referenceType: "AP_INVOICE",
+        referenceId: invoice.id!,
+        referenceNo: invoice.invoice_no!,
+        branchId: invoice.branch_id!,
+        submitterId: invoice.created_by,
+        approverName: user.fullName || user.username,
+        io,
+      });
+    }
+
     return this.getById(invoice.id, user);
   },
 
-  async reject(id: number, reason: string, user: any) {
+  async reject(id: number, reason: string, user: any, app?: any) {
     if (user.role !== Role.CHACC) {
       throw new Error("Only Chief Accountant can reject");
     }
@@ -272,6 +303,22 @@ export const apInvoiceService = {
     invoice.reject_reason = reason;
 
     await invoice.save();
+
+    // Gửi thông báo
+    if (app && invoice.created_by) {
+      const io = app.get("io");
+      await notificationService.createNotification({
+        type: "REJECT",
+        referenceType: "AP_INVOICE",
+        referenceId: invoice.id!,
+        referenceNo: invoice.invoice_no!,
+        branchId: invoice.branch_id!,
+        submitterId: invoice.created_by,
+        approverName: user.fullName || user.username,
+        rejectReason: reason,
+        io,
+      });
+    }
 
     return this.getById(invoice.id, user);
   },

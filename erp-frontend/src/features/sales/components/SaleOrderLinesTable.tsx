@@ -1,4 +1,4 @@
-
+import { formatVND } from "@/utils/currency.helper";
 import { SaleOrderLineDto } from "../dto/saleOrder.dto";
 import { Product } from "@/features/products/store/product.types";
 
@@ -29,20 +29,6 @@ export default function SaleOrderLinesTable({
   onUpdateLine,
   calcLine,
 }: Props) {
-    function formatVND(value: number | undefined | null) {
-  if (value == null) return "0 đ";
-
-  // bỏ phần .00 nhưng giữ số lẻ nếu có
-  const intValue = Number(value);
-  const hasDecimal = intValue % 1 !== 0;
-
-  if (!hasDecimal) {
-    return intValue.toLocaleString("vi-VN") + " đ";
-  }
-
-  // giữ thập phân khi thực sự có
-  return intValue.toLocaleString("vi-VN", { minimumFractionDigits: 0 }) + " đ";
-}
 
 
   return (
@@ -118,9 +104,8 @@ export default function SaleOrderLinesTable({
                     {formatVND(line.unit_price)}
                   </span>
                 </td>
-              
                 {/* TOTAL */}
-                <td className="p-3 font-medium">{c.final.toLocaleString()} ₫</td>
+                <td className="p-3 font-medium">{formatVND(c.final)}</td>
 
                 {/* DELETE */}
                 <td className="p-3 text-right">

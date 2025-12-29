@@ -1,8 +1,9 @@
-import { Bell} from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import UserMenu from "./UserMenu";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store/store";
+import NotificationBell from "../notifications/NotificationBell";
+
 export default function Header() {
   const avatar_url = useSelector((state: RootState) => state.auth.user?.avatar_url);
   const [openMenu, setOpenMenu] = useState(false);
@@ -32,9 +33,7 @@ export default function Header() {
       <div className="flex items-center gap-3">
 
         {/* Notifications */}
-        <button className="p-2 hover:bg-gray-50 rounded-lg">
-          <Bell className="w-5 h-5 text-gray-600" />
-        </button>
+        <NotificationBell />
 
         {/* User Avatar */}
         <div className="ml-2 relative" ref={menuRef}>

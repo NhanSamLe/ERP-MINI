@@ -48,7 +48,8 @@ export const apPaymentController = {
     try {
       const data = await apPaymentService.submitForApproval(
         Number(req.params.id),
-        user
+        user,
+        req.app
       );
 
       res.json({
@@ -64,7 +65,7 @@ export const apPaymentController = {
   async approve(req: Request, res: Response) {
     const user = (req as any).user;
     try {
-      const data = await apPaymentService.approve(Number(req.params.id), user);
+      const data = await apPaymentService.approve(Number(req.params.id), user, req.app);
 
       res.json({
         success: true,
@@ -90,7 +91,8 @@ export const apPaymentController = {
       const data = await apPaymentService.reject(
         Number(req.params.id),
         reason,
-        user
+        user,
+        req.app
       );
 
       res.json({

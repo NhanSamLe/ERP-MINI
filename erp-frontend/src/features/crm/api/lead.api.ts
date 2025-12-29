@@ -1,6 +1,6 @@
 import axiosClient from "../../../api/axiosClient";
-import { 
-  CreateLeadDto, 
+import {
+  CreateLeadDto,
   UpdateLeadEvaluationDto,
   UpdateLeadBasicDto,
 } from "../dto/lead.dto";
@@ -40,7 +40,7 @@ export const convertLead = (leadId: number) =>
 // MARK LOST
 // =============================
 export const markLeadLost = (leadId: number, reason: string) =>
-  axiosClient.patch(`/crm/leads/${leadId}/lost`,{leadId,reason} );
+  axiosClient.patch(`/crm/leads/${leadId}/lost`, { leadId, reason });
 
 
 // =============================
@@ -63,6 +63,16 @@ export const reopenLead = (leadId: number) =>
 export const deleteLead = (leadId: number) =>
   axiosClient.delete(`/crm/leads/${leadId}`);
 
-export const getTodayLead = () =>{
+export const getTodayLead = () => {
   return axiosClient.get(`/crm/leads/today`)
 }
+
+export const importLeads = (file: File) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return axiosClient.post("/crm/leads/import", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+};

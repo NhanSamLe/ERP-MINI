@@ -1,4 +1,4 @@
-
+import { formatVND } from "@/utils/currency.helper";
 import { SaleOrderDto } from "../dto/saleOrder.dto";
 
 interface Props {
@@ -6,10 +6,6 @@ interface Props {
 }
 
 export default function SaleOrderSummary({ order }: Props) {
-  const formatVND = (value: number | string | undefined | null) => {
-    if (!value) return "0 ₫";
-    return `${parseFloat(String(value)).toLocaleString("vi-VN")} ₫`;
-  };
 
   return (
     <div className="bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-xl p-6">

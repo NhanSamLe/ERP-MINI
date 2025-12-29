@@ -15,6 +15,7 @@ import {
 } from "../../../models";
 import { Role } from "../../../core/types/enum";
 import { literal, Op } from "sequelize";
+import { notificationService } from "../../../core/services/notification.service";
 
 export const purchaseOrderService = {
   async getAllPO(user: JwtPayload) {
@@ -260,7 +261,7 @@ export const purchaseOrderService = {
     return { success: true };
   },
 
-  async approvalPO(id: number, user: any) {
+  async approvalPO(id: number, user: any, app?: any) {
     const po = await this.getPOById(id);
     if (!po) throw new Error("Purchase order not found");
 
@@ -282,10 +283,26 @@ export const purchaseOrderService = {
     po.approved_by = user.id;
     po.approved_at = new Date();
     await po.save();
+
+    // Gửi thông báo
+    if (app && po.created_by) {
+      const io = app.get("io");
+      await notificationService.createNotification({
+        type: "APPROVE",
+        referenceType: "PURCHASE_ORDER",
+        referenceId: po.id!,
+        referenceNo: po.po_no!,
+        branchId: po.branch_id!,
+        submitterId: po.created_by,
+        approverName: user.fullName || user.username,
+        io,
+      });
+    }
+
     return po;
   },
 
-  async cancelPO(id: number, user: any, reason: string) {
+  async cancelPO(id: number, user: any, reason: string, app?: any) {
     const po = await this.getPOById(id);
     if (!po) throw new Error("Purchase order not found");
 
@@ -312,10 +329,27 @@ export const purchaseOrderService = {
     po.approved_at = new Date();
     po.reject_reason = reason.trim();
     await po.save();
+
+    // Gửi thông báo (cancel = reject)
+    if (app && po.created_by) {
+      const io = app.get("io");
+      await notificationService.createNotification({
+        type: "REJECT",
+        referenceType: "PURCHASE_ORDER",
+        referenceId: po.id!,
+        referenceNo: po.po_no!,
+        branchId: po.branch_id!,
+        submitterId: po.created_by,
+        approverName: user.fullName || user.username,
+        rejectReason: reason,
+        io,
+      });
+    }
+
     return po;
   },
 
-  async submitForApproval(id: number, user: any) {
+  async submitForApproval(id: number, user: any, app?: any) {
     const po = await this.getPOById(id);
     if (!po) throw new Error("Purchase order not found");
 
@@ -334,6 +368,21 @@ export const purchaseOrderService = {
     po.submitted_at = new Date();
 
     await po.save();
+
+    // Gửi thông báo
+    if (app) {
+      const io = app.get("io");
+      await notificationService.createNotification({
+        type: "SUBMIT",
+        referenceType: "PURCHASE_ORDER",
+        referenceId: po.id!,
+        referenceNo: po.po_no!,
+        branchId: po.branch_id!,
+        submitterId: user.id,
+        submitterName: user.fullName || user.username,
+        io,
+      });
+    }
 
     return po;
   },

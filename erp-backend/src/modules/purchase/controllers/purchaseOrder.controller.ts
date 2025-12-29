@@ -77,7 +77,7 @@ export const purchaseOrderController = {
       const id = Number(req.params.id);
       const user = (req as any).user;
 
-      const data = await purchaseOrderService.submitForApproval(id, user);
+      const data = await purchaseOrderService.submitForApproval(id, user, req.app);
       res.json(data);
     } catch (e: any) {
       res.status(400).json({ message: e.message });
@@ -88,7 +88,7 @@ export const purchaseOrderController = {
       const id = Number(req.params.id);
       const user = (req as any).user;
 
-      const result = await purchaseOrderService.approvalPO(id, user);
+      const result = await purchaseOrderService.approvalPO(id, user, req.app);
       res.status(200).json(result);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
@@ -101,7 +101,7 @@ export const purchaseOrderController = {
       const user = (req as any).user;
       const { reason } = req.body;
 
-      const result = await purchaseOrderService.cancelPO(id, user, reason);
+      const result = await purchaseOrderService.cancelPO(id, user, reason, req.app);
       res.status(200).json(result);
     } catch (error: any) {
       res.status(400).json({ message: error.message });

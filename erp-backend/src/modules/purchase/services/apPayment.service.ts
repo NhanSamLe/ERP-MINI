@@ -9,6 +9,7 @@ import {
   sequelize,
 } from "../../../models";
 import { QueryTypes } from "sequelize";
+import { notificationService } from "../../../core/services/notification.service";
 
 export const apPaymentService = {
   async getAll(query: any, user: any) {
@@ -119,7 +120,7 @@ export const apPaymentService = {
     return this.getById(payment.id, user);
   },
 
-  async submitForApproval(id: number, user: any) {
+  async submitForApproval(id: number, user: any, app?: any) {
     const payment = await this.getById(id, user);
     if (!payment) throw new Error("AP Payment not found");
 
@@ -135,10 +136,26 @@ export const apPaymentService = {
     payment.submitted_at = new Date();
 
     await payment.save();
+
+    // Gửi thông báo
+    if (app) {
+      const io = app.get("io");
+      await notificationService.createNotification({
+        type: "SUBMIT",
+        referenceType: "AP_PAYMENT",
+        referenceId: payment.id!,
+        referenceNo: payment.payment_no!,
+        branchId: payment.branch_id!,
+        submitterId: user.id,
+        submitterName: user.fullName || user.username,
+        io,
+      });
+    }
+
     return this.getById(payment.id, user);
   },
 
-  async approve(id: number, user: any) {
+  async approve(id: number, user: any, app?: any) {
     if (user.role !== Role.CHACC) {
       throw new Error("Only Chief Accountant can approve");
     }
@@ -161,10 +178,26 @@ export const apPaymentService = {
     payment.reject_reason = null;
 
     await payment.save();
+
+    // Gửi thông báo
+    if (app && payment.created_by) {
+      const io = app.get("io");
+      await notificationService.createNotification({
+        type: "APPROVE",
+        referenceType: "AP_PAYMENT",
+        referenceId: payment.id!,
+        referenceNo: payment.payment_no!,
+        branchId: payment.branch_id!,
+        submitterId: payment.created_by,
+        approverName: user.fullName || user.username,
+        io,
+      });
+    }
+
     return this.getById(payment.id, user);
   },
 
-  async reject(id: number, reason: string, user: any) {
+  async reject(id: number, reason: string, user: any, app?: any) {
     if (user.role !== Role.CHACC) {
       throw new Error("Only Chief Accountant can reject");
     }
@@ -187,6 +220,23 @@ export const apPaymentService = {
     payment.reject_reason = reason;
 
     await payment.save();
+
+    // Gửi thông báo
+    if (app && payment.created_by) {
+      const io = app.get("io");
+      await notificationService.createNotification({
+        type: "REJECT",
+        referenceType: "AP_PAYMENT",
+        referenceId: payment.id!,
+        referenceNo: payment.payment_no!,
+        branchId: payment.branch_id!,
+        submitterId: payment.created_by,
+        approverName: user.fullName || user.username,
+        rejectReason: reason,
+        io,
+      });
+    }
+
     return this.getById(payment.id, user);
   },
 

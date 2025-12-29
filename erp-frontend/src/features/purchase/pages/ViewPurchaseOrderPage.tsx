@@ -20,6 +20,8 @@ import { getErrorMessage } from "@/utils/ErrorHelper";
 import { loadPartnerDetail } from "@/features/partner/store/partner.thunks";
 import { Partner } from "@/features/partner/store";
 import { Roles } from "@/types/enum";
+import { formatVND, formatNumber } from "@/utils/currency.helper";
+import { formatDateTime } from "@/utils/time.helper";
 
 interface LineItem {
   id?: number;
@@ -337,36 +339,30 @@ export default function ViewPurchaseOrderPage() {
               className={`
       inline-flex items-center px-5 py-2.5 rounded-xl text-sm font-semibold
       border shadow-sm
-      ${
-        finalPO?.status === "draft"
-          ? "bg-gray-50 text-gray-700 border-gray-300"
-          : ""
-      }
-      ${
-        finalPO?.status === "waiting_approval"
-          ? "bg-amber-50 text-amber-700 border-amber-300"
-          : ""
-      }
-      ${
-        finalPO?.status === "confirmed"
-          ? "bg-blue-50 text-blue-700 border-blue-300"
-          : ""
-      }
-      ${
-        finalPO?.status === "partially_received"
-          ? "bg-purple-50 text-purple-700 border-purple-300"
-          : ""
-      }
-      ${
-        finalPO?.status === "completed"
-          ? "bg-emerald-50 text-emerald-700 border-emerald-300"
-          : ""
-      }
-      ${
-        finalPO?.status === "cancelled"
-          ? "bg-red-50 text-red-700 border-red-300"
-          : ""
-      }
+      ${finalPO?.status === "draft"
+                  ? "bg-gray-50 text-gray-700 border-gray-300"
+                  : ""
+                }
+      ${finalPO?.status === "waiting_approval"
+                  ? "bg-amber-50 text-amber-700 border-amber-300"
+                  : ""
+                }
+      ${finalPO?.status === "confirmed"
+                  ? "bg-blue-50 text-blue-700 border-blue-300"
+                  : ""
+                }
+      ${finalPO?.status === "partially_received"
+                  ? "bg-purple-50 text-purple-700 border-purple-300"
+                  : ""
+                }
+      ${finalPO?.status === "completed"
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                  : ""
+                }
+      ${finalPO?.status === "cancelled"
+                  ? "bg-red-50 text-red-700 border-red-300"
+                  : ""
+                }
     `}
             >
               ● {finalPO?.status?.replace("_", " ") || "N/A"}
@@ -501,11 +497,10 @@ export default function ViewPurchaseOrderPage() {
 
             {/* Approver Card */}
             <div
-              className={`p-6 rounded-xl shadow-md border-2 transition-all duration-300 ${
-                finalPO?.approver
-                  ? "bg-white border-green-100 hover:shadow-xl hover:scale-[1.02]"
-                  : "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200"
-              }`}
+              className={`p-6 rounded-xl shadow-md border-2 transition-all duration-300 ${finalPO?.approver
+                ? "bg-white border-green-100 hover:shadow-xl hover:scale-[1.02]"
+                : "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200"
+                }`}
             >
               {finalPO?.approver ? (
                 <div className="flex items-start gap-4">
@@ -728,15 +723,11 @@ export default function ViewPurchaseOrderPage() {
           <div className="p-4 bg-gray-50 border rounded">
             <div className="text-sm text-gray-700">
               <span className="font-medium">Created At: </span>
-              {finalPO?.created_at
-                ? new Date(finalPO.created_at).toLocaleString()
-                : "N/A"}
+              {formatDateTime(finalPO?.created_at)}
             </div>
             <div className="text-sm text-gray-700 mt-1">
               <span className="font-medium">Updated At: </span>
-              {finalPO?.updated_at
-                ? new Date(finalPO.updated_at).toLocaleString()
-                : "N/A"}
+              {formatDateTime(finalPO?.updated_at)}
             </div>
           </div>
 
@@ -807,7 +798,7 @@ export default function ViewPurchaseOrderPage() {
                       />
                     </td>
                     <td className="px-4 py-3 text-center capitalize">
-                      ${line.sale_price?.toFixed(2)}
+                      {formatVND(line.sale_price || 0)}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <Input
@@ -825,11 +816,11 @@ export default function ViewPurchaseOrderPage() {
                     <td className="px-4 py-3 text-center">{line.tax_rate}%</td>
 
                     <td className="px-4 py-3 text-right font-medium">
-                      ${line.tax_amount.toFixed(2)}
+                      {formatVND(line.tax_amount)}
                     </td>
 
                     <td className="px-4 py-3 text-right font-bold text-orange-600">
-                      ${line.line_total.toFixed(2)}
+                      {formatVND(line.line_total)}
                     </td>
                   </tr>
                 ))
@@ -845,21 +836,21 @@ export default function ViewPurchaseOrderPage() {
           <label className="text-sm font-medium text-gray-600">
             Total Before Tax
           </label>
-          <Input className="mt-1" value={`$${totalBeforeTax}`} disabled />
+          <Input className="mt-1" value={formatVND(totalBeforeTax)} disabled />
         </div>
 
         <div>
           <label className="text-sm font-medium text-gray-600">
             Order Tax Total
           </label>
-          <Input className="mt-1" value={`$${totalOrderTax}`} disabled />
+          <Input className="mt-1" value={formatVND(totalOrderTax)} disabled />
         </div>
 
         <div>
           <label className="text-sm font-medium text-gray-600">
             Total After Tax
           </label>
-          <Input className="mt-1" value={`$${totalAfterTax}`} disabled />
+          <Input className="mt-1" value={formatVND(totalAfterTax)} disabled />
         </div>
       </div>
 

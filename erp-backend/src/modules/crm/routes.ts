@@ -3,10 +3,15 @@ import { authMiddleware } from "../../core/middleware/auth";
 import * as leadController from "./controllers/lead.controller";
 import * as opportunityController from "./controllers/opportunity.controller";
 import * as activityController from "./controllers/activity.controller";
-import{getSalesDashboard} from "./controllers/dashboard.controller"
+import { getSalesDashboard } from "./controllers/dashboard.controller"
+import multer from "multer";
+
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage() });
 
 router.get("/leads", authMiddleware([]), leadController.getLeads);
+router.post("/leads/import", authMiddleware([]), upload.single("file"), leadController.importLeads);
+router.get("/leads/today", authMiddleware([]), leadController.getTodayLead);
 router.get("/leads/stage/:stage", authMiddleware([]), leadController.getLeadByStage);
 router.get("/leads/:leadId", authMiddleware([]), leadController.getLeadById);
 router.post("/leads", authMiddleware([]), leadController.createLead);
@@ -33,8 +38,8 @@ router.patch("/opportunities/:oppId/lost", authMiddleware([]), opportunityContro
 router.patch("/opportunities/:oppId/reassign", authMiddleware([]), opportunityController.reassignOpportunity);
 router.get("/opportunities/pipeline-summary", authMiddleware([]), opportunityController.getPipelineSummary);
 router.delete("/opportunities/:oppId", authMiddleware([]), opportunityController.deleteOpportunity);
-router.get("/opportunities/closing-this-month", authMiddleware([]),opportunityController.getClosingThisMonth);
-router.get("/opportunities/unclosed",authMiddleware([]),opportunityController.getUnclosedOpportunities);
+router.get("/opportunities/closing-this-month", authMiddleware([]), opportunityController.getClosingThisMonth);
+router.get("/opportunities/unclosed", authMiddleware([]), opportunityController.getUnclosedOpportunities);
 
 
 
@@ -122,7 +127,7 @@ router.get("/activities", authMiddleware([]), activityController.getAllActivitie
 router.delete("/activities/:id", authMiddleware([]), activityController.deleteActivity);
 
 
-router.post("/activities/meeting/cancel",authMiddleware([]), activityController.cancelMeeting);
+router.post("/activities/meeting/cancel", authMiddleware([]), activityController.cancelMeeting);
 router.post("/activities/call/cancel", authMiddleware([]), activityController.cancelCallActivity);
 router.post("/activities/email/cancel", authMiddleware([]), activityController.cancelEmailActivity);
 

@@ -5,12 +5,15 @@ import { getAllApPaymentsThunk } from "../../store/apPayment/apPayment.thunks";
 import { ApPayment } from "../../store/apPayment/apPayment.types";
 import { useNavigate } from "react-router-dom";
 import ApPaymentCreateModal from "../../components/ApPaymentCreateModal";
+import { exportExcelReport } from "@/utils/excel/exportExcelReport";
+import { toast } from "react-toastify";
 
 export default function ApPaymentPages() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
   const { list, loading } = useAppSelector((state) => state.apPayment);
+  const { user } = useAppSelector((state) => state.auth);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -32,6 +35,30 @@ export default function ApPaymentPages() {
       return matchesSearch && matchesStatus;
     });
   }, [list, searchTerm, statusFilter]);
+
+  const handleExport = async () => {
+    try {
+      await exportExcelReport({
+        title: "DANH SÁCH PHIẾU CHI (PAYMENTS)",
+        columns: [
+          { header: "Số Phiếu", key: "payment_no", width: 15 },
+          { header: "Nhà cung cấp", key: "supplier", width: 30, formatter: (val: any) => val?.name || "-" },
+          { header: "Số tiền", key: "amount", width: 20, format: "currency", align: "right" },
+          { header: "Trạng thái", key: "status", width: 15, formatter: (val) => String(val).toUpperCase() },
+          { header: "Duyệt", key: "approval_status", width: 15, formatter: (val) => String(val).toUpperCase() },
+          { header: "Ngày tạo", key: "created_at", width: 15, formatter: (val) => val ? new Date(String(val)).toLocaleDateString('vi-VN') : "" },
+        ],
+        data: filteredPayments,
+        fileName: `Bao_Cao_Phieu_Chi_${new Date().getTime()}.xlsx`,
+        footer: {
+          creator: user?.full_name || "Admin"
+        }
+      });
+    } catch (err) {
+      console.error(err);
+      toast.error("Lỗi xuất báo cáo Excel");
+    }
+  };
 
   /* ================= BADGES ================= */
   const statusBadge: Record<ApPayment["status"], string> = {
@@ -60,13 +87,22 @@ export default function ApPaymentPages() {
             <p className="text-gray-600 mt-1">Manage all supplier payments</p>
           </div>
 
-          <button
-            onClick={() => setOpenCreateModal(true)}
-            className="flex items-center gap-2 bg-orange-500 text-white px-4 py-2.5 rounded-lg"
-          >
-            <Plus className="w-5 h-5" />
-            New Payment
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleExport}
+              className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2.5 rounded-lg font-medium transition-colors"
+            >
+              <Download className="w-5 h-5" />
+              Export Excel
+            </button>
+            <button
+              onClick={() => setOpenCreateModal(true)}
+              className="flex items-center gap-2 bg-orange-500 text-white px-4 py-2.5 rounded-lg"
+            >
+              <Plus className="w-5 h-5" />
+              New Payment
+            </button>
+          </div>
         </div>
 
         {/* ================= FILTER ================= */}
@@ -157,9 +193,8 @@ export default function ApPaymentPages() {
 
                     <td className="px-6 py-4">
                       <span
-                        className={`px-3 py-1 rounded-md font-medium ${
-                          statusBadge[payment.status]
-                        }`}
+                        className={`px-3 py-1 rounded-md font-medium ${statusBadge[payment.status]
+                          }`}
                       >
                         {payment.status.toUpperCase()}
                       </span>
@@ -167,9 +202,8 @@ export default function ApPaymentPages() {
 
                     <td className="px-6 py-4">
                       <span
-                        className={`px-3 py-1 rounded-md font-medium ${
-                          approvalBadge[payment.approval_status]
-                        }`}
+                        className={`px-3 py-1 rounded-md font-medium ${approvalBadge[payment.approval_status]
+                          }`}
                       >
                         {payment.approval_status
                           .replace("_", " ")

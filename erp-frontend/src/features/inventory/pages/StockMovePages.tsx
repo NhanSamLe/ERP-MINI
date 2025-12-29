@@ -52,7 +52,7 @@ import EditReceiptModal, {
 import { fetchPurchaseOrderByStatus } from "../../purchase/store/purchaseOrder.thunks";
 import EditTransferModal from "../components/Modal/TransferModal/EditTransferModal";
 import CreateTransferModal from "../components/Modal/TransferModal/CreateTransferModal";
-import { Trash2 } from "lucide-react";
+import { Trash2, Download } from "lucide-react";
 import CreateAdjustmentModal from "../components/Modal/AdjustmentModal/CreateAdjustmentModal";
 import { getErrorMessage } from "@/utils/ErrorHelper";
 import EditAdjustmentModal from "../components/Modal/AdjustmentModal/EditAdjustmentModal";
@@ -61,6 +61,7 @@ import { fetchSaleOrdersByStatus } from "@/features/sales/store/saleOrder.slice"
 import EditIssueModal from "../components/Modal/IssueModal/EditIssueModal";
 import { useNavigate } from "react-router-dom";
 import { Roles } from "@/types/enum";
+import { exportExcelReport } from "@/utils/excel/exportExcelReport";
 
 export default function StockMovePages() {
   const dispatch = useDispatch<AppDispatch>();
@@ -154,6 +155,43 @@ export default function StockMovePages() {
     return matchSearch && matchWarehouse && matchType;
   });
 
+  const handleExport = async () => {
+    try {
+      await exportExcelReport({
+        title: "DANH SÁCH DỊCH CHUYỂN KHO (STOCK MOVES)",
+        columns: [
+          { header: "Mã phiếu", key: "move_no", width: 15 },
+          {
+            header: "Kho",
+            key: "warehouse_from_id",
+            width: 30,
+            formatter: (_: any, row: StockMove) => {
+              const from = row.warehouse_from_id ? getWarehouseName(row.warehouse_from_id) : "N/A";
+              const to = row.warehouse_to_id ? getWarehouseName(row.warehouse_to_id) : "N/A";
+              if (row.type === 'receipt') return to;
+              if (row.type === 'issue') return from;
+              if (row.type === 'transfer') return `${from} -> ${to}`;
+              if (row.type === 'adjustment') return from;
+              return "-";
+            }
+          },
+          { header: "Người tạo", key: "creator", width: 20, formatter: (val: any) => val?.full_name || "-" },
+          { header: "Loại phiếu", key: "type", width: 15, formatter: (val) => String(val).toUpperCase() },
+          { header: "Ngày phiếu", key: "move_date", width: 20, formatter: (val) => val ? new Date(String(val)).toLocaleDateString('vi-VN') : "" },
+          { header: "Trạng thái", key: "status", width: 15, formatter: (val) => String(val).toUpperCase() },
+        ],
+        data: filteredData,
+        fileName: `Bao_Cao_Kho_${new Date().getTime()}.xlsx`,
+        footer: {
+          creator: user?.full_name || "Admin"
+        }
+      });
+    } catch (err) {
+      console.error(err);
+      toast.error("Lỗi xuất báo cáo Excel");
+    }
+  };
+
   const columns = [
     {
       key: "move_no",
@@ -204,9 +242,8 @@ export default function StockMovePages() {
       label: "Type",
       render: (row: StockMove) => (
         <span
-          className={`px-3 py-1 rounded-full text-xs font-semibold ${
-            typeColorMap[row.type] || "bg-gray-100 text-gray-700"
-          }`}
+          className={`px-3 py-1 rounded-full text-xs font-semibold ${typeColorMap[row.type] || "bg-gray-100 text-gray-700"
+            }`}
         >
           {row.type.toUpperCase()}
         </span>
@@ -225,9 +262,8 @@ export default function StockMovePages() {
       label: "Status",
       render: (row: StockMove) => (
         <span
-          className={`px-3 py-1 rounded-full text-xs font-semibold ${
-            statusColorMap[row.status] || "bg-gray-100 text-gray-700"
-          }`}
+          className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColorMap[row.status] || "bg-gray-100 text-gray-700"
+            }`}
         >
           {row.status.toUpperCase()}
         </span>
@@ -646,25 +682,34 @@ export default function StockMovePages() {
             </SelectContent>
           </Select>
         </div>
-        <BasicDropdownMenu
-          trigger={
-            <Button className="primary hover:secondary text-white mb-2">
-              Create Movement ▾
-            </Button>
-          }
-          items={[
-            { label: "Create Receipt", onClick: () => handleCreate("receipt") },
-            { label: "Create Issue", onClick: () => handleCreate("issue") },
-            {
-              label: "Create Transfer",
-              onClick: () => handleCreate("transfer"),
-            },
-            {
-              label: "Create Adjustment",
-              onClick: () => handleCreate("adjustment"),
-            },
-          ]}
-        />
+        <div className="flex gap-2">
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg transition-colors text-sm font-medium"
+          >
+            <Download className="w-5 h-5" />
+            Export Excel
+          </button>
+          <BasicDropdownMenu
+            trigger={
+              <Button className="primary hover:secondary text-white mb-2">
+                Create Movement ▾
+              </Button>
+            }
+            items={[
+              { label: "Create Receipt", onClick: () => handleCreate("receipt") },
+              { label: "Create Issue", onClick: () => handleCreate("issue") },
+              {
+                label: "Create Transfer",
+                onClick: () => handleCreate("transfer"),
+              },
+              {
+                label: "Create Adjustment",
+                onClick: () => handleCreate("adjustment"),
+              },
+            ]}
+          />
+        </div>
       </div>
       <div className="bg-white p-4 rounded-xl shadow-sm border">
         <DataTable

@@ -14,10 +14,12 @@ import ConfirmCreateInvoiceModal from "../../components/ConfirmCreateInvoiceModa
 import { toast } from "react-toastify";
 import { getErrorMessage } from "@/utils/ErrorHelper";
 import { useNavigate } from "react-router-dom";
+import { exportExcelReport } from "@/utils/excel/exportExcelReport";
 
 export default function ApInvoicePages() {
   const dispatch = useAppDispatch();
   const { list, loading } = useAppSelector((state) => state.apInvoice);
+  const { user } = useAppSelector((state) => state.auth);
 
   const { availableForInvoice } = useAppSelector(
     (state) => state.purchaseOrder
@@ -85,6 +87,30 @@ export default function ApInvoicePages() {
     rejected: "bg-red-100 text-red-700",
   };
 
+  const handleExport = async () => {
+    try {
+      await exportExcelReport({
+        title: "DANH SÁCH HÓA ĐƠN MUA HÀNG (AP INVOICES)",
+        columns: [
+          { header: "Số hóa đơn", key: "invoice_no", width: 15 },
+          { header: "Chi nhánh", key: "branch", width: 20, formatter: (val: any) => val?.name || "-" },
+          { header: "Người tạo", key: "creator", width: 25, formatter: (val: any) => val?.full_name || "-" },
+          { header: "Tổng tiền", key: "total_after_tax", width: 20, format: "currency", align: "right" },
+          { header: "Trạng thái", key: "status", width: 15, formatter: (val) => String(val).toUpperCase() },
+          { header: "Ngày tạo", key: "created_at", width: 15, formatter: (val) => val ? new Date(String(val)).toLocaleDateString('vi-VN') : "" },
+        ],
+        data: filteredInvoices,
+        fileName: `Bao_Cao_Hoa_Don_Mua_Hang_${new Date().getTime()}.xlsx`,
+        footer: {
+          creator: user?.full_name || "Admin"
+        }
+      });
+    } catch (err) {
+      console.error(err);
+      toast.error("Lỗi xuất báo cáo Excel");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 px-8 py-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -97,13 +123,22 @@ export default function ApInvoicePages() {
             </h1>
             <p className="text-gray-600 mt-1">Manage all purchase invoices</p>
           </div>
-          <button
-            onClick={() => handleOpenSelectPo()}
-            className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-lg font-medium transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            New Invoice
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleExport}
+              className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2.5 rounded-lg font-medium transition-colors"
+            >
+              <Download className="w-5 h-5" />
+              Export Excel
+            </button>
+            <button
+              onClick={() => handleOpenSelectPo()}
+              className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-lg font-medium transition-colors"
+            >
+              <Plus className="w-5 h-5" />
+              New Invoice
+            </button>
+          </div>
         </div>
 
         {/* ================= FILTER ================= */}
@@ -193,18 +228,16 @@ export default function ApInvoicePages() {
                     </td>
                     <td className="px-6 py-4">
                       <span
-                        className={`px-3 py-1 rounded-md font-medium ${
-                          statusBadge[invoice.status]
-                        }`}
+                        className={`px-3 py-1 rounded-md font-medium ${statusBadge[invoice.status]
+                          }`}
                       >
                         {invoice.status.toUpperCase()}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <span
-                        className={`px-3 py-1 rounded-md font-medium ${
-                          approvalBadge[invoice.approval_status]
-                        }`}
+                        className={`px-3 py-1 rounded-md font-medium ${approvalBadge[invoice.approval_status]
+                          }`}
                       >
                         {invoice.approval_status
                           .replace("_", " ")

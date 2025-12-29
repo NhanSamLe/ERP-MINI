@@ -20,13 +20,13 @@ import { Separator } from "../../../components/ui/separator";
 import { Alert } from "../../../components/ui/Alert";
 
 import ActivityBoard from "../components/ActivityBoard";
-import {CompactTimeline }from "../components/TimelineCard";
+import { CompactTimeline } from "../components/TimelineCard";
 import InfoItem from "../components/InfoItem";
 import OppStageActions from "../components/OppStageActions";
 import StatCards from "../components/StatCards";
 
 import { ArrowLeft, User, ChevronRight } from "lucide-react";
-import { formatVND,formatPercent } from "../../../utils/currency.helper";
+import { formatVND, formatPercent } from "../../../utils/currency.helper";
 export default function OppDetailPage() {
   const { id } = useParams();
   const oppId = Number(id);
@@ -200,8 +200,8 @@ export default function OppDetailPage() {
 
                 <InfoItem
                   label="Probability"
-                  value={formatPercent(opp.probability??0)}
-              
+                  value={formatPercent(opp.probability ?? 0)}
+
                 />
 
                 <InfoItem
@@ -330,7 +330,7 @@ export default function OppDetailPage() {
                 {!relatedCustomer && relatedLead && (
                   <button
                     onClick={() =>
-                      navigate(`/crm/lead/${relatedLead.id}`)
+                      navigate(`/crm/leads/${relatedLead.id}`)
                     }
                     className="w-full flex justify-between items-center p-4 border border-gray-200 rounded-xl hover:border-orange-400 hover:bg-orange-50 transition"
                   >

@@ -1,4 +1,4 @@
-import {sequelize} from "../config/db";
+import { sequelize } from "../config/db";
 // Auth
 import { User } from "../modules/auth/models/user.model";
 import { Role } from "../modules/auth/models/role.model";
@@ -60,6 +60,7 @@ import { TimelineEvent } from "../modules/crm/models/timelineEvent.model";
 applyAssociations();
 import { Attendance } from "../modules/hrm/models/attendance.model";
 import { PayrollItem } from "../modules/hrm/models/payrollItem.model";
+import { Notification } from "../core/models/notification.model";
 
 export {
   sequelize,
@@ -74,5 +75,6 @@ export {
   PurchaseOrder, PurchaseOrderLine, ApInvoice, ApInvoiceLine, ApPayment, ApPaymentAllocation,
   Warehouse, StockMove, StockMoveLine, StockBalance,
   Department, Position, Employee, PayrollPeriod, PayrollRun, PayrollRunLine,
-  GlAccount, GlJournal, GlEntry, GlEntryLine, CallActivity, MeetingActivity, TaskActivity, EmailActivity,Attendance,PayrollItem,
+  GlAccount, GlJournal, GlEntry, GlEntryLine, CallActivity, MeetingActivity, TaskActivity, EmailActivity, Attendance, PayrollItem,
+  Notification,
 };

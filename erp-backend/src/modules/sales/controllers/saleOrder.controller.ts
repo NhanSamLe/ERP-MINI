@@ -77,7 +77,7 @@ export const SaleOrderController = {
       const id = Number(req.params.id);
       const user = (req as any).user;
 
-      const result = await saleOrderService.submit(id, user);
+      const result = await saleOrderService.submit(id, user, req.app);
       return res.json({ message: "Submitted", data: result });
     } catch (err: any) {
       return res.status(400).json({ message: err.message });
@@ -90,7 +90,7 @@ export const SaleOrderController = {
       const id = Number(req.params.id);
       const user = (req as any).user;
 
-      const result = await saleOrderService.approve(id, user);
+      const result = await saleOrderService.approve(id, user, req.app);
       return res.json({ message: "Approved", data: result });
     } catch (err: any) {
       return res.status(403).json({ message: err.message });
@@ -104,7 +104,7 @@ export const SaleOrderController = {
       const user = (req as any).user;
 
       const { reason } = req.body;
-      const result = await saleOrderService.reject(id, user, reason);
+      const result = await saleOrderService.reject(id, user, reason, req.app);
 
       return res.json({ message: "Rejected", data: result });
     } catch (err: any) {

@@ -1,4 +1,4 @@
-
+import { formatVND, formatNumber } from "@/utils/currency.helper";
 import { SaleOrderLineDto } from "../dto/saleOrder.dto";
 
 interface Props {
@@ -6,10 +6,6 @@ interface Props {
 }
 
 export default function SaleOrderLineItem({ line }: Props) {
-  const formatVND = (value: number | string | undefined | null) => {
-    if (!value) return "0 ₫";
-    return `${parseFloat(String(value)).toLocaleString("vi-VN")} ₫`;
-  };
 
   return (
     <tr className="border-b border-gray-200 hover:bg-gray-50 transition">
@@ -26,12 +22,12 @@ export default function SaleOrderLineItem({ line }: Props) {
           )}
           <div>
             <p className="text-gray-900 font-semibold">{line.product?.name}</p>
-    
+
           </div>
         </div>
       </td>
       <td className="px-6 py-4 text-center text-gray-900 font-semibold">
-        {parseFloat(String(line.quantity)).toFixed(2)}
+        {formatNumber(line.quantity || 0, 0)}
       </td>
       <td className="px-6 py-4 text-right text-gray-900 font-semibold">
         {formatVND(line.unit_price)}

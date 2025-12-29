@@ -20,6 +20,7 @@ import { StockMove } from "../store/stock/stockmove/stockMove.types";
 import { Roles } from "@/types/enum";
 import { getErrorMessage } from "@/utils/ErrorHelper";
 import { toast } from "react-toastify";
+import { formatDateTime } from "@/utils/time.helper";
 
 export interface UserInfo {
   id: number;
@@ -192,21 +193,19 @@ export default function ViewStockMovePage() {
                 Stock Move #{data.move_no}
               </h1>
               <span
-                className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium border ${
-                  statusColors[data.status]
-                }`}
+                className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium border ${statusColors[data.status]
+                  }`}
                 aria-hidden
               >
                 <span
-                  className={`w-2 h-2 rounded-full ${
-                    data.status === "draft"
+                  className={`w-2 h-2 rounded-full ${data.status === "draft"
                       ? "bg-gray-400"
                       : data.status === "waiting_approval"
-                      ? "bg-yellow-500"
-                      : data.status === "posted"
-                      ? "bg-green-500"
-                      : "bg-red-500"
-                  }`}
+                        ? "bg-yellow-500"
+                        : data.status === "posted"
+                          ? "bg-green-500"
+                          : "bg-red-500"
+                    }`}
                 />
                 {data?.status ? data.status.replace("_", " ") : ""}
               </span>
@@ -215,7 +214,7 @@ export default function ViewStockMovePage() {
             <p className="mt-2 text-sm text-gray-500">
               Created on{" "}
               <time dateTime={data.move_date}>
-                {new Date(data.move_date).toLocaleDateString()}
+                {formatDateTime(data.move_date)}
               </time>{" "}
               • {data.type ?? "—"}
             </p>
@@ -317,15 +316,14 @@ export default function ViewStockMovePage() {
                 />
                 <InfoItem
                   label="Move Date"
-                  value={new Date(data.move_date).toLocaleString()}
+                  value={formatDateTime(data.move_date)}
                 />
                 <InfoItem
                   label="Reference Type"
                   value={
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold border ${
-                        referenceColors[data.reference_type]
-                      }`}
+                      className={`px-3 py-1 rounded-full text-xs font-semibold border ${referenceColors[data.reference_type]
+                        }`}
                     >
                       {data.reference_type.replace("_", " ")}
                     </span>
@@ -335,8 +333,8 @@ export default function ViewStockMovePage() {
                   label="Reference ID"
                   value={data.reference_id ?? "—"}
                 />
-                <InfoItem label="Created At" value={data.created_at ?? "—"} />
-                <InfoItem label="Updated At" value={data.updated_at ?? "—"} />
+                <InfoItem label="Created At" value={formatDateTime(data.created_at)} />
+                <InfoItem label="Updated At" value={formatDateTime(data.updated_at)} />
               </div>
             </section>
 
@@ -381,9 +379,8 @@ export default function ViewStockMovePage() {
                       {data.lines?.map((line, idx) => (
                         <tr
                           key={line.id}
-                          className={`align-top border-b ${
-                            idx % 2 === 0 ? "bg-white" : "bg-gray-50"
-                          } hover:bg-blue-50 transition-colors`}
+                          className={`align-top border-b ${idx % 2 === 0 ? "bg-white" : "bg-gray-50"
+                            } hover:bg-blue-50 transition-colors`}
                         >
                           <td className="p-3">
                             <div className="w-14 h-14 rounded-lg overflow-hidden border border-gray-200 bg-white shadow-sm">
@@ -474,12 +471,12 @@ export default function ViewStockMovePage() {
                 <div className="pt-2 border-t border-gray-100">
                   <div className="text-xs text-gray-500">Created at</div>
                   <div className="text-sm font-medium text-gray-800">
-                    {data.created_at || "—"}
+                    {formatDateTime(data.created_at)}
                   </div>
 
                   <div className="mt-3 text-xs text-gray-500">Updated at</div>
                   <div className="text-sm font-medium text-gray-800">
-                    {data.updated_at || "—"}
+                    {formatDateTime(data.updated_at)}
                   </div>
                 </div>
               </div>
