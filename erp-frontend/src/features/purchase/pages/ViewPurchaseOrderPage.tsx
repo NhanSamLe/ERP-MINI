@@ -20,7 +20,7 @@ import { getErrorMessage } from "@/utils/ErrorHelper";
 import { loadPartnerDetail } from "@/features/partner/store/partner.thunks";
 import { Partner } from "@/features/partner/store";
 import { Roles } from "@/types/enum";
-import { formatVND, formatNumber } from "@/utils/currency.helper";
+import { formatVND } from "@/utils/currency.helper";
 import { formatDateTime } from "@/utils/time.helper";
 
 interface LineItem {

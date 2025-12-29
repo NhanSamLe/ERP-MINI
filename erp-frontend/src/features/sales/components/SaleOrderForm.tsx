@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, Calendar, User, ShoppingCart, Search, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, Calendar, User, ShoppingCart, Search } from 'lucide-react';
 import { SaleOrderLineDto, CreateSaleOrderDto, UpdateSaleOrderDto, CreateSaleOrderLineDto } from '../dto/saleOrder.dto';
 import { Product } from '@/features/products/store/product.types';
 import { Partner } from '@/features/partner/store/partner.types';
@@ -479,7 +479,6 @@ export default function SaleOrderForm({
               </div>
               <div className="text-sm text-gray-500 flex gap-3 mt-1">
                 <span className="bg-gray-100 px-1.5 rounded text-xs border">SKU: {product.sku}</span>
-                <span>Stock: {product.quantity_on_hand ?? 0} {product.uom}</span>
               </div>
             </div>
           </div>
@@ -489,35 +488,23 @@ export default function SaleOrderForm({
   );
 }
 
-/* Small helper components */
-interface InfoProps {
-  label: string;
-  value?: string | number | null | undefined;
-}
-const Info: React.FC<InfoProps> = ({ label, value }) => (
-  <div>
-    <p className="text-xs text-gray-600 uppercase mb-1">{label}</p>
-    <p className="text-base text-gray-900">{value ?? '-'}</p>
-  </div>
-);
 
-interface ThProps {
-  children: React.ReactNode;
-  className?: string;
-}
-const Th: React.FC<ThProps> = ({ children, className = '' }) => (
-  <th className={`px-4 py-3 text-left font-semibold text-gray-700 ${className}`}>
-    {children}
-  </th>
-);
 
-interface SummaryRowProps {
-  label: string;
-  value: number;
-}
-const SummaryRow: React.FC<SummaryRowProps> = ({ label, value }) => (
-  <div className="flex justify-between items-center pb-3 border-b">
-    <span className="text-gray-600">{label}:</span>
-    <span className="font-semibold">{formatVND(value)}</span>
-  </div>
-);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

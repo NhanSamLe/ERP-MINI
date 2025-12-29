@@ -41,15 +41,15 @@ export const apInvoiceController = {
 
   async createFromPO(req: Request, res: Response) {
     try {
-    const poId = Number(req.params.poId);
-    const user = (req as any).user;
+      const poId = Number(req.params.poId);
+      const user = (req as any).user;
 
-    const data = await apInvoiceService.createFromPO(poId, user);
-    res.status(201).json({ success: true, data });
-  } catch (e: any) {
-    const status = e.status || 400;
-    res.status(status).json({ success: false, message: e.message });
-  }
+      const data = await apInvoiceService.createFromPO(poId, user);
+      res.status(201).json({ success: true, data });
+    } catch (e: any) {
+      const status = e.status || 400;
+      res.status(status).json({ success: false, message: e.message });
+    }
   },
 
   async submitForApproval(req: Request, res: Response) {
@@ -74,7 +74,7 @@ export const apInvoiceController = {
   async approve(req: Request, res: Response) {
     const user = (req as any).user;
     try {
-      const data = await apInvoiceService.approve(Number(req.params.id), user, req.app);
+      const data = await apInvoiceService.approve(Number(req.params.id), user);
 
       res.json({
         success: true,

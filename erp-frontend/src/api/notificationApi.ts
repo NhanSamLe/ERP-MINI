@@ -1,6 +1,6 @@
 // notificationApi.ts
 import axiosClient from "./axiosClient";
-import { Notification, NotificationResponse } from "../types/notification.types";
+import { NotificationResponse } from "../types/notification.types";
 
 export const notificationApi = {
     // Lấy danh sách thông báo

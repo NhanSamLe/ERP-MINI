@@ -5,9 +5,9 @@ import { createReceipt, fetchCustomersWithDebt, fetchUnpaidInvoices } from "../s
 import { CreateReceiptDto } from "../dto/receipt.dto";
 import PageHeader from "@/components/layout/PageHeader";
 import { formatVND } from "@/utils/currency.helper";
-import { AlertCircle, Calendar, CheckSquare, Search, Wallet } from "lucide-react";
+import { AlertCircle, CheckSquare, Search, Wallet } from "lucide-react";
 import { SearchSelectionModal } from "@/components/common/SearchSelectionModal";
-import { Partner } from "@/features/partner/store/partner.types";
+
 
 export default function ReceiptCreatePage() {
   const dispatch = useAppDispatch();
