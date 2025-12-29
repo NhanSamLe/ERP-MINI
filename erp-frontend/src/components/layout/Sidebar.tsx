@@ -206,11 +206,7 @@ const menuItems: MenuItem[] = [
         path: "/finance/journals",
         allowedRoles: ["ACCOUNT", "CHACC"],
       },
-      {
-        name: "Bank Reconciliation",
-        path: "/finance/bank",
-        allowedRoles: ["ACCOUNT", "CHACC"],
-      },
+      
       {
         name: "Reports",
         path: "/finance/reports",
@@ -262,11 +258,7 @@ const menuItems: MenuItem[] = [
         path: "/hrm/payroll-runs",
         allowedRoles: ["HRMANAGER", "HR_STAFF"],
       },
-      {
-        name: "Leave Management",
-        path: "/hrm/leave",
-        allowedRoles: ["HRMANAGER", "HR_STAFF"],
-      },
+     
     ],
   },
 

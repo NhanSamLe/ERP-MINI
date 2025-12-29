@@ -2,6 +2,10 @@ import { Role } from "../../../core/types/enum";
 import { ApPayment } from "../models/apPayment.model";
 import { User } from "../../auth/models/user.model";
 import { Branch } from "../../company/models/branch.model";
+import { Transaction } from "sequelize";
+import { GlJournal } from "../../finance/models/glJournal.model";
+import { GlEntry } from "../../finance/models/glEntry.model";
+import { GlEntryLine } from "../../finance/models/glEntryLine.model";
 import {
   ApInvoice,
   ApPaymentAllocation,
@@ -139,30 +143,93 @@ export const apPaymentService = {
   },
 
   async approve(id: number, user: any) {
-    if (user.role !== Role.CHACC) {
-      throw new Error("Only Chief Accountant can approve");
-    }
+  if (user.role !== Role.CHACC) throw new Error("Only Chief Accountant can approve");
 
-    const payment = await ApPayment.findByPk(id);
+  const t: Transaction = await sequelize.transaction();
+  try {
+    const payment = await ApPayment.findByPk(id, { transaction: t });
     if (!payment) throw new Error("AP Payment not found");
 
-    if (payment.branch_id !== user.branch_id) {
+    if (payment.branch_id !== user.branch_id)
       throw new Error("You cannot approve payment from another branch");
-    }
 
-    if (payment.approval_status !== "waiting_approval") {
+    if (payment.approval_status !== "waiting_approval")
       throw new Error("Payment is not waiting for approval");
+
+    // 1) update trạng thái payment
+    await payment.update(
+      {
+        approval_status: "approved",
+        status: "posted",
+        approved_by: user.id,
+        approved_at: new Date(),
+        reject_reason: null,
+      },
+      { transaction: t }
+    );
+
+    // 2) Xác định account Có theo method
+    // giả sử: cash->111 (id=1), bank/transfer->112 (id=2)
+    const creditAccountId =
+      payment.method === "cash"
+        ? 1  // 111
+        : 2; // 112
+
+    const debitAccountId = 3; // 331 - Phải trả NCC (bạn mapping id theo hệ thống bạn)
+
+    // 3) Journal: CASH/BANK
+    const journalCode = payment.method === "cash" ? "CASH" : "BANK";
+    const journal = await GlJournal.findOne({ where: { code: journalCode }, transaction: t });
+    if (!journal) throw new Error(`${journalCode} journal not found`);
+
+    const entryDate: Date = payment.payment_date || new Date();
+    const amount = Number(payment.amount || 0);
+    if (amount <= 0) throw new Error("Payment amount must be > 0");
+
+    // 4) Create GL Entry
+    const entry = await GlEntry.create(
+      {
+        journal_id: journal.id,
+        entry_no: `GL-AP-PAY-${payment.id}`,
+        entry_date: entryDate,
+        reference_type: "ap_payment",
+        reference_id: payment.id,
+        memo: `AP Payment ${payment.payment_no}`,
+        status: "posted",
+      },
+      { transaction: t }
+    );
+
+    const supplierId = payment.supplier_id as number | undefined;
+
+    // 5) Create GL Lines: Nợ 331 / Có 111-112
+    const lineDebit: any = {
+      entry_id: entry.id,
+      account_id: debitAccountId,
+      debit: amount,
+      credit: 0,
+    };
+    const lineCredit: any = {
+      entry_id: entry.id,
+      account_id: creditAccountId,
+      debit: 0,
+      credit: amount,
+    };
+
+    if (supplierId) {
+      lineDebit.partner_id = supplierId;
+      lineCredit.partner_id = supplierId;
     }
 
-    payment.approval_status = "approved";
-    payment.status = "posted";
-    payment.approved_by = user.id;
-    payment.approved_at = new Date();
-    payment.reject_reason = null;
+    await GlEntryLine.bulkCreate([lineDebit, lineCredit], { transaction: t });
 
-    await payment.save();
+    await t.commit();
     return this.getById(payment.id, user);
-  },
+  } catch (err) {
+    await t.rollback();
+    throw err;
+  }
+},
 
   async reject(id: number, reason: string, user: any) {
     if (user.role !== Role.CHACC) {

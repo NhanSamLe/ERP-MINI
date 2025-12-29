@@ -10,6 +10,7 @@ export async function updateUser(data: updateUserDTO) {
     phone: data.phone,
     role_id: data.role_id,
     branch_id: data.branch_id,
+    is_active: data.is_active, 
   });
   return res.data.user;
 }

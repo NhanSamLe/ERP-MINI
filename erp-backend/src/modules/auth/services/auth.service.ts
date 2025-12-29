@@ -109,6 +109,7 @@ export async function updateUser(data: {
   email?: string;
   phone?: string;
   role_id: number;
+  is_active?: boolean;
 }){
   const user = await model.User.findOne({ where: { username: data.username } });
   if (!user) throw new Error("User not found");
@@ -137,6 +138,7 @@ export async function updateUser(data: {
     ...(data.email ? { email: data.email } : {}),
     ...(data.phone ? { phone: data.phone } : {}),
     ...(data.role_id ? { role_id: data.role_id } : {}),
+    ...(data.is_active !== undefined ? { is_active: data.is_active } : {}),
    });
   }
   await user.reload({

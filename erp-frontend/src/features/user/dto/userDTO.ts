@@ -15,4 +15,5 @@ export interface updateUserDTO {
   phone?: string;
   role_id?: number;
   branch_id?: number;
+  is_active?: boolean;
 }

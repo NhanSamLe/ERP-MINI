@@ -1,5 +1,6 @@
 import { Op } from "sequelize";
 import * as model from "../../../models/index";
+import { PAYROLL_RULE } from "../constants/payrollRule";
 
 export type PayrollRunStatus = "draft" | "posted";
 
@@ -271,4 +272,129 @@ export async function getPayslipForEmployeeInRun(
 
   if (!row) throw new Error("Payslip not found");
   return row;
+}
+export async function calculatePayrollRun(runId: number, user: any) {
+  const t = await model.sequelize.transaction();
+
+  try {
+    // 1) Load run + period
+    const run = await model.PayrollRun.findByPk(runId, {
+      include: [{ model: model.PayrollPeriod, as: "period" }],
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    if (!run) throw new Error("Payroll run not found");
+    if ((run as any).status === "posted")
+      throw new Error("Run đã post, không thể tính lại");
+
+    const period = (run as any).period;
+    if (!period) throw new Error("Payroll period not found");
+
+    // (optional) chặn cross-branch nếu bạn muốn
+    // if (user?.branch_id && period.branch_id !== user.branch_id) throw new Error("Cross-branch denied");
+
+    const start = new Date(period.start_date);
+    const end = new Date(period.end_date);
+
+    // 2) Lấy nhân viên active trong branch của payroll period
+    const employees = await model.Employee.findAll({
+      where: { branch_id: period.branch_id, status: "active" },
+      transaction: t,
+    });
+
+    if (!employees.length) {
+      throw new Error("Không có nhân viên active trong chi nhánh");
+    }
+
+    const empIds = employees.map((e: any) => e.id);
+
+    // 3) Lấy attendance theo kỳ cho tất cả nhân viên
+    const attendances = await model.Attendance.findAll({
+      where: {
+        employee_id: { [Op.in]: empIds },
+        work_date: { [Op.between]: [start, end] },
+      },
+      transaction: t,
+    });
+
+    // 4) Group attendance theo employee_id
+    const attByEmp = new Map<number, any[]>();
+    for (const a of attendances as any[]) {
+      const eid = Number(a.employee_id);
+      if (!attByEmp.has(eid)) attByEmp.set(eid, []);
+      attByEmp.get(eid)!.push(a);
+    }
+
+    const results: any[] = [];
+
+    // 5) Tính NET cho từng nhân viên và UPSERT payroll_run_lines
+    for (const emp of employees as any[]) {
+      const rows = attByEmp.get(Number(emp.id)) || [];
+
+      let presentDays = 0;
+      let absentDays = 0;
+      let leaveDays = 0;
+      let lateDays = 0;
+
+      for (const a of rows) {
+        if (a.status === "present") presentDays++;
+        else if (a.status === "absent") absentDays++;
+        else if (a.status === "leave") leaveDays++;
+        else if (a.status === "late") lateDays++;
+      }
+
+      const dailyRate =
+        Number(emp.base_salary || 0) / PAYROLL_RULE.STANDARD_WORK_DAYS;
+
+      const paidLeaveDays = PAYROLL_RULE.PAID_LEAVE ? leaveDays : 0;
+
+      const basePay = dailyRate * (presentDays + paidLeaveDays);
+      const absentDeduction = dailyRate * absentDays;
+      const lateDeduction = lateDays * PAYROLL_RULE.LATE_FINE_PER_DAY;
+      const allowance = presentDays * PAYROLL_RULE.MEAL_ALLOWANCE_PER_DAY;
+
+      let net = basePay + allowance - absentDeduction - lateDeduction;
+
+      // làm tròn tiền nếu muốn
+      net = Math.round(net);
+
+      // upsert line: (run_id + employee_id) chỉ 1 dòng
+      const existed = await model.PayrollRunLine.findOne({
+        where: { run_id: run.id, employee_id: emp.id },
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+
+      if (existed) {
+        await existed.update({ amount: net }, { transaction: t });
+      } else {
+        await model.PayrollRunLine.create(
+          { run_id: run.id, employee_id: emp.id, amount: net },
+          { transaction: t }
+        );
+      }
+
+      results.push({
+        employee_id: emp.id,
+        employee_name: emp.full_name,
+        base_salary: Number(emp.base_salary || 0),
+        presentDays,
+        leaveDays,
+        absentDays,
+        lateDays,
+        dailyRate: Math.round(dailyRate),
+        net,
+      });
+    }
+
+    await t.commit();
+
+    // trả về run detail luôn cho FE refresh
+    const updatedRun = await getPayrollRunById(run.id);
+    return { run: updatedRun, preview: results };
+  } catch (err) {
+    await t.rollback();
+    throw err;
+  }
 }

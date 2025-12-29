@@ -42,4 +42,7 @@ export const payrollRunApi = {
 
   getMyPayslipInRun: (runId: number) =>
     apiClient.get(`/hrm/payroll-runs/${runId}/my-payslip`),
+  calculateRun: (runId: number) =>
+  apiClient.post(`/hrm/payroll-runs/${runId}/calculate`, {}),
+
 };
