@@ -11,9 +11,14 @@ import {
   deletePayrollRunLine,
   getMyPayslips,
   getMyPayslipInRun,
+  calculateRun,  
+  getPayrollEvidence
 } from "../controllers/payrollRun.controller";
 
 const router = Router();
+
+router.get("/me/payslips", authMiddleware([]), getMyPayslips);
+router.get("/:id/my-payslip", authMiddleware([]), getMyPayslipInRun);
 
 // HR Staff + Accountant: xem bảng lương
 router.get(
@@ -31,8 +36,17 @@ router.get(
 router.post("/", authMiddleware(["HR_STAFF"]), createPayrollRun);
 router.delete("/:id", authMiddleware(["HR_STAFF"]), cancelPayrollRun);
 
+// ✅ calculate
+router.post("/:id/calculate", authMiddleware(["HR_STAFF"]), calculateRun);
+
 // Accountant: post bảng lương
 router.post("/:id/post", authMiddleware(["ACCOUNT"]), postPayrollRun);
+router.get(
+  "/:runId/evidence/:employeeId",
+  authMiddleware(["HR_STAFF", "ACCOUNT"]),
+  getPayrollEvidence
+);
+
 
 // HR Staff: quản lý dòng lương
 router.post("/:id/lines", authMiddleware(["HR_STAFF"]), createPayrollRunLine);
@@ -47,8 +61,7 @@ router.delete(
   deletePayrollRunLine
 );
 
-// Employee: xem phiếu lương cá nhân
-router.get("/me/payslips", authMiddleware([]), getMyPayslips);
-router.get("/:id/my-payslip", authMiddleware([]), getMyPayslipInRun);
+
+
 
 export default router;

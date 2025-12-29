@@ -1,10 +1,14 @@
 import { Role } from "../../../core/types/enum";
-import { ApInvoiceLine, Partner, Product } from "../../../models";
+import { ApInvoiceLine, Partner, Product, sequelize } from "../../../models";
 import { User } from "../../auth/models/user.model";
 import { Branch } from "../../company/models/branch.model";
 import { ApInvoice } from "../models/apInvoice.model";
 import { PurchaseOrder } from "../models/purchaseOrder.model";
 import { PurchaseOrderLine } from "../models/purchaseOrderLine.model";
+import { Transaction } from "sequelize";
+import { GlJournal } from "../../finance/models/glJournal.model";
+import { GlEntry } from "../../finance/models/glEntry.model";
+import { GlEntryLine } from "../../finance/models/glEntryLine.model";
 import { notificationService } from "../../../core/services/notification.service";
 
 export const apInvoiceService = {
@@ -115,10 +119,11 @@ export const apInvoiceService = {
         };
       }
 
-      if (po.status !== "confirmed") {
+      if (po.status !== "confirmed" && po.status !== "completed") {
         throw {
           status: 400,
-          message: "Only CONFIRMED Purchase Orders can create AP Invoice",
+          message:
+            "Only CONFIRMED And COMPLETED Purchase Orders can create AP Invoice",
         };
       }
 
@@ -236,47 +241,109 @@ export const apInvoiceService = {
     return this.getById(apInvoice.id, user);
   },
 
-  async approve(id: number, user: any, app?: any) {
-    if (user.role !== Role.CHACC) {
-      throw new Error("Only Chief Accountant can approve");
-    }
+  async approve(id: number, user: any) {
+    if (user.role !== Role.CHACC) throw new Error("Only Chief Accountant can approve");
 
-    const invoice = await ApInvoice.findByPk(id);
-
-    if (!invoice) throw new Error("AP Invoice not found");
-
-    if (invoice.branch_id !== user.branch_id) {
-      throw new Error("You cannot approve invoice from another branch");
-    }
-
-    if (invoice.approval_status !== "waiting_approval") {
-      throw new Error("Invoice is not waiting for approval");
-    }
-
-    invoice.approval_status = "approved";
-    invoice.status = "posted";
-    invoice.approved_by = user.id;
-    invoice.approved_at = new Date();
-    invoice.reject_reason = null;
-
-    await invoice.save();
-
-    // Gửi thông báo
-    if (app && invoice.created_by) {
-      const io = app.get("io");
-      await notificationService.createNotification({
-        type: "APPROVE",
-        referenceType: "AP_INVOICE",
-        referenceId: invoice.id!,
-        referenceNo: invoice.invoice_no!,
-        branchId: invoice.branch_id!,
-        submitterId: invoice.created_by,
-        approverName: user.fullName || user.username,
-        io,
+    const t: Transaction = await sequelize.transaction();
+    try {
+      const invoice = await ApInvoice.findByPk(id, {
+        include: [
+          { model: PurchaseOrder, as: "order" },      // để lấy supplier_id
+          { model: ApInvoiceLine, as: "lines" },      // nếu cần
+        ],
+        transaction: t,
+        lock: t.LOCK.UPDATE,
       });
-    }
 
-    return this.getById(invoice.id, user);
+      if (!invoice) throw new Error("AP Invoice not found");
+      if (invoice.branch_id !== user.branch_id) throw new Error("Cross-branch denied");
+      if (invoice.approval_status !== "waiting_approval") throw new Error("Invoice is not waiting for approval");
+
+      // 1) Update trạng thái invoice
+      await invoice.update(
+        {
+          approval_status: "approved",
+          status: "posted",
+          approved_by: user.id,
+          approved_at: new Date(),
+          reject_reason: null,
+        },
+        { transaction: t }
+      );
+
+      // 2) Lấy journal PURCHASE
+      const journal = await GlJournal.findOne({
+        where: { code: "PURCHASE" },
+        transaction: t,
+      });
+      if (!journal) throw new Error("PURCHASE journal not found");
+
+      // 3) Tạo GL Entry
+      const entry = await GlEntry.create(
+        {
+          journal_id: journal.id,
+          entry_no: `GL-AP-${invoice.id}`,
+          entry_date: invoice.invoice_date ?? new Date(),
+          reference_type: "ap_invoice",
+          reference_id: invoice.id,
+          memo: `Ghi nhận công nợ phải trả ${invoice.invoice_no}`,
+          status: "posted",
+        },
+        { transaction: t }
+      );
+
+      // 4) Map account_id theo DB của bạn (id=8 là 156, id=4 là 1331, id=5 là 331)
+      const INVENTORY_ACC_ID = 8; // 156
+      const VAT_INPUT_ACC_ID = 4; // 1331
+      const AP_ACC_ID = 5;        // 331
+
+      const totalBeforeTax = Number(invoice.total_before_tax || 0);
+      const totalTax = Number(invoice.total_tax || 0);
+      const totalAfterTax = Number(invoice.total_after_tax || 0);
+
+      const supplierId = (invoice as any).order?.supplier_id ?? null;
+
+      // 5) Tạo GL lines
+      const lines: any[] = [];
+
+      if (totalBeforeTax !== 0) {
+        lines.push({
+          entry_id: entry.id,
+          account_id: INVENTORY_ACC_ID,
+          partner_id: supplierId,
+          debit: totalBeforeTax,
+          credit: 0,
+        });
+      }
+
+      if (totalTax !== 0) {
+        lines.push({
+          entry_id: entry.id,
+          account_id: VAT_INPUT_ACC_ID,
+          partner_id: supplierId,
+          debit: totalTax,
+          credit: 0,
+        });
+      }
+
+      lines.push({
+        entry_id: entry.id,
+        account_id: AP_ACC_ID,
+        partner_id: supplierId,
+        debit: 0,
+        credit: totalAfterTax,
+      });
+
+      await GlEntryLine.bulkCreate(lines, { transaction: t });
+
+      await t.commit();
+
+      // trả về detail đầy đủ sau approve
+      return this.getById(invoice.id, user);
+    } catch (e) {
+      await t.rollback();
+      throw e;
+    }
   },
 
   async reject(id: number, reason: string, user: any, app?: any) {
@@ -324,41 +391,46 @@ export const apInvoiceService = {
   },
 
   async getPostedSummaryBySupplier(supplierId: number, user: any) {
-    const invoices = await ApInvoice.findAll({
-      where: {
-        branch_id: user.branch_id,
-        status: "posted",
-      },
-      include: [
-        {
-          model: PurchaseOrder,
-          as: "order",
-          required: true,
-          where: {
-            supplier_id: supplierId,
-          },
-          attributes: ["id", "po_no", "supplier_id"],
-          include: [
-            {
-              model: Partner,
-              as: "supplier",
-              attributes: ["id", "name"],
-            },
-          ],
+    const invoices: any[] = await sequelize.query(
+      `
+    SELECT
+      ai.id,
+      ai.invoice_no,
+      ai.invoice_date,
+      ai.total_after_tax,
+      ai.po_id,
+
+      COALESCE(ai.total_after_tax - SUM(apa.applied_amount), ai.total_after_tax)
+        AS outstanding_amount,
+
+      po.po_no,
+      p.id   AS supplier_id,
+      p.name AS supplier_name
+    FROM ap_invoices ai
+    JOIN purchase_orders po
+      ON po.id = ai.po_id
+    JOIN partners p
+      ON p.id = po.supplier_id
+    LEFT JOIN ap_payment_allocations apa
+      ON apa.ap_invoice_id = ai.id
+    WHERE ai.branch_id = :branchId
+      AND ai.status IN ('posted')
+      AND po.supplier_id = :supplierId
+    GROUP BY
+      ai.id, po.id, p.id
+    ORDER BY ai.invoice_date ASC
+    `,
+      {
+        replacements: {
+          branchId: user.branch_id,
+          supplierId,
         },
-      ],
-      attributes: [
-        "id",
-        "invoice_no",
-        "invoice_date",
-        "total_after_tax",
-        "po_id",
-      ],
-      order: [["invoice_date", "ASC"]],
-    });
+        type: "SELECT",
+      }
+    );
 
     const totalAmount = invoices.reduce(
-      (sum, inv: any) => sum + Number(inv.total_after_tax),
+      (sum, inv) => sum + Number(inv.outstanding_amount),
       0
     );
 

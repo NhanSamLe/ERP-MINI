@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { BookOpen, RefreshCcw, Search, Filter, Download, FileText } from "lucide-react";
+import { useNavigate } from "react-router-dom"; // ✅ thêm
+import {
+  BookOpen,
+  RefreshCcw,
+  Search,
+  Filter,
+  Download,
+  FileText,
+} from "lucide-react";
 
 // Mock data types
 interface GlJournalDTO {
@@ -26,6 +34,8 @@ const fetchGlJournals = async (): Promise<GlJournalDTO[]> => {
 };
 
 const GlJournalPage: React.FC = () => {
+  const navigate = useNavigate(); // ✅ thêm
+
   const [data, setData] = useState<GlJournalDTO[]>([]);
   const [filteredData, setFilteredData] = useState<GlJournalDTO[]>([]);
   const [loading, setLoading] = useState(false);
@@ -117,7 +127,7 @@ const GlJournalPage: React.FC = () => {
                 />
               </div>
             </div>
-            
+
             <div className="flex items-center gap-2 text-sm text-slate-600">
               <Filter className="w-4 h-4" />
               <span className="font-medium">
@@ -150,6 +160,7 @@ const GlJournalPage: React.FC = () => {
                   </th>
                 </tr>
               </thead>
+
               <tbody className="divide-y divide-slate-200">
                 {loading ? (
                   <tr>
@@ -178,9 +189,11 @@ const GlJournalPage: React.FC = () => {
                   </tr>
                 ) : (
                   filteredData.map((row) => (
-                    <tr 
-                      key={row.id} 
-                      className="hover:bg-slate-50 transition-colors duration-150"
+                    <tr
+                      key={row.id}
+                      className="hover:bg-slate-50 transition-colors duration-150 cursor-pointer"
+                      onClick={() => navigate(`/finance/journals/${row.id}/entries`)} // ✅ thêm
+                      title="Xem danh sách bút toán"
                     >
                       <td className="px-6 py-4 text-sm text-slate-500 font-medium">
                         #{row.id}
@@ -210,7 +223,7 @@ const GlJournalPage: React.FC = () => {
           </div>
         </div>
 
-        </div>
+      </div>
     </div>
   );
 };

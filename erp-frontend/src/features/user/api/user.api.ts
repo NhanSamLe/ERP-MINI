@@ -17,6 +17,7 @@ export function updateUser(data: {
   email?: string;
   phone?: string;
   role_id?: number;
+  is_active?: boolean;
 }) {
   return axiosClient.put(`/auth/users`, data);
 }

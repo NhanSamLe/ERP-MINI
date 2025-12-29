@@ -127,6 +127,11 @@ const menuItems: MenuItem[] = [
         allowedRoles: ["WHMANAGER", "WHSTAFF", "ADMIN"],
       },
       {
+        name: "Warehouses",
+        path: "/inventory/warehouses",
+        allowedRoles: ["ADMIN"],
+      },
+      {
         name: "Category",
         path: "/inventory/categories",
         allowedRoles: ["WHMANAGER", "ADMIN", "WHSTAFF"],
@@ -201,11 +206,7 @@ const menuItems: MenuItem[] = [
         path: "/finance/journals",
         allowedRoles: ["ACCOUNT", "CHACC"],
       },
-      {
-        name: "Bank Reconciliation",
-        path: "/finance/bank",
-        allowedRoles: ["ACCOUNT", "CHACC"],
-      },
+      
       {
         name: "Reports",
         path: "/finance/reports",
@@ -219,7 +220,7 @@ const menuItems: MenuItem[] = [
     name: "HR & Payroll",
     icon: UserCheck,
     path: "/hrm",
-    allowedRoles: ["HRMANAGER", "HR_STAFF", "CEO", "BRANCH_MANAGER"],
+    allowedRoles: ["HRMANAGER", "HR_STAFF", "CEO", "BRANCH_MANAGER","ACCOUNT","CHACC"],
     subItems: [
       {
         name: "Department",
@@ -250,18 +251,14 @@ const menuItems: MenuItem[] = [
       {
         name: "Payroll Items",
         path: "/hrm/payroll-items",
-        allowedRoles: ["HRMANAGER", "HR_STAFF"],
+        allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC"],
       },
       {
         name: "Payroll Run",
         path: "/hrm/payroll-runs",
-        allowedRoles: ["HRMANAGER", "HR_STAFF"],
+        allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC"],
       },
-      {
-        name: "Leave Management",
-        path: "/hrm/leave",
-        allowedRoles: ["HRMANAGER", "HR_STAFF"],
-      },
+     
     ],
   },
 

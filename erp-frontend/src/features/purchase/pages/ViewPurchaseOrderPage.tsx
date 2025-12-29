@@ -154,8 +154,9 @@ export default function ViewPurchaseOrderPage() {
         0
       );
       const tax = enrichedLines.reduce((s, l) => s + l.tax_amount, 0);
-      const after = enrichedLines.reduce((s, l) => s + l.line_total, 0);
+      // const after = enrichedLines.reduce((s, l) => s + l.line_total, 0);
 
+      const after = finalPO?.total_after_tax ?? 0;
       setTotalBeforeTax(before);
       setTotalOrderTax(tax);
       setTotalAfterTax(after);

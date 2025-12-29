@@ -27,8 +27,6 @@ import {
 } from "lucide-react";
 import Swal from "sweetalert2";
 
-// import { fetchAllBranchesThunk } from "../../company/store";
-
 export default function UserDashboard() {
   const dispatch = useDispatch<AppDispatch>();
   const { users, roles, loading, error } = useSelector(
@@ -42,7 +40,6 @@ export default function UserDashboard() {
   useEffect(() => {
     dispatch(fetchAllUsers());
     dispatch(fetchAllRoles());
-    // dispatch(fetchAllBranchesThunk());
   }, [dispatch]);
 
   const handleCreate = async (data: createUserDTO) => {
@@ -51,7 +48,6 @@ export default function UserDashboard() {
     const resultAction = await dispatch(createUserThunk(data));
 
     if (createUserThunk.rejected.match(resultAction)) {
-      // Có lỗi -> không đóng modal
       toast.error(resultAction.payload as string);
       return;
     }
@@ -64,131 +60,160 @@ export default function UserDashboard() {
     const resultAction = await dispatch(updateUserThunk(data));
 
     if (updateUserThunk.rejected.match(resultAction)) {
-       toast.error(resultAction.payload as string);
+      toast.error(resultAction.payload as string);
       return;
     }
     toast.success("Cập nhật người dùng thành công");
     setIsModalOpen(false);
     setEditUser(null);
   };
+
   const handleResetPassword = async (user: User) => {
-  if (!user.email) {
-    toast.error("Người dùng chưa có email");
-    return;
-  }
-
-  if (!user.is_active) {
-    toast.error("Tài khoản chưa được kích hoạt");
-    return;
-  }
-
-  const confirmed = await confirmAction(
-    "Gửi email đặt lại mật khẩu?",
-    `Bạn có chắc muốn gửi email đặt lại mật khẩu cho ${
-      user.full_name || user.username
-    } không?`
-  );
-  if (!confirmed) return;
-
-  try {
-    await requestPasswordReset(user.username);
-    toast.success("Đã gửi email đặt lại mật khẩu 📧");
-  } catch (err) {
-    let message =  "Gửi email đặt lại mật khẩu thất bại";
-    if(err instanceof Error)
-    {
-      message = err.message;
+    if (!user.email) {
+      toast.error("Người dùng chưa có email");
+      return;
     }
-    toast.error(
-     message
+
+    if (!user.is_active) {
+      toast.error("Tài khoản chưa được kích hoạt");
+      return;
+    }
+
+    const confirmed = await confirmAction(
+      "Gửi email đặt lại mật khẩu?",
+      `Bạn có chắc muốn gửi email đặt lại mật khẩu cho ${
+        user.full_name || user.username
+      } không?`
     );
-  }
-};
+    if (!confirmed) return;
+
+    try {
+      await requestPasswordReset(user.username);
+      toast.success("Đã gửi email đặt lại mật khẩu 📧");
+    } catch (err) {
+      let message = "Gửi email đặt lại mật khẩu thất bại";
+      if (err instanceof Error) {
+        message = err.message;
+      }
+      toast.error(message);
+    }
+  };
+
+  // ✅ Hàm toggle status - ĐẶT Ở ĐÂY (ngoài handleDelete)
+  const handleToggleStatus = async (user: User) => {
+    const action = user.is_active ? "vô hiệu hóa" : "kích hoạt";
+    
+    const confirmed = await confirmAction(
+      `${action.charAt(0).toUpperCase() + action.slice(1)} tài khoản?`,
+      `Bạn có chắc muốn ${action} tài khoản ${user.full_name || user.username} không?`
+    );
+    
+    if (!confirmed) return;
+
+    const updateData: updateUserDTO = {
+      username: user.username,
+      full_name: user.full_name || "",
+      email: user.email || "",
+      phone: user.phone || "",
+      role_id: user.role?.id || 1,
+      branch_id: user.branch?.id || 1,
+      is_active: !user.is_active,
+    };
+
+    const resultAction = await dispatch(updateUserThunk(updateData));
+
+    if (updateUserThunk.rejected.match(resultAction)) {
+      toast.error(resultAction.payload as string);
+      return;
+    }
+
+    toast.success(`${action.charAt(0).toUpperCase() + action.slice(1)} tài khoản thành công`);
+  };
+
   const handleDelete = async (id: number) => {
-  const user = users.find((u) => u.id === id);
-  if (!user) return;
+    const user = users.find((u) => u.id === id);
+    if (!user) return;
 
-  const result = await Swal.fire({
-    title: "Xóa người dùng?",
-    text: `Bạn có chắc muốn xóa ${
-      user.full_name || user.username
-    } không? Hành động này không thể hoàn tác.`,
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonColor: "#ef4444", // đỏ
-    cancelButtonColor: "#9ca3af",  // xám
-    confirmButtonText: "Xóa",
-    cancelButtonText: "Hủy",
-    reverseButtons: true,
-  });
+    const result = await Swal.fire({
+      title: "Xóa người dùng?",
+      text: `Bạn có chắc muốn xóa ${
+        user.full_name || user.username
+      } không? Hành động này không thể hoàn tác.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#9ca3af",
+      confirmButtonText: "Xóa",
+      cancelButtonText: "Hủy",
+      reverseButtons: true,
+    });
 
-  if (!result.isConfirmed) return;
+    if (!result.isConfirmed) return;
 
-  const resultAction = await dispatch(deleteUserThunk(user.id));
+    const resultAction = await dispatch(deleteUserThunk(user.id));
 
-  if (deleteUserThunk.rejected.match(resultAction)) {
-    toast.error(resultAction.payload as string);
-    return;
-  }
+    if (deleteUserThunk.rejected.match(resultAction)) {
+      toast.error(resultAction.payload as string);
+      return;
+    }
 
-  toast.success("Xóa người dùng thành công");
-};
-const exportUserReport = () => {
-  exportExcelReport<User>({
-    title: "DANH SÁCH TÀI KHOẢN NGƯỜI DÙNG",
-    subtitle: "Hệ thống ERP",
-    meta: {
-      "Ngày xuất": new Date().toLocaleDateString("vi-VN"),
-      "Tổng số": users.length.toString(),
-    },
-    columns: [
-      {
-        header: "Tên đăng nhập",
-        key: "username",
-        width: 20,
-      },
-      {
-        header: "Họ tên",
-        key: "full_name",
-        width: 25,
-      },
-      {
-        header: "Email",
-        key: "email",
-        width: 30,
-      },
-      {
-        header: "Số điện thoại",
-        key: "phone",
-        width: 15,
-      },
-       {
-        header: "Vai trò",
-        key: "id", 
-        width: 20,
-        formatter: (_, row) => row.role?.name ?? "—",
-      },
-      {
-        header: "Chi nhánh",
-        key: "id", 
-        width: 25,
-        formatter: (_, row) => row.branch?.name ?? "—",
-      },
-      {
-        header: "Trạng thái",
-        key: "is_active",
-        width: 15,
-        align: "center",
-        formatter: (value) =>
-          value ? "Hoạt động" : "Ngưng",
-      },
-    ],
-    data: users, // ✅ giữ nguyên User[]
-    fileName: "Danh_sach_tai_khoan.xlsx",
-  });
-};
+    toast.success("Xóa người dùng thành công");
+  };
 
-  // KHÔNG tạo cột actions nữa
+  const exportUserReport = () => {
+    exportExcelReport<User>({
+      title: "DANH SÁCH TÀI KHOẢN NGƯỜI DÙNG",
+      subtitle: "Hệ thống ERP",
+      meta: {
+        "Ngày xuất": new Date().toLocaleDateString("vi-VN"),
+        "Tổng số": users.length.toString(),
+      },
+      columns: [
+        {
+          header: "Tên đăng nhập",
+          key: "username",
+          width: 20,
+        },
+        {
+          header: "Họ tên",
+          key: "full_name",
+          width: 25,
+        },
+        {
+          header: "Email",
+          key: "email",
+          width: 30,
+        },
+        {
+          header: "Số điện thoại",
+          key: "phone",
+          width: 15,
+        },
+        {
+          header: "Vai trò",
+          key: "id",
+          width: 20,
+          formatter: (_, row) => row.role?.name ?? "—",
+        },
+        {
+          header: "Chi nhánh",
+          key: "id",
+          width: 25,
+          formatter: (_, row) => row.branch?.name ?? "—",
+        },
+        {
+          header: "Trạng thái",
+          key: "is_active",
+          width: 15,
+          align: "center",
+          formatter: (value) => (value ? "Hoạt động" : "Ngưng"),
+        },
+      ],
+      data: users,
+      fileName: "Danh_sach_tai_khoan.xlsx",
+    });
+  };
+
   const columns: Column<User>[] = [
     {
       key: "full_name",
@@ -254,11 +279,11 @@ const exportUserReport = () => {
                 <RefreshCw className="w-5 h-5" />
               </button>
               <button
-                  onClick={exportUserReport}
-                  className="p-2 text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg"
-                >
-                  <Download className="w-5 h-5" />
-                </button>
+                onClick={exportUserReport}
+                className="p-2 text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg"
+              >
+                <Download className="w-5 h-5" />
+              </button>
               <button
                 onClick={() => {
                   dispatch(setError(null));
@@ -288,20 +313,43 @@ const exportUserReport = () => {
               setIsModalOpen(true);
             }}
             onDelete={(user) => handleDelete(user.id)}
-            // ⭐ BẮT BUỘC: cho phép edit/delete
             canEdit={() => true}
             canDelete={() => true}
-            extraActions={(user) =>
-              user.is_active && user.email ? (
+            extraActions={(user) => (
+              <>
+                {/* Nút toggle status */}
                 <button
-                  onClick={() => handleResetPassword(user)}
-                  title="Send reset password email"
-                  className="text-blue-600 hover:text-blue-800 ml-2"
+                  onClick={() => handleToggleStatus(user)}
+                  title={user.is_active ? "Vô hiệu hóa" : "Kích hoạt"}
+                  className={`ml-2 ${
+                    user.is_active
+                      ? "text-gray-600 hover:text-gray-800"
+                      : "text-green-600 hover:text-green-800"
+                  }`}
                 >
-                  <KeyRound className="w-4 h-4" />
+                  {user.is_active ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  )}
                 </button>
-              ) : null
-            }
+
+                {/* Nút reset password */}
+                {user.is_active && user.email && (
+                  <button
+                    onClick={() => handleResetPassword(user)}
+                    title="Send reset password email"
+                    className="text-blue-600 hover:text-blue-800 ml-2"
+                  >
+                    <KeyRound className="w-4 h-4" />
+                  </button>
+                )}
+              </>
+            )}
           />
         </div>
       </div>

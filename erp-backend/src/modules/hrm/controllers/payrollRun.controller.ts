@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import * as payrollRunService from "../services/payrollRun.service";
 import * as model from "../../../models/index";
+import { calculatePayrollRun } from "../services/payrollRun.service";
 
 export const getPayrollRuns = async (req: Request, res: Response) => {
   try {
@@ -143,6 +144,28 @@ export const getMyPayslipInRun = async (req: Request, res: Response) => {
       (user as any).employee_id
     );
     return res.json(row);
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message });
+  }
+};
+export const calculateRun = async (req: Request, res: Response) => {
+  try {
+    const runId = Number(req.params.id);
+    const user = (req as any).user;
+
+    const data = await calculatePayrollRun(runId, user);
+    return res.json({ message: "Calculated successfully", data });
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message });
+  }
+};
+export const getPayrollEvidence = async (req: Request, res: Response) => {
+  try {
+    const runId = Number(req.params.runId);
+    const employeeId = Number(req.params.employeeId);
+
+    const data = await payrollRunService.getPayrollEvidence(runId, employeeId);
+    return res.json(data);
   } catch (err: any) {
     return res.status(400).json({ message: err.message });
   }

@@ -4,6 +4,7 @@ import {
   PayrollRunFilter,
   PayrollRunLineDTO,
 } from "../dto/payrollRun.dto";
+import { PayrollEvidenceDTO } from "../dto/payrollEvidence.dto";
 
 export const payrollRunApi = {
   getAll: (params?: PayrollRunFilter) =>
@@ -42,4 +43,11 @@ export const payrollRunApi = {
 
   getMyPayslipInRun: (runId: number) =>
     apiClient.get(`/hrm/payroll-runs/${runId}/my-payslip`),
+  calculateRun: (runId: number) =>
+  apiClient.post(`/hrm/payroll-runs/${runId}/calculate`, {}),
+  getEvidence: (runId: number, employeeId: number) =>
+    apiClient.get<PayrollEvidenceDTO>(
+      `/hrm/payroll-runs/${runId}/evidence/${employeeId}`
+    ),
+
 };

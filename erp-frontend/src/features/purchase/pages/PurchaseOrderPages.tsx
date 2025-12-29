@@ -132,7 +132,7 @@ export default function PurchaseOrderPage() {
       key: "total_after_tax",
       label: "Total",
       render: (po: PurchaseOrder) =>
-        po.total_after_tax ? `$${po.total_after_tax}` : "—",
+        po.total_after_tax ? `${po.total_after_tax}` : "—",
     },
     {
       key: "status",
