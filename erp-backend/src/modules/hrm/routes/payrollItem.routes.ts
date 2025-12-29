@@ -13,18 +13,18 @@ const router = Router();
 // HR_STAFF + CHIEF_ACCOUNTANT: chỉ xem
 router.get(
   "/",
-  authMiddleware(["HR_STAFF" ]),
+  authMiddleware(["HR_STAFF","ACCOUNT" ]),
   getPayrollItems
 );
 router.get(
   "/:id",
-  authMiddleware(["HR_STAFF" ]),
+  authMiddleware(["HR_STAFF","ACCOUNT"  ]),
   getPayrollItemDetail
 );
 
 // HR_STAFF: CRUD
-router.post("/", authMiddleware(["HR_STAFF"]), createPayrollItem);
-router.put("/:id", authMiddleware(["HR_STAFF"]), updatePayrollItem);
-router.delete("/:id", authMiddleware(["HR_STAFF"]), deletePayrollItem);
+router.post("/", authMiddleware(["HR_STAFF","ACCOUNT"]), createPayrollItem);
+router.put("/:id", authMiddleware(["HR_STAFF","ACCOUNT"]), updatePayrollItem);
+router.delete("/:id", authMiddleware(["HR_STAFF","ACCOUNT"]), deletePayrollItem);
 
 export default router;

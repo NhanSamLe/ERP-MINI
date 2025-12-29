@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 import {
   fetchPayrollRuns,
@@ -17,6 +17,7 @@ import {
 } from "../dto/payrollRun.dto";
 import { clearCurrentRun } from "../store/payrollRun/payrollRun.slice";
 import apiClient from "../../../api/axiosClient";
+import { PayrollEvidenceDTO } from "../dto/payrollEvidence.dto";
 
 import {
   Plus,
@@ -35,7 +36,119 @@ import {
   CheckCircle2,
   Clock,
   Building2,
+  ClipboardList,
+  Info,
 } from "lucide-react";
+
+const statusLabel: Record<string, string> = {
+  present: "Đi làm",
+  absent: "Vắng",
+  leave: "Nghỉ phép",
+  late: "Đi trễ",
+};
+
+const statusPillClass = (s: string) => {
+  if (s === "present")
+    return "bg-emerald-100 text-emerald-700 border border-emerald-200";
+  if (s === "absent")
+    return "bg-red-100 text-red-700 border border-red-200";
+  if (s === "leave")
+    return "bg-blue-100 text-blue-700 border border-blue-200";
+  if (s === "late")
+    return "bg-amber-100 text-amber-700 border border-amber-200";
+  return "bg-gray-100 text-gray-700 border border-gray-200";
+};
+type AnyObj = Record<string, any>;
+
+const toLowerStatus = (s: any) =>
+  String(s ?? "").trim().toLowerCase();
+
+const pickAttendanceArray = (raw: AnyObj): any[] => {
+  // chịu được nhiều kiểu key backend hay trả
+  const arr =
+    raw.attendance ??
+    raw.attendances ??
+    raw.attendance_records ??
+    raw.attendanceRecords ??
+    raw.items ??
+    raw.rows ??
+    [];
+  return Array.isArray(arr) ? arr : [];
+};
+
+const normalizeAttendanceItem = (a: AnyObj) => {
+  // chịu được snake_case / camelCase
+  const workDate = a.work_date ?? a.workDate ?? a.date ?? a.workday ?? a.work_day;
+  const checkIn = a.check_in ?? a.checkIn ?? a.checkin ?? a.in;
+  const checkOut = a.check_out ?? a.checkOut ?? a.checkout ?? a.out;
+  const status = toLowerStatus(a.status);
+  const note = a.note ?? a.notes ?? a.reason;
+
+  return {
+    ...a,
+    work_date: workDate,      // ép về key FE đang dùng
+    check_in: checkIn,
+    check_out: checkOut,
+    status,
+    note,
+  };
+};
+
+const computeSummaryFromAttendance = (attendance: AnyObj[]) => {
+  const sum = { presentDays: 0, leaveDays: 0, absentDays: 0, lateDays: 0 };
+  for (const a of attendance) {
+    const s = toLowerStatus(a.status);
+    if (s === "present") sum.presentDays += 1;
+    else if (s === "leave") sum.leaveDays += 1;
+    else if (s === "absent") sum.absentDays += 1;
+    else if (s === "late") sum.lateDays += 1;
+  }
+  return sum;
+};
+
+const normalizeEvidence = (raw: AnyObj): PayrollEvidenceDTO => {
+  const attendanceRaw = pickAttendanceArray(raw).map(normalizeAttendanceItem);
+
+  // summary có thể backend trả camel/snake khác nhau
+  const summaryRaw =
+    raw.summary ??
+    {
+      presentDays: raw.presentDays ?? raw.present_days,
+      leaveDays: raw.leaveDays ?? raw.leave_days,
+      absentDays: raw.absentDays ?? raw.absent_days,
+      lateDays: raw.lateDays ?? raw.late_days,
+    };
+
+  const summary = {
+    presentDays: Number(summaryRaw?.presentDays ?? 0),
+    leaveDays: Number(summaryRaw?.leaveDays ?? 0),
+    absentDays: Number(summaryRaw?.absentDays ?? 0),
+    lateDays: Number(summaryRaw?.lateDays ?? 0),
+  };
+
+  // nếu summary = 0 hết nhưng attendance có data => tự tính lại
+  const allZero =
+    summary.presentDays === 0 &&
+    summary.leaveDays === 0 &&
+    summary.absentDays === 0 &&
+    summary.lateDays === 0;
+
+  const finalSummary =
+    allZero && attendanceRaw.length > 0
+      ? computeSummaryFromAttendance(attendanceRaw)
+      : summary;
+
+  return {
+    ...raw,
+    attendance: attendanceRaw,
+    summary: finalSummary,
+  } as PayrollEvidenceDTO;
+};
+
+const money = (n: any) =>
+  Number(n || 0).toLocaleString("vi-VN", { maximumFractionDigits: 0 });
+
+const d10 = (s?: string | null) => (s ? String(s).slice(0, 10) : "—");
 
 const PayrollRunPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -68,6 +181,49 @@ const PayrollRunPage: React.FC = () => {
   const [lineAmount, setLineAmount] = useState<number | "">("");
   const [editingLineId, setEditingLineId] = useState<number | null>(null);
 
+  // ===== EVIDENCE =====
+  const [showEvidenceModal, setShowEvidenceModal] = useState(false);
+  const [evidenceLoading, setEvidenceLoading] = useState(false);
+  const [evidenceError, setEvidenceError] = useState<string | null>(null);
+  const [evidence, setEvidence] = useState<PayrollEvidenceDTO | null>(null);
+  const [evidenceEmployeeId, setEvidenceEmployeeId] = useState<number | null>(
+    null
+  );
+
+  const openEvidence = async (employeeId: number) => {
+    if (!currentRun?.id) return;
+
+    setEvidenceEmployeeId(employeeId);
+    setShowEvidenceModal(true);
+    setEvidence(null);
+    setEvidenceError(null);
+    setEvidenceLoading(true);
+
+    try {
+      const res = await apiClient.get(
+        `/hrm/payroll-runs/${currentRun.id}/evidence/${employeeId}`
+      );
+      const raw = res.data as any;
+setEvidence(normalizeEvidence(raw));
+console.log("EVIDENCE RAW:", res.data);
+console.log("attendance keys:", Object.keys(res.data || {}));
+
+
+    } catch (e: any) {
+      setEvidenceError(e?.response?.data?.message || "Không lấy được minh chứng");
+    } finally {
+      setEvidenceLoading(false);
+    }
+  };
+
+  const closeEvidence = () => {
+    setShowEvidenceModal(false);
+    setEvidence(null);
+    setEvidenceError(null);
+    setEvidenceLoading(false);
+    setEvidenceEmployeeId(null);
+  };
+
   // load list
   useEffect(() => {
     const filter: any = {};
@@ -83,7 +239,9 @@ const PayrollRunPage: React.FC = () => {
       setEditingLineId(null);
       setLineEmployeeId("");
       setLineAmount("");
+      closeEvidence();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showLinesModal, dispatch]);
 
   const openCreateModal = () => {
@@ -107,7 +265,7 @@ const PayrollRunPage: React.FC = () => {
       ).unwrap();
       setShowCreateModal(false);
     } catch {
-      // error hiển thị bên ngoài
+      //
     }
   };
 
@@ -142,6 +300,10 @@ const PayrollRunPage: React.FC = () => {
       await apiClient.post(`/hrm/payroll-runs/${currentRun.id}/calculate`, {});
       await dispatch(fetchPayrollRunDetail(currentRun.id!) as any).unwrap();
       alert("Đã tính lương xong!");
+      // refresh evidence nếu đang mở
+      if (showEvidenceModal && evidenceEmployeeId) {
+        await openEvidence(evidenceEmployeeId);
+      }
     } catch (e: any) {
       alert(e?.response?.data?.message || "Tính lương lỗi");
     }
@@ -190,6 +352,10 @@ const PayrollRunPage: React.FC = () => {
       setEditingLineId(null);
       setLineEmployeeId("");
       setLineAmount("");
+
+      if (showEvidenceModal) {
+        await openEvidence(employee_id);
+      }
     } catch {
       //
     }
@@ -211,6 +377,11 @@ const PayrollRunPage: React.FC = () => {
           lineId: line.id!,
         }) as any
       ).unwrap();
+
+      // nếu đang xem evidence của đúng employee đó thì refresh
+      if (showEvidenceModal && evidenceEmployeeId === line.employee_id) {
+        await openEvidence(line.employee_id);
+      }
     } catch {
       //
     }
@@ -242,25 +413,38 @@ const PayrollRunPage: React.FC = () => {
   };
 
   // Filter items by search
-  const filteredItems = items.filter((item: PayrollRunDTO) => {
-    const matchesSearch =
-      searchTerm === "" ||
-      item.run_no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.period?.period_code?.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
-  });
+  const filteredItems = useMemo(() => {
+    return items.filter((item: PayrollRunDTO) => {
+      const q = searchTerm.toLowerCase().trim();
+      if (!q) return true;
+      return (
+        item.run_no?.toLowerCase().includes(q) ||
+        item.period?.period_code?.toLowerCase().includes(q)
+      );
+    });
+  }, [items, searchTerm]);
 
   // Calculate statistics
-  const stats = {
-    total: items.length,
-    draft: items.filter((i: PayrollRunDTO) => i.status === "draft").length,
-    posted: items.filter((i: PayrollRunDTO) => i.status === "posted").length,
-  };
+  const stats = useMemo(() => {
+    return {
+      total: items.length,
+      draft: items.filter((i: PayrollRunDTO) => i.status === "draft").length,
+      posted: items.filter((i: PayrollRunDTO) => i.status === "posted").length,
+    };
+  }, [items]);
+
+  const linesTotal = useMemo(() => {
+    if (!currentRun?.lines?.length) return 0;
+    return currentRun.lines.reduce(
+      (sum: number, l: PayrollRunLineDTO) => sum + Number(l.amount || 0),
+      0
+    );
+  }, [currentRun]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header Section */}
+        {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div>
@@ -286,7 +470,7 @@ const PayrollRunPage: React.FC = () => {
             )}
           </div>
 
-          {/* Statistics Cards */}
+          {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between">
@@ -294,7 +478,9 @@ const PayrollRunPage: React.FC = () => {
                   <p className="text-sm text-gray-600 font-medium mb-1">
                     Tổng bảng lương
                   </p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {stats.total}
+                  </p>
                 </div>
                 <div className="p-3 bg-blue-100 rounded-lg">
                   <FileText className="w-6 h-6 text-blue-600" />
@@ -308,7 +494,9 @@ const PayrollRunPage: React.FC = () => {
                   <p className="text-sm text-gray-600 font-medium mb-1">
                     Bảng nháp
                   </p>
-                  <p className="text-2xl font-bold text-amber-600">{stats.draft}</p>
+                  <p className="text-2xl font-bold text-amber-600">
+                    {stats.draft}
+                  </p>
                 </div>
                 <div className="p-3 bg-amber-100 rounded-lg">
                   <Clock className="w-6 h-6 text-amber-600" />
@@ -322,7 +510,9 @@ const PayrollRunPage: React.FC = () => {
                   <p className="text-sm text-gray-600 font-medium mb-1">
                     Đã post
                   </p>
-                  <p className="text-2xl font-bold text-emerald-600">{stats.posted}</p>
+                  <p className="text-2xl font-bold text-emerald-600">
+                    {stats.posted}
+                  </p>
                 </div>
                 <div className="p-3 bg-emerald-100 rounded-lg">
                   <CheckCircle2 className="w-6 h-6 text-emerald-600" />
@@ -332,10 +522,9 @@ const PayrollRunPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Filter and Search Section */}
+        {/* Filter/Search */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
           <div className="flex flex-col lg:flex-row gap-4">
-            {/* Search */}
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -349,7 +538,6 @@ const PayrollRunPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Filters */}
             <div className="flex flex-wrap gap-3">
               <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-4 py-2 border border-gray-200">
                 <Filter className="w-4 h-4 text-gray-500" />
@@ -389,7 +577,7 @@ const PayrollRunPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Error Alert */}
+        {/* Error */}
         {error && (
           <div className="mb-6 bg-red-50 border-l-4 border-red-500 rounded-lg p-4 shadow-sm">
             <div className="flex items-start gap-3">
@@ -470,25 +658,26 @@ const PayrollRunPage: React.FC = () => {
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                          <div className="w-2 h-2 rounded-full bg-blue-500" />
                           <span className="font-semibold text-gray-900">
                             {row.run_no}
                           </span>
                         </div>
                       </td>
+
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2 text-gray-700">
                           <Calendar className="w-4 h-4 text-gray-400" />
                           <span className="text-sm">
                             {row.period
-                              ? `${row.period.period_code} (${row.period.start_date?.slice(
-                                  0,
-                                  10
-                                )} - ${row.period.end_date?.slice(0, 10)})`
+                              ? `${row.period.period_code} (${d10(
+                                  row.period.start_date
+                                )} - ${d10(row.period.end_date)})`
                               : row.period_id}
                           </span>
                         </div>
                       </td>
+
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2 text-gray-700">
                           <Building2 className="w-4 h-4 text-gray-400" />
@@ -497,12 +686,15 @@ const PayrollRunPage: React.FC = () => {
                           </span>
                         </div>
                       </td>
+
                       <td className="px-6 py-4 text-center">
                         {getStatusBadge(row.status)}
                       </td>
+
                       <td className="px-6 py-4 text-sm text-gray-700">
-                        {row.created_at?.slice(0, 10)}
+                        {d10(row.created_at)}
                       </td>
+
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-center gap-2">
                           {isHRStaff && row.status === "draft" && (
@@ -551,11 +743,11 @@ const PayrollRunPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal lập bảng lương */}
+      {/* ===== CREATE MODAL ===== */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg transform transition-all animate-in zoom-in-95 duration-200">
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5 rounded-t-2xl">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5">
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-bold text-white flex items-center gap-3">
                   <div className="p-2 bg-white/20 rounded-lg">
@@ -592,8 +784,7 @@ const PayrollRunPage: React.FC = () => {
                     <option value="">-- Chọn kỳ lương --</option>
                     {periods.map((p: any) => (
                       <option key={p.id} value={p.id}>
-                        {p.period_code} ({p.start_date?.slice(0, 10)} -{" "}
-                        {p.end_date?.slice(0, 10)})
+                        {p.period_code} ({d10(p.start_date)} - {d10(p.end_date)})
                       </option>
                     ))}
                   </select>
@@ -637,11 +828,11 @@ const PayrollRunPage: React.FC = () => {
         </div>
       )}
 
-      {/* Modal dòng lương */}
+      {/* ===== LINES MODAL ===== */}
       {showLinesModal && currentRun && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col transform transition-all animate-in zoom-in-95 duration-200">
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5 rounded-t-2xl">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5">
               <div className="flex justify-between items-start">
                 <div>
                   <h2 className="text-xl font-bold text-white flex items-center gap-3 mb-2">
@@ -655,10 +846,9 @@ const PayrollRunPage: React.FC = () => {
                     <span>
                       Kỳ:{" "}
                       {currentRun.period
-                        ? `${currentRun.period.period_code} (${currentRun.period.start_date?.slice(
-                            0,
-                            10
-                          )} - ${currentRun.period.end_date?.slice(0, 10)})`
+                        ? `${currentRun.period.period_code} (${d10(
+                            currentRun.period.start_date
+                          )} - ${d10(currentRun.period.end_date)})`
                         : currentRun.period_id}
                     </span>
                   </div>
@@ -686,6 +876,7 @@ const PayrollRunPage: React.FC = () => {
                     <Plus className="w-4 h-4 text-blue-600" />
                     {editingLineId ? "Cập nhật dòng lương" : "Thêm dòng lương mới"}
                   </h3>
+
                   <form
                     className="flex flex-wrap gap-4 items-end"
                     onSubmit={handleSubmitLine}
@@ -700,9 +891,7 @@ const PayrollRunPage: React.FC = () => {
                         value={lineEmployeeId}
                         onChange={(e) =>
                           setLineEmployeeId(
-                            e.target.value
-                              ? Number(e.target.value)
-                              : ("" as any)
+                            e.target.value ? Number(e.target.value) : ("" as any)
                           )
                         }
                         placeholder="VD: 101"
@@ -721,9 +910,7 @@ const PayrollRunPage: React.FC = () => {
                           value={lineAmount}
                           onChange={(e) =>
                             setLineAmount(
-                              e.target.value
-                                ? Number(e.target.value)
-                                : ("" as any)
+                              e.target.value ? Number(e.target.value) : ("" as any)
                             )
                           }
                           placeholder="VD: 15000000"
@@ -765,7 +952,7 @@ const PayrollRunPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Table lines */}
+              {/* Lines table */}
               <div className="bg-white border-2 border-gray-200 rounded-xl shadow-sm overflow-hidden">
                 <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-5 py-3 border-b-2 border-gray-200">
                   <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
@@ -789,11 +976,12 @@ const PayrollRunPage: React.FC = () => {
                         <th className="px-5 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
                           Số tiền
                         </th>
-                        <th className="px-5 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider w-32">
+                        <th className="px-5 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider w-40">
                           Thao tác
                         </th>
                       </tr>
                     </thead>
+
                     <tbody className="divide-y divide-gray-200">
                       {!currentRun.lines || currentRun.lines.length === 0 ? (
                         <tr>
@@ -814,72 +1002,91 @@ const PayrollRunPage: React.FC = () => {
                           </td>
                         </tr>
                       ) : (
-                        currentRun.lines.map((line: PayrollRunLineDTO, index: number) => (
-                          <tr
-                            key={line.id}
-                            className={`hover:bg-gray-50 transition-colors ${
-                              editingLineId === line.id ? "bg-blue-50" : ""
-                            }`}
-                          >
-                            <td className="px-5 py-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xs">
-                                  {index + 1}
+                        currentRun.lines.map(
+                          (line: PayrollRunLineDTO, index: number) => (
+                            <tr
+                              key={line.id}
+                              className={`hover:bg-gray-50 transition-colors ${
+                                editingLineId === line.id ? "bg-blue-50" : ""
+                              }`}
+                            >
+                              <td className="px-5 py-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xs">
+                                    {index + 1}
+                                  </div>
+
+                                  <div className="min-w-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => openEvidence(line.employee_id)}
+                                      className="text-left group"
+                                      title="Xem minh chứng chấm công"
+                                    >
+                                      <p className="text-sm font-semibold text-gray-900 group-hover:underline flex items-center gap-2">
+                                        {line.employee?.full_name ||
+                                          `Nhân viên #${line.employee_id}`}
+                                        <span className="inline-flex items-center gap-1 text-xs text-blue-600">
+                                          <ClipboardList className="w-3.5 h-3.5" />
+                                          Minh chứng
+                                        </span>
+                                      </p>
+                                      {line.employee?.code && (
+                                        <p className="text-xs text-gray-500">
+                                          Mã: {line.employee.code}
+                                        </p>
+                                      )}
+                                    </button>
+                                  </div>
                                 </div>
-                                <div>
-                                  <p className="text-sm font-semibold text-gray-900">
-                                    {line.employee?.full_name || `Nhân viên #${line.employee_id}`}
-                                  </p>
-                                  {line.employee?.code && (
-                                    <p className="text-xs text-gray-500">
-                                      Mã: {line.employee.code}
-                                    </p>
+                              </td>
+
+                              <td className="px-5 py-4 text-right">
+                                <div className="flex flex-col items-end">
+                                  <span className="text-sm font-bold text-gray-900">
+                                    {money(line.amount)}
+                                  </span>
+                                  <span className="text-xs text-gray-500">
+                                    VNĐ
+                                  </span>
+                                </div>
+                              </td>
+
+                              <td className="px-5 py-4">
+                                <div className="flex items-center justify-center gap-2">
+                                  {isHRStaff && currentRun.status === "draft" ? (
+                                    <>
+                                      <button
+                                        onClick={() => handleEditLine(line)}
+                                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all hover:scale-110"
+                                        title="Sửa"
+                                      >
+                                        <Pencil className="w-4 h-4" />
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteLine(line)}
+                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all hover:scale-110"
+                                        title="Xóa"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <span className="text-xs text-gray-400 italic px-2 py-1 bg-gray-50 rounded">
+                                      Chỉ xem
+                                    </span>
                                   )}
                                 </div>
-                              </div>
-                            </td>
-                            <td className="px-5 py-4 text-right">
-                              <div className="flex flex-col items-end">
-                                <span className="text-sm font-bold text-gray-900">
-                                  {Number(line.amount).toLocaleString("vi-VN")}
-                                </span>
-                                <span className="text-xs text-gray-500">VNĐ</span>
-                              </div>
-                            </td>
-                            <td className="px-5 py-4">
-                              <div className="flex items-center justify-center gap-2">
-                                {isHRStaff && currentRun.status === "draft" ? (
-                                  <>
-                                    <button
-                                      onClick={() => handleEditLine(line)}
-                                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all hover:scale-110"
-                                      title="Sửa"
-                                    >
-                                      <Pencil className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                      onClick={() => handleDeleteLine(line)}
-                                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all hover:scale-110"
-                                      title="Xóa"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </>
-                                ) : (
-                                  <span className="text-xs text-gray-400 italic px-2 py-1 bg-gray-50 rounded">
-                                    Chỉ xem
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ))
+                              </td>
+                            </tr>
+                          )
+                        )
                       )}
                     </tbody>
                   </table>
                 </div>
 
-                {/* Total summary */}
+                {/* Total */}
                 {currentRun.lines && currentRun.lines.length > 0 && (
                   <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-5 py-4 border-t-2 border-gray-200">
                     <div className="flex justify-between items-center">
@@ -888,11 +1095,7 @@ const PayrollRunPage: React.FC = () => {
                       </span>
                       <div className="flex flex-col items-end">
                         <span className="text-lg font-bold text-gray-900">
-                          {currentRun.lines
-                            .reduce((sum: number, line: PayrollRunLineDTO) => 
-                              sum + Number(line.amount), 0
-                            )
-                            .toLocaleString("vi-VN")}
+                          {money(linesTotal)}
                         </span>
                         <span className="text-xs text-gray-500">VNĐ</span>
                       </div>
@@ -902,7 +1105,8 @@ const PayrollRunPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="border-t-2 border-gray-200 px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-between items-center">
+            {/* Lines modal footer */}
+            <div className="border-t-2 border-gray-200 px-6 py-4 bg-gray-50 flex justify-between items-center">
               <div>
                 {isHRStaff && currentRun.status === "draft" && (
                   <button
@@ -923,6 +1127,342 @@ const PayrollRunPage: React.FC = () => {
               </button>
             </div>
           </div>
+
+          {/* ===== EVIDENCE MODAL (NESTED) ===== */}
+          {showEvidenceModal && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden">
+                <div className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-5">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="text-xl font-bold text-white flex items-center gap-3 mb-1">
+                        <div className="p-2 bg-white/10 rounded-lg">
+                          <ClipboardList className="w-5 h-5" />
+                        </div>
+                        Minh chứng tính lương
+                      </h3>
+                      <p className="text-sm text-slate-200">
+                        {evidence?.employee?.full_name
+                          ? `${evidence.employee.full_name} • ${d10(
+                              evidence.period?.start_date
+                            )} → ${d10(evidence.period?.end_date)}`
+                          : "Đang tải..."}
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={closeEvidence}
+                      className="text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                  {evidenceLoading && (
+                    <div className="flex justify-center py-10">
+                      <div className="w-10 h-10 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin" />
+                    </div>
+                  )}
+
+                  {evidenceError && (
+                    <div className="bg-red-50 border-l-4 border-red-500 rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-semibold text-red-800">
+                            Không lấy được minh chứng
+                          </p>
+                          <p className="text-sm text-red-700">{evidenceError}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {evidence && !evidenceLoading && (
+                    <>
+                      {/* Summary */}
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        {[
+                          {
+                            label: "Đi làm",
+                            value: evidence.summary.presentDays,
+                            cls:
+                              "bg-emerald-50 border-emerald-200 text-emerald-700",
+                          },
+                          {
+                            label: "Nghỉ phép",
+                            value: evidence.summary.leaveDays,
+                            cls: "bg-blue-50 border-blue-200 text-blue-700",
+                          },
+                          {
+                            label: "Vắng",
+                            value: evidence.summary.absentDays,
+                            cls: "bg-red-50 border-red-200 text-red-700",
+                          },
+                          {
+                            label: "Đi trễ",
+                            value: evidence.summary.lateDays,
+                            cls:
+                              "bg-amber-50 border-amber-200 text-amber-700",
+                          },
+                        ].map((c) => (
+                          <div
+                            key={c.label}
+                            className={`rounded-xl p-4 border ${c.cls}`}
+                          >
+                            <p className="text-xs font-semibold opacity-80">
+                              {c.label}
+                            </p>
+                            <p className="text-2xl font-bold">{c.value}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Breakdown */}
+                      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                        <div className="px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
+                          <Info className="w-4 h-4 text-gray-500" />
+                          <h4 className="text-sm font-semibold text-gray-900">
+                            Giải thích tính lương (breakdown)
+                          </h4>
+                        </div>
+
+                        <div className="p-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Lương cơ bản</span>
+                              <span className="font-semibold">
+                                {money(evidence.employee.base_salary)} VNĐ
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Đơn giá / ngày</span>
+                              <span className="font-semibold">
+                                {money(evidence.breakdown.dailyRate)} VNĐ
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Base Pay</span>
+                              <span className="font-semibold">
+                                {money(evidence.breakdown.basePay)} VNĐ
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Phụ cấp</span>
+                              <span className="font-semibold">
+                                {money(evidence.breakdown.allowance)} VNĐ
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Trừ vắng</span>
+                              <span className="font-semibold text-red-600">
+                                -{money(evidence.breakdown.absentDeduction)} VNĐ
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Phạt đi trễ</span>
+                              <span className="font-semibold text-red-600">
+                                -{money(evidence.breakdown.lateDeduction)} VNĐ
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="border border-gray-200 rounded-xl p-4 bg-gradient-to-br from-gray-50 to-white">
+                            <p className="text-xs font-semibold text-gray-600 mb-2">
+                              Kết quả
+                            </p>
+
+                            <div className="flex justify-between items-end">
+                              <span className="text-sm text-gray-600">
+                                NET (tính lại)
+                              </span>
+                              <span className="text-2xl font-bold text-gray-900">
+                                {money(evidence.breakdown.net)} VNĐ
+                              </span>
+                            </div>
+
+                            <div className="mt-3 pt-3 border-t border-gray-200 space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">
+                                  Amount đang lưu
+                                </span>
+                                <span className="font-semibold">
+                                  {evidence.breakdown.storedAmount == null
+                                    ? "—"
+                                    : `${money(
+                                        evidence.breakdown.storedAmount
+                                      )} VNĐ`}
+                                </span>
+                              </div>
+
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Chênh lệch</span>
+                                <span
+                                  className={`font-semibold ${
+                                    (evidence.breakdown.diff || 0) === 0
+                                      ? "text-emerald-700"
+                                      : "text-amber-700"
+                                  }`}
+                                >
+                                  {evidence.breakdown.diff == null
+                                    ? "—"
+                                    : `${money(evidence.breakdown.diff)} VNĐ`}
+                                </span>
+                              </div>
+
+                              <div className="mt-3 p-3 rounded-lg border border-gray-200 bg-white flex items-start gap-2">
+                                <Info className="w-4 h-4 text-gray-500 mt-0.5" />
+                                <p className="text-xs text-gray-600 leading-5">
+                                  <b>NET (tính lại)</b> là số tiền hệ thống tính
+                                  theo chấm công. <b>Amount đang lưu</b> là số
+                                  tiền đang được lưu ở bảng lương
+                                  (payroll_run_lines). Nếu có <b>chênh lệch</b>,
+                                  HR có thể chỉnh lại dòng lương cho đúng trước
+                                  khi kế toán post.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Attendance table */}
+                      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                        <div className="px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Users className="w-4 h-4 text-gray-600" />
+                            <h4 className="text-sm font-semibold text-gray-900">
+                              Danh sách chấm công
+                            </h4>
+                            <span className="ml-2 px-2 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-bold">
+                              {evidence.attendance?.length || 0}
+                            </span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (evidenceEmployeeId) openEvidence(evidenceEmployeeId);
+                            }}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition"
+                            title="Tải lại minh chứng"
+                          >
+                            <RefreshCw className="w-4 h-4" />
+                            Refresh
+                          </button>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead>
+                              <tr className="bg-white border-b border-gray-200">
+                                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                  Ngày
+                                </th>
+                                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                  Trạng thái
+                                </th>
+                                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                  Check-in
+                                </th>
+                                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                  Check-out
+                                </th>
+                                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                  Ghi chú
+                                </th>
+                              </tr>
+                            </thead>
+
+                            <tbody className="divide-y divide-gray-200">
+                              {!evidence.attendance ||
+                              evidence.attendance.length === 0 ? (
+                                <tr>
+                                  <td colSpan={5} className="px-5 py-10">
+                                    <div className="flex flex-col items-center gap-2 text-center">
+                                      <div className="p-3 bg-gray-100 rounded-full">
+                                        <ClipboardList className="w-7 h-7 text-gray-400" />
+                                      </div>
+                                      <p className="text-sm font-semibold text-gray-800">
+                                        Không có dữ liệu chấm công
+                                      </p>
+                                      <p className="text-xs text-gray-500">
+                                        Kỳ này chưa ghi nhận attendance cho nhân
+                                        viên.
+                                      </p>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ) : (
+                                evidence.attendance.map((a: any) => (
+                                  <tr
+                                    key={a.id}
+                                    className="hover:bg-gray-50 transition-colors"
+                                  >
+                                    <td className="px-5 py-3 text-sm text-gray-900 font-medium">
+                                      {d10(a.work_date)}
+                                    </td>
+                                    <td className="px-5 py-3">
+                                      <span
+                                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${statusPillClass(
+                                          a.status
+                                        )}`}
+                                      >
+                                        {statusLabel[a.status] ?? a.status}
+                                      </span>
+                                    </td>
+                                    <td className="px-5 py-3 text-sm text-gray-700">
+                                      {a.check_in || "—"}
+                                    </td>
+                                    <td className="px-5 py-3 text-sm text-gray-700">
+                                      {a.check_out || "—"}
+                                    </td>
+                                    <td className="px-5 py-3 text-sm text-gray-600">
+                                      {a.note || "—"}
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        <div className="px-5 py-4 border-t border-gray-200 bg-gray-50">
+                          <div className="flex flex-wrap gap-2">
+                            {(["present", "leave", "absent", "late"] as string[]).map(
+                              (s) => (
+                                <span
+                                  key={s}
+                                  className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${statusPillClass(
+                                    s
+                                  )}`}
+                                >
+                                  {statusLabel[s] ?? s}
+                                </span>
+                              )
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Evidence modal footer */}
+                <div className="border-t border-gray-200 bg-white px-6 py-4 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={closeEvidence}
+                    className="px-6 py-2.5 rounded-lg border-2 border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
+                  >
+                    Đóng
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
