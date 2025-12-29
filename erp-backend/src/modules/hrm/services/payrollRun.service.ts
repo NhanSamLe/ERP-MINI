@@ -1,6 +1,7 @@
 import { Op } from "sequelize";
 import * as model from "../../../models/index";
 import { PAYROLL_RULE } from "../constants/payrollRule";
+import dayjs from "dayjs";
 
 export type PayrollRunStatus = "draft" | "posted";
 
@@ -273,6 +274,9 @@ export async function getPayslipForEmployeeInRun(
   if (!row) throw new Error("Payslip not found");
   return row;
 }
+
+// ========== CALCULATE PAYROLL ==========
+
 export async function calculatePayrollRun(runId: number, user: any) {
   const t = await model.sequelize.transaction();
 
@@ -397,4 +401,106 @@ export async function calculatePayrollRun(runId: number, user: any) {
     await t.rollback();
     throw err;
   }
+}
+
+// ========== EVIDENCE ==========
+
+export async function getPayrollEvidence(runId: number, employeeId: number) {
+  // 1) load run + period
+  const run = await model.PayrollRun.findByPk(runId, {
+    include: [{ model: model.PayrollPeriod, as: "period" }],
+  });
+
+  if (!run) throw new Error("Payroll run not found");
+  const period = (run as any).period;
+  if (!period) throw new Error("Run/Period not found");
+
+  // 2) load employee
+  const employee = await model.Employee.findByPk(employeeId);
+  if (!employee) throw new Error("Employee not found");
+
+  // 3) filter attendance theo kỳ lương - dùng Date object để consistency với calculatePayrollRun
+  const start = new Date(period.start_date);
+  const end = new Date(period.end_date);
+
+  const attendance = await model.Attendance.findAll({
+    where: {
+      employee_id: employeeId,
+      work_date: { [Op.between]: [start, end] },
+    },
+    order: [["work_date", "ASC"]],
+  });
+
+  // 4) summary
+  const presentDays = attendance.filter((a: any) => a.status === "present").length;
+  const leaveDays = attendance.filter((a: any) => a.status === "leave").length;
+  const absentDays = attendance.filter((a: any) => a.status === "absent").length;
+  const lateDays = attendance.filter((a: any) => a.status === "late").length;
+
+  const summary = { presentDays, leaveDays, absentDays, lateDays };
+
+  // 5) breakdown giống logic calculate
+  const baseSalary = Number((employee as any).base_salary || 0);
+  const dailyRateRaw = baseSalary / PAYROLL_RULE.STANDARD_WORK_DAYS;
+
+  const paidLeaveDays = PAYROLL_RULE.PAID_LEAVE ? leaveDays : 0;
+
+  const basePayRaw = dailyRateRaw * (presentDays + paidLeaveDays);
+  const absentDeductionRaw = dailyRateRaw * absentDays;
+  const lateDeductionRaw = lateDays * PAYROLL_RULE.LATE_FINE_PER_DAY;
+  const allowanceRaw = presentDays * PAYROLL_RULE.MEAL_ALLOWANCE_PER_DAY;
+
+  let netRaw = basePayRaw + allowanceRaw - absentDeductionRaw - lateDeductionRaw;
+
+  // làm tròn theo kiểu bạn đang dùng ở calculatePayrollRun
+  const dailyRate = Math.round(dailyRateRaw);
+  const basePay = Math.round(basePayRaw);
+  const absentDeduction = Math.round(absentDeductionRaw);
+  const lateDeduction = Math.round(lateDeductionRaw);
+  const allowance = Math.round(allowanceRaw);
+  const net = Math.round(netRaw);
+
+  // 6) amount đang lưu trong payroll_run_lines (nếu có)
+  const line = await model.PayrollRunLine.findOne({
+    where: { run_id: runId, employee_id: employeeId },
+  });
+
+  // Fix logic check null properly
+  const storedAmount = line && (line as any).amount != null 
+    ? Number((line as any).amount) 
+    : null;
+  const diff = storedAmount === null ? null : Math.round(net - storedAmount);
+
+  return {
+    run: {
+      id: (run as any).id,
+      run_no: (run as any).run_no,
+      status: (run as any).status,
+    },
+    period: {
+      id: period.id,
+      branch_id: period.branch_id,
+      start_date: period.start_date,
+      end_date: period.end_date,
+      period_code: period.period_code,
+    },
+    employee: {
+      id: (employee as any).id,
+      code: (employee as any).code,
+      full_name: (employee as any).full_name,
+      base_salary: baseSalary,
+    },
+    attendance,
+    summary,
+    breakdown: {
+      dailyRate,
+      basePay,
+      allowance,
+      absentDeduction,
+      lateDeduction,
+      net,
+      storedAmount,
+      diff,
+    },
+  };
 }

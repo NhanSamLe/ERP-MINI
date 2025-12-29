@@ -12,6 +12,7 @@ import {
   getMyPayslips,
   getMyPayslipInRun,
   calculateRun,  
+  getPayrollEvidence
 } from "../controllers/payrollRun.controller";
 
 const router = Router();
@@ -40,6 +41,12 @@ router.post("/:id/calculate", authMiddleware(["HR_STAFF"]), calculateRun);
 
 // Accountant: post bảng lương
 router.post("/:id/post", authMiddleware(["ACCOUNT"]), postPayrollRun);
+router.get(
+  "/:runId/evidence/:employeeId",
+  authMiddleware(["HR_STAFF", "ACCOUNT"]),
+  getPayrollEvidence
+);
+
 
 // HR Staff: quản lý dòng lương
 router.post("/:id/lines", authMiddleware(["HR_STAFF"]), createPayrollRunLine);

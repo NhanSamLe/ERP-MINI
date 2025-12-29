@@ -159,3 +159,14 @@ export const calculateRun = async (req: Request, res: Response) => {
     return res.status(400).json({ message: err.message });
   }
 };
+export const getPayrollEvidence = async (req: Request, res: Response) => {
+  try {
+    const runId = Number(req.params.runId);
+    const employeeId = Number(req.params.employeeId);
+
+    const data = await payrollRunService.getPayrollEvidence(runId, employeeId);
+    return res.json(data);
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message });
+  }
+};
