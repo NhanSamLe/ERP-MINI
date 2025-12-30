@@ -1,4 +1,4 @@
-import {env} from "../../config/env";
+import { env } from "../../config/env";
 import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
@@ -22,9 +22,9 @@ export async function sendEmail(to: string, subject: string, text: string, html?
     });
     console.log("📧 Email sent:", info.messageId);
     return true;
-  } catch (err) {
+  } catch (err: any) {
     console.error("❌ Email send failed:", err);
-    throw new Error("Unable to send email");
+    throw new Error(`Unable to send email: ${err.message || err}`);
   }
 }
 export function resetPasswordTemplate(username: string, resetLink: string) {

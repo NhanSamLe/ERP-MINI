@@ -9,13 +9,15 @@ import {
   markLeadLost,
   reassignLead,
   reopenLead,
-  deleteLead
+  deleteLead,
+  fetchLeadById
 } from "./lead.thunks";
 import { LeadState } from "./lead.type";
 
 const initialState: LeadState = {
   allLeads: [],
   todayLeads: [],
+  currentLead: null,
   loading: false,
   error: null,
 };
@@ -38,6 +40,27 @@ export const leadSlice = createSlice({
       state.error = action.error.message || "Lỗi fetchAllLeads";
     });
 
+    // ========== GET LEAD BY ID ==========
+    builder.addCase(fetchLeadById.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+    });
+    builder.addCase(fetchLeadById.fulfilled, (state, action) => {
+      state.loading = false;
+      state.currentLead = action.payload;
+      // update in list if exists
+      const idx = state.allLeads.findIndex(l => l.id === action.payload.id);
+      if (idx !== -1) {
+        state.allLeads[idx] = action.payload;
+      } else {
+        state.allLeads.unshift(action.payload);
+      }
+    });
+    builder.addCase(fetchLeadById.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.error.message || "Lỗi fetchLeadById";
+    });
+
     // ========== GET MY LEADS ==========
     // builder.addCase(fetchMyLeads.pending, (state) => {
     //   state.loading = true;
@@ -52,8 +75,8 @@ export const leadSlice = createSlice({
     // });
 
     builder.addCase(fetchTodayLeads.pending, (state) => {
-    state.loading = true;
-  });
+      state.loading = true;
+    });
 
     builder.addCase(fetchTodayLeads.fulfilled, (state, action) => {
       state.loading = false;
@@ -97,7 +120,7 @@ export const leadSlice = createSlice({
     });
 
     // ========== MARK LOST ==========
-     builder.addCase(markLeadLost.fulfilled, (state, action) => {
+    builder.addCase(markLeadLost.fulfilled, (state, action) => {
       const updated = action.payload;
       state.allLeads = state.allLeads.map((l) => (l.id === updated.id ? updated : l));
       // state.myLeads = state.myLeads.map((l) => (l.id === updated.id ? updated : l));
@@ -118,7 +141,7 @@ export const leadSlice = createSlice({
       // state.myLeads = state.myLeads.map((l) => (l.id === updated.id ? updated : l));
       state.todayLeads = state.todayLeads.map((l) => (l.id === updated.id ? updated : l));
     });
-        // ========== DELETE LEAD ==========
+    // ========== DELETE LEAD ==========
     builder.addCase(deleteLead.fulfilled, (state, action) => {
       const deletedId = action.meta.arg;
       state.allLeads = state.allLeads.filter(l => l.id !== deletedId);

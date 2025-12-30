@@ -13,7 +13,8 @@ import {
   markLeadLost,
   reopenLead,
   deleteLead,
-  fetchAllLeads
+  fetchAllLeads,
+  fetchLeadById
 } from "../store/lead/lead.thunks";
 
 import * as activityService from "../service/activity.service";
@@ -55,9 +56,12 @@ export default function LeadDetailPage() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
-  const lead: Lead | undefined = useAppSelector((s) =>
-    s.lead.allLeads.find((l) => l.id === leadId)
-  );
+  const { currentLead, allLeads } = useAppSelector((s) => s.lead);
+
+  // Ưu tiên dùng currentLead nếu id khớp (vì nó có full details như opportunities), nếu không thì tìm trong allLeads
+  const lead: Lead | undefined = (currentLead?.id === leadId)
+    ? currentLead
+    : allLeads.find((l) => l.id === leadId);
 
   const [alert, setAlert] = useState<LocalAlert | null>(null);
   const [basicEdit, setBasicEdit] = useState(false);
@@ -111,8 +115,13 @@ export default function LeadDetailPage() {
   };
 
   useEffect(() => {
+    // fetchAllLeads để có danh sách chung (nếu cần back lại list)
     dispatch(fetchAllLeads());
-  }, [dispatch]);
+    // fetchLeadById để lấy chi tiết (bao gồm opportunities)
+    if (leadId) {
+      dispatch(fetchLeadById(leadId));
+    }
+  }, [dispatch, leadId]);
 
   useEffect(() => {
     if (!lead) return;
@@ -615,12 +624,12 @@ function ActivityCardMini({
               <p className="text-xs font-semibold text-gray-500 uppercase">{getActivityTypeLabel()}</p>
               <span
                 className={`px-1.5 py-0.5 text-xs rounded-full font-medium ${a.status === "completed"
-                    ? "bg-green-100 text-green-700"
-                    : a.status === "cancelled"
-                      ? "bg-red-100 text-red-700"
-                      : a.status === "in_progress"
-                        ? "bg-blue-100 text-blue-700"
-                        : "bg-yellow-100 text-yellow-700"
+                  ? "bg-green-100 text-green-700"
+                  : a.status === "cancelled"
+                    ? "bg-red-100 text-red-700"
+                    : a.status === "in_progress"
+                      ? "bg-blue-100 text-blue-700"
+                      : "bg-yellow-100 text-yellow-700"
                   }`}
               >
                 {a.status}

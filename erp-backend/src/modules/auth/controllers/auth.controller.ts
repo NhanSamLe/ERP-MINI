@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import * as authService from "../services/auth.service";
-import {refreshAccessToken, getCookieMaxAge} from "../../../core/utils/jwt";
+import { refreshAccessToken, getCookieMaxAge } from "../../../core/utils/jwt";
 
 export const createUser = async (req: Request, res: Response) => {
   try {
@@ -16,8 +16,8 @@ export const deleteUser = async (req: Request, res: Response) => {
   try {
     const userId = parseInt((req.params.id) as string, 10);
     const userJwt = (req as any).user;
-    if(userId === userJwt.id){  
-      return  res.status(400).json({ message: "You cannot delete your own account" });
+    if (userId === userJwt.id) {
+      return res.status(400).json({ message: "You cannot delete your own account" });
     }
     await authService.deleteUser(userId);
     return res.status(204).send();
@@ -29,7 +29,7 @@ export const updateUser = async (req: Request, res: Response) => {
   try {
     const user = await authService.updateUser(req.body);
     return res.status(200).json({
-      message: "User updated successfully",user,
+      message: "User updated successfully", user,
     });
   } catch (err: any) {
     return res.status(400).json({ message: err.message });
@@ -37,7 +37,7 @@ export const updateUser = async (req: Request, res: Response) => {
 };
 export const login = async (req: Request, res: Response) => {
   try {
-    const { username, password, rememberMe} = req.body;
+    const { username, password, rememberMe } = req.body;
     const result = await authService.login(username, password);
     res.cookie("refreshToken", result.refreshToken, {
       httpOnly: true,
@@ -54,11 +54,11 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 export const refresh = (req: Request, res: Response) => {
-   const refreshToken = req.cookies.refreshToken;
+  const refreshToken = req.cookies.refreshToken;
   if (!refreshToken) {
     return res.status(401).json({ message: "No refresh token provided" });
   }
-    try {   
+  try {
     const newAccessToken = refreshAccessToken(refreshToken);
     return res.json({ accessToken: newAccessToken });
   } catch (err) {
@@ -66,17 +66,17 @@ export const refresh = (req: Request, res: Response) => {
   }
 };
 
-export const clearRefreshToken =(req: Request, res: Response) => {
+export const clearRefreshToken = (req: Request, res: Response) => {
   try {
-      res.clearCookie("refreshToken", {
+    res.clearCookie("refreshToken", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      
+
     });
     return res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
-     return res.status(500).json({ message: "Logout failed" });
+    return res.status(500).json({ message: "Logout failed" });
   }
 }
 
@@ -109,7 +109,7 @@ export const resetPassword = async (req: Request, res: Response) => {
     res.status(400).json({ message: err.message });
   }
 };
-export const getInforUser =async  (req: Request, res: Response) => {
+export const getInforUser = async (req: Request, res: Response) => {
   try {
     const userJwt = (req as any).user;
     if (!userJwt) {
@@ -125,7 +125,7 @@ export const getInforUser =async  (req: Request, res: Response) => {
   }
 }
 
-export const updateUserAvatar= async(req: Request, res: Response) =>{
+export const updateUserAvatar = async (req: Request, res: Response) => {
   try {
     const userJwt = (req as any).user;
     if (!userJwt) {
@@ -137,10 +137,10 @@ export const updateUserAvatar= async(req: Request, res: Response) =>{
     const result = await authService.updateUserAvatar(userJwt.id, req.file.buffer);
     return res.json(result);
   } catch (error: any) {
-      return res.status(500).json({ error: error.message || "Update avatar failed" });
+    return res.status(500).json({ error: error.message || "Update avatar failed" });
   }
 }
-export const updateUserInfo = async(req: Request, res: Response)=> {
+export const updateUserInfo = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
     if (!user) {
@@ -150,7 +150,7 @@ export const updateUserInfo = async(req: Request, res: Response)=> {
     const result = await authService.updateUserInfo(user.id, { full_name, email, phone });
     res.status(200).json(result);
   } catch (error: any) {
-     return res.status(500).json({ error: error.message || "Update info failed" });
+    return res.status(500).json({ error: error.message || "Update info failed" });
   }
 }
 
@@ -160,7 +160,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
     return res.status(200).json(users);
   } catch (err: any) {
     return res.status(400).json({ message: err.message });
-  } 
+  }
 };
 export const getAllRoles = async (req: Request, res: Response) => {
   try {

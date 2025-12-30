@@ -9,9 +9,21 @@ import {
 // Lấy toàn bộ leads
 export const fetchAllLeads = createAsyncThunk(
   "lead/fetchAll",
-  async (_, {rejectWithValue}) => {
+  async (_, { rejectWithValue }) => {
     try {
       return await leadService.getAllLeads();
+    } catch (error) {
+      return rejectWithValue(error);
+    }
+  }
+);
+
+// Lấy chi tiết 1 lead
+export const fetchLeadById = createAsyncThunk(
+  "lead/fetchById",
+  async (leadId: number, { rejectWithValue }) => {
+    try {
+      return await leadService.getLeadById(leadId);
     } catch (error) {
       return rejectWithValue(error);
     }
@@ -67,7 +79,7 @@ export const convertLead = createAsyncThunk(
 export const markLeadLost = createAsyncThunk(
   "lead/lost",
   async ({ leadId, reason }: { leadId: number; reason: string }) => {
-    return await leadService.markLeadLost(leadId,  reason );
+    return await leadService.markLeadLost(leadId, reason);
   }
 );
 

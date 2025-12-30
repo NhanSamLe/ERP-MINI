@@ -15,7 +15,7 @@ import {
 } from "../../../models";
 
 import { Op } from "sequelize";
-import { ActivityType , ActivityStatus } from "../../../core/types/enum";
+import { ActivityType, ActivityStatus } from "../../../core/types/enum";
 import {
   CreateActivityDto,
   CreateCallActivityDto,
@@ -51,7 +51,7 @@ async function logTimeline(
   activity: Activity,
   event_type: string,
   title: string,
-  description?: string 
+  description?: string
 ) {
   return addTimeline({
     related_type: activity.related_type as any,
@@ -59,7 +59,7 @@ async function logTimeline(
     event_type,
     title,
     description: description ?? '',
-    created_by: activity.owner_id ?? 1 ,
+    created_by: activity.owner_id ?? 1,
   });
 }
 
@@ -98,8 +98,9 @@ export async function createActivity(dto: CreateActivityDto) {
     priority: dto.priority ?? null,
     done: false,
   });
-  
-  await logTimeline(activity, "activity_created", "Tạo activity mới", dto.subject);
+
+  const des = `Tiêu đề: ${dto.subject || "Không có"}, Hạn chót: ${dto.due_at || "Chưa đặt"}`;
+  await logTimeline(activity, "activity_created", "Tạo hoạt động mới", des);
   return activity;
 }
 
@@ -117,7 +118,12 @@ export async function updateActivity(dto: UpdateActivityDto) {
     notes: dto.notes ?? activity.notes ?? null,
   });
 
-  await logTimeline(activity, "activity_updated", "Cập nhật activity");
+  const changes: string[] = [];
+  if (dto.subject && dto.subject !== activity.subject) changes.push(`Tiêu đề -> ${dto.subject}`);
+  if (dto.due_at && dto.due_at !== activity.due_at) changes.push(`Hạn chót -> ${dto.due_at}`);
+  if (dto.notes && dto.notes !== activity.notes) changes.push(`Cập nhật ghi chú`);
+
+  await logTimeline(activity, "activity_updated", `Cập nhật hoạt động: ${activity.subject}`, changes.length > 0 ? changes.join(", ") : "Cập nhật thông tin chung");
   return activity;
 }
 
@@ -144,11 +150,11 @@ export async function deleteActivity(activityId: number, userId: number) {
     throw new Error("Activity đã hoàn tất, không thể xoá");
   }
   await activity.update({
-  is_deleted: true,
-  deleted_at: new Date(),
-  deleted_by: userId
-});
-  await logTimeline(activity, "activity_deleted", "Xoá activity");
+    is_deleted: true,
+    deleted_at: new Date(),
+    deleted_by: userId
+  });
+  await logTimeline(activity, "activity_deleted", "Xoá activity: " + activity.subject);
   return true;
 }
 
@@ -164,7 +170,8 @@ export async function reassignActivity(dto: ReassignActivityDto, managerId: numb
     related_type: activity.related_type,
     related_id: activity.related_id,
     event_type: "activity_reassigned",
-    title: `Chuyển từ User ${old} → ${dto.newUserId}`,
+    title: `Chuyển quyền: ${activity.subject}`,
+    description: `Chuyển từ User ${old} → ${dto.newUserId}`,
     created_by: managerId,
   });
 
@@ -223,13 +230,13 @@ export async function createCallActivity(dto: CreateCallActivityDto) {
     priority: dto.priority ?? null,
   });
 
- const detail = await CallActivity.create({
+  const detail = await CallActivity.create({
     activity_id: activity.id,
     call_from: dto.call_from,
     call_to: dto.call_to,
     is_inbound: dto.is_inbound ?? null,
   });
-  await logTimeline(activity, "call_created", "Tạo call", `${dto.call_from} → ${dto.call_to}`);
+  await logTimeline(activity, "call_created", `Tạo cuộc gọi: ${dto.subject}`, `Từ: ${dto.call_from} → Đến: ${dto.call_to}`);
   await markLeadContacted(activity.related_id);
   return { activity, detail };
 }
@@ -257,8 +264,8 @@ export async function updateCallDetail(dto: UpdateCallDetailDto) {
         done: true,
         completed_at: new Date(),
       });
-      
-      await logTimeline(activity, "call_completed", "Cuộc gọi hoàn thành");
+
+      await logTimeline(activity, "call_completed", "Cuộc gọi hoàn thành: " + activity.subject);
     }
   }
 
@@ -283,7 +290,7 @@ export async function cancelCallActivity(activityId: number, reason?: string) {
   await logTimeline(
     activity,
     "call_cancelled",
-    "Cuộc gọi bị hủy",
+    "Cuộc gọi bị hủy: " + activity.subject,
     reason || ""
   );
 
@@ -297,9 +304,9 @@ export async function cancelCallActivity(activityId: number, reason?: string) {
 export async function createEmailActivity(dto: CreateEmailActivityDto) {
   let status1 = ActivityStatus.IN_PROGRESS
   let isDone = false;
-  if(dto.direction === "in")
-  {status1 = ActivityStatus.COMPLETED, 
-    isDone = true; 
+  if (dto.direction === "in") {
+    status1 = ActivityStatus.COMPLETED,
+      isDone = true;
   }
   const activity = await Activity.create({
     related_type: dto.related_type,
@@ -310,13 +317,13 @@ export async function createEmailActivity(dto: CreateEmailActivityDto) {
     due_at: dto.due_at || null,
     notes: dto.notes || null,
     priority: dto.priority || null,
-    status : status1,
+    status: status1,
     done: isDone
   });
   let messageId = null;
   let errorMsg = null;
 
- 
+
   await EmailActivity.create({
     activity_id: activity.id,
     direction: dto.direction,
@@ -325,7 +332,7 @@ export async function createEmailActivity(dto: CreateEmailActivityDto) {
     sent_via: "system",
   });
 
-  await logTimeline(activity, "email_created", "Email được tạo", dto.subject);
+  await logTimeline(activity, "email_created", `Tạo Email: ${dto.subject}`, `Từ: ${dto.email_from || "Hệ thống"} → Đến: ${dto.email_to}`);
 
   return activity;
 }
@@ -344,7 +351,7 @@ export async function sendEmailForActivity(dto: { activity_id: number }) {
     );
 
     const activity = await Activity.findByPk(dto.activity_id);
-    await logTimeline(activity!, "email_sent", "Email đã gửi");
+    await logTimeline(activity!, "email_sent", "Email đã gửi: " + activity!.subject);
     await markLeadContacted(activity!.related_id);
   } catch (err: any) {
     await email.update({ status: "failed", error_message: err.message });
@@ -357,7 +364,7 @@ export async function updateEmailDetail(dto: UpdateEmailDetailDto) {
   const detail = await EmailActivity.findOne({ where: { activity_id: dto.activity_id } });
   if (!detail) throw new Error("Email detail không tồn tại");
 
-   await detail.update({
+  await detail.update({
     subject: dto.subject ?? detail.subject ?? null,
     cc: dto.cc ?? detail.cc ?? null,
     bcc: dto.bcc ?? detail.bcc ?? null,
@@ -383,7 +390,7 @@ export async function cancelEmailActivity(activityId: number, userId: number) {
   await logTimeline(
     activity,
     "email_canceled",
-    "Email đã bị huỷ",
+    "Email đã bị huỷ: " + activity.subject,
     `Huỷ bởi user ${userId}`
   );
 
@@ -396,7 +403,7 @@ export async function cancelEmailActivity(activityId: number, userId: number) {
 // ========================================================================
 
 export async function createMeetingActivity(dto: CreateMeetingActivityDto) {
-  
+
 
   const activity = await Activity.create({
     related_type: dto.related_type,
@@ -419,7 +426,8 @@ export async function createMeetingActivity(dto: CreateMeetingActivityDto) {
     reminder_at: dto.reminder_at ?? null,
   });
 
-  await logTimeline(activity, "meeting_created", "Cuộc họp được tạo");
+  const meetingDes = `Thời gian: ${dto.start_at} - ${dto.end_at}, Địa điểm: ${dto.location || "Online"}`;
+  await logTimeline(activity, "meeting_created", `Tạo cuộc họp: ${dto.subject}`, meetingDes);
   await markLeadContacted(activity.related_id);
   return activity;
 }
@@ -429,23 +437,23 @@ export async function updateMeetingDetail(dto: UpdateMeetingDetailDto) {
   if (!detail) throw new Error("Meeting detail không tồn tại");
 
   await detail.update({
-  start_at: dto.start_at ?? detail.start_at ?? null,
-  end_at: dto.end_at ?? detail.end_at ?? null,
-  location: dto.location ?? detail.location ?? null,
-  attendees: dto.attendees ?? detail.attendees ?? null,
-  meeting_link: dto.meeting_link ?? detail.meeting_link ?? null,
-  reminder_at: dto.reminder_at ?? detail.reminder_at ?? null,
-  meeting_notes: dto.meeting_notes ?? detail.meeting_notes ?? null,
+    start_at: dto.start_at ?? detail.start_at ?? null,
+    end_at: dto.end_at ?? detail.end_at ?? null,
+    location: dto.location ?? detail.location ?? null,
+    attendees: dto.attendees ?? detail.attendees ?? null,
+    meeting_link: dto.meeting_link ?? detail.meeting_link ?? null,
+    reminder_at: dto.reminder_at ?? detail.reminder_at ?? null,
+    meeting_notes: dto.meeting_notes ?? detail.meeting_notes ?? null,
   });
-   if (dto.meeting_notes !== undefined && dto.meeting_notes !== null && dto.meeting_notes.trim() !== "") {
+  if (dto.meeting_notes !== undefined && dto.meeting_notes !== null && dto.meeting_notes.trim() !== "") {
     const activity = await Activity.findByPk(dto.activity_id);
 
     if (detail.end_at && detail.end_at > new Date()) {
-        return {
-          success: false,
-          message: "Cuộc họp chưa kết thúc nên không thể hoàn thành",
-        };
-      }
+      return {
+        success: false,
+        message: "Cuộc họp chưa kết thúc nên không thể hoàn thành",
+      };
+    }
 
     if (activity && activity.status !== "completed") {
       await activity.update({
@@ -457,7 +465,7 @@ export async function updateMeetingDetail(dto: UpdateMeetingDetailDto) {
       await logTimeline(
         activity,
         "meeting_completed",
-        "Cuộc họp hoàn thành",
+        "Cuộc họp hoàn thành: " + activity.subject,
         "Đã cập nhật biên bản cuộc họp"
       );
     }
@@ -473,7 +481,7 @@ export async function cancelMeeting(dto: { activity_id: number; reason?: string 
     done: true,
     status: "cancelled",
     completed_at: new Date(),
-    notes: dto.reason  ?? ''
+    notes: dto.reason ?? ''
   });
 
   await MeetingActivity.update(
@@ -481,7 +489,7 @@ export async function cancelMeeting(dto: { activity_id: number; reason?: string 
     { where: { activity_id: dto.activity_id } }
   );
 
-  await logTimeline(activity, "meeting_cancelled", "Huỷ cuộc họp", dto.reason);
+  await logTimeline(activity, "meeting_cancelled", "Huỷ cuộc họp: " + activity.subject, dto.reason);
 }
 
 export async function completeMeeting(activityId: number) {
@@ -510,7 +518,7 @@ export async function completeMeeting(activityId: number) {
     completed_at: new Date(),
   });
 
-  await logTimeline(activity, "meeting_completed", "Cuộc họp hoàn thành");
+  await logTimeline(activity, "meeting_completed", "Cuộc họp hoàn thành: " + activity.subject);
 
   return {
     success: true,
@@ -540,7 +548,7 @@ export async function createTaskActivity(dto: CreateTaskActivityDto) {
     reminder_at: dto.reminder_at ?? null,
   });
 
-  await logTimeline(activity, "task_created", "Task mới");
+  await logTimeline(activity, "task_created", `Tạo công việc: ${dto.subject}`, `Trạng thái: ${dto.status || "Not Started"}, Hạn chót: ${dto.due_at || "Chưa đặt"}`);
 
   return activity;
 }
@@ -553,7 +561,7 @@ export async function updateTaskDetail(dto: UpdateTaskDetailDto) {
     status: dto.status ?? detail.status ?? null,
     reminder_at: dto.reminder_at ?? detail.reminder_at ?? null,
   });
-  
+
   return detail;
 }
 
@@ -568,7 +576,7 @@ export async function startTask(activity_id: number, user_id: number) {
   await detail.update({ status: "In Progress" });
   await activity.update({ status: "in_progress" });
 
-  await logTimeline(activity, "task_started", "Task bắt đầu");
+  await logTimeline(activity, "task_started", "Công việc bắt đầu: " + activity.subject);
   await markLeadContacted(activity.related_id);
   return detail;
 }
@@ -579,8 +587,8 @@ export async function completeTask(activity_id: number, user_id: number) {
   if (activity.owner_id !== user_id) throw new Error("Không có quyền");
 
   const detail = await TaskActivity.findOne({ where: { activity_id } });
-  if(!detail){
-    throw new Error ("Activity không tồn tại");
+  if (!detail) {
+    throw new Error("Activity không tồn tại");
   }
   await detail.update({ status: "Completed" });
   await activity.update({
@@ -589,7 +597,7 @@ export async function completeTask(activity_id: number, user_id: number) {
     completed_at: new Date(),
   });
 
-  await logTimeline(activity, "task_completed", "Task hoàn thành");
+  await logTimeline(activity, "task_completed", "Công việc hoàn thành: " + activity.subject);
 
   return activity;
 }
@@ -605,7 +613,7 @@ export async function checkOverdueTasks() {
   });
 
   for (const task of tasks) {
-    await logTimeline(task, "task_overdue", "Task quá hạn");
+    await logTimeline(task, "task_overdue", "Công việc quá hạn: " + task.subject);
   }
 }
 
@@ -619,14 +627,14 @@ export async function triggerTaskReminder() {
   });
 
   for (const t of tasks) {
-   
+
   }
 }
 export async function autoTaskOverdueActivity(dto: { task_activity_id: number }) {
   const activity = await Activity.findByPk(dto.task_activity_id);
   if (!activity) return;
 
-  await logTimeline(activity, "task_overdue", "Task quá hạn");
+  await logTimeline(activity, "task_overdue", "Công việc quá hạn: " + activity.subject);
 }
 
 // ========================================================================
