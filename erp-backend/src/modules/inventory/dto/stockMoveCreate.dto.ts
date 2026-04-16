@@ -1,4 +1,9 @@
-export type StockMoveType = "receipt" | "issue" | "transfer" | "adjustment";
+export type StockMoveType =
+  | "receipt"
+  | "issue"
+  | "transfer"
+  | "adjustment"
+  | "scrap";
 export type ReferenceType =
   | "purchase_order"
   | "sale_order"
@@ -9,10 +14,11 @@ export interface StockMoveLineDTO {
   id: number | undefined;
   product_id: number;
   quantity: number;
-  uom: string;
+  uom_id?: number | null;
+  location_from_id?: number | null;
+  location_to_id?: number | null;
+  lot_id?: number | null;
 }
-
-
 
 export interface StockMoveCreateDTO {
   move_no: string;
