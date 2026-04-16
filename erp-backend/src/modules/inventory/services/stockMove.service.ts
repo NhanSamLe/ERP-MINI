@@ -50,7 +50,7 @@ export const stockMoveService = {
             {
               model: Product,
               as: "product",
-              attributes: ["id", "name", "sku", "image_url", "uom"],
+              attributes: ["id", "name", "sku", "image_url", "uom_id"],
             },
           ],
         },
@@ -78,7 +78,7 @@ export const stockMoveService = {
             {
               model: Product,
               as: "product",
-              attributes: ["id", "name", "sku", "image_url", "uom"],
+              attributes: ["id", "name", "sku", "image_url", "uom_id"],
             },
           ],
         },
@@ -167,7 +167,7 @@ export const stockMoveService = {
           move_id: move.id,
           product_id: line.product_id,
           quantity: line.quantity,
-          uom: line.uom,
+          uom_id: line.uom_id ?? null,
         })
       )
     );
@@ -243,7 +243,7 @@ export const stockMoveService = {
           move_id: move.id,
           product_id: line.product_id,
           quantity: line.quantity,
-          uom: line.uom,
+          uom_id: line.uom_id ?? null,
         })
       )
     );
@@ -308,7 +308,7 @@ export const stockMoveService = {
           move_id: move.id,
           product_id: line.product_id,
           quantity: line.quantity,
-          uom: line.uom,
+          uom_id: line.uom_id ?? null,
         })
       )
     );
@@ -389,7 +389,7 @@ export const stockMoveService = {
           move_id: move.id,
           product_id: line.product_id,
           quantity: line.quantity,
-          uom: line.uom,
+          uom_id: line.uom_id ?? null,
         })
       )
     );
@@ -492,7 +492,7 @@ export const stockMoveService = {
         return line.update({
           product_id: newData.product_id,
           quantity: newData.quantity,
-          uom: newData.uom,
+          uom_id: newData.uom_id ?? null,
         });
       })
     );
@@ -504,7 +504,7 @@ export const stockMoveService = {
           move_id: record.id,
           product_id: line.product_id,
           quantity: line.quantity,
-          uom: line.uom,
+          uom_id: line.uom_id ?? null,
         })
       )
     );
@@ -579,7 +579,7 @@ export const stockMoveService = {
         return line.update({
           product_id: newData.product_id,
           quantity: newData.quantity,
-          uom: newData.uom,
+          uom_id: newData.uom_id ?? null,
         });
       })
     );
@@ -591,7 +591,7 @@ export const stockMoveService = {
           move_id: record.id,
           product_id: line.product_id,
           quantity: line.quantity,
-          uom: line.uom,
+          uom_id: line.uom_id ?? null,
         })
       )
     );
@@ -682,7 +682,7 @@ export const stockMoveService = {
         return line.update({
           product_id: newData.product_id,
           quantity: newData.quantity,
-          uom: newData.uom,
+          uom_id: newData.uom_id ?? null,
         });
       })
     );
@@ -694,7 +694,7 @@ export const stockMoveService = {
           move_id: record.id,
           product_id: line.product_id,
           quantity: line.quantity,
-          uom: line.uom,
+          uom_id: line.uom_id ?? null,
         })
       )
     );
@@ -764,7 +764,7 @@ export const stockMoveService = {
         return line.update({
           product_id: newData.product_id,
           quantity: newData.quantity,
-          uom: newData.uom,
+          uom_id: newData.uom_id ?? null,
         });
       })
     );
@@ -776,7 +776,7 @@ export const stockMoveService = {
           move_id: record.id,
           product_id: line.product_id,
           quantity: line.quantity,
-          uom: line.uom,
+          uom_id: line.uom_id ?? null,
         })
       )
     );
@@ -1097,7 +1097,7 @@ export const stockMoveService = {
             {
               model: Product,
               as: "product",
-              attributes: ["id", "name", "sku", "image_url", "uom"],
+              attributes: ["id", "name", "sku", "image_url", "uom_id"],
             },
           ],
         },

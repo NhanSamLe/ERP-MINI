@@ -7,7 +7,7 @@ export interface StockMoveAttrs {
   id: number;
   move_no: string;
   move_date: Date;
-  type: "receipt" | "issue" | "transfer" | "adjustment";
+  type: "receipt" | "issue" | "transfer" | "adjustment" | "scrap";
   warehouse_from_id?: number | null;
   warehouse_to_id?: number | null;
   reference_type?: "purchase_order" | "sale_order" | "transfer" | "adjustment";
@@ -30,7 +30,7 @@ export class StockMove
   public id!: number;
   public move_no!: string;
   public move_date!: Date;
-  public type!: "receipt" | "issue" | "transfer" | "adjustment";
+  public type!: "receipt" | "issue" | "transfer" | "adjustment" | "scrap";
   public warehouse_from_id?: number | null;
   public warehouse_to_id?: number | null;
   public reference_type?:
@@ -57,7 +57,13 @@ StockMove.init(
     move_no: { type: DataTypes.STRING(50), allowNull: false, unique: true },
     move_date: { type: DataTypes.DATE, allowNull: false },
     type: {
-      type: DataTypes.ENUM("receipt", "issue", "transfer", "adjustment"),
+      type: DataTypes.ENUM(
+        "receipt",
+        "issue",
+        "transfer",
+        "adjustment",
+        "scrap",
+      ),
       allowNull: false,
     },
     warehouse_from_id: { type: DataTypes.BIGINT, allowNull: true },
@@ -67,7 +73,7 @@ StockMove.init(
         "purchase_order",
         "sale_order",
         "transfer",
-        "adjustment"
+        "adjustment",
       ),
       allowNull: false,
     },
@@ -89,5 +95,5 @@ StockMove.init(
     timestamps: true,
     createdAt: "created_at",
     updatedAt: "updated_at",
-  }
+  },
 );

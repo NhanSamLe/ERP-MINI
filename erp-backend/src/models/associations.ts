@@ -4,6 +4,7 @@ import { Company } from "../modules/company/models/company.model";
 import { Branch } from "../modules/company/models/branch.model";
 import { Product } from "../modules/product/models/product.model";
 import { ProductCategory } from "../modules/product/models/productCategory.model";
+import { ProductSupplierInfo } from "../modules/product/models/productSupplierInfo.model";
 import { Uom } from "../modules/master-data/models/uom.model";
 import { UomConversion } from "../modules/master-data/models/uomConversion.model";
 import { Currency } from "../modules/master-data/models/currency.model";
@@ -29,6 +30,10 @@ import { Warehouse } from "../modules/inventory/models/warehouse.model";
 import { StockMove } from "../modules/inventory/models/stockMove.model";
 import { StockMoveLine } from "../modules/inventory/models/stockMoveLine.model";
 import { StockBalance } from "../modules/inventory/models/stockBalance.model";
+import { StockLocation } from "../modules/inventory/models/stockLocation.model";
+import { StockLot } from "../modules/inventory/models/stockLot.model";
+import { PhysicalInventory } from "../modules/inventory/models/physicalInventory.model";
+import { PhysicalInventoryLine } from "../modules/inventory/models/physicalInventoryLine.model";
 import { Department } from "../modules/hrm/models/department.model";
 import { Position } from "../modules/hrm/models/position.model";
 import { Employee } from "../modules/hrm/models/employee.model";
@@ -485,6 +490,194 @@ export function applyAssociations() {
   // Product ↔ StockBalance
   Product.hasMany(StockBalance, { foreignKey: "product_id", as: "balances" });
   StockBalance.belongsTo(Product, { foreignKey: "product_id", as: "product" });
+
+  // =====================
+  // INVENTORY V2 — Locations, Lots, Physical Inventory
+  // =====================
+
+  // Warehouse ↔ StockLocations
+  Warehouse.hasMany(StockLocation, {
+    foreignKey: "warehouse_id",
+    as: "locations",
+  });
+  StockLocation.belongsTo(Warehouse, {
+    foreignKey: "warehouse_id",
+    as: "warehouse",
+  });
+
+  // StockLocation self-reference (parent ↔ children)
+  StockLocation.hasMany(StockLocation, {
+    foreignKey: "parent_id",
+    as: "children",
+  });
+  StockLocation.belongsTo(StockLocation, {
+    foreignKey: "parent_id",
+    as: "parent",
+  });
+
+  // StockLocation ↔ StockBalance
+  StockLocation.hasMany(StockBalance, {
+    foreignKey: "location_id",
+    as: "balances",
+  });
+  StockBalance.belongsTo(StockLocation, {
+    foreignKey: "location_id",
+    as: "location",
+  });
+
+  // StockLocation ↔ StockMoveLine (from / to)
+  StockLocation.hasMany(StockMoveLine, {
+    foreignKey: "location_from_id",
+    as: "moveLineFrom",
+  });
+  StockMoveLine.belongsTo(StockLocation, {
+    foreignKey: "location_from_id",
+    as: "locationFrom",
+  });
+
+  StockLocation.hasMany(StockMoveLine, {
+    foreignKey: "location_to_id",
+    as: "moveLineTo",
+  });
+  StockMoveLine.belongsTo(StockLocation, {
+    foreignKey: "location_to_id",
+    as: "locationTo",
+  });
+
+  // Product ↔ StockLots
+  Product.hasMany(StockLot, { foreignKey: "product_id", as: "lots" });
+  StockLot.belongsTo(Product, { foreignKey: "product_id", as: "product" });
+
+  // Partner (supplier) ↔ StockLots
+  Partner.hasMany(StockLot, { foreignKey: "supplier_id", as: "suppliedLots" });
+  StockLot.belongsTo(Partner, { foreignKey: "supplier_id", as: "supplier" });
+
+  // StockLot ↔ StockMoveLine
+  StockLot.hasMany(StockMoveLine, { foreignKey: "lot_id", as: "moveLines" });
+  StockMoveLine.belongsTo(StockLot, { foreignKey: "lot_id", as: "lot" });
+
+  // StockLot ↔ StockBalance
+  StockLot.hasMany(StockBalance, { foreignKey: "lot_id", as: "balances" });
+  StockBalance.belongsTo(StockLot, { foreignKey: "lot_id", as: "lot" });
+
+  // Uom ↔ StockMoveLine
+  Uom.hasMany(StockMoveLine, { foreignKey: "uom_id", as: "stockMoveLines" });
+  StockMoveLine.belongsTo(Uom, { foreignKey: "uom_id", as: "uom" });
+
+  // Uom ↔ Product (sale uom / purchase uom)
+  Uom.hasMany(Product, { foreignKey: "uom_id", as: "products" });
+  Product.belongsTo(Uom, { foreignKey: "uom_id", as: "uom" });
+
+  Uom.hasMany(Product, {
+    foreignKey: "purchase_uom_id",
+    as: "purchaseProducts",
+  });
+  Product.belongsTo(Uom, { foreignKey: "purchase_uom_id", as: "purchaseUom" });
+
+  // Product ↔ ProductSupplierInfo
+  Product.hasMany(ProductSupplierInfo, {
+    foreignKey: "product_id",
+    as: "supplierInfos",
+  });
+  ProductSupplierInfo.belongsTo(Product, {
+    foreignKey: "product_id",
+    as: "product",
+  });
+
+  // Partner (supplier) ↔ ProductSupplierInfo
+  Partner.hasMany(ProductSupplierInfo, {
+    foreignKey: "supplier_id",
+    as: "productSupplierInfos",
+  });
+  ProductSupplierInfo.belongsTo(Partner, {
+    foreignKey: "supplier_id",
+    as: "supplier",
+  });
+
+  // Currency ↔ ProductSupplierInfo
+  Currency.hasMany(ProductSupplierInfo, {
+    foreignKey: "currency_id",
+    as: "supplierInfos",
+  });
+  ProductSupplierInfo.belongsTo(Currency, {
+    foreignKey: "currency_id",
+    as: "currency",
+  });
+
+  // PhysicalInventory ↔ Warehouse / Branch / User
+  Warehouse.hasMany(PhysicalInventory, {
+    foreignKey: "warehouse_id",
+    as: "physicalInventories",
+  });
+  PhysicalInventory.belongsTo(Warehouse, {
+    foreignKey: "warehouse_id",
+    as: "warehouse",
+  });
+
+  Branch.hasMany(PhysicalInventory, {
+    foreignKey: "branch_id",
+    as: "physicalInventories",
+  });
+  PhysicalInventory.belongsTo(Branch, {
+    foreignKey: "branch_id",
+    as: "branch",
+  });
+
+  User.hasMany(PhysicalInventory, {
+    foreignKey: "created_by",
+    as: "createdInventories",
+  });
+  PhysicalInventory.belongsTo(User, {
+    foreignKey: "created_by",
+    as: "creator",
+  });
+
+  User.hasMany(PhysicalInventory, {
+    foreignKey: "validated_by",
+    as: "validatedInventories",
+  });
+  PhysicalInventory.belongsTo(User, {
+    foreignKey: "validated_by",
+    as: "validator",
+  });
+
+  // PhysicalInventory ↔ Lines
+  PhysicalInventory.hasMany(PhysicalInventoryLine, {
+    foreignKey: "inventory_id",
+    as: "lines",
+  });
+  PhysicalInventoryLine.belongsTo(PhysicalInventory, {
+    foreignKey: "inventory_id",
+    as: "inventory",
+  });
+
+  // PhysicalInventoryLine ↔ Product / Location / Lot
+  Product.hasMany(PhysicalInventoryLine, {
+    foreignKey: "product_id",
+    as: "inventoryLines",
+  });
+  PhysicalInventoryLine.belongsTo(Product, {
+    foreignKey: "product_id",
+    as: "product",
+  });
+
+  StockLocation.hasMany(PhysicalInventoryLine, {
+    foreignKey: "location_id",
+    as: "inventoryLines",
+  });
+  PhysicalInventoryLine.belongsTo(StockLocation, {
+    foreignKey: "location_id",
+    as: "location",
+  });
+
+  StockLot.hasMany(PhysicalInventoryLine, {
+    foreignKey: "lot_id",
+    as: "inventoryLines",
+  });
+  PhysicalInventoryLine.belongsTo(StockLot, {
+    foreignKey: "lot_id",
+    as: "lot",
+  });
 
   // =====================
   // HRM
