@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { productController } from "../controllers/product.controller";
+import { productSupplierInfoController } from "../controllers/productSupplierInfo.controller";
 import { authMiddleware } from "../../../core/middleware/auth";
 import { upload } from "../../../core/middleware/upload";
 import { Role } from "../../../core/types/enum";
@@ -16,7 +17,7 @@ router.get(
     Role.WHSTAFF,
     Role.WHMANAGER,
   ]),
-  productController.getAllProductOnActive
+  productController.getAllProductOnActive,
 );
 
 router.get(
@@ -29,13 +30,13 @@ router.get(
     Role.PURCHASEMANAGER,
     Role.WHMANAGER,
   ]),
-  productController.getAllProductAllStatus
+  productController.getAllProductAllStatus,
 );
 
 router.get(
   "/search",
   authMiddleware([Role.PURCHASE, Role.WHSTAFF]),
-  productController.searchProducts
+  productController.searchProducts,
 );
 router.get(
   "/:id",
@@ -47,7 +48,7 @@ router.get(
     Role.PURCHASEMANAGER,
     Role.ACCOUNT,
   ]),
-  productController.getProductById
+  productController.getProductById,
 );
 router.post(
   "/",
@@ -56,7 +57,7 @@ router.post(
     { name: "thumbnail", maxCount: 1 },
     { name: "gallery", maxCount: 10 },
   ]),
-  productController.createProduct
+  productController.createProduct,
 );
 router.put(
   "/:id",
@@ -65,13 +66,44 @@ router.put(
     { name: "thumbnail", maxCount: 1 },
     { name: "gallery", maxCount: 10 },
   ]),
-  productController.updateProduct
+  productController.updateProduct,
 );
 
 router.delete(
   "/:id",
   authMiddleware([Role.ADMIN]),
-  productController.deleteProduct
+  productController.deleteProduct,
+);
+
+// ===== Product Supplier Info Routes =====
+router.get(
+  "/:productId/suppliers",
+  authMiddleware([Role.ADMIN, Role.PURCHASE, Role.PURCHASEMANAGER]),
+  productSupplierInfoController.getByProduct,
+);
+
+router.post(
+  "/:productId/suppliers",
+  authMiddleware([Role.ADMIN, Role.PURCHASEMANAGER]),
+  productSupplierInfoController.create,
+);
+
+router.put(
+  "/:productId/suppliers/:id",
+  authMiddleware([Role.ADMIN, Role.PURCHASEMANAGER]),
+  productSupplierInfoController.update,
+);
+
+router.delete(
+  "/:productId/suppliers/:id",
+  authMiddleware([Role.ADMIN, Role.PURCHASEMANAGER]),
+  productSupplierInfoController.delete,
+);
+
+router.patch(
+  "/:productId/suppliers/:id/set-preferred",
+  authMiddleware([Role.ADMIN, Role.PURCHASEMANAGER]),
+  productSupplierInfoController.setPreferred,
 );
 
 export default router;

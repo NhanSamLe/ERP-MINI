@@ -24,37 +24,33 @@ export function convertToBase(rate: number | string, base: string): string {
 }
 
 export function formatVND(value: number | null | undefined): string {
-  if (value == null || value === 0) return '0 ₫';
+  if (value == null || value === 0) return "0 ₫";
   const num = Number(value);
-  return num.toLocaleString('vi-VN') + ' ₫';
+  return num.toLocaleString("vi-VN") + " ₫";
 }
 
 export function formatMoney(
   value?: number | string | null,
   currency = "VND",
-  locale = "vi-VN"
+  locale = "vi-VN",
 ): string {
   if (value === null || value === undefined || value === "") return "—";
 
   const num =
-    typeof value === "string"
-      ? Number(value.replace(/[^\d.-]/g, ""))
-      : value;
+    typeof value === "string" ? Number(value.replace(/[^\d.-]/g, "")) : value;
 
   if (Number.isNaN(num)) return "—";
 
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency,
-    currencyDisplay: "symbol",
+  // Format số theo locale VN, append currency code (không dùng symbol để nhất quán đa tiền tệ)
+  return `${new Intl.NumberFormat(locale, {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
-  }).format(num);
+  }).format(num)} ${currency}`;
 }
 
 export function formatNumber(
   value: number | string,
-  fractionDigits = 2
+  fractionDigits = 2,
 ): string {
   const num = Number(value);
   if (isNaN(num)) return "0";
@@ -66,7 +62,7 @@ export function formatNumber(
 }
 export function formatPercent(
   value: number | string,
-  fractionDigits = 2
+  fractionDigits = 2,
 ): string {
   const num = Number(value);
   if (isNaN(num)) return "0%";
