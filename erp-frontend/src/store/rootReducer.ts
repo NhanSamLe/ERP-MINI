@@ -18,6 +18,8 @@ import { positionReducer } from "../features/hrm/store/position/position.slice";
 import { stockBalanceReducer } from "../features/inventory/store";
 import { warehouseReducer } from "../features/inventory/store";
 import { stockMoveReducer } from "../features/inventory/store";
+import { stockLocationReducer } from "../features/inventory/store";
+import { stockLotReducer } from "../features/inventory/store";
 import {
   leadReducer,
   opportunityReducer,
@@ -51,6 +53,8 @@ const rootReducer = combineReducers({
   stockBalance: stockBalanceReducer,
   warehouse: warehouseReducer,
   stockMove: stockMoveReducer,
+  stockLocation: stockLocationReducer,
+  stockLot: stockLotReducer,
   lead: leadReducer,
   opportunity: opportunityReducer,
   activity: activityReducer,
@@ -63,7 +67,7 @@ const rootReducer = combineReducers({
   payrollRun: payrollRunReducer,
   employee: employeeReducer,
   apInvoice: apInvoiceRouter,
-  apPayment: apPaymentReducer
+  apPayment: apPaymentReducer,
 });
 
 export default rootReducer;

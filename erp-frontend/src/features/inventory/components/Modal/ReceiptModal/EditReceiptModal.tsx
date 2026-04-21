@@ -1,4 +1,4 @@
-import {
+﻿import {
   Select,
   SelectTrigger,
   SelectValue,
@@ -15,6 +15,8 @@ import { AppDispatch } from "../../../../../store/store";
 import { toast } from "react-toastify";
 import { fetchProductByIdThunk } from "../../../../products/store/product.thunks";
 import { StockMove } from "../../../store/stock/stockmove/stockMove.types";
+import { LocationSelect } from "../../LocationSelect";
+import { UomSelect } from "../../UomSelect";
 
 export interface LineReceiptItem {
   id: number | undefined;
@@ -23,7 +25,10 @@ export interface LineReceiptItem {
   image: string;
   sku: string;
   uom: string;
+  uom_id?: number | null;
+  uomOptions?: Array<{ id: number; code: string; name: string }>;
   quantity: number;
+  location_to_id?: number | null;
 }
 
 export interface EditReceiptForm {
@@ -76,6 +81,7 @@ export default function EditReceiptModal({
 
   const [lineItems, setLineItems] = useState<LineReceiptItem[]>([]);
   const [selectedPOId, setSelectedPOId] = useState<string>("");
+  const [isInitializing, setIsInitializing] = useState(false);
 
   //
 
@@ -87,31 +93,29 @@ export default function EditReceiptModal({
 
   useEffect(() => {
     if (!open) return;
-    console.log("Modal open, data:", data);
     setLineItems([]);
     if (!data?.lines || data.lines.length === 0) return;
-    const ids = data.lines.map((line) => line.product_id);
-    Promise.all(ids.map((id) => dispatch(fetchProductByIdThunk(id)).unwrap()))
-      .then((fetchedProducts) => {
-        const items: LineReceiptItem[] = (data.lines ?? []).map((line) => {
-          const product = fetchedProducts.find((p) => p.id === line.product_id);
-          return {
-            id: line.id,
-            product_id: product?.id ?? line.product_id,
-            name: product?.name ?? "",
-            sku: product?.sku ?? "",
-            image: product?.image_url ?? "",
-            uom: line.uom ?? "",
-            quantity: line.quantity ?? 0,
-          };
-        });
-        setLineItems(items);
-        console.log("LineItems after fetch:", items);
-      })
-      .catch(() => {
-        setLineItems([]);
-      });
-  }, [open, data, dispatch]);
+
+    const items: LineReceiptItem[] = (data.lines as any[]).map((line) => ({
+      id: line.id,
+      product_id: Number(line.product_id ?? line.product?.id),
+      name: line.product?.name ?? "",
+      sku: line.product?.sku ?? "",
+      image: line.product?.image_url ?? "",
+      uom: line.product?.uom?.name ?? line.product?.uom?.code ?? "",
+      uom_id: line.uom_id ?? line.product?.uom_id ?? null,
+      uomOptions: [
+        ...(line.product?.uom ? [line.product.uom] : []),
+        ...(line.product?.purchaseUom &&
+        line.product.purchaseUom.id !== line.product?.uom?.id
+          ? [line.product.purchaseUom]
+          : []),
+      ],
+      quantity: Number(line.quantity) ?? 0,
+      location_to_id: line.location_to_id ?? null,
+    }));
+    setLineItems(items);
+  }, [open, data]);
 
   useEffect(() => {
     if (!open || !data) return;
@@ -127,6 +131,7 @@ export default function EditReceiptModal({
     });
 
     setSelectedPOId(data.reference_id.toString());
+    setIsInitializing(true);
   }, [open, data]);
 
   useEffect(() => {
@@ -141,9 +146,14 @@ export default function EditReceiptModal({
         setLineItems([]);
         return;
       }
+      // Skip khi đang init từ data — lineItems đã được load từ data.lines
+      if (isInitializing) {
+        setIsInitializing(false);
+        return;
+      }
 
       const po = purchaseOrder.items.find(
-        (x: PurchaseOrder) => x.id.toString() === selectedPOId
+        (x: PurchaseOrder) => x.id.toString() === selectedPOId,
       );
 
       if (!po || !po.lines) {
@@ -156,7 +166,7 @@ export default function EditReceiptModal({
         const fetchedProducts = await Promise.all(
           po.lines.map(async (line) => {
             const result = await dispatch(
-              fetchProductByIdThunk(line.product_id)
+              fetchProductByIdThunk(line.product_id),
             ).unwrap(); // ép return type là Product
 
             return {
@@ -164,11 +174,19 @@ export default function EditReceiptModal({
               product_id: result.id,
               name: result.name,
               sku: result.sku,
-              uom: result.uom,
+              uom: result.uom?.name ?? result.uom?.code ?? "",
+              uom_id: result.purchase_uom_id ?? result.uom_id ?? null,
+              uomOptions: [
+                ...(result.uom ? [result.uom] : []),
+                ...(result.purchaseUom &&
+                result.purchaseUom.id !== result.uom?.id
+                  ? [result.purchaseUom]
+                  : []),
+              ],
               image: result.image_url,
               quantity: line.quantity,
             } as LineReceiptItem;
-          })
+          }),
         );
         setLineItems(fetchedProducts);
       } catch (err) {
@@ -183,8 +201,8 @@ export default function EditReceiptModal({
   const handleQuantityChange = (id: number, value: number) => {
     setLineItems((prev) =>
       prev.map((item) =>
-        item.product_id === id ? { ...item, quantity: value } : item
-      )
+        item.product_id === id ? { ...item, quantity: value } : item,
+      ),
     );
   };
 
@@ -232,7 +250,7 @@ export default function EditReceiptModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-      <div className="bg-white w-[700px] rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white w-[900px] rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
         {/* HEADER */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">Edit Receipt</h2>
@@ -314,15 +332,16 @@ export default function EditReceiptModal({
               <tr>
                 <th className="p-2">Product</th>
                 <th className="p-2">SKU</th>
-                <th className="p-2">Uom</th>
-                <th className="p-2">Quantity</th>
+                <th className="p-2">UOM</th>
+                <th className="p-2">Qty</th>
+                <th className="p-2">Location (To)</th>
                 <th className="p-2 w-[60px]"></th>
               </tr>
             </thead>
             <tbody>
               {lineItems.length > 0 ? (
                 lineItems.map((p) => (
-                  <tr key={p.id} className="border-t">
+                  <tr key={p.product_id} className="border-t">
                     <td className="p-2 flex items-center gap-3">
                       <img
                         src={p.image}
@@ -331,7 +350,20 @@ export default function EditReceiptModal({
                       {p.name}
                     </td>
                     <td className="p-2">{p.sku}</td>
-                    <td className="p-2">{p.uom}</td>
+                    <td className="p-2 min-w-[120px]">
+                      <UomSelect
+                        value={p.uom_id}
+                        onChange={(uomId) =>
+                          setLineItems((prev) =>
+                            prev.map((x) =>
+                              x.product_id === p.product_id
+                                ? { ...x, uom_id: uomId }
+                                : x,
+                            ),
+                          )
+                        }
+                      />
+                    </td>
                     <td className="p-2">
                       <input
                         type="number"
@@ -341,9 +373,28 @@ export default function EditReceiptModal({
                         onChange={(e) =>
                           handleQuantityChange(
                             p.product_id,
-                            Number(e.target.value)
+                            Number(e.target.value),
                           )
                         }
+                      />
+                    </td>
+                    <td className="p-2 min-w-[130px]">
+                      <LocationSelect
+                        warehouseId={
+                          form.warehouse ? Number(form.warehouse) : null
+                        }
+                        value={p.location_to_id}
+                        onChange={(locId) =>
+                          setLineItems((prev) =>
+                            prev.map((x) =>
+                              x.product_id === p.product_id
+                                ? { ...x, location_to_id: locId }
+                                : x,
+                            ),
+                          )
+                        }
+                        types={["internal", "input"]}
+                        placeholder="— Select —"
                       />
                     </td>
                     <td className="p-2 text-right">
@@ -351,7 +402,7 @@ export default function EditReceiptModal({
                         className="text-red-500 hover:underline"
                         onClick={() =>
                           setLineItems((prev) =>
-                            prev.filter((x) => x.product_id !== p.product_id)
+                            prev.filter((x) => x.product_id !== p.product_id),
                           )
                         }
                       >
@@ -362,7 +413,7 @@ export default function EditReceiptModal({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="p-4 text-center text-gray-500">
+                  <td colSpan={6} className="p-4 text-center text-gray-500">
                     No products selected
                   </td>
                 </tr>

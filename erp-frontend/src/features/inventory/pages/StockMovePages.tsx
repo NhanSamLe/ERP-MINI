@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../../store/store";
 import { fetchWarehousesThunk } from "../store/stock/warehouse/warehouse.thunks";
@@ -105,7 +105,7 @@ export default function StockMovePages() {
   const [openEditAdjustmentModal, setOpenEditAdjustmentModal] = useState(false);
 
   const [selectedStockMove, setSelectedStockMove] = useState<StockMove | null>(
-    null
+    null,
   );
 
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -166,25 +166,50 @@ export default function StockMovePages() {
             key: "warehouse_from_id",
             width: 30,
             formatter: (_: any, row: StockMove) => {
-              const from = row.warehouse_from_id ? getWarehouseName(row.warehouse_from_id) : "N/A";
-              const to = row.warehouse_to_id ? getWarehouseName(row.warehouse_to_id) : "N/A";
-              if (row.type === 'receipt') return to;
-              if (row.type === 'issue') return from;
-              if (row.type === 'transfer') return `${from} -> ${to}`;
-              if (row.type === 'adjustment') return from;
+              const from = row.warehouse_from_id
+                ? getWarehouseName(row.warehouse_from_id)
+                : "N/A";
+              const to = row.warehouse_to_id
+                ? getWarehouseName(row.warehouse_to_id)
+                : "N/A";
+              if (row.type === "receipt") return to;
+              if (row.type === "issue") return from;
+              if (row.type === "transfer") return `${from} -> ${to}`;
+              if (row.type === "adjustment") return from;
               return "-";
-            }
+            },
           },
-          { header: "Người tạo", key: "creator", width: 20, formatter: (val: any) => val?.full_name || "-" },
-          { header: "Loại phiếu", key: "type", width: 15, formatter: (val) => String(val).toUpperCase() },
-          { header: "Ngày phiếu", key: "move_date", width: 20, formatter: (val) => val ? new Date(String(val)).toLocaleDateString('vi-VN') : "" },
-          { header: "Trạng thái", key: "status", width: 15, formatter: (val) => String(val).toUpperCase() },
+          {
+            header: "Người tạo",
+            key: "creator",
+            width: 20,
+            formatter: (val: any) => val?.full_name || "-",
+          },
+          {
+            header: "Loại phiếu",
+            key: "type",
+            width: 15,
+            formatter: (val) => String(val).toUpperCase(),
+          },
+          {
+            header: "Ngày phiếu",
+            key: "move_date",
+            width: 20,
+            formatter: (val) =>
+              val ? new Date(String(val)).toLocaleDateString("vi-VN") : "",
+          },
+          {
+            header: "Trạng thái",
+            key: "status",
+            width: 15,
+            formatter: (val) => String(val).toUpperCase(),
+          },
         ],
         data: filteredData,
         fileName: `Bao_Cao_Kho_${new Date().getTime()}.xlsx`,
         footer: {
-          creator: user?.full_name || "Admin"
-        }
+          creator: user?.full_name || "Admin",
+        },
       });
     } catch (err) {
       console.error(err);
@@ -242,8 +267,9 @@ export default function StockMovePages() {
       label: "Type",
       render: (row: StockMove) => (
         <span
-          className={`px-3 py-1 rounded-full text-xs font-semibold ${typeColorMap[row.type] || "bg-gray-100 text-gray-700"
-            }`}
+          className={`px-3 py-1 rounded-full text-xs font-semibold ${
+            typeColorMap[row.type] || "bg-gray-100 text-gray-700"
+          }`}
         >
           {row.type.toUpperCase()}
         </span>
@@ -262,8 +288,9 @@ export default function StockMovePages() {
       label: "Status",
       render: (row: StockMove) => (
         <span
-          className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColorMap[row.status] || "bg-gray-100 text-gray-700"
-            }`}
+          className={`px-3 py-1 rounded-full text-xs font-semibold ${
+            statusColorMap[row.status] || "bg-gray-100 text-gray-700"
+          }`}
         >
           {row.status.toUpperCase()}
         </span>
@@ -315,10 +342,14 @@ export default function StockMovePages() {
           product_id: p.id,
           quantity: p.quantity,
           uom: p.uom,
+          uom_id: (p as any).uom_id ?? null,
+          location_to_id: p.location_to_id ?? null,
+          lot_id: (p as any).lot_id ?? null,
+          new_lot: (p as any).new_lot ?? null,
         })),
       };
       const result = await dispatch(
-        createReceiptStockMoveThunk(payload)
+        createReceiptStockMoveThunk(payload),
       ).unwrap();
       console.log("Created stock move:", result);
       toast.success("Stock Receipt Move created!");
@@ -350,10 +381,13 @@ export default function StockMovePages() {
           product_id: p.product_id,
           quantity: p.quantity,
           uom: p.uom,
+          uom_id: (p as any).uom_id ?? null,
+          location_from_id: p.location_from_id ?? null,
+          lot_id: (p as any).lot_id ?? null,
         })),
       };
       const result = await dispatch(
-        createIssueStockMoveThunk(payload)
+        createIssueStockMoveThunk(payload),
       ).unwrap();
       console.log("Created stock move:", result);
       toast.success("Stock Issue Move created!");
@@ -385,10 +419,14 @@ export default function StockMovePages() {
           product_id: p.product_id,
           quantity: p.quantity,
           uom: p.uom,
+          uom_id: (p as any).uom_id ?? null,
+          location_from_id: p.location_from_id ?? null,
+          location_to_id: p.location_to_id ?? null,
+          lot_id: (p as any).lot_id ?? null,
         })),
       };
       const result = await dispatch(
-        createTransferStockMoveThunk(payload)
+        createTransferStockMoveThunk(payload),
       ).unwrap();
       console.log("Created stock move:", result);
       toast.success("Stock Transfer Move created!");
@@ -417,10 +455,12 @@ export default function StockMovePages() {
           product_id: p.product_id,
           quantity: p.quantity,
           uom: p.uom,
+          uom_id: (p as any).uom_id ?? null,
+          location_from_id: p.location_from_id ?? null,
         })),
       };
       const result = await dispatch(
-        createAdjustmentStockMoveThunk(payload)
+        createAdjustmentStockMoveThunk(payload),
       ).unwrap();
       console.log("Created stock move:", result);
       toast.success("Stock Ajustment Move created!");
@@ -442,7 +482,7 @@ export default function StockMovePages() {
       return;
     }
     const checkStatus = await dispatch(
-      fetchStockMoveByIdThunk(selectedStockMove.id)
+      fetchStockMoveByIdThunk(selectedStockMove.id),
     ).unwrap();
 
     if (checkStatus.status !== "draft") {
@@ -466,11 +506,16 @@ export default function StockMovePages() {
           product_id: p.product_id,
           quantity: p.quantity,
           uom: p.uom,
+          location_to_id: (p as any).location_to_id ?? null,
+          lot_id: (p as any).lot_id ?? null,
         })),
       };
       console.log("Payload:", payload);
       const result = await dispatch(
-        updateReceiptStockMoveThunk({ id: selectedStockMove.id, data: payload })
+        updateReceiptStockMoveThunk({
+          id: selectedStockMove.id,
+          data: payload,
+        }),
       ).unwrap();
       console.log("Edited stock move:", result);
       toast.success("Stock Receipt Move Edited!");
@@ -492,7 +537,7 @@ export default function StockMovePages() {
       return;
     }
     const checkStatus = await dispatch(
-      fetchStockMoveByIdThunk(selectedStockMove.id)
+      fetchStockMoveByIdThunk(selectedStockMove.id),
     ).unwrap();
 
     if (checkStatus.status !== "draft") {
@@ -515,13 +560,17 @@ export default function StockMovePages() {
           product_id: p.product_id,
           quantity: p.quantity,
           uom: p.uom,
+          uom_id: (p as any).uom_id ?? null,
+          location_from_id: p.location_from_id ?? null,
+          location_to_id: p.location_to_id ?? null,
+          lot_id: (p as any).lot_id ?? null,
         })),
       };
       const result = await dispatch(
         updateTransferStockMoveThunk({
           id: selectedStockMove.id,
           data: payload,
-        })
+        }),
       );
       console.log("Edited stock move:", result);
       toast.success("Stock Transfer Move Edited!");
@@ -541,7 +590,7 @@ export default function StockMovePages() {
       return;
     }
     const checkStatus = await dispatch(
-      fetchStockMoveByIdThunk(selectedStockMove.id)
+      fetchStockMoveByIdThunk(selectedStockMove.id),
     ).unwrap();
 
     if (checkStatus.status !== "draft") {
@@ -563,13 +612,16 @@ export default function StockMovePages() {
           product_id: p.product_id,
           quantity: p.quantity,
           uom: p.uom,
+          uom_id: (p as any).uom_id ?? null,
+          location_from_id: p.location_from_id ?? null,
+          lot_id: (p as any).lot_id ?? null,
         })),
       };
       const result = await dispatch(
         updateAdjustmentStockMoveThunk({
           id: selectedStockMove.id,
           data: payload,
-        })
+        }),
       ).unwrap();
       console.log("Edited stock move:", result);
       toast.success("Stock Adjustment Move Edited!");
@@ -590,7 +642,7 @@ export default function StockMovePages() {
       return;
     }
     const checkStatus = await dispatch(
-      fetchStockMoveByIdThunk(selectedStockMove.id)
+      fetchStockMoveByIdThunk(selectedStockMove.id),
     ).unwrap();
 
     if (checkStatus.status !== "draft") {
@@ -614,10 +666,13 @@ export default function StockMovePages() {
           product_id: p.product_id,
           quantity: p.quantity,
           uom: p.uom,
+          uom_id: (p as any).uom_id ?? null,
+          location_from_id: p.location_from_id ?? null,
+          lot_id: (p as any).lot_id ?? null,
         })),
       };
       const result = await dispatch(
-        updateIssueStockMoveThunk({ id: selectedStockMove.id, data: payload })
+        updateIssueStockMoveThunk({ id: selectedStockMove.id, data: payload }),
       ).unwrap();
       console.log("Edited stock move:", result);
       toast.success("Stock Receipt Move Edited!");
@@ -698,7 +753,10 @@ export default function StockMovePages() {
               </Button>
             }
             items={[
-              { label: "Create Receipt", onClick: () => handleCreate("receipt") },
+              {
+                label: "Create Receipt",
+                onClick: () => handleCreate("receipt"),
+              },
               { label: "Create Issue", onClick: () => handleCreate("issue") },
               {
                 label: "Create Transfer",

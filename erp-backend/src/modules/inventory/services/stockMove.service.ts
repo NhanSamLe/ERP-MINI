@@ -1,4 +1,4 @@
-import {
+﻿import {
   StockMoveAdjustmentDTO,
   StockMoveCreateDTO,
   StockMoveTransferDTO,
@@ -16,7 +16,42 @@ import { Role } from "../../../core/types/enum";
 import { User } from "../../auth/models/user.model";
 import { Op } from "sequelize";
 import { Product } from "../../product/models/product.model";
+import { Uom } from "../../master-data/models/uom.model";
+import { UomConversion } from "../../master-data/models/uomConversion.model";
 import { warehouseService } from "./warehouse.service";
+
+/**
+ * Convert quantity từ line.uom_id sang product.uom_id (đơn vị lưu kho).
+ * Nếu line.uom_id = product.uom_id hoặc không có conversion → factor = 1.
+ */
+async function convertToStockUom(
+  quantity: number,
+  lineUomId: number | null | undefined,
+  productUomId: number | null | undefined,
+): Promise<number> {
+  if (!lineUomId || !productUomId || lineUomId === productUomId) {
+    return quantity;
+  }
+  // Tìm conversion: from lineUomId → productUomId
+  const conversion = await UomConversion.findOne({
+    where: { from_uom_id: lineUomId, to_uom_id: productUomId },
+  });
+  if (!conversion) {
+    // Thử chiều ngược lại (1/factor)
+    const reverseConversion = await UomConversion.findOne({
+      where: { from_uom_id: productUomId, to_uom_id: lineUomId },
+    });
+    if (reverseConversion) {
+      return quantity / parseFloat(String(reverseConversion.factor));
+    }
+    // Không có conversion → giữ nguyên (same base unit)
+    return quantity;
+  }
+  return quantity * parseFloat(String(conversion.factor));
+}
+
+import { StockLot } from "../models/stockLot.model";
+import { StockLocation } from "../models/stockLocation.model";
 import { StockBalance } from "../models/stockBalance.model";
 import { PurchaseOrder } from "../../purchase/models/purchaseOrder.model";
 import { SaleOrder } from "../../sales/models/saleOrder.model";
@@ -51,6 +86,13 @@ export const stockMoveService = {
               model: Product,
               as: "product",
               attributes: ["id", "name", "sku", "image_url", "uom_id"],
+              include: [
+                {
+                  model: Uom,
+                  as: "uom",
+                  attributes: ["id", "code", "name"],
+                },
+              ],
             },
           ],
         },
@@ -79,6 +121,33 @@ export const stockMoveService = {
               model: Product,
               as: "product",
               attributes: ["id", "name", "sku", "image_url", "uom_id"],
+              include: [
+                {
+                  model: Uom,
+                  as: "uom",
+                  attributes: ["id", "code", "name"],
+                },
+              ],
+            },
+            {
+              model: Uom,
+              as: "uom",
+              attributes: ["id", "code", "name"],
+            },
+            {
+              model: StockLocation,
+              as: "locationFrom",
+              attributes: ["id", "name", "code", "type"],
+            },
+            {
+              model: StockLocation,
+              as: "locationTo",
+              attributes: ["id", "name", "code", "type"],
+            },
+            {
+              model: StockLot,
+              as: "lot",
+              attributes: ["id", "lot_no", "expiry_date", "manufacture_date"],
             },
           ],
         },
@@ -106,7 +175,7 @@ export const stockMoveService = {
     const allowedRoles = [Role.WHSTAFF];
     if (!allowedRoles.includes(user.role)) {
       throw new Error(
-        "You do not have permission to create Stock Move Receipt"
+        "You do not have permission to create Stock Move Receipt",
       );
     }
 
@@ -130,19 +199,19 @@ export const stockMoveService = {
     for (const line of body.lines) {
       const poLine = await purchaseOrderService.validateProductInPO(
         poMap,
-        line.product_id
+        line.product_id,
       );
 
       const received = await purchaseOrderService.getAlreadyReceivedQty(
         body.reference_id,
-        line.product_id
+        line.product_id,
       );
 
       await purchaseOrderService.validateRemainingQuantity(
         line.product_id,
         line.quantity,
         poLine.quantity ?? 0,
-        received
+        received,
       );
     }
 
@@ -162,14 +231,28 @@ export const stockMoveService = {
 
     const move = await StockMove.create(data);
     await Promise.all(
-      body.lines.map((line) =>
-        StockMoveLine.create({
+      body.lines.map(async (line) => {
+        // Nếu có new_lot → tạo StockLot trước
+        let lotId = line.lot_id ?? null;
+        if (line.new_lot?.lot_no) {
+          const newLot = await StockLot.create({
+            product_id: line.product_id,
+            lot_no: line.new_lot.lot_no.trim(),
+            expiry_date: line.new_lot.expiry_date ?? null,
+            manufacture_date: line.new_lot.manufacture_date ?? null,
+          } as any);
+          lotId = Number(newLot.id);
+        }
+        return StockMoveLine.create({
           move_id: move.id,
           product_id: line.product_id,
           quantity: line.quantity,
           uom_id: line.uom_id ?? null,
-        })
-      )
+          location_from_id: line.location_from_id ?? null,
+          location_to_id: line.location_to_id ?? null,
+          lot_id: lotId,
+        });
+      }),
     );
 
     return await this.getById(move.id);
@@ -244,8 +327,10 @@ export const stockMoveService = {
           product_id: line.product_id,
           quantity: line.quantity,
           uom_id: line.uom_id ?? null,
-        })
-      )
+          location_from_id: line.location_from_id ?? null,
+          location_to_id: line.location_to_id ?? null,
+        }),
+      ),
     );
 
     return await this.getById(move.id);
@@ -256,7 +341,7 @@ export const stockMoveService = {
     const allowedRoles = [Role.WHSTAFF];
     if (!allowedRoles.includes(user.role)) {
       throw new Error(
-        "You do not have permission to create Stock Move Adjustment."
+        "You do not have permission to create Stock Move Adjustment.",
       );
     }
 
@@ -273,7 +358,7 @@ export const stockMoveService = {
       const { product_id, quantity } = line;
       const stockBalance = await stockBalanceService.findByProductAndWarehouse(
         product_id,
-        warehouseId
+        warehouseId,
       );
       if (quantity <= 0) {
         if (!stockBalance) {
@@ -309,8 +394,10 @@ export const stockMoveService = {
           product_id: line.product_id,
           quantity: line.quantity,
           uom_id: line.uom_id ?? null,
-        })
-      )
+          location_from_id: line.location_from_id ?? null,
+          location_to_id: line.location_to_id ?? null,
+        }),
+      ),
     );
     return await this.getById(move.id);
   },
@@ -319,7 +406,7 @@ export const stockMoveService = {
     const allowedRoles = [Role.WHSTAFF];
     if (!allowedRoles.includes(user.role)) {
       throw new Error(
-        "You do not have permission to create Stock Move Transfer"
+        "You do not have permission to create Stock Move Transfer",
       );
     }
 
@@ -390,8 +477,10 @@ export const stockMoveService = {
           product_id: line.product_id,
           quantity: line.quantity,
           uom_id: line.uom_id ?? null,
-        })
-      )
+          location_from_id: line.location_from_id ?? null,
+          location_to_id: line.location_to_id ?? null,
+        }),
+      ),
     );
     return await this.getById(move.id);
   },
@@ -440,19 +529,19 @@ export const stockMoveService = {
     for (const line of body.lines) {
       const poLine = await purchaseOrderService.validateProductInPO(
         poMap,
-        line.product_id
+        line.product_id,
       );
 
       const received = await purchaseOrderService.getAlreadyReceivedQty(
         body.reference_id,
-        line.product_id
+        line.product_id,
       );
 
       await purchaseOrderService.validateRemainingQuantity(
         line.product_id,
         line.quantity,
         poLine.quantity ?? 0,
-        received
+        received,
       );
     }
     if (!record) return null;
@@ -478,12 +567,12 @@ export const stockMoveService = {
     const newLines = body.lines;
 
     const toDelete = existingLines.filter(
-      (line) => !newLines.some((l) => l.id === line.id)
+      (line) => !newLines.some((l) => l.id === line.id),
     );
     await Promise.all(toDelete.map((line) => line.destroy()));
 
     const toUpdate = existingLines.filter((line) =>
-      newLines.some((l) => l.id === line.id)
+      newLines.some((l) => l.id === line.id),
     );
     await Promise.all(
       toUpdate.map((line) => {
@@ -493,8 +582,11 @@ export const stockMoveService = {
           product_id: newData.product_id,
           quantity: newData.quantity,
           uom_id: newData.uom_id ?? null,
+          location_from_id: newData.location_from_id ?? null,
+          location_to_id: newData.location_to_id ?? null,
+          lot_id: newData.lot_id ?? null,
         });
-      })
+      }),
     );
 
     const toCreate = newLines.filter((l) => !l.id);
@@ -505,8 +597,10 @@ export const stockMoveService = {
           product_id: line.product_id,
           quantity: line.quantity,
           uom_id: line.uom_id ?? null,
-        })
-      )
+          location_from_id: line.location_from_id ?? null,
+          location_to_id: line.location_to_id ?? null,
+        }),
+      ),
     );
     return await this.getById(id);
   },
@@ -565,12 +659,12 @@ export const stockMoveService = {
     const newLines = body.lines;
 
     const toDelete = existingLines.filter(
-      (line) => !newLines.some((l) => l.id === line.id)
+      (line) => !newLines.some((l) => l.id === line.id),
     );
     await Promise.all(toDelete.map((line) => line.destroy()));
 
     const toUpdate = existingLines.filter((line) =>
-      newLines.some((l) => l.id === line.id)
+      newLines.some((l) => l.id === line.id),
     );
     await Promise.all(
       toUpdate.map((line) => {
@@ -580,8 +674,11 @@ export const stockMoveService = {
           product_id: newData.product_id,
           quantity: newData.quantity,
           uom_id: newData.uom_id ?? null,
+          location_from_id: newData.location_from_id ?? null,
+          location_to_id: newData.location_to_id ?? null,
+          lot_id: newData.lot_id ?? null,
         });
-      })
+      }),
     );
 
     const toCreate = newLines.filter((l) => !l.id);
@@ -592,8 +689,10 @@ export const stockMoveService = {
           product_id: line.product_id,
           quantity: line.quantity,
           uom_id: line.uom_id ?? null,
-        })
-      )
+          location_from_id: line.location_from_id ?? null,
+          location_to_id: line.location_to_id ?? null,
+        }),
+      ),
     );
     return await this.getById(id);
   },
@@ -602,7 +701,7 @@ export const stockMoveService = {
     const allowedRoles = [Role.WHSTAFF];
     if (!allowedRoles.includes(user.role)) {
       throw new Error(
-        "You do not have permission to edit Stock Move Adjustment."
+        "You do not have permission to edit Stock Move Adjustment.",
       );
     }
 
@@ -632,7 +731,7 @@ export const stockMoveService = {
       const { product_id, quantity } = line;
       const stockBalance = await stockBalanceService.findByProductAndWarehouse(
         product_id,
-        warehouseId
+        warehouseId,
       );
       if (quantity <= 0) {
         const productResult = await productService.getById(product_id);
@@ -656,7 +755,7 @@ export const stockMoveService = {
       move_no: body.move_no,
       move_date: new Date(body.move_date),
       type: body.type,
-      warehouse_to_id: body.warehouse_id,
+      warehouse_from_id: body.warehouse_id,
       reference_type: body.reference_type,
       note: body.note,
     };
@@ -668,12 +767,12 @@ export const stockMoveService = {
     const newLines = body.lines;
 
     const toDelete = existingLines.filter(
-      (line) => !newLines.some((l) => l.id === line.id)
+      (line) => !newLines.some((l) => l.id === line.id),
     );
     await Promise.all(toDelete.map((line) => line.destroy()));
 
     const toUpdate = existingLines.filter((line) =>
-      newLines.some((l) => l.id === line.id)
+      newLines.some((l) => l.id === line.id),
     );
     await Promise.all(
       toUpdate.map((line) => {
@@ -683,8 +782,11 @@ export const stockMoveService = {
           product_id: newData.product_id,
           quantity: newData.quantity,
           uom_id: newData.uom_id ?? null,
+          location_from_id: newData.location_from_id ?? null,
+          location_to_id: newData.location_to_id ?? null,
+          lot_id: newData.lot_id ?? null,
         });
-      })
+      }),
     );
 
     const toCreate = newLines.filter((l) => !l.id);
@@ -695,8 +797,10 @@ export const stockMoveService = {
           product_id: line.product_id,
           quantity: line.quantity,
           uom_id: line.uom_id ?? null,
-        })
-      )
+          location_from_id: line.location_from_id ?? null,
+          location_to_id: line.location_to_id ?? null,
+        }),
+      ),
     );
     return await this.getById(id);
   },
@@ -750,12 +854,12 @@ export const stockMoveService = {
     const newLines = body.lines;
 
     const toDelete = existingLines.filter(
-      (line) => !newLines.some((l) => l.id === line.id)
+      (line) => !newLines.some((l) => l.id === line.id),
     );
     await Promise.all(toDelete.map((line) => line.destroy()));
 
     const toUpdate = existingLines.filter((line) =>
-      newLines.some((l) => l.id === line.id)
+      newLines.some((l) => l.id === line.id),
     );
     await Promise.all(
       toUpdate.map((line) => {
@@ -763,10 +867,14 @@ export const stockMoveService = {
         if (!newData) return;
         return line.update({
           product_id: newData.product_id,
+
           quantity: newData.quantity,
           uom_id: newData.uom_id ?? null,
+          location_from_id: newData.location_from_id ?? null,
+          location_to_id: newData.location_to_id ?? null,
+          lot_id: newData.lot_id ?? null,
         });
-      })
+      }),
     );
 
     const toCreate = newLines.filter((l) => !l.id);
@@ -777,8 +885,10 @@ export const stockMoveService = {
           product_id: line.product_id,
           quantity: line.quantity,
           uom_id: line.uom_id ?? null,
-        })
-      )
+          location_from_id: line.location_from_id ?? null,
+          location_to_id: line.location_to_id ?? null,
+        }),
+      ),
     );
     return await this.getById(id);
   },
@@ -799,7 +909,7 @@ export const stockMoveService = {
     if (record.type === "transfer") {
       if (!from || !to) {
         throw new Error(
-          "Invalid transfer: both source and destination warehouses are required."
+          "Invalid transfer: both source and destination warehouses are required.",
         );
       }
 
@@ -808,7 +918,7 @@ export const stockMoveService = {
         to.branch_id !== user.branch_id
       ) {
         throw new Error(
-          "You cannot delete a transfer involving other branches."
+          "You cannot delete a transfer involving other branches.",
         );
       }
     } else if (record.type === "receipt") {
@@ -817,7 +927,7 @@ export const stockMoveService = {
 
       if (to.branch_id !== user.branch_id) {
         throw new Error(
-          "You cannot delete a receipt involving another branch."
+          "You cannot delete a receipt involving another branch.",
         );
       }
     } else if (record.type === "issue") {
@@ -831,7 +941,7 @@ export const stockMoveService = {
 
       if (from.branch_id !== user.branch_id) {
         throw new Error(
-          "You cannot delete an adjustment involving another branch."
+          "You cannot delete an adjustment involving another branch.",
         );
       }
     }
@@ -969,7 +1079,7 @@ export const stockMoveService = {
   async updateStockBalance(
     warehouseId: number,
     productId: number,
-    quantityChange: number
+    quantityChange: number,
   ) {
     const existing = await StockBalance.findOne({
       where: { warehouse_id: warehouseId, product_id: productId },
@@ -1098,6 +1208,13 @@ export const stockMoveService = {
               model: Product,
               as: "product",
               attributes: ["id", "name", "sku", "image_url", "uom_id"],
+              include: [
+                {
+                  model: Uom,
+                  as: "uom",
+                  attributes: ["id", "code", "name"],
+                },
+              ],
             },
           ],
         },
@@ -1118,12 +1235,20 @@ export const stockMoveService = {
   },
 
   async processReceipt(move: any, lines: any[]) {
-    // 1. Cập nhật stock balance trước
+    // Cập nhật stock balance với UOM conversion
     for (const line of lines) {
+      const product = await Product.findByPk(line.product_id, {
+        attributes: ["uom_id"],
+      });
+      const actualQty = await convertToStockUom(
+        parseFloat(String(line.quantity)),
+        line.uom_id,
+        product?.uom_id,
+      );
       await this.updateStockBalance(
         move.warehouse_to_id,
         line.product_id,
-        line.quantity
+        actualQty,
       );
     }
 
@@ -1168,7 +1293,7 @@ export const stockMoveService = {
       const previousReceived = allLines
         .filter(
           (line) =>
-            line.product_id === poLine.product_id && line.move_id !== move.id
+            line.product_id === poLine.product_id && line.move_id !== move.id,
         )
         .reduce((sum, line) => sum + parseFloat(String(line.quantity ?? 0)), 0);
       const currentReceived = lines
@@ -1178,7 +1303,7 @@ export const stockMoveService = {
       const totalReceived = previousReceived + currentReceived;
 
       console.log(
-        `Product ${poLine.product_id}: PO Qty=${poQty}, Previous Received=${previousReceived}, Current Received=${currentReceived}, Total=${totalReceived}`
+        `Product ${poLine.product_id}: PO Qty=${poQty}, Previous Received=${previousReceived}, Current Received=${currentReceived}, Total=${totalReceived}`,
       );
       if (totalReceived < poQty || totalReceived > poQty) {
         fullyReceived = false;
@@ -1195,16 +1320,24 @@ export const stockMoveService = {
   // ==================================================
   async processIssue(move: any, lines: any[]) {
     for (const line of lines) {
+      const product = await Product.findByPk(line.product_id, {
+        attributes: ["uom_id"],
+      });
+      const actualQty = await convertToStockUom(
+        parseFloat(String(line.quantity)),
+        line.uom_id,
+        product?.uom_id,
+      );
       await this.updateStockBalance(
         move.warehouse_from_id,
         line.product_id,
-        -line.quantity
+        -actualQty,
       );
     }
     if (move.reference_type === "sale_order") {
       await SaleOrder.update(
         { status: "shipped" },
-        { where: { id: move.reference_id } }
+        { where: { id: move.reference_id } },
       );
     }
   },
@@ -1214,30 +1347,45 @@ export const stockMoveService = {
   // ==================================================
   async processTransfer(move: any, lines: any[]) {
     for (const line of lines) {
-      // 1. Trừ kho xuất
+      const product = await Product.findByPk(line.product_id, {
+        attributes: ["uom_id"],
+      });
+      const actualQty = await convertToStockUom(
+        parseFloat(String(line.quantity)),
+        line.uom_id,
+        product?.uom_id,
+      );
       await this.updateStockBalance(
         move.warehouse_from_id,
         line.product_id,
-        -line.quantity
+        -actualQty,
       );
-
-      // 2. Cộng kho nhập
       await this.updateStockBalance(
         move.warehouse_to_id,
         line.product_id,
-        +line.quantity
+        +actualQty,
       );
     }
   },
 
   async processAdjustment(move: any, lines: any[]) {
     for (const line of lines) {
-      const qtyChange = Number(line.quantity);
-
+      const product = await Product.findByPk(line.product_id, {
+        attributes: ["uom_id"],
+      });
+      const rawQty = Number(line.quantity);
+      const sign = rawQty >= 0 ? 1 : -1;
+      const actualQty =
+        sign *
+        (await convertToStockUom(
+          Math.abs(rawQty),
+          line.uom_id,
+          product?.uom_id,
+        ));
       await this.updateStockBalance(
         move.warehouse_from_id,
         line.product_id,
-        qtyChange
+        actualQty,
       );
     }
   },

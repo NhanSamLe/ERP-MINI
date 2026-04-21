@@ -1,4 +1,4 @@
-import {
+﻿import {
   Select,
   SelectTrigger,
   SelectValue,
@@ -19,6 +19,8 @@ import {
 } from "@/features/inventory/store/stock/stockmove/stockMove.types";
 import { SaleOrderDto } from "@/features/sales/dto/saleOrder.dto";
 import { fetchSaleOrdersByStatus } from "@/features/sales/store/saleOrder.slice";
+import { LocationSelect } from "../../LocationSelect";
+import { LotSelect } from "../../LotSelect";
 
 interface CreateIssueModalProps {
   open: boolean;
@@ -86,7 +88,7 @@ export default function CreateIssueModal({
         return;
       }
       const so = saleOrder.items.find(
-        (x: SaleOrderDto) => x.id.toString() === selectedSOId
+        (x: SaleOrderDto) => x.id.toString() === selectedSOId,
       );
       if (!so || !so.lines) {
         setLineItems([]);
@@ -96,18 +98,26 @@ export default function CreateIssueModal({
         const fetchedProducts = await Promise.all(
           so.lines.map(async (line) => {
             const result = await dispatch(
-              fetchProductByIdThunk(line.product_id!)
+              fetchProductByIdThunk(line.product_id!),
             ).unwrap();
             return {
               id: undefined,
               product_id: result.id,
               name: result.name,
               sku: result.sku,
-              uom: result.uom,
+              uom: result.uom?.name ?? result.uom?.code ?? "",
+              uom_id: result.uom_id ?? null,
+              uomOptions: [
+                ...(result.uom ? [result.uom] : []),
+                ...(result.purchaseUom &&
+                result.purchaseUom.id !== result.uom?.id
+                  ? [result.purchaseUom]
+                  : []),
+              ],
               image: result.image_url,
               quantity: line.quantity,
             } as LineIssueItem;
-          })
+          }),
         );
 
         setLineItems(fetchedProducts);
@@ -150,6 +160,14 @@ export default function CreateIssueModal({
         toast.error(`Invalid quantity for product: ${p.name}`);
         return;
       }
+      if (!p.location_from_id) {
+        toast.error(`Please select a location for product: ${p.name}`);
+        return;
+      }
+      if (!(p as any).lot_id) {
+        toast.error(`Please select lot for product: ${p.name}`);
+        return;
+      }
     }
 
     const finalForm = {
@@ -169,7 +187,7 @@ export default function CreateIssueModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-      <div className="bg-white w-[700px] rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white w-[900px] rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
         {/* HEADER */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">Add Issue</h2>
@@ -247,15 +265,16 @@ export default function CreateIssueModal({
               <tr>
                 <th className="p-2">Product</th>
                 <th className="p-2">SKU</th>
-                <th className="p-2">Uom</th>
-                <th className="p-2">Quantity</th>
-                <th className="p-2 w-[60px]"></th>
+                <th className="p-2">UOM</th>
+                <th className="p-2">Qty</th>
+                <th className="p-2">Location (From)</th>
+                <th className="p-2">Lot</th>
               </tr>
             </thead>
             <tbody>
               {lineItems.length > 0 ? (
                 lineItems.map((p) => (
-                  <tr key={p.id} className="border-t">
+                  <tr key={p.product_id} className="border-t">
                     <td className="p-2 flex items-center gap-3">
                       <img
                         src={p.image}
@@ -264,13 +283,49 @@ export default function CreateIssueModal({
                       {p.name}
                     </td>
                     <td className="p-2">{p.sku}</td>
-                    <td className="p-2">{p.uom}</td>
+                    <td className="p-2 text-gray-500 text-xs">
+                      {p.uom || "—"}
+                    </td>
                     <td className="p-2">{p.quantity}</td>
+                    <td className="p-2 min-w-[130px]">
+                      <LocationSelect
+                        warehouseId={
+                          form.warehouse ? Number(form.warehouse) : null
+                        }
+                        value={p.location_from_id}
+                        onChange={(locId) =>
+                          setLineItems((prev) =>
+                            prev.map((x) =>
+                              x.product_id === p.product_id
+                                ? { ...x, location_from_id: locId }
+                                : x,
+                            ),
+                          )
+                        }
+                        types={["internal", "output"]}
+                        placeholder="— Select —"
+                      />
+                    </td>
+                    <td className="p-2 min-w-[130px]">
+                      <LotSelect
+                        productId={p.product_id}
+                        value={(p as any).lot_id}
+                        onChange={(lotId) =>
+                          setLineItems((prev) =>
+                            prev.map((x) =>
+                              x.product_id === p.product_id
+                                ? { ...x, lot_id: lotId }
+                                : x,
+                            ),
+                          )
+                        }
+                      />
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="p-4 text-center text-gray-500">
+                  <td colSpan={6} className="p-4 text-center text-gray-500">
                     No products selected
                   </td>
                 </tr>

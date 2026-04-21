@@ -28,6 +28,8 @@ import glJournalRoutes from "../modules/finance/routes/glJournal.routes";
 import apInvoiceRoutes from "../modules/purchase/routes/apInvoice.routes";
 import apPaymentRoutes from "../modules/purchase/routes/apPayment.route";
 import notificationRoutes from "../core/routes/notification.routes";
+import stockLocationRoutes from "../modules/inventory/routes/stockLocation.routes";
+import stockLotRoutes from "../modules/inventory/routes/stockLot.routes";
 const router = express.Router();
 
 router.use("/auth", authRoutes);
@@ -65,6 +67,7 @@ import { reportRoutes } from "../modules/reports/routes";
 
 router.use("/notifications", notificationRoutes);
 router.use("/reports", reportRoutes);
+router.use("/locations", stockLocationRoutes);
+router.use("/lots", stockLotRoutes);
 
 export default router;
-

@@ -1,4 +1,4 @@
-import {
+﻿import {
   Select,
   SelectTrigger,
   SelectValue,
@@ -12,12 +12,17 @@ import { useState, useEffect, useRef } from "react";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "../../../../../store/store";
 import { Product } from "@/features/products/store/product.types";
-import { searchProductsThunk } from "@/features/products/store/product.thunks";
+import {
+  searchProductsThunk,
+  fetchProductByIdThunk,
+} from "@/features/products/store/product.thunks";
 import { toast } from "react-toastify";
 import {
   LineTransferItem,
   TransferForm,
 } from "@/features/inventory/store/stock/stockmove/stockMove.types";
+import { LocationSelect } from "../../LocationSelect";
+import { LotSelect } from "../../LotSelect";
 
 interface TransferModalProps {
   open: boolean;
@@ -112,21 +117,25 @@ export default function CreateTransferModal({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleSelectProduct = (p: Product) => {
+  const handleSelectProduct = async (p: Product) => {
     if (lineItems.some((l) => l.product_id === p.id)) {
       alert("Sản phẩm đã có trong danh sách!");
       setSearchTerm("");
       return;
     }
+    const full = await dispatch(fetchProductByIdThunk(p.id))
+      .unwrap()
+      .catch(() => p as any);
     setLineItems((prev) => [
       ...prev,
       {
         id: undefined,
-        product_id: p.id,
-        name: p.name,
-        sku: p.sku,
-        uom: p.uom ?? "",
-        image: p.image_url ?? "",
+        product_id: full.id,
+        name: full.name,
+        sku: full.sku,
+        uom: full.uom?.name ?? full.uom?.code ?? "",
+        uom_id: full.uom_id ?? null,
+        image: full.image_url ?? "",
         quantity: 1,
       },
     ]);
@@ -137,8 +146,8 @@ export default function CreateTransferModal({
   const handleQuantityChange = (id: number, value: number) => {
     setLineItems((prev) =>
       prev.map((item) =>
-        item.product_id === id ? { ...item, quantity: value } : item
-      )
+        item.product_id === id ? { ...item, quantity: value } : item,
+      ),
     );
   };
   if (!open) return null;
@@ -169,6 +178,18 @@ export default function CreateTransferModal({
         toast.error(`Invalid quantity for product: ${p.name}`);
         return;
       }
+      if (!p.location_from_id) {
+        toast.error(`Please select From Location for product: ${p.name}`);
+        return;
+      }
+      if (!p.location_to_id) {
+        toast.error(`Please select To Location for product: ${p.name}`);
+        return;
+      }
+      if (!(p as any).lot_id) {
+        toast.error(`Please select lot for product: ${p.name}`);
+        return;
+      }
     }
     const finalForm = {
       ...form,
@@ -183,7 +204,7 @@ export default function CreateTransferModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-      <div className="bg-white w-[700px] rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white w-[900px] rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">Add Transfer</h2>
@@ -309,8 +330,11 @@ export default function CreateTransferModal({
               <tr>
                 <th className="p-2">Product</th>
                 <th className="p-2">SKU</th>
-                <th className="p-2">Uom</th>
-                <th className="p-2">Quantity</th>
+                <th className="p-2">UOM</th>
+                <th className="p-2">Qty</th>
+                <th className="p-2">From Location</th>
+                <th className="p-2">To Location</th>
+                <th className="p-2">Lot</th>
                 <th className="p-2 w-[60px]"></th>
               </tr>
             </thead>
@@ -318,7 +342,7 @@ export default function CreateTransferModal({
             <tbody>
               {lineItems.length > 0 ? (
                 lineItems.map((p) => (
-                  <tr key={p.id} className="border-t">
+                  <tr key={p.product_id} className="border-t">
                     <td className="p-2 flex items-center gap-3">
                       <img
                         src={p.image}
@@ -328,18 +352,72 @@ export default function CreateTransferModal({
                       {p.name}
                     </td>
                     <td className="p-2">{p.sku}</td>
-                    <td className="p-2">{p.uom}</td>
-                    <td className="p-2">{p.quantity}</td>
+                    <td className="p-2 text-gray-500 text-xs">
+                      {p.uom || "—"}
+                    </td>
                     <td className="p-2">
                       <input
                         type="number"
                         value={p.quantity}
                         min={1}
-                        className="w-20 border rounded px-2 py-1"
+                        className="w-16 border rounded px-2 py-1"
                         onChange={(e) =>
                           handleQuantityChange(
                             p.product_id,
-                            Number(e.target.value)
+                            Number(e.target.value),
+                          )
+                        }
+                      />
+                    </td>
+                    <td className="p-2 min-w-[120px]">
+                      <LocationSelect
+                        warehouseId={
+                          form.warehouseFrom ? Number(form.warehouseFrom) : null
+                        }
+                        value={p.location_from_id}
+                        onChange={(locId) =>
+                          setLineItems((prev) =>
+                            prev.map((x) =>
+                              x.product_id === p.product_id
+                                ? { ...x, location_from_id: locId }
+                                : x,
+                            ),
+                          )
+                        }
+                        types={["internal", "output"]}
+                        placeholder="— From —"
+                      />
+                    </td>
+                    <td className="p-2 min-w-[120px]">
+                      <LocationSelect
+                        warehouseId={
+                          form.warehouseTo ? Number(form.warehouseTo) : null
+                        }
+                        value={p.location_to_id}
+                        onChange={(locId) =>
+                          setLineItems((prev) =>
+                            prev.map((x) =>
+                              x.product_id === p.product_id
+                                ? { ...x, location_to_id: locId }
+                                : x,
+                            ),
+                          )
+                        }
+                        types={["internal", "input"]}
+                        placeholder="— To —"
+                      />
+                    </td>
+                    <td className="p-2 min-w-[130px]">
+                      <LotSelect
+                        productId={p.product_id}
+                        value={(p as any).lot_id}
+                        onChange={(lotId) =>
+                          setLineItems((prev) =>
+                            prev.map((x) =>
+                              x.product_id === p.product_id
+                                ? { ...x, lot_id: lotId }
+                                : x,
+                            ),
                           )
                         }
                       />
@@ -349,7 +427,7 @@ export default function CreateTransferModal({
                         className="text-red-500 hover:underline"
                         onClick={() =>
                           setLineItems((prev) =>
-                            prev.filter((x) => x.product_id !== p.product_id)
+                            prev.filter((x) => x.product_id !== p.product_id),
                           )
                         }
                       >
@@ -361,7 +439,7 @@ export default function CreateTransferModal({
               ) : (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={8}
                     className="p-4 text-center text-gray-500 italic"
                   >
                     No products selected

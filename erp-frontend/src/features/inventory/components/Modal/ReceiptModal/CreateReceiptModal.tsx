@@ -1,4 +1,4 @@
-import {
+﻿import {
   Select,
   SelectTrigger,
   SelectValue,
@@ -17,6 +17,9 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../../../../store/store";
 import { toast } from "react-toastify";
 import { fetchProductByIdThunk } from "@/features/products/store/product.thunks";
+import { LocationSelect } from "../../LocationSelect";
+import { UomSelect, buildUomOptions } from "../../UomSelect";
+import { LotSelect, NewLotData } from "../../LotSelect";
 
 export interface ProductItem {
   id: number;
@@ -24,7 +27,12 @@ export interface ProductItem {
   image: string;
   sku: string;
   uom: string;
+  uom_id?: number | null;
+  uomOptions?: Array<{ id: number; code: string; name: string }>;
   quantity: number;
+  location_to_id?: number | null;
+  lot_id?: number | null;
+  new_lot?: NewLotData | null;
 }
 
 export interface CreateReceiptForm {
@@ -107,7 +115,7 @@ export default function CreateReceiptModal({
       }
 
       const po = purchaseOrder.items.find(
-        (x: PurchaseOrder) => x.id.toString() === selectedPOId
+        (x: PurchaseOrder) => x.id.toString() === selectedPOId,
       );
 
       if (!po || !po.lines) {
@@ -120,18 +128,20 @@ export default function CreateReceiptModal({
         const fetchedProducts = await Promise.all(
           po.lines.map(async (line) => {
             const result = await dispatch(
-              fetchProductByIdThunk(line.product_id)
+              fetchProductByIdThunk(line.product_id),
             ).unwrap(); // ép return type là Product
 
             return {
               id: result.id,
               name: result.name,
               sku: result.sku,
-              uom: result.uom,
+              uom: result.uom?.name ?? result.uom?.code ?? "",
+              uom_id: result.purchase_uom_id ?? result.uom_id ?? null,
+              uomOptions: buildUomOptions(result),
               image: result.image_url,
               quantity: line.quantity,
             } as ProductItem;
-          })
+          }),
         );
 
         setProducts(fetchedProducts);
@@ -146,7 +156,9 @@ export default function CreateReceiptModal({
 
   const handleQuantityChange = (id: number, value: number) => {
     setProducts((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, quantity: value } : item))
+      prev.map((item) =>
+        item.id === id ? { ...item, quantity: value } : item,
+      ),
     );
   };
 
@@ -180,6 +192,17 @@ export default function CreateReceiptModal({
         toast.error(`Invalid quantity for product: ${p.name}`);
         return;
       }
+      if (!p.location_to_id) {
+        toast.error(`Please select a location for product: ${p.name}`);
+        return;
+      }
+      // Validate new_lot nếu đang tạo mới
+      if (p.new_lot !== undefined && p.new_lot !== null) {
+        if (!p.new_lot.lot_no?.trim()) {
+          toast.error(`Please enter Lot No for product: ${p.name}`);
+          return;
+        }
+      }
     }
 
     const finalForm = {
@@ -199,7 +222,7 @@ export default function CreateReceiptModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-      <div className="bg-white w-[700px] rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white w-[900px] rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
         {/* HEADER */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">Add Receipt</h2>
@@ -277,8 +300,10 @@ export default function CreateReceiptModal({
               <tr>
                 <th className="p-2">Product</th>
                 <th className="p-2">SKU</th>
-                <th className="p-2">Uom</th>
-                <th className="p-2">Quantity</th>
+                <th className="p-2">UOM</th>
+                <th className="p-2">Qty</th>
+                <th className="p-2">Location (To)</th>
+                <th className="p-2">Lot</th>
                 <th className="p-2 w-[60px]"></th>
               </tr>
             </thead>
@@ -294,7 +319,18 @@ export default function CreateReceiptModal({
                       {p.name}
                     </td>
                     <td className="p-2">{p.sku}</td>
-                    <td className="p-2">{p.uom}</td>
+                    <td className="p-2 min-w-[120px]">
+                      <UomSelect
+                        value={p.uom_id}
+                        onChange={(uomId) =>
+                          setProducts((prev) =>
+                            prev.map((x) =>
+                              x.id === p.id ? { ...x, uom_id: uomId } : x,
+                            ),
+                          )
+                        }
+                      />
+                    </td>
                     <td className="p-2">
                       <input
                         type="number"
@@ -306,12 +342,57 @@ export default function CreateReceiptModal({
                         }
                       />
                     </td>
+                    <td className="p-2 min-w-[130px]">
+                      <LocationSelect
+                        warehouseId={
+                          form.warehouse ? Number(form.warehouse) : null
+                        }
+                        value={p.location_to_id}
+                        onChange={(locId) =>
+                          setProducts((prev) =>
+                            prev.map((x) =>
+                              x.id === p.id
+                                ? { ...x, location_to_id: locId }
+                                : x,
+                            ),
+                          )
+                        }
+                        types={["internal", "input"]}
+                        placeholder="— Select —"
+                      />
+                    </td>
+                    <td className="p-2 min-w-[150px]">
+                      <LotSelect
+                        productId={p.id}
+                        value={p.lot_id}
+                        onChange={(lotId) =>
+                          setProducts((prev) =>
+                            prev.map((x) =>
+                              x.id === p.id
+                                ? { ...x, lot_id: lotId, new_lot: null }
+                                : x,
+                            ),
+                          )
+                        }
+                        newLot={p.new_lot}
+                        onNewLotChange={(data) =>
+                          setProducts((prev) =>
+                            prev.map((x) =>
+                              x.id === p.id
+                                ? { ...x, new_lot: data, lot_id: null }
+                                : x,
+                            ),
+                          )
+                        }
+                        allowCreate
+                      />
+                    </td>
                     <td className="p-2 text-right">
                       <button
                         className="text-red-500 hover:underline"
                         onClick={() =>
                           setProducts((prev) =>
-                            prev.filter((x) => x.id !== p.id)
+                            prev.filter((x) => x.id !== p.id),
                           )
                         }
                       >
@@ -322,7 +403,7 @@ export default function CreateReceiptModal({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="p-4 text-center text-gray-500">
+                  <td colSpan={7} className="p-4 text-center text-gray-500">
                     No products selected
                   </td>
                 </tr>

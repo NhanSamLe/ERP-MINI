@@ -132,6 +132,16 @@ const menuItems: MenuItem[] = [
         allowedRoles: ["ADMIN"],
       },
       {
+        name: "Locations",
+        path: "/inventory/locations",
+        allowedRoles: ["ADMIN", "WHMANAGER", "WHSTAFF"],
+      },
+      {
+        name: "Lots",
+        path: "/inventory/lots",
+        allowedRoles: ["ADMIN", "WHMANAGER", "WHSTAFF", "PURCHASE"],
+      },
+      {
         name: "Category",
         path: "/inventory/categories",
         allowedRoles: ["WHMANAGER", "ADMIN", "WHSTAFF"],
@@ -206,7 +216,7 @@ const menuItems: MenuItem[] = [
         path: "/finance/journals",
         allowedRoles: ["ACCOUNT", "CHACC"],
       },
-      
+
       {
         name: "Reports",
         path: "/finance/reports",
@@ -220,7 +230,14 @@ const menuItems: MenuItem[] = [
     name: "HR & Payroll",
     icon: UserCheck,
     path: "/hrm",
-    allowedRoles: ["HRMANAGER", "HR_STAFF", "CEO", "BRANCH_MANAGER","ACCOUNT","CHACC"],
+    allowedRoles: [
+      "HRMANAGER",
+      "HR_STAFF",
+      "CEO",
+      "BRANCH_MANAGER",
+      "ACCOUNT",
+      "CHACC",
+    ],
     subItems: [
       {
         name: "Department",
@@ -258,7 +275,6 @@ const menuItems: MenuItem[] = [
         path: "/hrm/payroll-runs",
         allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC"],
       },
-     
     ],
   },
 
@@ -383,14 +399,14 @@ export default function Sidebar() {
     setExpandedItems((prev) =>
       prev.includes(name)
         ? prev.filter((item) => item !== name)
-        : [...prev, name]
+        : [...prev, name],
     );
   };
   const isModuleActive = (item: MenuItem) => {
     if (item.path && location.pathname.startsWith(item.path)) return true;
     if (item.subItems) {
       return item.subItems.some((sub) =>
-        location.pathname.startsWith(sub.path)
+        location.pathname.startsWith(sub.path),
       );
     }
     return false;
@@ -410,7 +426,7 @@ export default function Sidebar() {
           .filter((item) => canAccess(item.allowedRoles)) // lọc module
           .map((item) => {
             const filteredSubItems = item.subItems?.filter((sub) =>
-              canAccess(sub.allowedRoles)
+              canAccess(sub.allowedRoles),
             );
 
             return (
@@ -421,9 +437,10 @@ export default function Sidebar() {
                   }
                   className={`
                     flex items-center justify-between px-4 py-2.5 mx-2 rounded-lg cursor-pointer
-                    ${isModuleActive(item)
-                      ? "bg-orange-50 text-orange-600"
-                      : "text-gray-700 hover:bg-gray-50"
+                    ${
+                      isModuleActive(item)
+                        ? "bg-orange-50 text-orange-600"
+                        : "text-gray-700 hover:bg-gray-50"
                     }
                     transition-colors
                   `}
@@ -467,10 +484,11 @@ export default function Sidebar() {
                           to={targetPath}
                           className={`
                               block px-4 py-2 text-sm rounded-lg
-                              ${isActive(targetPath)
-                              ? "bg-orange-50 text-orange-600 font-medium"
-                              : "text-gray-600 hover:bg-gray-50"
-                            }
+                              ${
+                                isActive(targetPath)
+                                  ? "bg-orange-50 text-orange-600 font-medium"
+                                  : "text-gray-600 hover:bg-gray-50"
+                              }
                               transition-colors
                             `}
                         >

@@ -1,4 +1,4 @@
-import {
+﻿import {
   Select,
   SelectTrigger,
   SelectValue,
@@ -20,6 +20,8 @@ import {
 } from "@/features/inventory/store/stock/stockmove/stockMove.types";
 import { SaleOrderDto } from "@/features/sales/dto/saleOrder.dto";
 import { SaleOrderState } from "@/features/sales/store/saleOrder.slice";
+import { LocationSelect } from "../../LocationSelect";
+import { LotSelect } from "../../LotSelect";
 
 interface CreateIssueModalProps {
   open: boolean;
@@ -58,6 +60,7 @@ export default function CreateReceiptModal({
 
   const [lineItems, setLineItems] = useState<LineIssueItem[]>([]);
   const [selectedSOId, setSelectedSOId] = useState<string>("");
+  const [isInitializing, setIsInitializing] = useState(false);
 
   const selectedWarehouse =
     warehouses.find((w) => w.id === data?.warehouse_from_id)?.name || "";
@@ -67,31 +70,30 @@ export default function CreateReceiptModal({
 
   useEffect(() => {
     if (!open) return;
-    console.log("Modal open, data:", data);
     setLineItems([]);
     if (!data?.lines || data.lines.length === 0) return;
-    const ids = data.lines.map((line) => line.product_id);
-    Promise.all(ids.map((id) => dispatch(fetchProductByIdThunk(id)).unwrap()))
-      .then((fetchedProducts) => {
-        const items: LineIssueItem[] = (data.lines ?? []).map((line) => {
-          const product = fetchedProducts.find((p) => p.id === line.product_id);
-          return {
-            id: line.id,
-            product_id: product?.id ?? line.product_id,
-            name: product?.name ?? "Unknown",
-            sku: product?.sku ?? "",
-            image: product?.image_url ?? "",
-            uom: line.uom ?? "",
-            quantity: line.quantity ?? 0,
-          };
-        });
-        setLineItems(items);
-        console.log("LineItems after fetch:", items);
-      })
-      .catch(() => {
-        setLineItems([]);
-      });
-  }, [open, data, dispatch]);
+
+    const items: LineIssueItem[] = (data.lines as any[]).map((line) => ({
+      id: line.id,
+      product_id: Number(line.product_id ?? line.product?.id),
+      name: line.product?.name ?? "Unknown",
+      sku: line.product?.sku ?? "",
+      image: line.product?.image_url ?? "",
+      uom: line.product?.uom?.name ?? line.product?.uom?.code ?? "",
+      uom_id: line.uom_id ?? line.product?.uom_id ?? null,
+      uomOptions: [
+        ...(line.product?.uom ? [line.product.uom] : []),
+        ...(line.product?.purchaseUom &&
+        line.product.purchaseUom.id !== line.product?.uom?.id
+          ? [line.product.purchaseUom]
+          : []),
+      ],
+      quantity: Number(line.quantity) ?? 0,
+      location_from_id: line.location_from_id ?? null,
+      lot_id: line.lot_id ?? null,
+    }));
+    setLineItems(items);
+  }, [open, data]);
 
   useEffect(() => {
     if (!open || !data) return;
@@ -106,6 +108,7 @@ export default function CreateReceiptModal({
       reference_type: data.reference_type ?? "",
     });
     setSelectedSOId(data.reference_id.toString());
+    setIsInitializing(true);
   }, [open, data]);
 
   useEffect(() => {
@@ -120,8 +123,13 @@ export default function CreateReceiptModal({
         setLineItems([]);
         return;
       }
+      // Skip khi đang init từ data — lineItems đã được load từ data.lines
+      if (isInitializing) {
+        setIsInitializing(false);
+        return;
+      }
       const so = saleOrder.items.find(
-        (x: SaleOrderDto) => x.id.toString() === selectedSOId
+        (x: SaleOrderDto) => x.id.toString() === selectedSOId,
       );
       if (!so || !so.lines) {
         setLineItems([]);
@@ -131,18 +139,18 @@ export default function CreateReceiptModal({
         const fetchedProducts = await Promise.all(
           so.lines.map(async (line) => {
             const result = await dispatch(
-              fetchProductByIdThunk(line.product_id!)
+              fetchProductByIdThunk(line.product_id!),
             ).unwrap();
             return {
               id: undefined,
               product_id: result.id,
               name: result.name,
               sku: result.sku,
-              uom: result.uom,
+              uom: result.uom?.name ?? result.uom?.code ?? "",
               image: result.image_url,
               quantity: line.quantity,
             } as LineIssueItem;
-          })
+          }),
         );
 
         setLineItems(fetchedProducts);
@@ -185,6 +193,10 @@ export default function CreateReceiptModal({
         toast.error(`Invalid quantity for product: ${p.name}`);
         return;
       }
+      if (!p.lot_id) {
+        toast.error(`Please select lot for product: ${p.name}`);
+        return;
+      }
     }
 
     const finalForm = {
@@ -204,7 +216,7 @@ export default function CreateReceiptModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-      <div className="bg-white w-[700px] rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white w-[900px] rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
         {/* HEADER */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">Add Issue</h2>
@@ -287,15 +299,16 @@ export default function CreateReceiptModal({
               <tr>
                 <th className="p-2">Product</th>
                 <th className="p-2">SKU</th>
-                <th className="p-2">Uom</th>
-                <th className="p-2">Quantity</th>
-                <th className="p-2 w-[60px]"></th>
+                <th className="p-2">UOM</th>
+                <th className="p-2">Qty</th>
+                <th className="p-2">Location (From)</th>
+                <th className="p-2">Lot</th>
               </tr>
             </thead>
             <tbody>
               {lineItems.length > 0 ? (
                 lineItems.map((p) => (
-                  <tr key={p.id} className="border-t">
+                  <tr key={p.product_id} className="border-t">
                     <td className="p-2 flex items-center gap-3">
                       <img
                         src={p.image}
@@ -304,13 +317,50 @@ export default function CreateReceiptModal({
                       {p.name}
                     </td>
                     <td className="p-2">{p.sku}</td>
-                    <td className="p-2">{p.uom}</td>
+                    <td className="p-2 text-gray-500 text-xs">
+                      {p.uom || "—"}
+                    </td>
                     <td className="p-2">{p.quantity}</td>
+                    <td className="p-2 min-w-[130px]">
+                      <LocationSelect
+                        warehouseId={
+                          form.warehouse ? Number(form.warehouse) : null
+                        }
+                        value={p.location_from_id}
+                        onChange={(locId) =>
+                          setLineItems((prev) =>
+                            prev.map((x) =>
+                              x.product_id === p.product_id
+                                ? { ...x, location_from_id: locId }
+                                : x,
+                            ),
+                          )
+                        }
+                        types={["internal", "output"]}
+                        placeholder="— Select —"
+                      />
+                    </td>
+                    <td className="p-2 min-w-[120px]">
+                      <LotSelect
+                        productId={p.product_id}
+                        value={p.lot_id}
+                        onChange={(lotId) =>
+                          setLineItems((prev) =>
+                            prev.map((x) =>
+                              x.product_id === p.product_id
+                                ? { ...x, lot_id: lotId }
+                                : x,
+                            ),
+                          )
+                        }
+                        placeholder="— Lot —"
+                      />
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="p-4 text-center text-gray-500">
+                  <td colSpan={6} className="p-4 text-center text-gray-500">
                     No products selected
                   </td>
                 </tr>

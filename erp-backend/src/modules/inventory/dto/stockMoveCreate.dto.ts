@@ -18,6 +18,11 @@ export interface StockMoveLineDTO {
   location_from_id?: number | null;
   location_to_id?: number | null;
   lot_id?: number | null;
+  new_lot?: {
+    lot_no: string;
+    expiry_date?: string | null;
+    manufacture_date?: string | null;
+  } | null;
 }
 
 export interface StockMoveCreateDTO {
