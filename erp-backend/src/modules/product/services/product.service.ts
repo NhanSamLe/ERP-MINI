@@ -351,6 +351,16 @@ export const productService = {
           as: "images",
           attributes: ["id", "image_url", "image_public_id"],
         },
+        {
+          model: Uom,
+          as: "uom",
+          attributes: ["id", "code", "name"],
+        },
+        {
+          model: Uom,
+          as: "purchaseUom",
+          attributes: ["id", "code", "name"],
+        },
       ],
       limit: 20,
       order: [["name", "ASC"]],

@@ -1,4 +1,4 @@
-import {
+﻿import {
   Select,
   SelectTrigger,
   SelectValue,
@@ -12,16 +12,14 @@ import { useState, useEffect, useRef } from "react";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "../../../../../store/store";
 import { Product } from "@/features/products/store/product.types";
-import {
-  fetchProductByIdThunk,
-  searchProductsThunk,
-} from "@/features/products/store/product.thunks";
+import { searchProductsThunk } from "@/features/products/store/product.thunks";
 import { toast } from "react-toastify";
 import {
   AdjustmentForm,
   LineAdjustmentItem,
   StockMove,
 } from "@/features/inventory/store/stock/stockmove/stockMove.types";
+import { LocationSelect } from "../../LocationSelect";
 
 interface AdjustmentModalProps {
   open: boolean;
@@ -70,31 +68,30 @@ export default function EditAdjustmentModal({
 
   useEffect(() => {
     if (!open) return;
-    console.log("Modal open, data:", data);
     setLineItems([]);
     if (!data?.lines || data.lines.length === 0) return;
-    const ids = data.lines.map((line) => line.product_id);
-    Promise.all(ids.map((id) => dispatch(fetchProductByIdThunk(id)).unwrap()))
-      .then((fetchedProducts) => {
-        const items: LineAdjustmentItem[] = (data.lines ?? []).map((line) => {
-          const product = fetchedProducts.find((p) => p.id === line.product_id);
-          return {
-            id: line.id,
-            product_id: product?.id ?? line.product_id,
-            name: product?.name ?? "Unknown",
-            sku: product?.sku ?? "",
-            image: product?.image_url ?? "",
-            uom: line.uom ?? "",
-            quantity: line.quantity ?? 0,
-          };
-        });
-        setLineItems(items);
-        console.log("LineItems after fetch:", items);
-      })
-      .catch(() => {
-        setLineItems([]);
-      });
-  }, [open, data, dispatch]);
+
+    // Dùng product nested từ API response (đã có sẵn trong lines)
+    const items: LineAdjustmentItem[] = (data.lines as any[]).map((line) => ({
+      id: line.id,
+      product_id: Number(line.product_id ?? line.product?.id),
+      name: line.product?.name ?? "Unknown",
+      sku: line.product?.sku ?? "",
+      image: line.product?.image_url ?? "",
+      uom: line.product?.uom?.name ?? line.product?.uom?.code ?? "",
+      uom_id: line.uom_id ?? line.product?.uom_id ?? null,
+      uomOptions: [
+        ...(line.product?.uom ? [line.product.uom] : []),
+        ...(line.product?.purchaseUom &&
+        line.product.purchaseUom.id !== line.product?.uom?.id
+          ? [line.product.purchaseUom]
+          : []),
+      ],
+      quantity: Number(line.quantity) ?? 0,
+      location_from_id: line.location_from_id ?? null,
+    }));
+    setLineItems(items);
+  }, [open, data]);
 
   useEffect(() => {
     if (!open || !data) return;
@@ -161,7 +158,15 @@ export default function EditAdjustmentModal({
         product_id: p.id,
         name: p.name,
         sku: p.sku,
-        uom: p.uom ?? "",
+        uom:
+          (p.uom as any)?.name ?? (p.uom as any)?.code ?? (p.uom as any) ?? "",
+        uom_id: (p as any).uom_id ?? null,
+        uomOptions: [
+          ...(p.uom ? [p.uom as any] : []),
+          ...(p.purchaseUom && (p.purchaseUom as any).id !== (p.uom as any)?.id
+            ? [p.purchaseUom as any]
+            : []),
+        ],
         image: p.image_url ?? "",
         quantity: 1,
       },
@@ -173,8 +178,8 @@ export default function EditAdjustmentModal({
   const handleQuantityChange = (id: number, value: number) => {
     setLineItems((prev) =>
       prev.map((item) =>
-        item.product_id === id ? { ...item, quantity: value } : item
-      )
+        item.product_id === id ? { ...item, quantity: value } : item,
+      ),
     );
   };
   if (!open) return null;
@@ -207,7 +212,7 @@ export default function EditAdjustmentModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-      <div className="bg-white w-[700px] rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white w-[900px] rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">Edit Adjustment</h2>
@@ -307,8 +312,9 @@ export default function EditAdjustmentModal({
               <tr>
                 <th className="p-2">Product</th>
                 <th className="p-2">SKU</th>
-                <th className="p-2">Uom</th>
-                <th className="p-2">Quantity</th>
+                <th className="p-2">UOM</th>
+                <th className="p-2">Qty</th>
+                <th className="p-2">Location</th>
                 <th className="p-2 w-[60px]"></th>
               </tr>
             </thead>
@@ -316,7 +322,7 @@ export default function EditAdjustmentModal({
             <tbody>
               {lineItems.length > 0 ? (
                 lineItems.map((p) => (
-                  <tr key={p.id} className="border-t">
+                  <tr key={p.product_id} className="border-t">
                     <td className="p-2 flex items-center gap-3">
                       <img
                         src={p.image}
@@ -326,8 +332,9 @@ export default function EditAdjustmentModal({
                       {p.name}
                     </td>
                     <td className="p-2">{p.sku}</td>
-                    <td className="p-2">{p.uom}</td>
-                    <td className="p-2">{p.quantity}</td>
+                    <td className="p-2 text-gray-500 text-xs">
+                      {p.uom || "—"}
+                    </td>
                     <td className="p-2">
                       <input
                         type="number"
@@ -336,9 +343,28 @@ export default function EditAdjustmentModal({
                         onChange={(e) =>
                           handleQuantityChange(
                             p.product_id,
-                            Number(e.target.value)
+                            Number(e.target.value),
                           )
                         }
+                      />
+                    </td>
+                    <td className="p-2 min-w-[130px]">
+                      <LocationSelect
+                        warehouseId={
+                          form.warehouse ? Number(form.warehouse) : null
+                        }
+                        value={p.location_from_id}
+                        onChange={(locId) =>
+                          setLineItems((prev) =>
+                            prev.map((x) =>
+                              x.product_id === p.product_id
+                                ? { ...x, location_from_id: locId }
+                                : x,
+                            ),
+                          )
+                        }
+                        types={["internal"]}
+                        placeholder="— Select —"
                       />
                     </td>
                     <td className="p-2 text-right">
@@ -346,7 +372,7 @@ export default function EditAdjustmentModal({
                         className="text-red-500 hover:underline"
                         onClick={() =>
                           setLineItems((prev) =>
-                            prev.filter((x) => x.product_id !== p.product_id)
+                            prev.filter((x) => x.product_id !== p.product_id),
                           )
                         }
                       >
@@ -358,7 +384,7 @@ export default function EditAdjustmentModal({
               ) : (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="p-4 text-center text-gray-500 italic"
                   >
                     No products selected

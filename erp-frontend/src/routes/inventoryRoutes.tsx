@@ -6,6 +6,8 @@ import StockMovePages from "../features/inventory/pages/StockMovePages";
 import ViewStockMovePage from "@/features/inventory/pages/ViewStockMovePage";
 import WarehousePages from "@/features/inventory/pages/WarehousePages";
 import WarehouseForm from "@/features/inventory/pages/WarehouseForm";
+import StockLocationPage from "@/features/inventory/pages/StockLocationPage";
+import StockLotPage from "@/features/inventory/pages/StockLotPage";
 
 const inventoryRoutes: RouteObject[] = [
   {
@@ -40,6 +42,24 @@ const inventoryRoutes: RouteObject[] = [
   {
     path: "/inventory/warehouses/:id/edit",
     element: <WarehouseForm mode="edit" />,
+  },
+  {
+    path: "/inventory/locations",
+    element: (
+      <ProtectedRoute allowedRoles={["ADMIN", "WHMANAGER", "WHSTAFF"]}>
+        <StockLocationPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/inventory/lots",
+    element: (
+      <ProtectedRoute
+        allowedRoles={["ADMIN", "WHMANAGER", "WHSTAFF", "PURCHASE"]}
+      >
+        <StockLotPage />
+      </ProtectedRoute>
+    ),
   },
 
   {

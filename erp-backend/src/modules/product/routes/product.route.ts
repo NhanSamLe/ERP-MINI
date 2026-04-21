@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { productController } from "../controllers/product.controller";
 import { productSupplierInfoController } from "../controllers/productSupplierInfo.controller";
+import { stockLotController } from "../../inventory/controllers/stockLot.controller";
 import { authMiddleware } from "../../../core/middleware/auth";
 import { upload } from "../../../core/middleware/upload";
 import { Role } from "../../../core/types/enum";
@@ -104,6 +105,13 @@ router.patch(
   "/:productId/suppliers/:id/set-preferred",
   authMiddleware([Role.ADMIN, Role.PURCHASEMANAGER]),
   productSupplierInfoController.setPreferred,
+);
+
+// ===== Product Lots Routes =====
+router.get(
+  "/:productId/lots",
+  authMiddleware([Role.ADMIN, Role.PURCHASE, Role.WHSTAFF, Role.WHMANAGER]),
+  stockLotController.getByProduct,
 );
 
 export default router;

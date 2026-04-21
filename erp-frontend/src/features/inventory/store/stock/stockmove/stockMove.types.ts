@@ -1,4 +1,4 @@
-import { Warehouse } from "../warehouse/warehouse.types";
+﻿import { Warehouse } from "../warehouse/warehouse.types";
 
 export type StockMoveType = "receipt" | "issue" | "transfer" | "adjustment";
 export type ReferenceType =
@@ -12,7 +12,11 @@ export interface StockMoveLine {
   move_id: number;
   product_id: number;
   quantity: number;
-  uom: string;
+  uom_id?: number | null;
+  uom?: { id: number; code: string; name: string } | null;
+  location_from_id?: number | null;
+  location_to_id?: number | null;
+  lot_id?: number | null;
   created_at: string;
   updated_at: string;
   product: {
@@ -20,8 +24,22 @@ export interface StockMoveLine {
     name: string;
     sku: string;
     image_url: string;
-    uom: string;
+    uom_id?: number;
+    uom?: { id: number; code: string; name: string };
   };
+  locationFrom?: {
+    id: number;
+    name: string;
+    code: string;
+    type: string;
+  } | null;
+  locationTo?: { id: number; name: string; code: string; type: string } | null;
+  lot?: {
+    id: number;
+    lot_no: string;
+    expiry_date?: string;
+    manufacture_date?: string;
+  } | null;
 }
 
 export interface StockMove {
@@ -78,6 +96,15 @@ export interface StockMoveCreate {
     product_id: number;
     quantity: number;
     uom: string;
+    uom_id?: number | null;
+    location_from_id?: number | null;
+    location_to_id?: number | null;
+    lot_id?: number | null;
+    new_lot?: {
+      lot_no: string;
+      expiry_date?: string;
+      manufacture_date?: string;
+    } | null;
   }[];
 }
 
@@ -99,6 +126,10 @@ export interface StockMoveTransferCreate {
     product_id: number;
     quantity: number;
     uom: string;
+    uom_id?: number | null;
+    location_from_id?: number | null;
+    location_to_id?: number | null;
+    lot_id?: number | null;
   }[];
 }
 
@@ -120,6 +151,10 @@ export interface StockMoveTransferUpdate {
     product_id: number;
     quantity: number;
     uom: string;
+    uom_id?: number | null;
+    location_from_id?: number | null;
+    location_to_id?: number | null;
+    lot_id?: number | null;
   }[];
 }
 
@@ -141,6 +176,10 @@ export interface StockMoveUpdate {
     product_id: number | undefined;
     quantity: number;
     uom: string;
+    uom_id?: number | null;
+    location_from_id?: number | null;
+    location_to_id?: number | null;
+    lot_id?: number | null;
   }[];
 }
 
@@ -158,7 +197,11 @@ export interface LineTransferItem {
   image: string;
   sku: string;
   uom: string;
+  uom_id?: number | null;
+  uomOptions?: Array<{ id: number; code: string; name: string }>;
   quantity: number;
+  location_from_id?: number | null;
+  location_to_id?: number | null;
 }
 
 export interface TransferForm {
@@ -187,7 +230,10 @@ export interface LineAdjustmentItem {
   image: string;
   sku: string;
   uom: string;
+  uom_id?: number | null;
+  uomOptions?: Array<{ id: number; code: string; name: string }>;
   quantity: number;
+  location_from_id?: number | null;
 }
 
 export interface IssueForm {
@@ -207,7 +253,10 @@ export interface LineIssueItem {
   image: string;
   sku: string;
   uom: string;
+  uom_id?: number | null;
+  uomOptions?: Array<{ id: number; code: string; name: string }>;
   quantity: number;
+  location_from_id?: number | null;
 }
 
 export interface StockMoveAdjustmentCreate {
@@ -227,6 +276,10 @@ export interface StockMoveAdjustmentCreate {
     product_id: number;
     quantity: number;
     uom: string;
+    uom_id?: number | null;
+    location_from_id?: number | null;
+    location_to_id?: number | null;
+    lot_id?: number | null;
   }[];
 }
 
@@ -247,6 +300,10 @@ export interface StockMoveAdjustmentUpdate {
     product_id: number;
     quantity: number;
     uom: string;
+    uom_id?: number | null;
+    location_from_id?: number | null;
+    location_to_id?: number | null;
+    lot_id?: number | null;
   }[];
 }
 
