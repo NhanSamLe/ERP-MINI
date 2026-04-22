@@ -30,6 +30,7 @@ import apPaymentRoutes from "../modules/purchase/routes/apPayment.route";
 import notificationRoutes from "../core/routes/notification.routes";
 import stockLocationRoutes from "../modules/inventory/routes/stockLocation.routes";
 import stockLotRoutes from "../modules/inventory/routes/stockLot.routes";
+import physicalInventoryRoutes from "../modules/inventory/routes/physicalInventory.routes";
 const router = express.Router();
 
 router.use("/auth", authRoutes);
@@ -69,5 +70,6 @@ router.use("/notifications", notificationRoutes);
 router.use("/reports", reportRoutes);
 router.use("/locations", stockLocationRoutes);
 router.use("/lots", stockLotRoutes);
+router.use("/physical-inventories", physicalInventoryRoutes);
 
 export default router;

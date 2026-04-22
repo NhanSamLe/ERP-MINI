@@ -20,6 +20,7 @@ import { warehouseReducer } from "../features/inventory/store";
 import { stockMoveReducer } from "../features/inventory/store";
 import { stockLocationReducer } from "../features/inventory/store";
 import { stockLotReducer } from "../features/inventory/store";
+import { physicalInventoryReducer } from "../features/inventory/store";
 import {
   leadReducer,
   opportunityReducer,
@@ -55,6 +56,7 @@ const rootReducer = combineReducers({
   stockMove: stockMoveReducer,
   stockLocation: stockLocationReducer,
   stockLot: stockLotReducer,
+  physicalInventory: physicalInventoryReducer,
   lead: leadReducer,
   opportunity: opportunityReducer,
   activity: activityReducer,

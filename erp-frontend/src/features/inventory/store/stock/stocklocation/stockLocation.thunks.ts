@@ -1,16 +1,13 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import {
-  stockLocationApi,
-  CreateLocationDTO,
-  UpdateLocationDTO,
-} from "../../../api/stockLocation.api";
+import { stockLocationService } from "../../../services/stockLocation.service";
+import { CreateLocationDTO, UpdateLocationDTO } from "./stockLocation.types";
 import { getErrorMessage } from "../../../../../utils/ErrorHelper";
 
 export const fetchLocationsThunk = createAsyncThunk(
   "stockLocation/fetchAll",
   async (warehouseId: number, { rejectWithValue }) => {
     try {
-      return await stockLocationApi.getAll(warehouseId);
+      return await stockLocationService.getAll(warehouseId);
     } catch (e) {
       return rejectWithValue(getErrorMessage(e));
     }
@@ -21,7 +18,7 @@ export const fetchLocationTreeThunk = createAsyncThunk(
   "stockLocation/fetchTree",
   async (warehouseId: number, { rejectWithValue }) => {
     try {
-      return await stockLocationApi.getTree(warehouseId);
+      return await stockLocationService.getTree(warehouseId);
     } catch (e) {
       return rejectWithValue(getErrorMessage(e));
     }
@@ -32,7 +29,7 @@ export const fetchLocationByIdThunk = createAsyncThunk(
   "stockLocation/fetchById",
   async (id: number, { rejectWithValue }) => {
     try {
-      return await stockLocationApi.getById(id);
+      return await stockLocationService.getById(id);
     } catch (e) {
       return rejectWithValue(getErrorMessage(e));
     }
@@ -43,7 +40,7 @@ export const createLocationThunk = createAsyncThunk(
   "stockLocation/create",
   async (data: CreateLocationDTO, { rejectWithValue }) => {
     try {
-      return await stockLocationApi.create(data);
+      return await stockLocationService.create(data);
     } catch (e) {
       return rejectWithValue(getErrorMessage(e));
     }
@@ -57,7 +54,7 @@ export const updateLocationThunk = createAsyncThunk(
     { rejectWithValue },
   ) => {
     try {
-      return await stockLocationApi.update(id, data);
+      return await stockLocationService.update(id, data);
     } catch (e) {
       return rejectWithValue(getErrorMessage(e));
     }
@@ -68,7 +65,7 @@ export const deleteLocationThunk = createAsyncThunk(
   "stockLocation/delete",
   async (id: number, { rejectWithValue }) => {
     try {
-      await stockLocationApi.delete(id);
+      await stockLocationService.delete(id);
       return id;
     } catch (e) {
       return rejectWithValue(getErrorMessage(e));
