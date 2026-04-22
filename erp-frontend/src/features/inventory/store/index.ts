@@ -17,3 +17,8 @@ export * from "./stock/stocklocation/stockLocation.thunks";
 export * from "./stock/stocklocation/stockLocation.types";
 
 export * from "./stock/stocklot/stockLot.thunks";
+export * from "./stock/stocklot/stockLot.types";
+
+export { physicalInventoryReducer } from "./stock/physicalInventory/physicalInventory.slice";
+export * from "./stock/physicalInventory/physicalInventory.thunks";
+export * from "./stock/physicalInventory/physicalInventory.types";

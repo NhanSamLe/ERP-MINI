@@ -1,9 +1,6 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import {
-  stockLotApi,
-  CreateLotDTO,
-  UpdateLotDTO,
-} from "../../../api/stockLot.api";
+import { stockLotService } from "../../../services/stockLot.service";
+import { CreateLotDTO, UpdateLotDTO } from "./stockLot.types";
 import { getErrorMessage } from "../../../../../utils/ErrorHelper";
 
 export const fetchLotsThunk = createAsyncThunk(
@@ -13,7 +10,7 @@ export const fetchLotsThunk = createAsyncThunk(
     { rejectWithValue },
   ) => {
     try {
-      return await stockLotApi.getAll(params);
+      return await stockLotService.getAll(params);
     } catch (e) {
       return rejectWithValue(getErrorMessage(e));
     }
@@ -24,7 +21,7 @@ export const fetchLotByIdThunk = createAsyncThunk(
   "stockLot/fetchById",
   async (id: number, { rejectWithValue }) => {
     try {
-      return await stockLotApi.getById(id);
+      return await stockLotService.getById(id);
     } catch (e) {
       return rejectWithValue(getErrorMessage(e));
     }
@@ -35,7 +32,7 @@ export const fetchLotsByProductThunk = createAsyncThunk(
   "stockLot/fetchByProduct",
   async (productId: number, { rejectWithValue }) => {
     try {
-      return await stockLotApi.getByProduct(productId);
+      return await stockLotService.getByProduct(productId);
     } catch (e) {
       return rejectWithValue(getErrorMessage(e));
     }
@@ -46,7 +43,7 @@ export const fetchExpiringLotsThunk = createAsyncThunk(
   "stockLot/fetchExpiring",
   async (days: number = 30, { rejectWithValue }) => {
     try {
-      return await stockLotApi.getExpiring(days);
+      return await stockLotService.getExpiring(days);
     } catch (e) {
       return rejectWithValue(getErrorMessage(e));
     }
@@ -57,7 +54,7 @@ export const createLotThunk = createAsyncThunk(
   "stockLot/create",
   async (data: CreateLotDTO, { rejectWithValue }) => {
     try {
-      return await stockLotApi.create(data);
+      return await stockLotService.create(data);
     } catch (e) {
       return rejectWithValue(getErrorMessage(e));
     }
@@ -71,7 +68,7 @@ export const updateLotThunk = createAsyncThunk(
     { rejectWithValue },
   ) => {
     try {
-      return await stockLotApi.update(id, data);
+      return await stockLotService.update(id, data);
     } catch (e) {
       return rejectWithValue(getErrorMessage(e));
     }
@@ -82,7 +79,7 @@ export const deleteLotThunk = createAsyncThunk(
   "stockLot/delete",
   async (id: number, { rejectWithValue }) => {
     try {
-      await stockLotApi.delete(id);
+      await stockLotService.delete(id);
       return id;
     } catch (e) {
       return rejectWithValue(getErrorMessage(e));

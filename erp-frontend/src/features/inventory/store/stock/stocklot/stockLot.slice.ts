@@ -1,5 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { StockLot } from "../../../api/stockLot.api";
+import { StockLotState } from "./stockLot.types";
 import {
   fetchLotsThunk,
   fetchLotByIdThunk,
@@ -8,14 +8,6 @@ import {
   updateLotThunk,
   deleteLotThunk,
 } from "./stockLot.thunks";
-
-interface StockLotState {
-  items: StockLot[];
-  expiring: StockLot[];
-  selectedItem: StockLot | null;
-  loading: boolean;
-  error: string | null;
-}
 
 const initialState: StockLotState = {
   items: [],

@@ -1080,25 +1080,28 @@ export const stockMoveService = {
     warehouseId: number,
     productId: number,
     quantityChange: number,
+    locationId?: number | null,
+    lotId?: number | null,
   ) {
-    const existing = await StockBalance.findOne({
-      where: { warehouse_id: warehouseId, product_id: productId },
-    });
+    const where: any = { warehouse_id: warehouseId, product_id: productId };
+    if (locationId != null) where.location_id = locationId;
+    if (lotId != null) where.lot_id = lotId;
 
+    const existing = await StockBalance.findOne({ where });
     const qtyChange = parseFloat(String(quantityChange));
 
     if (!existing) {
       return StockBalance.create({
         warehouse_id: warehouseId,
         product_id: productId,
+        location_id: locationId ?? null,
+        lot_id: lotId ?? null,
         quantity: qtyChange,
       });
     }
 
     const currentQty = parseFloat(existing.quantity as any);
-
     existing.quantity = currentQty + qtyChange;
-
     return existing.save();
   },
 
@@ -1235,7 +1238,6 @@ export const stockMoveService = {
   },
 
   async processReceipt(move: any, lines: any[]) {
-    // Cập nhật stock balance với UOM conversion
     for (const line of lines) {
       const product = await Product.findByPk(line.product_id, {
         attributes: ["uom_id"],
@@ -1249,6 +1251,8 @@ export const stockMoveService = {
         move.warehouse_to_id,
         line.product_id,
         actualQty,
+        line.location_to_id ?? null,
+        line.lot_id ?? null,
       );
     }
 
@@ -1332,6 +1336,8 @@ export const stockMoveService = {
         move.warehouse_from_id,
         line.product_id,
         -actualQty,
+        line.location_from_id ?? null,
+        line.lot_id ?? null,
       );
     }
     if (move.reference_type === "sale_order") {
@@ -1359,11 +1365,15 @@ export const stockMoveService = {
         move.warehouse_from_id,
         line.product_id,
         -actualQty,
+        line.location_from_id ?? null,
+        line.lot_id ?? null,
       );
       await this.updateStockBalance(
         move.warehouse_to_id,
         line.product_id,
         +actualQty,
+        line.location_to_id ?? null,
+        line.lot_id ?? null,
       );
     }
   },
@@ -1386,6 +1396,8 @@ export const stockMoveService = {
         move.warehouse_from_id,
         line.product_id,
         actualQty,
+        line.location_from_id ?? null,
+        line.lot_id ?? null,
       );
     }
   },
