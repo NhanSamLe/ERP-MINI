@@ -1082,6 +1082,7 @@ export const stockMoveService = {
     quantityChange: number,
     locationId?: number | null,
     lotId?: number | null,
+    unitCost?: number | null,
   ) {
     const where: any = { warehouse_id: warehouseId, product_id: productId };
     if (locationId != null) where.location_id = locationId;
@@ -1089,19 +1090,47 @@ export const stockMoveService = {
 
     const existing = await StockBalance.findOne({ where });
     const qtyChange = parseFloat(String(quantityChange));
+    const incomingCost = unitCost != null ? parseFloat(String(unitCost)) : null;
 
     if (!existing) {
+      // Tạo mới — chỉ có ý nghĩa khi nhập kho (qty > 0)
+      const initCost = incomingCost ?? 0;
       return StockBalance.create({
         warehouse_id: warehouseId,
         product_id: productId,
         location_id: locationId ?? null,
         lot_id: lotId ?? null,
         quantity: qtyChange,
+        unit_cost: initCost,
+        total_value: qtyChange * initCost,
       });
     }
 
-    const currentQty = parseFloat(existing.quantity as any);
-    existing.quantity = currentQty + qtyChange;
+    const oldQty = parseFloat(String(existing.quantity));
+    const oldCost = parseFloat(String(existing.unit_cost ?? 0));
+    const newQty = oldQty + qtyChange;
+
+    let newCost: number;
+    let newValue: number;
+
+    if (qtyChange > 0) {
+      // Nhập kho → tính Weighted Average Cost
+      if (incomingCost != null && newQty > 0) {
+        newCost = (oldQty * oldCost + qtyChange * incomingCost) / newQty;
+      } else {
+        // Không có unit_cost (transfer, adjustment tăng) → giữ nguyên cost cũ
+        newCost = oldCost;
+      }
+    } else {
+      // Xuất kho / giảm → giữ nguyên unit_cost
+      newCost = oldCost;
+    }
+
+    newValue = newQty * newCost;
+
+    existing.quantity = newQty;
+    existing.unit_cost = newCost;
+    existing.total_value = newValue;
     return existing.save();
   },
 
@@ -1247,12 +1276,25 @@ export const stockMoveService = {
         line.uom_id,
         product?.uom_id,
       );
+
+      // Lấy unit_price từ PO line để tính WAC
+      let unitCost: number | null = null;
+      if (move.reference_type === "purchase_order" && move.reference_id) {
+        const poLine = await PurchaseOrderLine.findOne({
+          where: { po_id: move.reference_id, product_id: line.product_id },
+        });
+        if (poLine?.unit_price != null) {
+          unitCost = parseFloat(String(poLine.unit_price));
+        }
+      }
+
       await this.updateStockBalance(
         move.warehouse_to_id,
         line.product_id,
         actualQty,
         line.location_to_id ?? null,
         line.lot_id ?? null,
+        unitCost,
       );
     }
 
