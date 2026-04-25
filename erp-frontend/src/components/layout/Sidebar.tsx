@@ -161,6 +161,11 @@ const menuItems: MenuItem[] = [
         path: "/inventory/physical-inventories",
         allowedRoles: ["ADMIN", "WHMANAGER", "WHSTAFF"],
       },
+      {
+        name: "Reports",
+        path: "/inventory/reports",
+        allowedRoles: ["ADMIN", "WHMANAGER", "WHSTAFF"],
+      },
     ],
   },
 

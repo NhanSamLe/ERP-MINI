@@ -45,4 +45,16 @@ export const stockBalanceController = {
     const data = await stockBalanceService.findByProduct(productId);
     return res.json(data);
   },
+
+  async recalculateCosts(req: Request, res: Response) {
+    try {
+      const result = await stockBalanceService.recalculateCosts();
+      return res.json({
+        message: `Recalculated ${result.updated}/${result.total} balances`,
+        ...result,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  },
 };
