@@ -221,4 +221,66 @@ export const inventoryTools: ITool[] = [
       }
     },
   },
+  {
+    name: "get_low_stock",
+    description:
+      "Lấy danh sách sản phẩm sắp hết hàng (dưới mức tồn kho tối thiểu). Dùng khi hỏi về hàng sắp hết, cần nhập thêm hàng.",
+    parameters: {
+      type: "object",
+      properties: {
+        warehouse_name: {
+          type: "string",
+          description: "Tên kho cần lọc (tùy chọn)",
+        },
+      },
+    },
+    async execute(args: any, context: ToolContext): Promise<ToolResult> {
+      try {
+        const { StockBalance } =
+          await import("../../inventory/models/stockBalance.model");
+        const { Product } = await import("../../product/models/product.model");
+        const { Warehouse } =
+          await import("../../inventory/models/warehouse.model");
+        const { Uom } = await import("../../master-data/models/uom.model");
+
+        const warehouseWhere: any = { branch_id: context.branchId };
+        if (args.warehouse_name)
+          warehouseWhere.name = { [Op.like]: `%${args.warehouse_name}%` };
+
+        const balances = await StockBalance.findAll({
+          include: [
+            {
+              model: Warehouse,
+              as: "warehouse",
+              where: warehouseWhere,
+              attributes: ["id", "name"],
+            },
+            {
+              model: Product,
+              as: "product",
+              attributes: ["id", "name", "sku", "min_stock_qty"],
+              include: [
+                { model: Uom, as: "uom", attributes: ["code", "name"] },
+              ],
+            },
+          ],
+        });
+
+        const lowStock = balances.filter((b: any) => {
+          const minQty = parseFloat(String(b.product?.min_stock_qty ?? 0));
+          return minQty > 0 && parseFloat(String(b.quantity)) < minQty;
+        });
+
+        return {
+          success: true,
+          data: {
+            total: lowStock.length,
+            items: lowStock,
+          },
+        };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    },
+  },
 ];

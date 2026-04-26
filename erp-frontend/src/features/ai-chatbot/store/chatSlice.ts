@@ -112,9 +112,8 @@ const chatSlice = createSlice({
       })
 
       // fetchMessages
-      .addCase(fetchMessagesThunk.pending, (s) => {
-        s.isLoading = true;
-        s.error = null;
+      .addCase(fetchMessagesThunk.pending, () => {
+        // Không set isLoading = true ở đây để không block UI khi switch conversation
       })
       .addCase(fetchMessagesThunk.fulfilled, (s, a) => {
         s.isLoading = false;

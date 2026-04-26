@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { chatController } from "./controllers/chat.controller";
 import { authMiddleware } from "../../core/middleware/auth";
+import { chatRateLimit } from "../../core/middleware/chatRateLimit";
 import { Role } from "../../core/types/enum";
 
 const router = Router();
@@ -26,6 +27,7 @@ router.get("/conversations/:id/messages", allRoles, chatController.getMessages);
 router.post(
   "/conversations/:id/messages",
   allRoles,
+  chatRateLimit,
   chatController.sendMessage,
 );
 

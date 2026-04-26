@@ -5,6 +5,7 @@ import { ToolExecutor } from "./tool.executor";
 import { getToolDefinitions } from "../tools/registry";
 import { LLMMessage, ToolContext, ToolCall } from "../types/llm.types";
 import { logger } from "../../../config/logger";
+import { trimToTokenLimit, estimateTotalTokens } from "../utils/tokenCounter";
 
 const CONTEXT_WINDOW = Number(process.env.CHATBOT_CONTEXT_WINDOW ?? 20);
 const BASE_URL = process.env.APP_BASE_URL ?? "http://localhost:3000/api";
@@ -82,17 +83,21 @@ export const chatService = {
       content,
     });
 
-    // Cập nhật title nếu chưa có
+    // Cập nhật title nếu chưa có — async, không block main flow
     if (!conv.title) {
-      const shortTitle = content.slice(0, 80);
-      await conv.update({ title: shortTitle });
+      conv.update({ title: content.slice(0, 80) }).catch(() => {});
     }
 
     // Lấy context window
     const contextMessages = await this._getContextWindow(conversationId);
 
     // Chuẩn bị tool context
-    const toolContext: ToolContext = { userToken, branchId, baseUrl: BASE_URL };
+    const toolContext: ToolContext = {
+      userToken,
+      branchId,
+      baseUrl: BASE_URL,
+      conversationId,
+    };
 
     // Gọi LLM và xử lý tool calling loop
     let llm: any;
@@ -139,15 +144,39 @@ export const chatService = {
   async _getContextWindow(conversationId: number): Promise<LLMMessage[]> {
     const messages = await ChatMessage.findAll({
       where: { conversation_id: conversationId },
-      order: [["created_at", "DESC"]],
+      order: [["created_at", "ASC"]],
       limit: CONTEXT_WINDOW,
     });
 
-    return messages.reverse().map((m) => ({
+    // Lọc bỏ các assistant messages có tool_calls nhưng không có tool response
+    // (xảy ra với conversation cũ trước khi có tính năng lưu tool result)
+    const toolCallIds = new Set(
+      messages
+        .filter((m) => m.role === "tool" && m.tool_call_id)
+        .map((m) => m.tool_call_id!),
+    );
+
+    const filtered = messages.filter((m) => {
+      if (m.role === "assistant" && m.tool_calls_json) {
+        const toolCalls = JSON.parse(m.tool_calls_json) as ToolCall[];
+        // Chỉ giữ nếu tất cả tool_calls đều có response
+        return toolCalls.every((tc) => toolCallIds.has(tc.id));
+      }
+      return true;
+    });
+
+    return filtered.map((m) => ({
       role: m.role as any,
       content: m.content,
       ...(m.tool_call_id && { tool_call_id: m.tool_call_id }),
       ...(m.tool_name && { name: m.tool_name }),
+      ...(m.tool_calls_json && {
+        tool_calls: JSON.parse(m.tool_calls_json).map((tc: ToolCall) => ({
+          id: tc.id,
+          name: tc.name,
+          arguments: tc.arguments,
+        })),
+      }),
     }));
   },
 
@@ -162,8 +191,16 @@ export const chatService = {
     const MAX_ITERATIONS = 5;
 
     for (let i = 0; i < MAX_ITERATIONS; i++) {
+      // Trim context nếu vượt token limit trước mỗi lần gọi LLM
+      const trimmed = trimToTokenLimit(currentMessages);
+      if (trimmed.length < currentMessages.length) {
+        logger.info(
+          `[ChatService] Trimmed context: ${currentMessages.length} → ${trimmed.length} messages (~${estimateTotalTokens(trimmed)} tokens)`,
+        );
+      }
+
       const response = await llm.chat({
-        messages: currentMessages,
+        messages: trimmed,
         tools,
         systemPrompt: SYSTEM_PROMPT,
       });
@@ -197,6 +234,14 @@ export const chatService = {
         })),
       });
 
+      // Lưu assistant message có tool_calls vào DB (để reconstruct context sau)
+      await ChatMessage.create({
+        conversation_id: (context as any).conversationId,
+        role: "assistant",
+        content: response.content ?? "",
+        tool_calls_json: JSON.stringify(response.toolCalls),
+      } as any);
+
       // Thêm tool results vào context
       for (let j = 0; j < response.toolCalls.length; j++) {
         const tc = response.toolCalls[j];
@@ -220,6 +265,15 @@ export const chatService = {
           tool_call_id: tc.id,
           name: tc.name,
         });
+
+        // Lưu tool result vào DB
+        await ChatMessage.create({
+          conversation_id: context.conversationId!,
+          role: "tool",
+          content: resultContent,
+          tool_name: tc.name,
+          tool_call_id: tc.id,
+        } as any);
       }
     }
 

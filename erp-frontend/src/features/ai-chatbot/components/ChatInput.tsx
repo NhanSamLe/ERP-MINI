@@ -1,5 +1,5 @@
 import { useState, KeyboardEvent, useRef, useEffect } from "react";
-import { Send } from "lucide-react";
+import { ArrowUp } from "lucide-react";
 
 interface Props {
   onSend: (content: string) => void;
@@ -14,13 +14,13 @@ export default function ChatInput({
 }: Props) {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const canSend = value.trim().length > 0 && !disabled;
 
-  // Auto-resize textarea
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, 112)}px`;
   }, [value]);
 
   const handleSend = () => {
@@ -28,6 +28,7 @@ export default function ChatInput({
     if (!trimmed || disabled) return;
     onSend(trimmed);
     setValue("");
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -38,25 +39,40 @@ export default function ChatInput({
   };
 
   return (
-    <div className="flex items-end gap-2 p-3 border-t border-gray-100 bg-white">
-      <textarea
-        ref={textareaRef}
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={handleKeyDown}
-        disabled={disabled}
-        placeholder={placeholder}
-        maxLength={1000}
-        rows={1}
-        className="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:opacity-50 disabled:cursor-not-allowed max-h-[120px] overflow-y-auto"
-      />
-      <button
-        onClick={handleSend}
-        disabled={disabled || !value.trim()}
-        className="w-9 h-9 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed transition"
+    <div className="px-3 py-2.5 border-t border-slate-100 bg-white/60 backdrop-blur-sm">
+      <div
+        className={`flex items-end gap-2 bg-slate-50 rounded-2xl border transition-all duration-200 ${
+          canSend
+            ? "border-indigo-300 shadow-[0_0_0_3px_rgba(99,102,241,0.08)]"
+            : "border-slate-200"
+        }`}
       >
-        <Send className="w-4 h-4" />
-      </button>
+        <textarea
+          ref={textareaRef}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={disabled}
+          placeholder={placeholder}
+          maxLength={1000}
+          rows={1}
+          className="flex-1 resize-none bg-transparent px-3 py-2.5 text-[13px] text-slate-700 placeholder:text-slate-400 focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed max-h-[112px] overflow-y-auto leading-relaxed"
+        />
+        <button
+          onClick={handleSend}
+          disabled={!canSend}
+          className={`m-1.5 w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
+            canSend
+              ? "bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-200 hover:shadow-indigo-300 hover:scale-105 active:scale-95"
+              : "bg-slate-200 text-slate-400 cursor-not-allowed"
+          }`}
+        >
+          <ArrowUp className="w-3.5 h-3.5" strokeWidth={2.5} />
+        </button>
+      </div>
+      <p className="text-[10px] text-slate-300 text-center mt-1.5">
+        Enter để gửi · Shift+Enter xuống dòng
+      </p>
     </div>
   );
 }

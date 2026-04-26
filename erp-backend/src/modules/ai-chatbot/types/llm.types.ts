@@ -77,6 +77,7 @@ export interface ToolContext {
   userToken: string;
   branchId: number;
   baseUrl: string;
+  conversationId?: number; // dùng để lưu intermediate messages
 }
 
 export interface ToolResult {

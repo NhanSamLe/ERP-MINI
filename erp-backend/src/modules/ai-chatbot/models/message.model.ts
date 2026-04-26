@@ -10,12 +10,13 @@ export interface MessageAttributes {
   content: string;
   tool_name?: string | null;
   tool_call_id?: string | null;
+  tool_calls_json?: string | null; // lưu tool_calls của assistant message
   created_at?: Date;
 }
 
 type MessageCreation = Optional<
   MessageAttributes,
-  "id" | "tool_name" | "tool_call_id"
+  "id" | "tool_name" | "tool_call_id" | "tool_calls_json"
 >;
 
 export class ChatMessage
@@ -28,6 +29,7 @@ export class ChatMessage
   public content!: string;
   public tool_name?: string | null;
   public tool_call_id?: string | null;
+  public tool_calls_json?: string | null;
   public created_at?: Date;
 }
 
@@ -42,6 +44,7 @@ ChatMessage.init(
     content: { type: DataTypes.TEXT, allowNull: false },
     tool_name: { type: DataTypes.STRING(100), allowNull: true },
     tool_call_id: { type: DataTypes.STRING(100), allowNull: true },
+    tool_calls_json: { type: DataTypes.TEXT, allowNull: true },
   },
   {
     sequelize,
