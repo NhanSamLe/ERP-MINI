@@ -17,15 +17,19 @@ export const inventoryReportController = {
    */
   async stockSummary(req: Request, res: Response) {
     try {
-      const { warehouseId, productId, categoryId } = req.query;
+      const { warehouseId, productId, categoryId, productName, warehouseName } =
+        req.query;
       const user = (req as any).user;
 
       const warehouseWhere: any = { branch_id: user.branch_id };
       if (warehouseId) warehouseWhere.id = Number(warehouseId);
+      if (warehouseName)
+        warehouseWhere.name = { [Op.like]: `%${warehouseName}%` };
 
       const productWhere: any = {};
       if (productId) productWhere.id = Number(productId);
       if (categoryId) productWhere.category_id = Number(categoryId);
+      if (productName) productWhere.name = { [Op.like]: `%${productName}%` };
 
       const data = await StockBalance.findAll({
         include: [
@@ -265,8 +269,8 @@ export const inventoryReportController = {
         where: {
           expiry_date: {
             [Op.between]: [
-              now.toISOString().split("T")[0],
-              future.toISOString().split("T")[0],
+              now.toISOString().split("T")[0] as string,
+              future.toISOString().split("T")[0] as string,
             ],
           },
         },
@@ -328,8 +332,8 @@ export const inventoryReportController = {
         where: {
           expiry_date: {
             [Op.between]: [
-              now.toISOString().split("T")[0],
-              future.toISOString().split("T")[0],
+              now.toISOString().split("T")[0] as string,
+              future.toISOString().split("T")[0] as string,
             ],
           },
         },

@@ -31,6 +31,7 @@ import notificationRoutes from "../core/routes/notification.routes";
 import stockLocationRoutes from "../modules/inventory/routes/stockLocation.routes";
 import stockLotRoutes from "../modules/inventory/routes/stockLot.routes";
 import physicalInventoryRoutes from "../modules/inventory/routes/physicalInventory.routes";
+import chatbotRoutes from "../modules/ai-chatbot/routes";
 const router = express.Router();
 
 router.use("/auth", authRoutes);
@@ -71,5 +72,6 @@ router.use("/reports", reportRoutes);
 router.use("/locations", stockLocationRoutes);
 router.use("/lots", stockLotRoutes);
 router.use("/physical-inventories", physicalInventoryRoutes);
+router.use("/chatbot", chatbotRoutes);
 
 export default router;

@@ -755,6 +755,26 @@ export function applyAssociations() {
   // Partner ↔ EntryLines (theo dõi công nợ khách hàng/nhà cung cấp)
   Partner.hasMany(GlEntryLine, { foreignKey: "partner_id", as: "glEntries" });
   GlEntryLine.belongsTo(Partner, { foreignKey: "partner_id", as: "partner" });
+
+  // =====================
+  // AI CHATBOT
+  // =====================
+  const {
+    Conversation,
+  } = require("../modules/ai-chatbot/models/conversation.model");
+  const { ChatMessage } = require("../modules/ai-chatbot/models/message.model");
+
+  User.hasMany(Conversation, { foreignKey: "user_id", as: "conversations" });
+  Conversation.belongsTo(User, { foreignKey: "user_id", as: "user" });
+
+  Conversation.hasMany(ChatMessage, {
+    foreignKey: "conversation_id",
+    as: "messages",
+  });
+  ChatMessage.belongsTo(Conversation, {
+    foreignKey: "conversation_id",
+    as: "conversation",
+  });
 }
 
 // ===============================

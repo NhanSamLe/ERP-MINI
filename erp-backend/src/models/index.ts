@@ -65,6 +65,9 @@ import { GlEntry } from "../modules/finance/models/glEntry.model";
 import { GlEntryLine } from "../modules/finance/models/glEntryLine.model";
 // Core
 import { Notification } from "../core/models/notification.model";
+// AI Chatbot
+import { Conversation } from "../modules/ai-chatbot/models/conversation.model";
+import { ChatMessage } from "../modules/ai-chatbot/models/message.model";
 // Associations
 import { applyAssociations } from "./associations";
 
@@ -126,4 +129,6 @@ export {
   GlEntry,
   GlEntryLine,
   Notification,
+  Conversation,
+  ChatMessage,
 };
