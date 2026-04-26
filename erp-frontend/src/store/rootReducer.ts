@@ -21,6 +21,7 @@ import { stockMoveReducer } from "../features/inventory/store";
 import { stockLocationReducer } from "../features/inventory/store";
 import { stockLotReducer } from "../features/inventory/store";
 import { physicalInventoryReducer } from "../features/inventory/store";
+import { chatReducer } from "../features/ai-chatbot/store/chatSlice";
 import {
   leadReducer,
   opportunityReducer,
@@ -57,6 +58,7 @@ const rootReducer = combineReducers({
   stockLocation: stockLocationReducer,
   stockLot: stockLotReducer,
   physicalInventory: physicalInventoryReducer,
+  chat: chatReducer,
   lead: leadReducer,
   opportunity: opportunityReducer,
   activity: activityReducer,

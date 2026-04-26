@@ -2,6 +2,7 @@ import Header from "./Header";
 import Sidebar from "./Sidebar";
 import Footer from "./Footer";
 import { Outlet } from "react-router-dom";
+import FloatingChatButton from "../../features/ai-chatbot/components/FloatingChatButton";
 
 export default function Layout() {
   return (
@@ -14,6 +15,7 @@ export default function Layout() {
         </main>
         <Footer />
       </div>
+      <FloatingChatButton />
     </div>
   );
 }
