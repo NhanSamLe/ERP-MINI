@@ -10,6 +10,8 @@ import ApInvoicePages from "@/features/purchase/pages/ap_invoice/ApInvoicePages"
 import ViewApInvoicePage from "@/features/purchase/pages/ap_invoice/ViewApInvoicePage";
 import ApPaymentPages from "@/features/purchase/pages/ap_payment/ApPaymentPages";
 import ViewApPaymentPage from "@/features/purchase/pages/ap_payment/ViewApPaymentPage";
+import DocumentUploadPage from "@/features/purchase/pages/document_intelligence/DocumentUploadPage";
+import DocumentHistoryPage from "@/features/purchase/pages/document_intelligence/DocumentHistoryPage";
 
 const purchaseRoutes: RouteObject[] = [
   {
@@ -101,6 +103,22 @@ const purchaseRoutes: RouteObject[] = [
         ]}
       >
         <ViewPurchaseOrderPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "purchase/document-intelligence",
+    element: (
+      <ProtectedRoute allowedRoles={[Roles.ACCOUNT, Roles.CHACC]}>
+        <DocumentUploadPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "purchase/document-intelligence/history",
+    element: (
+      <ProtectedRoute allowedRoles={[Roles.ACCOUNT, Roles.CHACC]}>
+        <DocumentHistoryPage />
       </ProtectedRoute>
     ),
   },

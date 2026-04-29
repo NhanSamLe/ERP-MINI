@@ -12,6 +12,9 @@ export interface ApInvoiceLineAttrs {
   line_total?: number;
   line_tax?: number; // tiền VAT từng dòng
   line_total_after_tax?: number;
+  po_line_id?: number | null;
+  grn_line_id?: number | null;
+  matching_result?: "matched" | "price_mismatch" | "qty_mismatch" | null;
 }
 
 type ApInvoiceLineCreation = Optional<ApInvoiceLineAttrs, "id">;
@@ -30,6 +33,9 @@ export class ApInvoiceLine
   public line_total?: number;
   public line_tax?: number;
   public line_total_after_tax?: number;
+  public po_line_id?: number | null;
+  public grn_line_id?: number | null;
+  public matching_result?: "matched" | "price_mismatch" | "qty_mismatch" | null;
 }
 
 ApInvoiceLine.init(
@@ -44,6 +50,12 @@ ApInvoiceLine.init(
     line_total: { type: DataTypes.DECIMAL(18, 2) },
     line_tax: { type: DataTypes.DECIMAL(18, 2) },
     line_total_after_tax: { type: DataTypes.DECIMAL(18, 2) },
+    po_line_id: { type: DataTypes.BIGINT, allowNull: true },
+    grn_line_id: { type: DataTypes.BIGINT, allowNull: true },
+    matching_result: {
+      type: DataTypes.ENUM("matched", "price_mismatch", "qty_mismatch"),
+      allowNull: true,
+    },
   },
   {
     sequelize,
@@ -51,5 +63,5 @@ ApInvoiceLine.init(
     timestamps: true,
     createdAt: "created_at",
     updatedAt: "updated_at",
-  }
+  },
 );

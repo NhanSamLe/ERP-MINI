@@ -7,7 +7,11 @@
     "build": "tsc",
     "start": "npm run build && node dist/server.js",
     "lint": "eslint . --ext .ts",
-    "migrate": "sequelize-cli db:migrate"
+    "migrate": "sequelize-cli db:migrate",
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:properties": "vitest --run src/modules/document-intelligence/__tests__/properties"
   },
   "keywords": [],
   "author": "",
@@ -37,6 +41,7 @@
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.6",
     "openai": "^6.34.0",
+    "pdf-parse": "^1.1.1",
     "sequelize": "^6.37.7",
     "socket.io": "^4.8.3",
     "streamifier": "^0.1.1",
@@ -56,10 +61,14 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^24.5.2",
     "@types/nodemailer": "^7.0.1",
+    "@types/pdf-parse": "^1.1.4",
     "@types/streamifier": "^0.1.2",
     "@types/winston": "^2.4.4",
+    "@vitest/ui": "^4.1.5",
+    "fast-check": "^4.7.0",
     "sequelize-cli": "^6.6.3",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^4.1.5"
   }
 }
