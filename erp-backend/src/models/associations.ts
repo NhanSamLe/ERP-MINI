@@ -51,6 +51,8 @@ import { TaskActivity } from "../modules/crm/models/taskActivity.model";
 import { EmailActivity } from "../modules/crm/models/emailActivity.model";
 import { Attendance } from "../modules/hrm/models/attendance.model";
 import { PayrollItem } from "../modules/hrm/models/payrollItem.model";
+import { InvoiceDocument } from "../modules/document-intelligence/models/invoiceDocument.model";
+import { OcrFieldMapping } from "../modules/document-intelligence/models/ocrFieldMapping.model";
 
 export function applyAssociations() {
   // =====================
@@ -421,6 +423,45 @@ export function applyAssociations() {
 
   ApPayment.belongsTo(User, { as: "creator", foreignKey: "created_by" });
   ApPayment.belongsTo(User, { as: "approver", foreignKey: "approved_by" });
+
+  // InvoiceDocument associations
+  InvoiceDocument.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
+  Branch.hasMany(InvoiceDocument, {
+    foreignKey: "branch_id",
+    as: "invoiceDocuments",
+  });
+
+  InvoiceDocument.belongsTo(User, { foreignKey: "created_by", as: "creator" });
+  User.hasMany(InvoiceDocument, {
+    foreignKey: "created_by",
+    as: "invoiceDocuments",
+  });
+
+  InvoiceDocument.belongsTo(ApInvoice, {
+    foreignKey: "purchase_invoice_id",
+    as: "apInvoice",
+  });
+  ApInvoice.hasOne(InvoiceDocument, {
+    foreignKey: "purchase_invoice_id",
+    as: "invoiceDocument",
+  });
+
+  ApInvoice.belongsTo(Partner, {
+    foreignKey: "supplier_id",
+    as: "invoiceSupplier",
+  });
+
+  ApInvoiceLine.belongsTo(PurchaseOrderLine, {
+    foreignKey: "po_line_id",
+    as: "poLine",
+  });
+  ApInvoiceLine.belongsTo(StockMoveLine, {
+    foreignKey: "grn_line_id",
+    as: "grnLine",
+  });
+
+  OcrFieldMapping.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
+  OcrFieldMapping.belongsTo(Partner, { foreignKey: "vendor_id", as: "vendor" });
 
   // =====================
   // INVENTORY

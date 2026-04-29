@@ -68,6 +68,9 @@ import { Notification } from "../core/models/notification.model";
 // AI Chatbot
 import { Conversation } from "../modules/ai-chatbot/models/conversation.model";
 import { ChatMessage } from "../modules/ai-chatbot/models/message.model";
+// Document Intelligence
+import { InvoiceDocument } from "../modules/document-intelligence/models/invoiceDocument.model";
+import { OcrFieldMapping } from "../modules/document-intelligence/models/ocrFieldMapping.model";
 // Associations
 import { applyAssociations } from "./associations";
 
@@ -131,4 +134,6 @@ export {
   Notification,
   Conversation,
   ChatMessage,
+  InvoiceDocument,
+  OcrFieldMapping,
 };

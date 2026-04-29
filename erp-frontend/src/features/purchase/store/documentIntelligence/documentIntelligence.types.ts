@@ -1,0 +1,176 @@
+// documentIntelligence.types.ts
+
+// =====================
+// OCR Line Item
+// =====================
+export interface OcrLineItem {
+  name: string;
+  qty: number;
+  unit: string;
+  unit_price: number;
+  tax_rate: number;
+  amount: number;
+  confidence: number;
+  needsReview?: boolean;
+}
+
+// =====================
+// OCR Invoice Data
+// =====================
+export interface OcrInvoiceData {
+  vendor_name: string;
+  vendor_tax_code: string;
+  invoice_no: string;
+  invoice_series?: string;
+  invoice_template?: string;
+  invoice_date: string;
+  items: OcrLineItem[];
+  subtotal: number;
+  tax_amount: number;
+  total: number;
+  confidence_scores?: Record<string, number>;
+  overall_confidence: number;
+  warnings: string[];
+}
+
+// =====================
+// Document
+// =====================
+export interface InvoiceDocument {
+  id: number;
+  original_filename: string;
+  ocr_status: OcrStatus;
+  ocr_confidence: number | null;
+  ocr_result: OcrInvoiceData | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+// =====================
+// Status
+// =====================
+export type OcrStatus = "pending" | "processing" | "done" | "failed";
+
+export interface StatusResponse {
+  status: OcrStatus;
+  confidence?: number;
+  fieldsExtracted?: number;
+  fieldsTotal?: number;
+  warnings?: string[];
+  message?: string;
+}
+
+// =====================
+// Vendor / Product Match
+// =====================
+export interface VendorMatch {
+  matchedPartnerId: number | null;
+  matchConfidence: number;
+  matchMethod: string;
+  partnerName?: string;
+}
+
+export interface ProductMatch {
+  lineIndex: number;
+  matchedProductId: number | null;
+  matchConfidence: number;
+  matchMethod: string;
+}
+
+export interface DuplicateWarning {
+  existingInvoiceId: number;
+  existingInvoiceNo: string;
+  message: string;
+}
+
+// =====================
+// Enriched Result
+// =====================
+export interface EnrichedResult {
+  document: InvoiceDocument;
+  vendor_match: VendorMatch | null;
+  product_matches: ProductMatch[];
+  duplicateWarning: DuplicateWarning | null;
+}
+
+// =====================
+// Confirm Payload
+// =====================
+export interface ConfirmLineItem {
+  product_id: number | null;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  tax_rate_id: number | null;
+}
+
+export interface ConfirmPayload {
+  vendor_id: number | null;
+  po_id: number | null;
+  overrideDuplicate: boolean;
+  items: ConfirmLineItem[];
+}
+
+// =====================
+// Duplicate Check
+// =====================
+export interface DuplicateCheckResult {
+  isDuplicate: boolean;
+  existingInvoiceId?: number;
+  existingInvoiceNo?: string;
+  message?: string;
+}
+
+// =====================
+// History
+// =====================
+export interface HistoryItem {
+  id: number;
+  original_filename: string;
+  ocr_status: OcrStatus;
+  ocr_confidence: number | null;
+  created_at: string;
+}
+
+export interface HistoryParams {
+  page?: number;
+  limit?: number;
+  ocr_status?: string;
+  date_from?: string;
+  date_to?: string;
+}
+
+export interface HistoryResponse {
+  data: HistoryItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+// =====================
+// Three-Way Matching
+// =====================
+export interface ThreeWayMatchResult {
+  invoiceId: number;
+  status: string;
+  details: Record<string, any>;
+}
+
+export interface MatchingResult {
+  matching_status: string | null;
+  matching_details: Record<string, any> | null;
+}
+
+// =====================
+// Redux State
+// =====================
+export interface DocumentIntelligenceState {
+  uploading: boolean;
+  currentDocumentId: number | null;
+  status: StatusResponse | null;
+  result: EnrichedResult | null;
+  history: HistoryItem[];
+  historyTotal: number;
+  loading: boolean;
+  error: string | null;
+}

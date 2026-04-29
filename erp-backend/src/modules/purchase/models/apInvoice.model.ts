@@ -18,9 +18,21 @@ export interface ApInvoiceAttrs {
   approved_at?: Date | null;
   reject_reason?: string | null;
   branch_id: number;
+  supplier_id?: number | null;
+  invoice_series?: string | null;
+  invoice_template?: string | null;
+  tax_code?: string | null;
+  source: "manual" | "ai_ocr";
+  invoice_document_id?: number | null;
+  ocr_confidence?: number | null;
+  matching_status: "pending" | "matched" | "mismatch";
+  matching_details?: Record<string, any> | null;
 }
 
-type ApInvoiceCreation = Optional<ApInvoiceAttrs, "id" | "status">;
+type ApInvoiceCreation = Optional<
+  ApInvoiceAttrs,
+  "id" | "status" | "source" | "matching_status"
+>;
 
 export class ApInvoice
   extends Model<ApInvoiceAttrs, ApInvoiceCreation>
@@ -46,6 +58,15 @@ export class ApInvoice
   public approved_at?: Date | null;
   public reject_reason?: string | null;
   public branch_id!: number;
+  public supplier_id?: number | null;
+  public invoice_series?: string | null;
+  public invoice_template?: string | null;
+  public tax_code?: string | null;
+  public source!: "manual" | "ai_ocr";
+  public invoice_document_id?: number | null;
+  public ocr_confidence?: number | null;
+  public matching_status!: "pending" | "matched" | "mismatch";
+  public matching_details?: Record<string, any> | null;
 }
 
 ApInvoice.init(
@@ -72,6 +93,23 @@ ApInvoice.init(
     approved_at: { type: DataTypes.DATE },
     reject_reason: { type: DataTypes.STRING(255) },
     branch_id: { type: DataTypes.BIGINT, allowNull: false },
+    supplier_id: { type: DataTypes.BIGINT, allowNull: true },
+    invoice_series: { type: DataTypes.STRING(50), allowNull: true },
+    invoice_template: { type: DataTypes.STRING(100), allowNull: true },
+    tax_code: { type: DataTypes.STRING(50), allowNull: true },
+    source: {
+      type: DataTypes.ENUM("manual", "ai_ocr"),
+      allowNull: false,
+      defaultValue: "manual",
+    },
+    invoice_document_id: { type: DataTypes.BIGINT, allowNull: true },
+    ocr_confidence: { type: DataTypes.DECIMAL(5, 4), allowNull: true },
+    matching_status: {
+      type: DataTypes.ENUM("pending", "matched", "mismatch"),
+      allowNull: false,
+      defaultValue: "pending",
+    },
+    matching_details: { type: DataTypes.JSONB, allowNull: true },
   },
   {
     sequelize,
@@ -79,5 +117,5 @@ ApInvoice.init(
     timestamps: true,
     createdAt: "created_at",
     updatedAt: "updated_at",
-  }
+  },
 );
