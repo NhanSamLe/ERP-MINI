@@ -5,8 +5,8 @@ import {
   fetchPositions,
   createPosition,
   updatePosition,
-  deletePosition,
 } from "../../service/position.service";
+import axiosClient from "@/api/axiosClient";
 
 // Load list
 export const loadPositions = createAsyncThunk(
@@ -58,23 +58,20 @@ export const editPosition = createAsyncThunk<
   }
 });
 
-// Delete
-export const removePosition = createAsyncThunk<
-  number,          // kiểu payload khi fulfilled
-  number,          // kiểu tham số (id)
-  { rejectValue: string } // kiểu lỗi custom
->(
-  "position/removePosition",
-  async (id, { rejectWithValue }) => {
+export const togglePositionStatus = createAsyncThunk(
+  "position/toggleStatus",
+  async (
+    { id, status }: { id: number; status: "active" | "inactive" },
+    { rejectWithValue }
+  ) => {
     try {
-      await deletePosition(id);
-      return id;
+      return await axiosClient.patch(`/hrm/positions/${id}/status`, {
+        status,
+      });
     } catch (err: any) {
-      const msg =
-        err?.response?.data?.message ||
-        err?.message ||
-        "Error deleting position";
-      return rejectWithValue(msg); // 👈 để unwrap() nhận string này
+      return rejectWithValue(
+        err?.response?.data?.message || "Error updating status"
+      );
     }
   }
 );

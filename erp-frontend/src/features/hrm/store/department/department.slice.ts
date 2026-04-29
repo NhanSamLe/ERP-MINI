@@ -3,7 +3,6 @@ import {
   loadDepartments,
   createDepartmentThunk,
   updateDepartmentThunk,
-  deleteDepartmentThunk,
 } from "./department.thunks";
 import { Department } from "./department.type";
 
@@ -36,9 +35,6 @@ const departmentSlice = createSlice({
       .addCase(updateDepartmentThunk.fulfilled, (state, action) => {
         const idx = state.items.findIndex((d) => d.id === action.payload.id);
         if (idx !== -1) state.items[idx] = action.payload;
-      })
-      .addCase(deleteDepartmentThunk.fulfilled, (state, action) => {
-        state.items = state.items.filter((d) => d.id !== action.payload);
       });
   },
 });

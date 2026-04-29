@@ -1,6 +1,5 @@
 import { Op } from "sequelize";
 import { Position, PositionAttrs } from "../models/position.model";
-import { Employee } from "../models/employee.model";
 
 export interface PositionFilter {
   search?: string;
@@ -45,19 +44,12 @@ export async function createPosition(
   if (!payload.branch_id) throw new Error("branch_id is required");
   if (!payload.name) throw new Error("name is required");
 
-  // 🔥 CHECK TRÙNG: cùng branch + name
   const exists = await Position.findOne({
-    where: {
-      branch_id: payload.branch_id,
-      name: payload.name,
-    },
+    where: { branch_id: payload.branch_id, name: payload.name },
   });
+  if (exists) throw new Error("Chức danh này đã tồn tại trong chi nhánh này");
 
-  if (exists) {
-    throw new Error("Chức danh này đã tồn tại trong chi nhánh này");
-  }
-
-  const row = await Position.create(payload);
+  const row = await Position.create({ ...payload, status: "active" });
   return row;
 }
 
@@ -89,19 +81,17 @@ export async function updatePosition(
 }
 
 
-/**
- * Delete Position – chỉ xoá nếu chưa có nhân viên dùng position_id này
- */
-export async function deletePosition(id: number): Promise<void> {
+export async function togglePositionStatus(
+  id: number,
+  status: "active" | "inactive"
+): Promise<Position> {
   const row = await Position.findByPk(id);
-  if (!row) throw new Error("Position not found");
 
-  const count = await Employee.count({ where: { position_id: id } });
-  if (count > 0) {
-    throw new Error(
-      "Không thể xoá – đang có nhân viên sử dụng chức danh này"
-    );
+  if (!row) {
+    throw new Error("Position not found");
   }
 
-  await row.destroy();
+  await row.update({ status });
+
+  return row;
 }

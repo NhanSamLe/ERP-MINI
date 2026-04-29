@@ -3,6 +3,7 @@ export interface Department {
   branch_id: number;
   code: string;
   name: string;
+  status?: "active" | "inactive";
   created_at?: string;
   updated_at?: string;
 }

@@ -6,7 +6,7 @@ import {
   loadPositions,
   addPosition,
   editPosition,
-  removePosition,
+  togglePositionStatus,
 } from "../store/position/position.thunks";
 
 
@@ -17,7 +17,6 @@ import type { PositionDTO } from "../dto/position.dto";
 import {
   Plus,
   Pencil,
-  Trash2,
   Search,
   Building2,
   AlertCircle,
@@ -66,24 +65,17 @@ export default function PositionPage() {
   }
 };
 
-const doDelete = async (id: number) => {
-  if (!confirm("Bạn có chắc chắn muốn xóa chức danh này?")) {
-    return;
-  }
 
-  try {
-    await dispatch(removePosition(id)).unwrap();
-    alert("Đã xóa chức danh thành công!");
-  } catch (error: any) {
-    // error giờ là string do rejectWithValue trả về
-    const msg =
-      typeof error === "string"
-        ? error
-        : error?.message || "Có lỗi xảy ra khi xóa chức danh";
-    alert(msg);
-  }
+  const toggleStatus = async (p: Position) => {
+  await dispatch(
+    togglePositionStatus({
+      id: p.id!,
+      status: p.status === "active" ? "inactive" : "active",
+    })
+  );
+
+  dispatch(loadPositions({ search }));
 };
-
 
 
   // ====== Tính toán phân trang ======
@@ -198,6 +190,9 @@ const doDelete = async (id: number) => {
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   Chi nhánh
                 </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+  Trạng thái
+</th>
                 <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   Thao tác
                 </th>
@@ -207,7 +202,7 @@ const doDelete = async (id: number) => {
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-16">
+                  <td colSpan={5} className="px-6 py-16">
                     <div className="flex flex-col items-center justify-center">
                       <div className="relative">
                         <div className="w-12 h-12 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin"></div>
@@ -263,7 +258,17 @@ const doDelete = async (id: number) => {
                         <span className="text-sm">{p.branch_id}</span>
                       </div>
                     </td>
-
+                    <td className="px-6 py-4">
+  <span
+    className={`px-2 py-1 rounded-full text-xs font-medium ${
+      p.status === "active"
+        ? "bg-green-100 text-green-700"
+        : "bg-red-100 text-red-700"
+    }`}
+  >
+    {p.status === "active" ? "Hoạt động" : "Ngưng hoạt động"}
+  </span>
+</td>
                     <td className="px-6 py-4">
                       <div className="flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                         <button
@@ -278,12 +283,15 @@ const doDelete = async (id: number) => {
                         </button>
 
                         <button
-                          className="p-2 border border-gray-200 rounded-lg text-red-600 hover:bg-red-50 hover:border-red-200 transition-all duration-200 shadow-sm hover:shadow"
-                          onClick={() => p.id && doDelete(p.id)}
-                          title="Xóa"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+  className={`p-2 rounded-lg border ${
+    p.status === "active"
+      ? "text-red-600 border-red-200"
+      : "text-emerald-600 border-emerald-200"
+  }`}
+  onClick={() => toggleStatus(p)}
+>
+  {p.status === "active" ? "Khóa" : "Mở"}
+</button>
                       </div>
                     </td>
                   </tr>

@@ -13,7 +13,9 @@ export async function createDepartment(data: DepartmentDTO) {
 export async function updateDepartment(id: number, data: Partial<DepartmentDTO>) {
   return departmentApi.update(id, data);
 }
-
-export async function deleteDepartment(id: number) {
-  return departmentApi.remove(id);
+export async function toggleDepartmentStatus(
+  id: number,
+  status: "active" | "inactive"
+) {
+  return departmentApi.patchStatus(id, status);
 }
