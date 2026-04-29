@@ -57,17 +57,20 @@ export const updateDepartmentThunk = createAsyncThunk<
   }
 });
 
-// DELETE
-export const deleteDepartmentThunk = createAsyncThunk<
-  number,
-  number,
+export const toggleDepartmentStatusThunk = createAsyncThunk<
+  Department,
+  { id: number; status: "active" | "inactive" },
   { rejectValue: string }
->("hrmDepartment/delete", async (id, { rejectWithValue }) => {
+>("hrmDepartment/toggleStatus", async ({ id, status }, { rejectWithValue }) => {
   try {
-    await axiosClient.delete(`${BASE_URL}/${id}`);
-    return id;
+    const res = await axiosClient.patch<Department>(
+      `${BASE_URL}/${id}/status`,
+      { status }
+    );
+    return res.data;
   } catch (e: any) {
-    const msg = e?.response?.data?.message || e.message || "Error deleting department";
-    return rejectWithValue(msg);
+    return rejectWithValue(
+      e?.response?.data?.message || "Error updating department status"
+    );
   }
 });

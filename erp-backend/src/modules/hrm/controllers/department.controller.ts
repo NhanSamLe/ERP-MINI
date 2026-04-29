@@ -4,7 +4,7 @@ import {
   getDepartmentById,
   createDepartment,
   updateDepartment,
-  deleteDepartment,
+  toggleDepartmentStatus,
 } from "../services/department.service";
 
 export async function getDepartmentsHandler(req: Request, res: Response) {
@@ -48,15 +48,18 @@ export async function updateDepartmentHandler(req: Request, res: Response) {
     res.status(400).json({ message: e.message });
   }
 }
-
-export async function deleteDepartmentHandler(req: Request, res: Response) {
+export async function toggleDepartmentStatusHandler(
+  req: Request,
+  res: Response
+) {
   try {
     const id = Number(req.params.id);
-    const result = await deleteDepartment(id);
-    res.json(result);
-  } catch (err: any) {
-    res.status(400).json({
-      message: err.message || "Error deleting department",
-    });
+    const { status } = req.body;
+
+    const dep = await toggleDepartmentStatus(id, status);
+
+    res.json(dep);
+  } catch (e: any) {
+    res.status(400).json({ message: e.message });
   }
 }

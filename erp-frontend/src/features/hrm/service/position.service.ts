@@ -12,7 +12,3 @@ export async function createPosition(data: PositionDTO) {
 export async function updatePosition(id: number, data: Partial<PositionDTO>) {
   return positionApi.update(id, data);
 }
-
-export async function deletePosition(id: number) {
-  return positionApi.remove(id);
-}

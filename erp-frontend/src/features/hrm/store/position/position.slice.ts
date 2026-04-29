@@ -3,7 +3,6 @@ import {
   loadPositions,
   addPosition,
   editPosition,
-  removePosition,
 } from "./position.thunks";
 import type { Position } from "./position.type";
 
@@ -47,11 +46,6 @@ const positionSlice = createSlice({
       .addCase(editPosition.fulfilled, (state, action) => {
         const idx = state.items.findIndex((x) => x.id === action.payload.id);
         if (idx >= 0) state.items[idx] = action.payload;
-      })
-
-      // Delete
-      .addCase(removePosition.fulfilled, (state, action) => {
-        state.items = state.items.filter((x) => x.id !== action.payload);
       });
   },
 });

@@ -1,6 +1,5 @@
 import { Op } from "sequelize";
 import { Department } from "../models/department.model";
-import { Employee } from '../models/employee.model';
 
 export interface DepartmentFilter {
   search?: string | undefined;
@@ -39,6 +38,7 @@ export async function createDepartment(payload: {
   branch_id: number;
   code: string;
   name: string;
+  status?: "active" | "inactive";
 }) {
   if (!payload.branch_id) throw new Error("Branch is required");
   if (!payload.code) throw new Error("Code is required");
@@ -58,12 +58,12 @@ export async function createDepartment(payload: {
     throw new Error("Mã phòng ban này đã tồn tại trong chi nhánh này");
   }
 
-  const row = await Department.create(payload);
+  const row = await Department.create({ ...payload, status: "active" });
   return row;
 }
 export async function updateDepartment(
   id: number,
-  payload: Partial<{ branch_id: number; code: string; name: string }>
+  payload: Partial<{ branch_id: number; code: string; name: string; status: "active" | "inactive" }>
 ) {
   const row = await Department.findByPk(id);
   if (!row) throw new Error("Department not found");
@@ -89,34 +89,16 @@ export async function updateDepartment(
   await row.update(payload);
   return row;
 }
+export async function toggleDepartmentStatus(
+  id: number,
+  status: "active" | "inactive"
+) {
+  const row = await Department.findByPk(id);
 
+  if (!row) throw new Error("Department not found");
 
+  await row.update({ status });
 
-export async function deleteDepartment(departmentId: number) {
-  // Kiểm tra employee
-  const employeeCount = await Employee.count({
-    where: {
-      department_id: departmentId,
-      status: 'active'
-    }
-  });
-
-  if (employeeCount > 0) {
-    const error = new Error(
-      `Không thể xóa phòng ban này vì còn ${employeeCount} nhân viên đang làm việc. Vui lòng chuyển nhân viên sang phòng ban khác trước.`
-    );
-    (error as any).code = 'DEPARTMENT_HAS_EMPLOYEES';
-    (error as any).employeeCount = employeeCount;
-    throw error;
-  }
-
-  // Xóa department
-  await Department.destroy({
-    where: { id: departmentId }
-  });
-
-  return { 
-    success: true, 
-    message: 'Đã xóa phòng ban thành công' 
-  };
+  return row;
 }
+

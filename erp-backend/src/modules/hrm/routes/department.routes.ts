@@ -4,9 +4,8 @@ import {
   getDepartmentByIdHandler,
   createDepartmentHandler,
   updateDepartmentHandler,
-  deleteDepartmentHandler,
+  toggleDepartmentStatusHandler,
 } from "../controllers/department.controller";
-
 
 const router = Router();
 
@@ -14,6 +13,6 @@ router.get("/", getDepartmentsHandler);
 router.get("/:id", getDepartmentByIdHandler);
 router.post("/", createDepartmentHandler);
 router.put("/:id", updateDepartmentHandler);
-router.delete("/:id", deleteDepartmentHandler);
+router.patch("/:id/status", toggleDepartmentStatusHandler);
 
 export default router;

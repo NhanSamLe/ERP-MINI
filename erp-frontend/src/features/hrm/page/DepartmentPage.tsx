@@ -6,7 +6,7 @@ import {
   loadDepartments,
   createDepartmentThunk,
   updateDepartmentThunk,
-  deleteDepartmentThunk,
+  toggleDepartmentStatusThunk,
 } from "../store/department/department.thunks";
 
 import DepartmentFormModal from "../components/DepartmentFormModal";
@@ -15,7 +15,6 @@ import { Department } from "../store/department/department.type";
 import { 
   Plus, 
   Pencil, 
-  Trash2, 
   Search, 
   Building2, 
   AlertCircle,
@@ -68,23 +67,26 @@ export default function DepartmentPage() {
 };
 
 
-  const doDelete = async (id: number) => {
-  if (!confirm("Bạn có chắc chắn muốn xóa phòng ban này?")) {
-    return;
-  }
-
+ const toggleStatus = async (dep: Department) => {
   try {
-    await dispatch(deleteDepartmentThunk(id)).unwrap();
-    alert("Đã xóa phòng ban thành công!");
+    await dispatch(
+      toggleDepartmentStatusThunk({
+        id: dep.id!,
+        status: dep.status === "active" ? "inactive" : "active",
+      })
+    ).unwrap();
+
+    dispatch(loadDepartments({ search }));
+
+    alert(
+      dep.status === "active"
+        ? "Đã khóa phòng ban"
+        : "Đã mở lại phòng ban"
+    );
   } catch (error: any) {
-    const msg =
-      typeof error === "string"
-        ? error
-        : error?.message || "Có lỗi xảy ra khi xóa phòng ban";
-    alert(msg); // sẽ hiện: "Không thể xóa phòng ban này vì còn X nhân viên..."
+    alert(error || "Có lỗi xảy ra");
   }
 };
-
 
   // ====== Tính toán phân trang ======
   const totalItems = items.length;
@@ -202,6 +204,9 @@ export default function DepartmentPage() {
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   Chi nhánh
                 </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+  Trạng thái
+</th>
                 <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   Thao tác
                 </th>
@@ -211,7 +216,7 @@ export default function DepartmentPage() {
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-16">
+                  <td colSpan={5} className="px-6 py-16">
                     <div className="flex flex-col items-center justify-center">
                       <div className="relative">
                         <div className="w-12 h-12 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin"></div>
@@ -260,7 +265,17 @@ export default function DepartmentPage() {
                         <span className="text-sm">{d.branch_id}</span>
                       </div>
                     </td>
-
+                    <td className="px-6 py-4">
+  <span
+    className={`px-2 py-1 rounded-full text-xs font-medium ${
+      d.status === "active"
+        ? "bg-green-100 text-green-700"
+        : "bg-red-100 text-red-700"
+    }`}
+  >
+    {d.status === "active" ? "Hoạt động" : "Ngưng hoạt động"}
+  </span>
+</td>
                     <td className="px-6 py-4">
                       <div className="flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                         <button
@@ -275,12 +290,15 @@ export default function DepartmentPage() {
                         </button>
 
                         <button
-                          className="p-2 border border-gray-200 rounded-lg text-red-600 hover:bg-red-50 hover:border-red-200 transition-all duration-200 shadow-sm hover:shadow"
-                          onClick={() => d.id && doDelete(d.id)}
-                          title="Xóa"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+  onClick={() => toggleStatus(d)}
+  className={`px-3 py-2 rounded-lg transition-all duration-200 ${
+    d.status === "active"
+      ? "bg-red-50 text-red-600 hover:bg-red-100"
+      : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+  }`}
+>
+  {d.status === "active" ? "Khóa" : "Mở"}
+</button>
                       </div>
                     </td>
                   </tr>

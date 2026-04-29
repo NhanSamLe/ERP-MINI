@@ -6,15 +6,17 @@ export interface DepartmentAttrs {
   branch_id: number;
   code: string;
   name: string;
+  status: "active" | "inactive";
 }
 
-type DepartmentCreation = Optional<DepartmentAttrs, "id">;
+type DepartmentCreation = Optional<DepartmentAttrs, "id" | "status">;
 
 export class Department extends Model<DepartmentAttrs, DepartmentCreation> implements DepartmentAttrs {
   public id!: number;
   public branch_id!: number;
   public code!: string;
   public name!: string;
+  public status!: "active" | "inactive";
 }
 
 Department.init(
@@ -22,7 +24,8 @@ Department.init(
     id: { type: DataTypes.BIGINT, autoIncrement: true, primaryKey: true },
     branch_id: { type: DataTypes.BIGINT, allowNull: false },
     code: { type: DataTypes.STRING(50), allowNull: false },
-    name: { type: DataTypes.STRING(100), allowNull: false }
+    name: { type: DataTypes.STRING(100), allowNull: false },
+    status: { type: DataTypes.ENUM("active", "inactive"), allowNull: false, defaultValue: "active" }
   },
   { sequelize, tableName: "departments", timestamps: true, createdAt: "created_at", updatedAt: "updated_at" }
 );
