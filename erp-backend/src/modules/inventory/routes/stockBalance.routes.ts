@@ -11,6 +11,11 @@ router.get(
   stockBalanceController.getAll,
 );
 router.get(
+  "/grouped",
+  authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
+  stockBalanceController.getGrouped,
+);
+router.get(
   "/:id",
   authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
   stockBalanceController.getById,

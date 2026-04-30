@@ -5,6 +5,7 @@ import PurchaseOrderPage from "../features/purchase/pages/PurchaseOrderPages";
 import CreatePuchaseOrderPage from "../features/purchase/pages/CreatePurchaseOrderPage";
 import EditPurchaseOrderPage from "../features/purchase/pages/EditPurchaseOrderPage";
 import ViewPurchaseOrderPage from "../features/purchase/pages/ViewPurchaseOrderPage";
+import AuditLogPage from "../features/purchase/pages/AuditLogPage";
 import { Roles } from "@/types/enum";
 import ApInvoicePages from "@/features/purchase/pages/ap_invoice/ApInvoicePages";
 import ViewApInvoicePage from "@/features/purchase/pages/ap_invoice/ViewApInvoicePage";
@@ -103,6 +104,22 @@ const purchaseRoutes: RouteObject[] = [
         ]}
       >
         <ViewPurchaseOrderPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "purchase-orders/:po_id/audit-logs",
+    element: (
+      <ProtectedRoute
+        allowedRoles={[
+          Roles.PURCHASE,
+          Roles.PURCHASEMANAGER,
+          Roles.WHSTAFF,
+          Roles.ACCOUNT,
+          Roles.CEO,
+        ]}
+      >
+        <AuditLogPage />
       </ProtectedRoute>
     ),
   },

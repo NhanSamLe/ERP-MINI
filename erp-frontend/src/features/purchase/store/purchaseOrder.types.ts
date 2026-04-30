@@ -51,6 +51,8 @@ export interface PurchaseOrderLine {
   id?: number;
   product_id: number;
   quantity: number;
+  uom_id?: number | null;
+  qty_in_stock_uom?: number | null;
   unit_price: number;
   tax_rate_id?: number;
   line_total: number;
@@ -65,12 +67,37 @@ export interface ProductLite {
   image_url: string;
 }
 
+export interface SearchQuery {
+  po_no?: string;
+  supplier_id?: number;
+  status?: string[];
+  date_from?: string;
+  date_to?: string;
+  total_from?: number;
+  total_to?: number;
+  page?: number;
+  limit?: number;
+  sort_by?: string;
+  sort_order?: "ASC" | "DESC";
+}
+
+export interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
 export interface PurchaseOrderState {
   items: PurchaseOrder[];
   selectedPO?: PurchaseOrder;
   availableForInvoice: PurchaseOrder[];
   loading: boolean;
   error?: string | null;
+  filters: SearchQuery;
+  pagination: Pagination;
+  selectedIds: number[];
+  bulkActionLoading: boolean;
 }
 
 export interface PurchaseOrderCreate {

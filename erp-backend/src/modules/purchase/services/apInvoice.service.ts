@@ -181,12 +181,14 @@ export const apInvoiceService = {
         const base: any = {
           ap_invoice_id: invoice.id,
           product_id: line.product_id,
-          quantity: line.quantity,
+          quantity: line.quantity, // giữ purchase UOM quantity
+          uom_id: line.uom_id ?? null, // giữ purchase UOM để khớp với PO
           unit_price: line.unit_price,
           tax_rate_id: line.tax_rate_id,
           line_total: line.line_total,
           line_tax: line.line_tax,
           line_total_after_tax: line.line_total_after_tax,
+          po_line_id: line.id,
         };
 
         if (po.description) {
@@ -242,22 +244,25 @@ export const apInvoiceService = {
   },
 
   async approve(id: number, user: any) {
-    if (user.role !== Role.CHACC) throw new Error("Only Chief Accountant can approve");
+    if (user.role !== Role.CHACC)
+      throw new Error("Only Chief Accountant can approve");
 
     const t: Transaction = await sequelize.transaction();
     try {
       const invoice = await ApInvoice.findByPk(id, {
         include: [
-          { model: PurchaseOrder, as: "order" },      // để lấy supplier_id
-          { model: ApInvoiceLine, as: "lines" },      // nếu cần
+          { model: PurchaseOrder, as: "order" }, // để lấy supplier_id
+          { model: ApInvoiceLine, as: "lines" }, // nếu cần
         ],
         transaction: t,
         lock: t.LOCK.UPDATE,
       });
 
       if (!invoice) throw new Error("AP Invoice not found");
-      if (invoice.branch_id !== user.branch_id) throw new Error("Cross-branch denied");
-      if (invoice.approval_status !== "waiting_approval") throw new Error("Invoice is not waiting for approval");
+      if (invoice.branch_id !== user.branch_id)
+        throw new Error("Cross-branch denied");
+      if (invoice.approval_status !== "waiting_approval")
+        throw new Error("Invoice is not waiting for approval");
 
       // 1) Update trạng thái invoice
       await invoice.update(
@@ -268,7 +273,7 @@ export const apInvoiceService = {
           approved_at: new Date(),
           reject_reason: null,
         },
-        { transaction: t }
+        { transaction: t },
       );
 
       // 2) Lấy journal PURCHASE
@@ -289,13 +294,13 @@ export const apInvoiceService = {
           memo: `Ghi nhận công nợ phải trả ${invoice.invoice_no}`,
           status: "posted",
         },
-        { transaction: t }
+        { transaction: t },
       );
 
       // 4) Map account_id theo DB của bạn (id=8 là 156, id=4 là 1331, id=5 là 331)
       const INVENTORY_ACC_ID = 8; // 156
       const VAT_INPUT_ACC_ID = 4; // 1331
-      const AP_ACC_ID = 5;        // 331
+      const AP_ACC_ID = 5; // 331
 
       const totalBeforeTax = Number(invoice.total_before_tax || 0);
       const totalTax = Number(invoice.total_tax || 0);
@@ -426,12 +431,12 @@ export const apInvoiceService = {
           supplierId,
         },
         type: "SELECT",
-      }
+      },
     );
 
     const totalAmount = invoices.reduce(
       (sum, inv) => sum + Number(inv.outstanding_amount),
-      0
+      0,
     );
 
     return {

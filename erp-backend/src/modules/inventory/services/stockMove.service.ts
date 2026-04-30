@@ -207,10 +207,15 @@ export const stockMoveService = {
         line.product_id,
       );
 
+      // Validate theo stock UOM: dùng qty_in_stock_uom của PO line (đã quy đổi)
+      // line.quantity từ stock move cũng phải là stock UOM
+      const poQtyInStockUom = parseFloat(
+        String(poLine.qty_in_stock_uom ?? poLine.quantity ?? 0),
+      );
       await purchaseOrderService.validateRemainingQuantity(
         line.product_id,
         line.quantity,
-        poLine.quantity ?? 0,
+        poQtyInStockUom,
         received,
       );
     }
@@ -240,6 +245,9 @@ export const stockMoveService = {
             lot_no: line.new_lot.lot_no.trim(),
             expiry_date: line.new_lot.expiry_date ?? null,
             manufacture_date: line.new_lot.manufacture_date ?? null,
+            serial_no: line.new_lot.serial_no ?? null,
+            supplier_id: line.new_lot.supplier_id ?? null,
+            notes: line.new_lot.notes ?? null,
           } as any);
           lotId = Number(newLot.id);
         }
@@ -537,10 +545,14 @@ export const stockMoveService = {
         line.product_id,
       );
 
+      // Validate theo stock UOM
+      const poQtyInStockUom = parseFloat(
+        String(poLine.qty_in_stock_uom ?? poLine.quantity ?? 0),
+      );
       await purchaseOrderService.validateRemainingQuantity(
         line.product_id,
         line.quantity,
-        poLine.quantity ?? 0,
+        poQtyInStockUom,
         received,
       );
     }
@@ -1334,7 +1346,10 @@ export const stockMoveService = {
     let fullyReceived = true;
 
     for (const poLine of poLines) {
-      const poQty = parseFloat(String(poLine.quantity ?? 0));
+      // So sánh theo stock UOM: dùng qty_in_stock_uom nếu có, fallback về quantity
+      const poQty = parseFloat(
+        String(poLine.qty_in_stock_uom ?? poLine.quantity ?? 0),
+      );
 
       const previousReceived = allLines
         .filter(
@@ -1349,7 +1364,7 @@ export const stockMoveService = {
       const totalReceived = previousReceived + currentReceived;
 
       console.log(
-        `Product ${poLine.product_id}: PO Qty=${poQty}, Previous Received=${previousReceived}, Current Received=${currentReceived}, Total=${totalReceived}`,
+        `Product ${poLine.product_id}: PO Qty(stock)=${poQty}, Previous Received=${previousReceived}, Current Received=${currentReceived}, Total=${totalReceived}`,
       );
       if (totalReceived < poQty || totalReceived > poQty) {
         fullyReceived = false;

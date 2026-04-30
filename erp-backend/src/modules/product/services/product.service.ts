@@ -98,7 +98,7 @@ export const productService = {
         },
         {
           model: ProductSupplierInfo,
-          as: "supplierInfo",
+          as: "supplierInfos",
           include: [
             {
               model: Partner,
@@ -360,6 +360,18 @@ export const productService = {
           model: Uom,
           as: "purchaseUom",
           attributes: ["id", "code", "name"],
+        },
+        {
+          model: ProductSupplierInfo,
+          as: "supplierInfos",
+          attributes: [
+            "id",
+            "supplier_id",
+            "price",
+            "currency_id",
+            "is_preferred",
+            "supplier_product_code",
+          ],
         },
       ],
       limit: 20,
