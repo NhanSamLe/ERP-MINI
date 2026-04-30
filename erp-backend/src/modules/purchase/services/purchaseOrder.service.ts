@@ -4,6 +4,7 @@ import { PurchaseOrderUpdateDto } from "../dto/purchaseOrderUpdate.dto";
 import { StockMoveLine } from "../../inventory/models/stockMoveLine.model";
 import { StockMove } from "../../inventory/models/stockMove.model";
 import { productService } from "../../product/services/product.service";
+import { UomConversion } from "../../master-data/models/uomConversion.model";
 import { JwtPayload } from "../../../core/types/jwt";
 import {
   ApInvoice,
@@ -16,6 +17,40 @@ import {
 import { Role } from "../../../core/types/enum";
 import { literal, Op } from "sequelize";
 import { notificationService } from "../../../core/services/notification.service";
+import { validationService } from "./validationService";
+import { auditService } from "./auditService";
+
+/**
+ * Quy đổi quantity từ purchase UOM sang stock UOM của product.
+ * Nếu uom_id = product.uom_id hoặc không có conversion → trả về quantity gốc.
+ */
+async function resolveQtyInStockUom(
+  quantity: number,
+  purchaseUomId: number | null | undefined,
+  productStockUomId: number | null | undefined,
+): Promise<number> {
+  if (
+    !purchaseUomId ||
+    !productStockUomId ||
+    purchaseUomId === productStockUomId
+  ) {
+    return quantity;
+  }
+  const conversion = await UomConversion.findOne({
+    where: { from_uom_id: purchaseUomId, to_uom_id: productStockUomId },
+  });
+  if (conversion) {
+    return quantity * parseFloat(String(conversion.factor));
+  }
+  // Thử chiều ngược lại
+  const reverse = await UomConversion.findOne({
+    where: { from_uom_id: productStockUomId, to_uom_id: purchaseUomId },
+  });
+  if (reverse) {
+    return quantity / parseFloat(String(reverse.factor));
+  }
+  return quantity;
+}
 
 export const purchaseOrderService = {
   async getAllPO(user: JwtPayload) {
@@ -77,6 +112,9 @@ export const purchaseOrderService = {
       throw new Error("You cannot create a purchase order for another branch.");
     }
 
+    // Validate input
+    await validationService.validatePO(data);
+
     // 👉 chỉ return poId trong transaction
     const poId = await sequelize.transaction(async (t) => {
       let totalBeforeTax = 0;
@@ -93,7 +131,7 @@ export const purchaseOrderService = {
           status: "draft",
           description: data.description,
         },
-        { transaction: t }
+        { transaction: t },
       );
 
       for (const line of data.lines) {
@@ -103,18 +141,29 @@ export const purchaseOrderService = {
         totalTax += calc.line_tax;
         totalAfterTax += calc.line_total_after_tax;
 
+        // Lấy stock UOM của product để quy đổi (uom_id = stock UOM, không phải purchase_uom_id)
+        const product = await productService.getById(line.product_id);
+        const productStockUomId = product?.uom_id ?? null;
+        const qty_in_stock_uom = await resolveQtyInStockUom(
+          line.quantity,
+          line.uom_id ?? null,
+          productStockUomId,
+        );
+
         await PurchaseOrderLine.create(
           {
             po_id: po.id,
             product_id: line.product_id,
             quantity: line.quantity,
+            uom_id: line.uom_id ?? null,
+            qty_in_stock_uom,
             unit_price: line.unit_price,
             tax_rate_id: line.tax_rate_id,
             line_total: calc.line_total,
             line_tax: calc.line_tax,
             line_total_after_tax: calc.line_total_after_tax,
           },
-          { transaction: t }
+          { transaction: t },
         );
       }
 
@@ -124,14 +173,19 @@ export const purchaseOrderService = {
           total_tax: totalTax,
           total_after_tax: totalAfterTax,
         },
-        { transaction: t }
+        { transaction: t },
       );
 
       return po.id; // ✅ chỉ return id
     });
 
     // 👉 transaction COMMIT xong mới query
-    return this.getPOById(poId);
+    const po = await this.getPOById(poId);
+
+    // Log creation
+    await auditService.logCreate(po, user);
+
+    return po;
   },
 
   async update(id: number, data: PurchaseOrderUpdateDto, user: any) {
@@ -173,7 +227,7 @@ export const purchaseOrderService = {
           order_date: new Date(data.order_date),
           description: data.description,
         },
-        { transaction: t }
+        { transaction: t },
       );
 
       if (data.deletedLineIds?.length) {
@@ -192,31 +246,51 @@ export const purchaseOrderService = {
           totalAfterTax += calc.line_total_after_tax;
 
           if (line.id) {
+            const product = await productService.getById(line.product_id);
+            const productStockUomId = product?.uom_id ?? null;
+            const qty_in_stock_uom = await resolveQtyInStockUom(
+              line.quantity,
+              line.uom_id ?? null,
+              productStockUomId,
+            );
+
             await PurchaseOrderLine.update(
               {
                 product_id: line.product_id,
                 quantity: line.quantity,
+                uom_id: line.uom_id ?? null,
+                qty_in_stock_uom,
                 unit_price: line.unit_price,
                 tax_rate_id: line.tax_rate_id,
                 line_total: calc.line_total,
                 line_tax: calc.line_tax,
                 line_total_after_tax: calc.line_total_after_tax,
               },
-              { where: { id: line.id, po_id: id }, transaction: t }
+              { where: { id: line.id, po_id: id }, transaction: t },
             );
           } else {
+            const product = await productService.getById(line.product_id);
+            const productStockUomId = product?.uom_id ?? null;
+            const qty_in_stock_uom = await resolveQtyInStockUom(
+              line.quantity,
+              line.uom_id ?? null,
+              productStockUomId,
+            );
+
             await PurchaseOrderLine.create(
               {
                 po_id: id,
                 product_id: line.product_id,
                 quantity: line.quantity,
+                uom_id: line.uom_id ?? null,
+                qty_in_stock_uom,
                 unit_price: line.unit_price,
                 tax_rate_id: line.tax_rate_id,
                 line_total: calc.line_total,
                 line_tax: calc.line_tax,
                 line_total_after_tax: calc.line_total_after_tax,
               },
-              { transaction: t }
+              { transaction: t },
             );
           }
         }
@@ -228,7 +302,7 @@ export const purchaseOrderService = {
           total_tax: totalTax,
           total_after_tax: totalAfterTax,
         },
-        { transaction: t }
+        { transaction: t },
       );
     });
 
@@ -251,7 +325,7 @@ export const purchaseOrderService = {
     if (!po) throw new Error("Purchase order not found");
     if (po.status !== "draft") {
       throw new Error(
-        "Cannot delete the purchase order because it has already been approved"
+        "Cannot delete the purchase order because it has already been approved",
       );
     }
     if (po.created_by !== user.id)
@@ -270,19 +344,22 @@ export const purchaseOrderService = {
     }
     if (po.branch_id !== user.branch_id) {
       throw new Error(
-        "You cannot approve a purchase order for another branch."
+        "You cannot approve a purchase order for another branch.",
       );
     }
 
     if (po.status !== "waiting_approval") {
       throw new Error(
-        "Only purchase orders in 'waiting_approval' can be approved."
+        "Only purchase orders in 'waiting_approval' can be approved.",
       );
     }
     po.status = "confirmed";
     po.approved_by = user.id;
     po.approved_at = new Date();
     await po.save();
+
+    // Log approval
+    await auditService.logApprove(po, user);
 
     // Gửi thông báo
     if (app && po.created_by) {
@@ -316,7 +393,7 @@ export const purchaseOrderService = {
 
     if (po.status !== "waiting_approval") {
       throw new Error(
-        "Only purchase orders in 'waiting_approval' can be cancelled."
+        "Only purchase orders in 'waiting_approval' can be cancelled.",
       );
     }
 
@@ -329,6 +406,9 @@ export const purchaseOrderService = {
     po.approved_at = new Date();
     po.reject_reason = reason.trim();
     await po.save();
+
+    // Log cancellation
+    await auditService.logCancel(po, reason, user);
 
     // Gửi thông báo (cancel = reject)
     if (app && po.created_by) {
@@ -406,7 +486,7 @@ export const purchaseOrderService = {
   /** Lấy tổng số lượng đã nhập cho 1 sản phẩm từ các StockMove đã posted */
   async getAlreadyReceivedQty(
     poId: number,
-    productId: number
+    productId: number,
   ): Promise<number> {
     // 1. Lấy tất cả stock moves thuộc PO đang posted
     const postedMoves = await StockMove.findAll({
@@ -440,7 +520,7 @@ export const purchaseOrderService = {
   /** Kiểm tra sản phẩm có trong PO không */
   async validateProductInPO(
     map: Map<number, PurchaseOrderLine>,
-    productId: number
+    productId: number,
   ) {
     const poLine = map.get(productId);
     if (!poLine) {
@@ -453,12 +533,17 @@ export const purchaseOrderService = {
     return poLine;
   },
 
+  /**
+   * Validate số lượng nhập kho không vượt quá số lượng còn lại trong PO.
+   * inputQty và poQty đều phải theo STOCK UOM (đã quy đổi).
+   */
   async validateRemainingQuantity(
     productId: number,
     inputQty: number,
     poQty: number,
-    receivedQty: number
+    receivedQty: number,
   ) {
+    // poQty ở đây là qty_in_stock_uom (đã quy đổi về stock UOM)
     const remaining = poQty - receivedQty;
 
     if (inputQty > remaining) {

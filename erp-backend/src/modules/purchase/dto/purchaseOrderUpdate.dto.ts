@@ -2,6 +2,7 @@ export interface PurchaseOrderLineUpdateDto {
   id?: number;
   product_id: number;
   quantity: number;
+  uom_id?: number; // đơn vị mua (purchase UOM), optional - nếu không truyền thì dùng stock UOM của product
   unit_price: number;
   tax_rate_id: number;
   line_total: number;

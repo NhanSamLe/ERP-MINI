@@ -8,6 +8,26 @@ export const stockBalanceController = {
     return res.json(data);
   },
 
+  async getGrouped(req: Request, res: Response) {
+    try {
+      const user = (req as any).user;
+      const warehouseId = req.query.warehouse_id
+        ? Number(req.query.warehouse_id)
+        : undefined;
+      const productId = req.query.product_id
+        ? Number(req.query.product_id)
+        : undefined;
+      const data = await stockBalanceService.getGrouped(
+        user,
+        warehouseId,
+        productId,
+      );
+      return res.json({ data });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  },
+
   async getById(req: Request, res: Response) {
     const id = Number(req.params.id);
     const data = await stockBalanceService.getById(id);

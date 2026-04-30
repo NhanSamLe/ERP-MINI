@@ -23,7 +23,7 @@ export const purchaseOrderApi = {
 
   getByStatus: async (status: string): Promise<PurchaseOrder[]> => {
     const res = await axiosClient.get(
-      `/purchase-order/by-status?status=${status}`
+      `/purchase-order/by-status?status=${status}`,
     );
     return res.data;
   },
@@ -35,7 +35,7 @@ export const purchaseOrderApi = {
 
   update: async (
     id: number,
-    body: PurchaseOrderUpdate
+    body: PurchaseOrderUpdate,
   ): Promise<PurchaseOrder> => {
     return axiosClient
       .put(`/purchase-order/${id}`, body)
@@ -57,6 +57,33 @@ export const purchaseOrderApi = {
   },
   cancel: async (id: number, reason: string): Promise<PurchaseOrder> => {
     const res = await axiosClient.put(`/purchase-order/${id}/cancel`, {
+      reason,
+    });
+    return res.data;
+  },
+
+  search: async (
+    filters: any,
+  ): Promise<{ items: PurchaseOrder[]; pagination: any }> => {
+    const res = await axiosClient.get("/purchase-order/search", {
+      params: filters,
+    });
+    return {
+      items: res.data.data,
+      pagination: res.data.pagination,
+    };
+  },
+
+  bulkApprove: async (po_ids: number[]): Promise<any> => {
+    const res = await axiosClient.post("/purchase-order/bulk-approve", {
+      po_ids,
+    });
+    return res.data;
+  },
+
+  bulkCancel: async (po_ids: number[], reason: string): Promise<any> => {
+    const res = await axiosClient.post("/purchase-order/bulk-cancel", {
+      po_ids,
       reason,
     });
     return res.data;

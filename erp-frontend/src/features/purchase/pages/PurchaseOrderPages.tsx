@@ -6,14 +6,7 @@ import { Button } from "../../../components/ui/Button";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Roles } from "@/types/enum";
-
-import {
-  fetchPurchaseOrdersThunk,
-  deletePurchaseOrderThunk,
-} from "../store/purchaseOrder.thunks";
-
-import { PurchaseOrder } from "../store/purchaseOrder.types";
-
+import { Card, Space, Tooltip, Badge } from "antd";
 import {
   FileText,
   FileSpreadsheet,
@@ -23,11 +16,34 @@ import {
   Plus,
   Trash2,
   Download,
+  Filter,
+  Eye,
 } from "lucide-react";
+
+import {
+  fetchPurchaseOrdersThunk,
+  deletePurchaseOrderThunk,
+  searchPurchaseOrdersThunk,
+  bulkApprovePurchaseOrdersThunk,
+  bulkCancelPurchaseOrdersThunk,
+} from "../store/purchaseOrder.thunks";
+import {
+  setSelectedIds,
+  clearSelectedIds,
+  setFilters,
+} from "../store/purchaseOrder.slice";
+
+import { PurchaseOrder } from "../store/purchaseOrder.types";
 import { getErrorMessage } from "@/utils/ErrorHelper";
 import { exportExcelReport } from "@/utils/excel/exportExcelReport";
-import ReportConfigModal, { ReportConfig } from "@/components/reports/ReportConfigModal";
+import ReportConfigModal, {
+  ReportConfig,
+} from "@/components/reports/ReportConfigModal";
 import { reportApi } from "@/features/reports/api/report.api";
+
+// Import new components
+import AdvancedFilterPanel from "../components/AdvancedFilterPanel";
+import BulkActionModal from "../components/BulkActionModal";
 
 export default function PurchaseOrderPage() {
   const dispatch = useDispatch<AppDispatch>();
@@ -36,14 +52,19 @@ export default function PurchaseOrderPage() {
   const user = useSelector((state: RootState) => state.auth.user);
   const role = user?.role.code;
 
-  const { items: purchaseOrders, loading } = useSelector(
-    (state: RootState) => state.purchaseOrder
-  );
+  const {
+    items: purchaseOrders,
+    loading,
+    selectedIds,
+    bulkActionLoading,
+  } = useSelector((state: RootState) => state.purchaseOrder);
 
   const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [openReportModal, setOpenReportModal] = useState(false);
+  const [bulkActionModalVisible, setBulkActionModalVisible] = useState(false);
+  const [showAdvancedFilter, setShowAdvancedFilter] = useState(false);
 
   useEffect(() => {
     dispatch(fetchPurchaseOrdersThunk());
@@ -65,6 +86,43 @@ export default function PurchaseOrderPage() {
     }
   };
 
+  const handleSearch = async (filters: any) => {
+    try {
+      dispatch(setFilters(filters));
+      await dispatch(searchPurchaseOrdersThunk(filters)).unwrap();
+      toast.success("Tìm kiếm thành công");
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    }
+  };
+
+  const handleReset = () => {
+    dispatch(clearSelectedIds());
+    dispatch(fetchPurchaseOrdersThunk());
+  };
+
+  const handleBulkApprove = async (po_ids: number[]) => {
+    try {
+      await dispatch(bulkApprovePurchaseOrdersThunk(po_ids)).unwrap();
+      toast.success("Phê duyệt thành công");
+      dispatch(fetchPurchaseOrdersThunk());
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    }
+  };
+
+  const handleBulkCancel = async (po_ids: number[], reason: string) => {
+    try {
+      await dispatch(
+        bulkCancelPurchaseOrdersThunk({ po_ids, reason }),
+      ).unwrap();
+      toast.success("Hủy thành công");
+      dispatch(fetchPurchaseOrdersThunk());
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    }
+  };
+
   const handleExport = async (config: ReportConfig) => {
     try {
       if (config.reportType === "detailed") {
@@ -72,39 +130,82 @@ export default function PurchaseOrderPage() {
           title: "DANH SÁCH ĐƠN MUA HÀNG (PURCHASE ORDERS)",
           columns: [
             { header: "Số PO", key: "po_no", width: 15 },
-            { header: "Ngày đặt", key: "order_date", width: 15, formatter: (val) => val ? new Date(String(val)).toLocaleDateString('vi-VN') : "" },
-            { header: "Người tạo", key: "creator", width: 25, formatter: (val: any) => val?.full_name || "-" },
-            { header: "Tổng tiền", key: "total_after_tax", width: 20, format: "currency", align: "right" },
-            { header: "Trạng thái", key: "status", width: 15, formatter: (val) => String(val).toUpperCase() },
-            { header: "Ngày tạo", key: "created_at", width: 15, formatter: (val) => val ? new Date(String(val)).toLocaleDateString('vi-VN') : "" },
+            {
+              header: "Ngày đặt",
+              key: "order_date",
+              width: 15,
+              formatter: (val) =>
+                val ? new Date(String(val)).toLocaleDateString("vi-VN") : "",
+            },
+            {
+              header: "Người tạo",
+              key: "creator",
+              width: 25,
+              formatter: (val: any) => val?.full_name || "-",
+            },
+            {
+              header: "Tổng tiền",
+              key: "total_after_tax",
+              width: 20,
+              format: "currency",
+              align: "right",
+            },
+            {
+              header: "Trạng thái",
+              key: "status",
+              width: 15,
+              formatter: (val) => String(val).toUpperCase(),
+            },
+            {
+              header: "Ngày tạo",
+              key: "created_at",
+              width: 15,
+              formatter: (val) =>
+                val ? new Date(String(val)).toLocaleDateString("vi-VN") : "",
+            },
           ],
           data: purchaseOrders,
           fileName: `Bao_Cao_Don_Mua_Hang_${new Date().getTime()}.xlsx`,
           footer: {
-            creator: user?.full_name || "Admin"
-          }
+            creator: user?.full_name || "Admin",
+          },
         });
       } else {
         // Summary Report
         const data = await reportApi.getPurchaseSummary(config);
 
         const reportData = data.data.map((item) => ({
-          ...item
+          ...item,
         }));
 
         await exportExcelReport({
           title: `BÁO CÁO CHI PHÍ MUA HÀNG THEO ${config.period.toUpperCase()}`,
-          subtitle: `Từ ngày: ${new Date(config.startDate!).toLocaleDateString("vi-VN")} - Đên ngày: ${new Date(config.endDate!).toLocaleDateString("vi-VN")}`,
+          subtitle: `Từ ngày: ${new Date(config.startDate!).toLocaleDateString(
+            "vi-VN",
+          )} - Đên ngày: ${new Date(config.endDate!).toLocaleDateString(
+            "vi-VN",
+          )}`,
           columns: [
             { header: "Thời gian", key: "time_period", width: 20 },
-            { header: "Tổng số đơn", key: "total_orders", width: 15, align: "center" },
-            { header: "Tổng chi phí", key: "total_expense", width: 25, format: "currency", align: "right" }
+            {
+              header: "Tổng số đơn",
+              key: "total_orders",
+              width: 15,
+              align: "center",
+            },
+            {
+              header: "Tổng chi phí",
+              key: "total_expense",
+              width: 25,
+              format: "currency",
+              align: "right",
+            },
           ],
           data: reportData,
           fileName: `Bao_Cao_Chi_Phi_${config.period}_${new Date().getTime()}.xlsx`,
           footer: {
-            creator: user?.full_name || "Admin"
-          }
+            creator: user?.full_name || "Admin",
+          },
         });
       }
     } catch (err) {
@@ -140,20 +241,21 @@ export default function PurchaseOrderPage() {
       render: (po: PurchaseOrder) => (
         <span
           className={`px-2 py-1 rounded text-xs font-medium
-    ${po.status === "draft"
-              ? "bg-gray-100 text-gray-600"
-              : po.status === "waiting_approval"
-                ? "bg-amber-100 text-amber-700"
-                : po.status === "confirmed"
-                  ? "bg-blue-100 text-blue-700"
-                  : po.status === "partially_received"
-                    ? "bg-indigo-100 text-indigo-700"
-                    : po.status === "completed"
-                      ? "bg-green-100 text-green-700"
-                      : po.status === "cancelled"
-                        ? "bg-red-100 text-red-700"
-                        : "bg-gray-100 text-gray-600"
-            }
+    ${
+      po.status === "draft"
+        ? "bg-gray-100 text-gray-600"
+        : po.status === "waiting_approval"
+          ? "bg-amber-100 text-amber-700"
+          : po.status === "confirmed"
+            ? "bg-blue-100 text-blue-700"
+            : po.status === "partially_received"
+              ? "bg-indigo-100 text-indigo-700"
+              : po.status === "completed"
+                ? "bg-green-100 text-green-700"
+                : po.status === "cancelled"
+                  ? "bg-red-100 text-red-700"
+                  : "bg-gray-100 text-gray-600"
+    }
   `}
         >
           {po.status.replace("_", " ")}
@@ -205,9 +307,23 @@ export default function PurchaseOrderPage() {
             <RotateCw className="w-4 h-4" />
           </button>
 
-          <button className="flex items-center gap-1 border border-gray-300 bg-gray-50 text-gray-600 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-100 transition">
-            <ChevronUp className="w-4 h-4" />
+          <button
+            onClick={() => setShowAdvancedFilter(!showAdvancedFilter)}
+            className="flex items-center gap-1 border border-gray-300 bg-gray-50 text-gray-600 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-100 transition"
+            title="Advanced Filter"
+          >
+            <Filter className="w-4 h-4" />
           </button>
+
+          <Tooltip title={`Bulk Actions (${selectedIds.length} selected)`}>
+            <button
+              onClick={() => setBulkActionModalVisible(true)}
+              disabled={selectedIds.length === 0}
+              className="flex items-center gap-1 border border-purple-300 bg-purple-100 text-purple-600 px-3 py-1.5 rounded-lg text-sm hover:bg-purple-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Badge count={selectedIds.length} />
+            </button>
+          </Tooltip>
 
           <Link to="/purchase-orders/create">
             <Button className="flex items-center gap-1 bg-[#ff8c00] hover:bg-[#ff7700] text-white px-4 py-2 rounded-lg shadow text-sm font-medium transition">
@@ -223,16 +339,14 @@ export default function PurchaseOrderPage() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <select className="border rounded-lg px-3 py-2 text-sm text-gray-700">
-          <option>Status</option>
-        </select>
-
-        <select className="border rounded-lg px-3 py-2 text-sm text-gray-700">
-          <option>Supplier</option>
-        </select>
-      </div>
+      {/* Advanced Filter Panel */}
+      {showAdvancedFilter && (
+        <AdvancedFilterPanel
+          onSearch={handleSearch}
+          onReset={handleReset}
+          loading={loading}
+        />
+      )}
 
       {/* Data Table */}
       <DataTable
@@ -246,16 +360,16 @@ export default function PurchaseOrderPage() {
         onEdit={(item) =>
           item.status === "draft"
             ? navigate(`/purchase-orders/edit/${item.id}`, {
-              state: { po: item },
-            })
+                state: { po: item },
+              })
             : undefined
         }
         onDelete={
           role === Roles.PURCHASE
             ? (item) => {
-              setSelectedPO(item);
-              setConfirmOpen(true);
-            }
+                setSelectedPO(item);
+                setConfirmOpen(true);
+              }
             : undefined
         }
         canEdit={(item) => item.status === "draft" && role === Roles.PURCHASE}
@@ -291,6 +405,16 @@ export default function PurchaseOrderPage() {
           </div>
         </div>
       )}
+
+      {/* Bulk Action Modal */}
+      <BulkActionModal
+        visible={bulkActionModalVisible}
+        onClose={() => setBulkActionModalVisible(false)}
+        selectedPOs={purchaseOrders.filter((po) => selectedIds.includes(po.id))}
+        onApprove={handleBulkApprove}
+        onCancel={handleBulkCancel}
+        loading={bulkActionLoading}
+      />
 
       <ReportConfigModal
         open={openReportModal}

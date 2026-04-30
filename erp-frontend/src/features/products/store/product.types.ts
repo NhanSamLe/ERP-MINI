@@ -45,6 +45,7 @@ export interface Product {
     rate: number;
   } | null;
   supplierInfo?: ProductSupplierInfo[];
+  supplierInfos?: ProductSupplierInfo[]; // alias từ backend (Sequelize as: "supplierInfos")
 }
 
 export interface ProductCategory {

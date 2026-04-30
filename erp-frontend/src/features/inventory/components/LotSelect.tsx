@@ -5,6 +5,9 @@ export interface NewLotData {
   lot_no: string;
   expiry_date?: string;
   manufacture_date?: string;
+  serial_no?: string;
+  supplier_id?: number | null;
+  notes?: string;
 }
 
 interface LotSelectProps {
@@ -19,6 +22,8 @@ interface LotSelectProps {
   allowCreate?: boolean;
   disabled?: boolean;
   className?: string;
+  /** supplier_id mặc định khi tạo new lot (lấy từ PO) */
+  defaultSupplierId?: number | null;
 }
 
 export function LotSelect({
@@ -30,6 +35,7 @@ export function LotSelect({
   allowCreate = false,
   disabled = false,
   className = "",
+  defaultSupplierId,
 }: LotSelectProps) {
   const [lots, setLots] = useState<StockLot[]>([]);
   const [loading, setLoading] = useState(false);
@@ -55,7 +61,11 @@ export function LotSelect({
       onNewLotChange?.(null);
     } else {
       onChange(null);
-      onNewLotChange?.({ lot_no: "" });
+      // Tự động set supplier_id từ PO nếu có
+      onNewLotChange?.({
+        lot_no: "",
+        supplier_id: defaultSupplierId ?? undefined,
+      });
     }
   };
 
@@ -147,6 +157,32 @@ export function LotSelect({
             className="w-full border rounded px-2 py-1 text-xs focus:ring-1 focus:ring-orange-400 focus:outline-none font-mono"
           />
           <input
+            type="text"
+            placeholder="Serial No"
+            value={newLot?.serial_no ?? ""}
+            onChange={(e) =>
+              onNewLotChange?.({
+                ...newLot,
+                lot_no: newLot?.lot_no ?? "",
+                serial_no: e.target.value || undefined,
+              })
+            }
+            className="w-full border rounded px-2 py-1 text-xs focus:ring-1 focus:ring-orange-400 focus:outline-none"
+          />
+          <input
+            type="date"
+            placeholder="Manufacture Date"
+            value={newLot?.manufacture_date ?? ""}
+            onChange={(e) =>
+              onNewLotChange?.({
+                ...newLot,
+                lot_no: newLot?.lot_no ?? "",
+                manufacture_date: e.target.value || undefined,
+              })
+            }
+            className="w-full border rounded px-2 py-1 text-xs focus:ring-1 focus:ring-orange-400 focus:outline-none"
+          />
+          <input
             type="date"
             placeholder="Expiry Date"
             value={newLot?.expiry_date ?? ""}
@@ -155,6 +191,19 @@ export function LotSelect({
                 ...newLot,
                 lot_no: newLot?.lot_no ?? "",
                 expiry_date: e.target.value || undefined,
+              })
+            }
+            className="w-full border rounded px-2 py-1 text-xs focus:ring-1 focus:ring-orange-400 focus:outline-none"
+          />
+          <input
+            type="text"
+            placeholder="Notes"
+            value={newLot?.notes ?? ""}
+            onChange={(e) =>
+              onNewLotChange?.({
+                ...newLot,
+                lot_no: newLot?.lot_no ?? "",
+                notes: e.target.value || undefined,
               })
             }
             className="w-full border rounded px-2 py-1 text-xs focus:ring-1 focus:ring-orange-400 focus:outline-none"

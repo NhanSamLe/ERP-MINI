@@ -15,12 +15,29 @@ router.get(
     Role.WHMANAGER,
     Role.ACCOUNT,
   ]),
-  purchaseOrderController.getAllPO
+  purchaseOrderController.getAllPO,
 );
+
+/**
+ * GET /api/purchase-orders/search
+ * Tìm kiếm PO với các filter
+ */
+router.get(
+  "/search",
+  authMiddleware([
+    Role.PURCHASE,
+    Role.PURCHASEMANAGER,
+    Role.WHSTAFF,
+    Role.WHMANAGER,
+    Role.ACCOUNT,
+  ]),
+  purchaseOrderController.search,
+);
+
 router.get(
   "/available-for-invoice",
   authMiddleware([Role.PURCHASE, Role.ACCOUNT]),
-  purchaseOrderController.getAvailableForInvoice
+  purchaseOrderController.getAvailableForInvoice,
 );
 
 router.get(
@@ -31,7 +48,7 @@ router.get(
     Role.PURCHASEMANAGER,
     Role.WHMANAGER,
   ]),
-  purchaseOrderController.getByStatus
+  purchaseOrderController.getByStatus,
 );
 router.get(
   "/:id",
@@ -42,7 +59,7 @@ router.get(
     Role.WHMANAGER,
     Role.ACCOUNT,
   ]),
-  purchaseOrderController.getPOById
+  purchaseOrderController.getPOById,
 );
 
 router.post(
@@ -52,35 +69,55 @@ router.post(
     { name: "thumbnail", maxCount: 1 },
     { name: "gallery", maxCount: 10 },
   ]),
-  purchaseOrderController.create
+  purchaseOrderController.create,
 );
 router.put(
   "/:id",
   authMiddleware([Role.PURCHASE]),
-  purchaseOrderController.update
+  purchaseOrderController.update,
 );
 
 router.patch(
   "/:id/submit",
   authMiddleware([Role.PURCHASE]),
-  purchaseOrderController.submitForApproval
+  purchaseOrderController.submitForApproval,
 );
 
 router.put(
   "/:id/approve",
   authMiddleware([Role.PURCHASEMANAGER]),
-  purchaseOrderController.approvePO
+  purchaseOrderController.approvePO,
 );
 router.put(
   "/:id/cancel",
   authMiddleware([Role.PURCHASEMANAGER]),
-  purchaseOrderController.cancelPO
+  purchaseOrderController.cancelPO,
+);
+
+/**
+ * POST /api/purchase-orders/bulk-approve
+ * Phê duyệt hàng loạt PO
+ */
+router.post(
+  "/bulk-approve",
+  authMiddleware([Role.PURCHASEMANAGER]),
+  purchaseOrderController.bulkApprove,
+);
+
+/**
+ * POST /api/purchase-orders/bulk-cancel
+ * Hủy hàng loạt PO
+ */
+router.post(
+  "/bulk-cancel",
+  authMiddleware([Role.PURCHASEMANAGER]),
+  purchaseOrderController.bulkCancel,
 );
 
 router.delete(
   "/:id",
   authMiddleware([Role.PURCHASE]),
-  purchaseOrderController.deletedPO
+  purchaseOrderController.deletedPO,
 );
 
 export default router;
