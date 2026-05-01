@@ -8,6 +8,7 @@ export interface Uom {
 
 export interface UomConversion {
   id: number;
+  product_id: number;
   from_uom_id: number;
   to_uom_id: number;
   factor: number;

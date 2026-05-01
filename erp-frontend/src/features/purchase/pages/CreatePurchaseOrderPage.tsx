@@ -28,6 +28,7 @@ import {
   getValidUomsForProduct,
   previewQtyInStockUom,
 } from "../utils/uomHelper";
+import { Uom } from "@/features/master-data/dto/uom.dto";
 
 interface LineItem {
   id: number;
@@ -37,9 +38,9 @@ interface LineItem {
   sale_price?: number;
   sku?: string;
   quantity: number;
-  uom_id?: number | null; // purchase UOM
-  uom_name?: string; // hiển thị
-  stock_uom_id?: number | null; // stock UOM của product (để filter UOM hợp lệ)
+  uom_id?: number | null;
+  uom_name?: string;
+  stock_uom_id?: number | null;
   tax_rate_id?: number;
   tax_type: string;
   tax_rate: number;
@@ -66,6 +67,10 @@ export default function CreatePurchaseOrderPage() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const [lines, setLines] = useState<LineItem[]>([]);
+  // ← Cache product objects để recalculate giá khi đổi NCC
+  const [productCache, setProductCache] = useState<Record<number, Product>>({});
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const user = useSelector((state: RootState) => state.auth.user);
   const partners = useSelector((state: RootState) => state.partners);
@@ -75,7 +80,6 @@ export default function CreatePurchaseOrderPage() {
   const conversions = useSelector(
     (state: RootState) => (state as any).conversion?.UomConversions ?? [],
   );
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     dispatch(loadPartners({ type: "supplier" }));
@@ -88,7 +92,6 @@ export default function CreatePurchaseOrderPage() {
     const y = today.getFullYear();
     const m = String(today.getMonth() + 1).padStart(2, "0");
     const d = String(today.getDate()).padStart(2, "0");
-
     const randomNumber = Math.floor(Math.random() * 900 + 100);
     setReference(`PO-${y}${m}${d}-${randomNumber}`);
   }, []);
@@ -109,15 +112,12 @@ export default function CreatePurchaseOrderPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       const keyword = searchTerm.trim();
-
       if (!keyword || keyword.length < 2) {
         setProducts([]);
         setShowDropdown(false);
         return;
       }
-
       setSearchLoading(true);
-
       dispatch(searchProductsThunk(keyword))
         .unwrap()
         .then((data) => {
@@ -127,10 +127,62 @@ export default function CreatePurchaseOrderPage() {
         .catch(() => setProducts([]))
         .finally(() => setSearchLoading(false));
     }, 300);
-
     return () => clearTimeout(timer);
   }, [searchTerm, dispatch]);
 
+  // ── Helper: tính giá từ product + supplierId ──────────────────────────────
+  const resolvePrice = (
+    product: Product,
+    currentSupplierId: string,
+  ): number => {
+    const allSupplierInfos =
+      (product as any).supplierInfos ?? product.supplierInfo ?? [];
+    const supplierPrice = allSupplierInfos.find(
+      (s: any) => s.supplier_id === Number(currentSupplierId),
+    )?.price;
+    return Number(supplierPrice ?? product.cost_price ?? 0);
+  };
+
+  // ── Helper: recalculate totals từ danh sách lines ─────────────────────────
+  const recalcTotals = (updatedLines: LineItem[]) => {
+    const beforeTax = updatedLines.reduce(
+      (sum, l) => sum + (l.sale_price || 0) * l.quantity,
+      0,
+    );
+    const tax = updatedLines.reduce((sum, l) => sum + l.tax_amount, 0);
+    const afterTax = updatedLines.reduce((sum, l) => sum + l.line_total, 0);
+    setTotalBeforeTax(beforeTax);
+    setTotalOrderTax(tax);
+    setTotalAfterTax(afterTax);
+  };
+
+  // ── Chọn NCC: recalculate giá tất cả lines theo NCC mới ──────────────────
+  const handleSupplierChange = (newSupplierId: string) => {
+    setSupplierId(newSupplierId);
+
+    if (lines.length === 0) return;
+
+    const updatedLines = lines.map((line) => {
+      const cached = productCache[Number(line.product_id)];
+      if (!cached) return line;
+
+      const price = resolvePrice(cached, newSupplierId);
+      const taxAmount = line.quantity * price * (line.tax_rate / 100);
+      const lineTotal = line.quantity * price + taxAmount;
+
+      return {
+        ...line,
+        sale_price: price,
+        tax_amount: taxAmount,
+        line_total: lineTotal,
+      };
+    });
+
+    setLines(updatedLines);
+    recalcTotals(updatedLines);
+  };
+
+  // ── Chọn product: dùng supplierId hiện tại (đã fix stale closure) ─────────
   const handleSelectProduct = async (product: Product) => {
     if (lines.some((l) => l.product_id === product.id)) {
       alert("Sản phẩm đã có trong danh sách!");
@@ -141,19 +193,12 @@ export default function CreatePurchaseOrderPage() {
       fetchTaxRatesByIdThunk(product.tax_rate_id || 0),
     ).unwrap();
 
-    console.log("Selected Product Tax:", tax);
-
     const rate = Number(tax?.rate || 0);
     const qty = 1;
 
-    // Ưu tiên: giá từ supplier info của NCC đang chọn → cost_price → 0
-    const allSupplierInfos =
-      (product as any).supplierInfos ?? product.supplierInfo ?? [];
-    const supplierPrice = allSupplierInfos.find(
-      (s: any) => s.supplier_id === Number(supplierId),
-    )?.price;
-    const price = Number(supplierPrice ?? product.cost_price ?? 0);
-
+    // supplierId lấy từ state hiện tại — không bị stale vì resolvePrice
+    // nhận trực tiếp supplierId thay vì đọc qua closure cũ
+    const price = resolvePrice(product, supplierId);
     const taxAmount = qty * price * (rate / 100);
     const lineTotal = qty * price + taxAmount;
 
@@ -175,22 +220,12 @@ export default function CreatePurchaseOrderPage() {
       line_total: lineTotal,
     };
 
+    // Cache lại product để dùng khi đổi NCC sau
+    setProductCache((prev) => ({ ...prev, [Number(product.id)]: product }));
+
     const updatedLines = [...lines, newLine];
     setLines(updatedLines);
-
-    const totalBeforeTax = updatedLines.reduce(
-      (sum, l) => sum + (l.sale_price || 0) * l.quantity,
-      0,
-    );
-    const totalTax = updatedLines.reduce((sum, l) => sum + l.tax_amount, 0);
-    const totalAfterTax = updatedLines.reduce(
-      (sum, l) => sum + l.line_total,
-      0,
-    );
-
-    setTotalBeforeTax(totalBeforeTax);
-    setTotalOrderTax(totalTax);
-    setTotalAfterTax(totalAfterTax);
+    recalcTotals(updatedLines);
 
     setSearchTerm("");
     setShowDropdown(false);
@@ -204,75 +239,34 @@ export default function CreatePurchaseOrderPage() {
     const updatedLines = lines.map((line) => {
       if (line.id !== id) return line;
       const updated = { ...line, [field]: value };
-
       const taxAmount =
         (updated.sale_price || 0) * updated.quantity * (updated.tax_rate / 100);
       const lineTotal =
         (updated.sale_price || 0) * updated.quantity + taxAmount;
-
-      return {
-        ...updated,
-        tax_amount: taxAmount,
-        line_total: lineTotal,
-      };
+      return { ...updated, tax_amount: taxAmount, line_total: lineTotal };
     });
-
     setLines(updatedLines);
-
-    const totalBeforeTax = updatedLines.reduce(
-      (sum, l) => sum + (l.sale_price || 0) * l.quantity,
-      0,
-    );
-    const totalTax = updatedLines.reduce((sum, l) => sum + l.tax_amount, 0);
-    const totalAfterTax = updatedLines.reduce(
-      (sum, l) => sum + l.line_total,
-      0,
-    );
-
-    setTotalBeforeTax(totalBeforeTax);
-    setTotalOrderTax(totalTax);
-    setTotalAfterTax(totalAfterTax);
+    recalcTotals(updatedLines);
   };
 
-  // Xóa dòng
   const removeLine = (id: number) => {
     setLines((prev) => {
       const updated = prev.filter((l) => l.id !== id);
-
-      const totalBeforeTax = updated.reduce(
-        (sum, l) => sum + (l.sale_price || 0) * l.quantity,
-        0,
-      );
-
-      const totalTax = updated.reduce((sum, l) => sum + l.tax_amount, 0);
-
-      const totalAfterTax = updated.reduce((sum, l) => sum + l.line_total, 0);
-
-      setTotalBeforeTax(totalBeforeTax);
-      setTotalOrderTax(totalTax);
-      setTotalAfterTax(totalAfterTax);
-
+      recalcTotals(updated);
       return updated;
     });
   };
 
   const handleSubmit = async () => {
-    if (isSubmitting) return; // ⛔ chống spam click
-
+    if (isSubmitting) return;
     try {
       setIsSubmitting(true);
-
       const today = new Date().toISOString().split("T")[0];
-
-      if (date > today) {
-        toast.error("Date cannot be in the future!");
-        return;
-      }
+      if (date > today) return toast.error("Date cannot be in the future!");
       if (!supplierId) return toast.error("Supplier is required");
       if (!date) return toast.error("Order date is required");
       if (lines.length === 0)
         return toast.error("At least 1 product is required");
-
       const invalidLine = lines.find((l) => !l.quantity || l.quantity <= 0);
       if (invalidLine) return toast.error("Quantity must be greater than 0");
 
@@ -298,10 +292,7 @@ export default function CreatePurchaseOrderPage() {
         })),
       };
 
-      console.log("➡️ SUBMIT BODY:", requestBody);
-
       await dispatch(createPurchaseOrderThunk(requestBody)).unwrap();
-
       toast.success("Purchase Order created!");
       navigate("/purchase/orders");
     } catch (error) {
@@ -318,17 +309,16 @@ export default function CreatePurchaseOrderPage() {
         Create Purchase Order
       </h1>
 
-      {/* Header */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Supplier Name <span className="text-red-500">*</span>
           </label>
-          <Select value={supplierId} onValueChange={(v) => setSupplierId(v)}>
+          {/* ← onValueChange dùng handleSupplierChange thay vì setSupplierId */}
+          <Select value={supplierId} onValueChange={handleSupplierChange}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select Supplier" />
             </SelectTrigger>
-
             <SelectContent>
               {partners.items.map((p) => (
                 <SelectItem key={p.id} value={String(p.id)}>
@@ -382,8 +372,6 @@ export default function CreatePurchaseOrderPage() {
               className="pr-10"
             />
             <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400 pointer-events-none" />
-
-            {/* Dropdown */}
             {showDropdown && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-md shadow-lg z-50 max-h-64 overflow-auto">
                 {searchLoading ? (
@@ -413,7 +401,6 @@ export default function CreatePurchaseOrderPage() {
               </div>
             )}
           </div>
-
           <Button className="bg-orange-500 hover:bg-orange-600">
             <Plus className="h-4 w-4 mr-1" /> Add
           </Button>
@@ -457,16 +444,13 @@ export default function CreatePurchaseOrderPage() {
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </td>
-
                     <td className="px-4 py-3">
-                      <div>
-                        <div className="font-medium">{line.product_name}</div>
-                        {line.sku && (
-                          <div className="text-xs text-gray-500">
-                            SKU: {line.sku}
-                          </div>
-                        )}
-                      </div>
+                      <div className="font-medium">{line.product_name}</div>
+                      {line.sku && (
+                        <div className="text-xs text-gray-500">
+                          SKU: {line.sku}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <img
@@ -475,7 +459,7 @@ export default function CreatePurchaseOrderPage() {
                         className="h-12 w-12 object-cover rounded-md mx-auto border"
                       />
                     </td>
-                    <td className="px-4 py-3 text-center capitalize">
+                    <td className="px-4 py-3 text-center">
                       {line.sale_price?.toFixed(2)}
                     </td>
                     <td className="px-4 py-3 text-center">
@@ -489,23 +473,24 @@ export default function CreatePurchaseOrderPage() {
                         }}
                       />
                     </td>
-
                     <td className="px-4 py-3 text-center">
                       {(() => {
                         const validUoms = getValidUomsForProduct(
                           uoms,
                           conversions,
                           line.stock_uom_id,
+                          Number(line.product_id),
                         );
                         const qtyPreview = previewQtyInStockUom(
                           line.quantity,
                           line.uom_id,
                           line.stock_uom_id,
                           conversions,
+                          Number(line.product_id),
                         );
                         const stockUomName =
-                          uoms.find((u) => u.id === line.stock_uom_id)?.name ??
-                          "";
+                          uoms.find((u: Uom) => u.id === line.stock_uom_id)
+                            ?.name ?? "";
                         return (
                           <div className="flex flex-col items-center gap-1">
                             <select
@@ -542,17 +527,13 @@ export default function CreatePurchaseOrderPage() {
                         );
                       })()}
                     </td>
-
                     <td className="px-4 py-3 text-center capitalize">
                       {line.tax_type}
                     </td>
-
                     <td className="px-4 py-3 text-center">{line.tax_rate}%</td>
-
                     <td className="px-4 py-3 text-right font-medium">
                       {line.tax_amount.toFixed(2)}
                     </td>
-
                     <td className="px-4 py-3 text-right font-bold text-orange-600">
                       {line.line_total.toFixed(2)}
                     </td>
@@ -583,21 +564,13 @@ export default function CreatePurchaseOrderPage() {
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Total Before Tax *
           </label>
-          <Input
-            value={totalBeforeTax.toString()}
-            onChange={(v) => setTotalBeforeTax(Number(v) || 0)}
-            disabled
-          />
+          <Input value={totalBeforeTax.toString()} disabled />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Total After Tax *
           </label>
-          <Input
-            value={totalAfterTax.toString()}
-            onChange={(v) => setTotalAfterTax(Number(v) || 0)}
-            disabled
-          />
+          <Input value={totalAfterTax.toString()} disabled />
         </div>
       </div>
 

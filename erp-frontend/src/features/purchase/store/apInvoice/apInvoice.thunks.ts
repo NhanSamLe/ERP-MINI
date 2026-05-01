@@ -1,18 +1,22 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { apInvoiceApi } from "../../api/apInvoice.api";
+import {
+  apInvoiceApi,
+  CreateManualInvoicePayload,
+  GetAllInvoicesParams,
+} from "../../api/apInvoice.api";
 import { ApInvoice, ApPostedSummary } from "./apInvoice.types";
 import { getErrorMessage } from "@/utils/ErrorHelper";
 import { apInvoiceService } from "../services/apInvoice.service";
 import { Partner } from "@/features/partner/store/partner.types";
 
-/* ================= GET ALL ================= */
+/* ================= GET ALL (hỗ trợ filter source) ================= */
 export const getAllApInvoicesThunk = createAsyncThunk<
   ApInvoice[],
-  void,
+  GetAllInvoicesParams | void,
   { rejectValue: string }
->("apInvoice/getAll", async (_, { rejectWithValue }) => {
+>("apInvoice/getAll", async (params, { rejectWithValue }) => {
   try {
-    return await apInvoiceApi.getAll();
+    return await apInvoiceApi.getAll(params ?? undefined);
   } catch (error) {
     return rejectWithValue(getErrorMessage(error));
   }
@@ -31,7 +35,21 @@ export const getApInvoiceByIdThunk = createAsyncThunk<
   }
 });
 
-/* ================= CREATE ================= */
+/* ================= CREATE MANUAL ================= */
+export const createManualApInvoiceThunk = createAsyncThunk<
+  ApInvoice,
+  CreateManualInvoicePayload,
+  { rejectValue: string }
+>("apInvoice/createManual", async (payload, { rejectWithValue }) => {
+  try {
+    const result = await apInvoiceApi.createManual(payload);
+    return result.invoice;
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
+/* ================= CREATE FROM PO ================= */
 export const createApInvoiceFromPoThunk = createAsyncThunk<
   ApInvoice,
   number,

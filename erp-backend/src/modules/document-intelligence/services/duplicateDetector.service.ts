@@ -4,10 +4,10 @@ import { Partner } from "../../partner/models/partner.model";
 
 export interface DuplicateCheckResult {
   isDuplicate: boolean;
-  existingInvoiceId?: number;
-  existingInvoiceDate?: Date;
-  vendorName?: string;
-  message?: string;
+  existingInvoiceId?: number | undefined;
+  existingInvoiceDate?: Date | undefined;
+  vendorName?: string | undefined;
+  message?: string | undefined;
 }
 
 export class DuplicateDetectorService {

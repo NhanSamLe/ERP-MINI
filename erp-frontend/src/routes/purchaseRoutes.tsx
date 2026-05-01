@@ -132,6 +132,14 @@ const purchaseRoutes: RouteObject[] = [
     ),
   },
   {
+    path: "purchase/document-intelligence/upload",
+    element: (
+      <ProtectedRoute allowedRoles={[Roles.ACCOUNT, Roles.CHACC]}>
+        <DocumentUploadPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
     path: "purchase/document-intelligence/history",
     element: (
       <ProtectedRoute allowedRoles={[Roles.ACCOUNT, Roles.CHACC]}>

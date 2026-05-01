@@ -22,32 +22,73 @@ import { warehouseService } from "./warehouse.service";
 
 /**
  * Convert quantity từ line.uom_id sang product.uom_id (đơn vị lưu kho).
- * Nếu line.uom_id = product.uom_id hoặc không có conversion → factor = 1.
+ * Priority lookup: product-specific → generic → reverse product-specific → reverse generic → fallback.
+ * Nếu line.uom_id = product.uom_id hoặc không có conversion → trả về quantity gốc.
  */
 async function convertToStockUom(
   quantity: number,
   lineUomId: number | null | undefined,
   productUomId: number | null | undefined,
+  productId: number | null | undefined,
 ): Promise<number> {
   if (!lineUomId || !productUomId || lineUomId === productUomId) {
     return quantity;
   }
-  // Tìm conversion: from lineUomId → productUomId
-  const conversion = await UomConversion.findOne({
-    where: { from_uom_id: lineUomId, to_uom_id: productUomId },
-  });
-  if (!conversion) {
-    // Thử chiều ngược lại (1/factor)
-    const reverseConversion = await UomConversion.findOne({
-      where: { from_uom_id: productUomId, to_uom_id: lineUomId },
+
+  // Step 1: Forward product-specific
+  if (productId) {
+    const conversion = await UomConversion.findOne({
+      where: {
+        product_id: productId,
+        from_uom_id: lineUomId,
+        to_uom_id: productUomId,
+      },
     });
-    if (reverseConversion) {
-      return quantity / parseFloat(String(reverseConversion.factor));
+    if (conversion) {
+      return quantity * parseFloat(String(conversion.factor));
     }
-    // Không có conversion → giữ nguyên (same base unit)
-    return quantity;
   }
-  return quantity * parseFloat(String(conversion.factor));
+
+  // Step 2: Forward generic
+  const genericConversion = await UomConversion.findOne({
+    where: {
+      product_id: null,
+      from_uom_id: lineUomId,
+      to_uom_id: productUomId,
+    },
+  });
+  if (genericConversion) {
+    return quantity * parseFloat(String(genericConversion.factor));
+  }
+
+  // Step 3: Reverse product-specific
+  if (productId) {
+    const reverseProductSpecific = await UomConversion.findOne({
+      where: {
+        product_id: productId,
+        from_uom_id: productUomId,
+        to_uom_id: lineUomId,
+      },
+    });
+    if (reverseProductSpecific) {
+      return quantity / parseFloat(String(reverseProductSpecific.factor));
+    }
+  }
+
+  // Step 4: Reverse generic
+  const reverseGeneric = await UomConversion.findOne({
+    where: {
+      product_id: null,
+      from_uom_id: productUomId,
+      to_uom_id: lineUomId,
+    },
+  });
+  if (reverseGeneric) {
+    return quantity / parseFloat(String(reverseGeneric.factor));
+  }
+
+  // Step 5: Fallback — no conversion found
+  return quantity;
 }
 
 import { StockLot } from "../models/stockLot.model";
@@ -1287,6 +1328,7 @@ export const stockMoveService = {
         parseFloat(String(line.quantity)),
         line.uom_id,
         product?.uom_id,
+        line.product_id,
       );
 
       // Lấy unit_price từ PO line để tính WAC
@@ -1388,6 +1430,7 @@ export const stockMoveService = {
         parseFloat(String(line.quantity)),
         line.uom_id,
         product?.uom_id,
+        line.product_id,
       );
       await this.updateStockBalance(
         move.warehouse_from_id,
@@ -1417,6 +1460,7 @@ export const stockMoveService = {
         parseFloat(String(line.quantity)),
         line.uom_id,
         product?.uom_id,
+        line.product_id,
       );
       await this.updateStockBalance(
         move.warehouse_from_id,
@@ -1448,6 +1492,7 @@ export const stockMoveService = {
           Math.abs(rawQty),
           line.uom_id,
           product?.uom_id,
+          line.product_id,
         ));
       await this.updateStockBalance(
         move.warehouse_from_id,

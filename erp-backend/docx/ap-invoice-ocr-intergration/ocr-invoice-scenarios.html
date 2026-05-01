@@ -1,0 +1,2065 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OCR Invoice — Tất Cả Trường Hợp</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: "Segoe UI", sans-serif;
+        background: #f5f6fa;
+        color: #1a1a2e;
+      }
+
+      /* ── Cover ── */
+      .cover {
+        background: linear-gradient(
+          135deg,
+          #1a1a2e 0%,
+          #16213e 50%,
+          #0f3460 100%
+        );
+        color: white;
+        padding: 80px 60px;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+      .cover .badge {
+        display: inline-block;
+        background: #e94560;
+        color: white;
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        margin-bottom: 24px;
+      }
+      .cover h1 {
+        font-size: 48px;
+        font-weight: 800;
+        line-height: 1.2;
+        margin-bottom: 16px;
+      }
+      .cover h1 span {
+        color: #e94560;
+      }
+      .cover p {
+        font-size: 18px;
+        color: #a8b2d8;
+        max-width: 600px;
+        line-height: 1.7;
+        margin-bottom: 40px;
+      }
+      .cover .meta {
+        display: flex;
+        gap: 40px;
+        flex-wrap: wrap;
+      }
+      .cover .meta-item {
+      }
+      .cover .meta-item .label {
+        font-size: 11px;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+      .cover .meta-item .value {
+        font-size: 16px;
+        font-weight: 600;
+        color: #e2e8f0;
+        margin-top: 4px;
+      }
+
+      /* ── Page break ── */
+      @media print {
+        .page-break {
+          page-break-before: always;
+        }
+        .cover {
+          min-height: auto;
+          padding: 60px 40px;
+        }
+      }
+
+      /* ── Section ── */
+      .section {
+        padding: 60px;
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      .section-title {
+        font-size: 28px;
+        font-weight: 800;
+        color: #1a1a2e;
+        border-left: 5px solid #e94560;
+        padding-left: 16px;
+        margin-bottom: 8px;
+      }
+      .section-subtitle {
+        color: #64748b;
+        font-size: 15px;
+        margin-bottom: 40px;
+        padding-left: 21px;
+      }
+
+      /* ── Flow diagram ── */
+      .flow {
+        background: white;
+        border-radius: 16px;
+        padding: 40px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+        margin-bottom: 40px;
+      }
+      .flow-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin-bottom: 24px;
+      }
+      .flow-steps {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .flow-step {
+        background: #f1f5f9;
+        border-radius: 10px;
+        padding: 10px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #334155;
+        border: 2px solid transparent;
+      }
+      .flow-step.highlight {
+        background: #fef3c7;
+        border-color: #f59e0b;
+        color: #92400e;
+      }
+      .flow-step.success {
+        background: #d1fae5;
+        border-color: #10b981;
+        color: #065f46;
+      }
+      .flow-step.danger {
+        background: #fee2e2;
+        border-color: #ef4444;
+        color: #991b1b;
+      }
+      .flow-step.info {
+        background: #dbeafe;
+        border-color: #3b82f6;
+        color: #1e40af;
+      }
+      .flow-arrow {
+        color: #94a3b8;
+        font-size: 18px;
+        font-weight: 700;
+      }
+
+      /* ── Scenario card ── */
+      .scenario-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 32px;
+      }
+      .scenario-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.07);
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+      }
+      .card-header {
+        padding: 24px 28px;
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+      }
+      .card-number {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        font-weight: 800;
+        flex-shrink: 0;
+      }
+      .card-header-text h3 {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin-bottom: 4px;
+      }
+      .card-header-text p {
+        font-size: 13px;
+        color: #64748b;
+        line-height: 1.5;
+      }
+      .card-body {
+        padding: 0 28px 28px;
+      }
+
+      /* ── Tags ── */
+      .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 20px;
+      }
+      .tag {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .tag-auto {
+        background: #d1fae5;
+        color: #065f46;
+      }
+      .tag-manual {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      .tag-error {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      .tag-warning {
+        background: #fde8d8;
+        color: #9a3412;
+      }
+      .tag-ai {
+        background: #ede9fe;
+        color: #5b21b6;
+      }
+      .tag-duplicate {
+        background: #fce7f3;
+        color: #9d174d;
+      }
+
+      /* ── Conditions table ── */
+      .conditions {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        margin-bottom: 20px;
+      }
+      .conditions th {
+        background: #f8fafc;
+        padding: 10px 14px;
+        text-align: left;
+        font-weight: 700;
+        color: #475569;
+        border-bottom: 2px solid #e2e8f0;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .conditions td {
+        padding: 10px 14px;
+        border-bottom: 1px solid #f1f5f9;
+        color: #334155;
+      }
+      .conditions tr:last-child td {
+        border-bottom: none;
+      }
+      .conditions tr:hover td {
+        background: #f8fafc;
+      }
+
+      /* ── Result box ── */
+      .result-box {
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin-top: 16px;
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+      }
+      .result-box.auto {
+        background: #d1fae5;
+        border: 1px solid #6ee7b7;
+      }
+      .result-box.manual {
+        background: #fef3c7;
+        border: 1px solid #fcd34d;
+      }
+      .result-box.error {
+        background: #fee2e2;
+        border: 1px solid #fca5a5;
+      }
+      .result-box.warning {
+        background: #fde8d8;
+        border: 1px solid #fdba74;
+      }
+      .result-icon {
+        font-size: 20px;
+        flex-shrink: 0;
+        margin-top: 2px;
+      }
+      .result-content h4 {
+        font-size: 14px;
+        font-weight: 700;
+        margin-bottom: 4px;
+      }
+      .result-content p {
+        font-size: 13px;
+        line-height: 1.6;
+      }
+      .result-content ul {
+        margin-top: 6px;
+        padding-left: 16px;
+      }
+      .result-content ul li {
+        font-size: 13px;
+        line-height: 1.8;
+      }
+
+      /* ── Actor badge ── */
+      .actor {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .actor-ai {
+        background: #ede9fe;
+        color: #5b21b6;
+      }
+      .actor-human {
+        background: #dbeafe;
+        color: #1e40af;
+      }
+      .actor-system {
+        background: #f1f5f9;
+        color: #475569;
+      }
+
+      /* ── Decision matrix ── */
+      .matrix {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      .matrix th {
+        background: #1a1a2e;
+        color: white;
+        padding: 12px 16px;
+        text-align: center;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .matrix td {
+        padding: 12px 16px;
+        border: 1px solid #e2e8f0;
+        text-align: center;
+      }
+      .matrix tr:nth-child(even) td {
+        background: #f8fafc;
+      }
+      .matrix .check {
+        color: #10b981;
+        font-size: 16px;
+        font-weight: 700;
+      }
+      .matrix .cross {
+        color: #ef4444;
+        font-size: 16px;
+        font-weight: 700;
+      }
+      .matrix .result-auto {
+        background: #d1fae5 !important;
+        font-weight: 700;
+        color: #065f46;
+      }
+      .matrix .result-manual {
+        background: #fef3c7 !important;
+        font-weight: 700;
+        color: #92400e;
+      }
+
+      /* ── Color themes per scenario ── */
+      .theme-green .card-header {
+        background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+      }
+      .theme-green .card-number {
+        background: #10b981;
+        color: white;
+      }
+      .theme-yellow .card-header {
+        background: linear-gradient(135deg, #fef3c7, #fde68a);
+      }
+      .theme-yellow .card-number {
+        background: #f59e0b;
+        color: white;
+      }
+      .theme-red .card-header {
+        background: linear-gradient(135deg, #fee2e2, #fecaca);
+      }
+      .theme-red .card-number {
+        background: #ef4444;
+        color: white;
+      }
+      .theme-orange .card-header {
+        background: linear-gradient(135deg, #fde8d8, #fed7aa);
+      }
+      .theme-orange .card-number {
+        background: #f97316;
+        color: white;
+      }
+      .theme-purple .card-header {
+        background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+      }
+      .theme-purple .card-number {
+        background: #8b5cf6;
+        color: white;
+      }
+      .theme-blue .card-header {
+        background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+      }
+      .theme-blue .card-number {
+        background: #3b82f6;
+        color: white;
+      }
+      .theme-pink .card-header {
+        background: linear-gradient(135deg, #fce7f3, #fbcfe8);
+      }
+      .theme-pink .card-number {
+        background: #ec4899;
+        color: white;
+      }
+      .theme-gray .card-header {
+        background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+      }
+      .theme-gray .card-number {
+        background: #64748b;
+        color: white;
+      }
+
+      /* ── Summary table ── */
+      .summary-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      .summary-table th {
+        background: #1a1a2e;
+        color: white;
+        padding: 12px 16px;
+        text-align: left;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .summary-table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid #e2e8f0;
+      }
+      .summary-table tr:hover td {
+        background: #f8fafc;
+      }
+
+      /* ── Print ── */
+      @media print {
+        body {
+          background: white;
+        }
+        .section {
+          padding: 40px;
+        }
+        .scenario-card {
+          break-inside: avoid;
+        }
+      }
+
+      .divider {
+        height: 1px;
+        background: #e2e8f0;
+        margin: 40px 0;
+      }
+      .toc {
+        background: white;
+        border-radius: 16px;
+        padding: 32px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.07);
+      }
+      .toc h3 {
+        font-size: 16px;
+        font-weight: 700;
+        margin-bottom: 16px;
+        color: #1a1a2e;
+      }
+      .toc ol {
+        padding-left: 20px;
+      }
+      .toc li {
+        padding: 6px 0;
+        font-size: 14px;
+        color: #334155;
+        line-height: 1.5;
+      }
+      .toc li span {
+        color: #64748b;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ══════════════════════════════════════════════════════════
+     COVER PAGE
+══════════════════════════════════════════════════════════ -->
+    <div class="cover">
+      <div class="badge">ERP Mini — AP Invoice OCR</div>
+      <h1>Tất Cả Trường Hợp<br /><span>OCR Invoice</span></h1>
+      <p>
+        Tài liệu mô tả đầy đủ các kịch bản có thể xảy ra trong luồng xử lý hóa
+        đơn bằng OCR — từ tạo tự động hoàn toàn đến can thiệp thủ công, xử lý
+        lỗi và các trường hợp đặc biệt.
+      </p>
+      <div class="meta">
+        <div class="meta-item">
+          <div class="label">Tổng kịch bản</div>
+          <div class="value">12 Trường Hợp</div>
+        </div>
+        <div class="meta-item">
+          <div class="label">Tự động (AI)</div>
+          <div class="value">3 Trường Hợp</div>
+        </div>
+        <div class="meta-item">
+          <div class="label">Cần thủ công</div>
+          <div class="value">6 Trường Hợp</div>
+        </div>
+        <div class="meta-item">
+          <div class="label">Lỗi / Đặc biệt</div>
+          <div class="value">3 Trường Hợp</div>
+        </div>
+        <div class="meta-item">
+          <div class="label">Phiên bản</div>
+          <div class="value">Phase 9 — 2026</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+     LUỒNG TỔNG QUAN
+══════════════════════════════════════════════════════════ -->
+    <div class="section page-break">
+      <div class="section-title">Luồng Xử Lý Tổng Quan</div>
+      <div class="section-subtitle">
+        Từ upload đến tạo AP Invoice — các điểm rẽ nhánh chính
+      </div>
+
+      <div class="flow">
+        <div class="flow-title">🔄 Luồng OCR → AP Invoice</div>
+        <div class="flow-steps">
+          <div class="flow-step info">📤 Upload File</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step info">🤖 OCR Engine</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step info">📊 Trích xuất dữ liệu</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step highlight">🏢 Vendor Matching</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step highlight">📦 Product Matching</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step highlight">🔍 Duplicate Check</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step highlight">⚖️ 3-Way Matching</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">🧠 Quyết định</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step success">✅ Tạo AP Invoice</div>
+        </div>
+      </div>
+
+      <div class="flow">
+        <div class="flow-title">🧠 Logic Quyết Định Tự Động vs Thủ Công</div>
+        <div class="flow-steps">
+          <div class="flow-step">Confidence ≥ 0.85?</div>
+          <div class="flow-arrow">+</div>
+          <div class="flow-step">Không trùng lặp?</div>
+          <div class="flow-arrow">+</div>
+          <div class="flow-step">Vendor ≥ 0.90?</div>
+          <div class="flow-arrow">+</div>
+          <div class="flow-step">Product ≥ 0.80?</div>
+          <div class="flow-arrow">+</div>
+          <div class="flow-step">3-Way = matched?</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step success">TẤT CẢ ✓ → TỰ ĐỘNG</div>
+        </div>
+        <div style="margin-top: 12px">
+          <div class="flow-steps">
+            <div class="flow-step danger">BẤT KỲ ✗</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step highlight">YÊU CẦU XEM XÉT THỦ CÔNG</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="toc">
+        <h3>📋 Mục Lục Kịch Bản</h3>
+        <ol>
+          <li>
+            <strong>TC-01</strong> — Tạo tự động hoàn toàn (Happy Path)
+            <span>• AI tự xử lý</span>
+          </li>
+          <li>
+            <strong>TC-02</strong> — Tạo tự động có PO, giao hàng từng phần
+            <span>• AI tự xử lý</span>
+          </li>
+          <li>
+            <strong>TC-03</strong> — Tạo thủ công không có PO (hóa đơn dịch vụ)
+            <span>• Kế toán nhập tay</span>
+          </li>
+          <li>
+            <strong>TC-04</strong> — Confidence thấp, cần xem xét thủ công
+            <span>• Kế toán xác nhận</span>
+          </li>
+          <li>
+            <strong>TC-05</strong> — Vendor không khớp, cần chọn thủ công
+            <span>• Kế toán chọn vendor</span>
+          </li>
+          <li>
+            <strong>TC-06</strong> — Product không khớp, cần chọn thủ công
+            <span>• Kế toán chọn sản phẩm</span>
+          </li>
+          <li>
+            <strong>TC-07</strong> — Phát hiện hóa đơn trùng lặp
+            <span>• Kế toán quyết định</span>
+          </li>
+          <li>
+            <strong>TC-08</strong> — 3-Way Matching: Lệch số lượng
+            (qty_mismatch) <span>• Kế toán xác nhận</span>
+          </li>
+          <li>
+            <strong>TC-09</strong> — 3-Way Matching: Lệch đơn giá
+            (price_mismatch) <span>• Kế toán xác nhận</span>
+          </li>
+          <li>
+            <strong>TC-10</strong> — OCR thất bại (timeout / lỗi API)
+            <span>• Hệ thống retry</span>
+          </li>
+          <li>
+            <strong>TC-11</strong> — File không hợp lệ (sai định dạng / quá lớn)
+            <span>• Từ chối ngay</span>
+          </li>
+          <li>
+            <strong>TC-12</strong> — Confidence cực thấp (< 0.50)
+            <span>• Khuyến nghị nhập tay</span>
+          </li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+     DECISION MATRIX
+══════════════════════════════════════════════════════════ -->
+    <div class="section page-break">
+      <div class="section-title">Ma Trận Quyết Định</div>
+      <div class="section-subtitle">
+        Tổng hợp điều kiện → kết quả cho từng trường hợp
+      </div>
+
+      <table class="matrix">
+        <thead>
+          <tr>
+            <th>Kịch bản</th>
+            <th>Confidence ≥ 0.85</th>
+            <th>Vendor ≥ 0.90</th>
+            <th>Product ≥ 0.80</th>
+            <th>Không trùng lặp</th>
+            <th>3-Way Matched</th>
+            <th>Kết quả</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>TC-01</strong> Happy Path</td>
+            <td class="check">✓</td>
+            <td class="check">✓</td>
+            <td class="check">✓</td>
+            <td class="check">✓</td>
+            <td class="check">✓</td>
+            <td class="result-auto">🤖 TỰ ĐỘNG</td>
+          </tr>
+          <tr>
+            <td><strong>TC-02</strong> Partial Delivery</td>
+            <td class="check">✓</td>
+            <td class="check">✓</td>
+            <td class="check">✓</td>
+            <td class="check">✓</td>
+            <td class="check">✓</td>
+            <td class="result-auto">🤖 TỰ ĐỘNG</td>
+          </tr>
+          <tr>
+            <td><strong>TC-03</strong> Không có PO</td>
+            <td>N/A</td>
+            <td>N/A</td>
+            <td>N/A</td>
+            <td>N/A</td>
+            <td>N/A</td>
+            <td class="result-manual">✍️ THỦ CÔNG</td>
+          </tr>
+          <tr>
+            <td><strong>TC-04</strong> Confidence thấp</td>
+            <td class="cross">✗</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td class="result-manual">✍️ THỦ CÔNG</td>
+          </tr>
+          <tr>
+            <td><strong>TC-05</strong> Vendor không khớp</td>
+            <td class="check">✓</td>
+            <td class="cross">✗</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td class="result-manual">✍️ THỦ CÔNG</td>
+          </tr>
+          <tr>
+            <td><strong>TC-06</strong> Product không khớp</td>
+            <td class="check">✓</td>
+            <td class="check">✓</td>
+            <td class="cross">✗</td>
+            <td>—</td>
+            <td>—</td>
+            <td class="result-manual">✍️ THỦ CÔNG</td>
+          </tr>
+          <tr>
+            <td><strong>TC-07</strong> Trùng lặp</td>
+            <td class="check">✓</td>
+            <td class="check">✓</td>
+            <td class="check">✓</td>
+            <td class="cross">✗</td>
+            <td>—</td>
+            <td class="result-manual">✍️ THỦ CÔNG</td>
+          </tr>
+          <tr>
+            <td><strong>TC-08</strong> Qty Mismatch</td>
+            <td class="check">✓</td>
+            <td class="check">✓</td>
+            <td class="check">✓</td>
+            <td class="check">✓</td>
+            <td class="cross">✗ qty</td>
+            <td class="result-manual">✍️ THỦ CÔNG</td>
+          </tr>
+          <tr>
+            <td><strong>TC-09</strong> Price Mismatch</td>
+            <td class="check">✓</td>
+            <td class="check">✓</td>
+            <td class="check">✓</td>
+            <td class="check">✓</td>
+            <td class="cross">✗ price</td>
+            <td class="result-manual">✍️ THỦ CÔNG</td>
+          </tr>
+          <tr>
+            <td><strong>TC-10</strong> OCR Thất bại</td>
+            <td colspan="5" style="text-align: center; color: #64748b">
+              OCR không hoàn thành
+            </td>
+            <td style="background: #fee2e2; font-weight: 700; color: #991b1b">
+              ❌ LỖI / RETRY
+            </td>
+          </tr>
+          <tr>
+            <td><strong>TC-11</strong> File không hợp lệ</td>
+            <td colspan="5" style="text-align: center; color: #64748b">
+              Từ chối trước khi OCR
+            </td>
+            <td style="background: #fee2e2; font-weight: 700; color: #991b1b">
+              ❌ TỪ CHỐI
+            </td>
+          </tr>
+          <tr>
+            <td><strong>TC-12</strong> Confidence < 0.50</td>
+            <td class="cross">✗✗</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td class="result-manual">⚠️ NHẬP TAY</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+     SCENARIOS
+══════════════════════════════════════════════════════════ -->
+    <div class="section page-break">
+      <div class="section-title">Chi Tiết Từng Kịch Bản</div>
+      <div class="section-subtitle">
+        Điều kiện, actor, và kết quả cho mỗi trường hợp
+      </div>
+
+      <div class="scenario-grid">
+        <!-- TC-01 -->
+        <div class="scenario-card theme-green">
+          <div class="card-header">
+            <div class="card-number">01</div>
+            <div class="card-header-text">
+              <h3>TC-01 — Tạo Tự Động Hoàn Toàn (Happy Path)</h3>
+              <p>
+                Tất cả điều kiện đều đạt. Hệ thống tự tạo AP Invoice không cần
+                can thiệp.
+              </p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="tags">
+              <span class="tag tag-auto">🤖 Tự động</span>
+              <span class="tag tag-ai">AI xử lý</span>
+            </div>
+            <table class="conditions">
+              <thead>
+                <tr>
+                  <th>Điều kiện</th>
+                  <th>Giá trị</th>
+                  <th>Ngưỡng</th>
+                  <th>Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Overall Confidence</td>
+                  <td>0.92</td>
+                  <td>≥ 0.85</td>
+                  <td>✅ Đạt</td>
+                </tr>
+                <tr>
+                  <td>Vendor Match Confidence</td>
+                  <td>0.95</td>
+                  <td>≥ 0.90</td>
+                  <td>✅ Đạt</td>
+                </tr>
+                <tr>
+                  <td>Product Match Confidence</td>
+                  <td>0.88</td>
+                  <td>≥ 0.80</td>
+                  <td>✅ Đạt</td>
+                </tr>
+                <tr>
+                  <td>Duplicate Detection</td>
+                  <td>Không trùng</td>
+                  <td>Không trùng</td>
+                  <td>✅ Đạt</td>
+                </tr>
+                <tr>
+                  <td>3-Way Matching</td>
+                  <td>matched</td>
+                  <td>matched</td>
+                  <td>✅ Đạt</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="result-box auto">
+              <div class="result-icon">🤖</div>
+              <div class="result-content">
+                <h4>Kết quả: Tạo AP Invoice tự động</h4>
+                <p>
+                  <strong>Actor:</strong>
+                  <span class="actor actor-ai">🤖 AI / Hệ thống</span>
+                </p>
+                <ul>
+                  <li>
+                    Hệ thống tự gọi
+                    <code>createAPInvoice(source='ai_ocr')</code>
+                  </li>
+                  <li>AP Invoice được tạo với <code>status='draft'</code></li>
+                  <li>Audit log ghi nhận: source=ai_ocr, confidence=0.92</li>
+                  <li>Kế toán nhận thông báo "Hóa đơn đã được tạo tự động"</li>
+                  <li>Kế toán chỉ cần review và submit để phê duyệt</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-02 -->
+        <div class="scenario-card theme-blue">
+          <div class="card-header">
+            <div class="card-number">02</div>
+            <div class="card-header-text">
+              <h3>
+                TC-02 — Tạo Tự Động: Giao Hàng Từng Phần (Partial Delivery)
+              </h3>
+              <p>
+                PO có nhiều lần giao hàng. Hóa đơn lần 2 vẫn được tạo tự động
+                nếu remaining_to_invoice > 0.
+              </p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="tags">
+              <span class="tag tag-auto">🤖 Tự động</span>
+              <span class="tag tag-ai">AI xử lý</span>
+            </div>
+            <table class="conditions">
+              <thead>
+                <tr>
+                  <th>Điều kiện</th>
+                  <th>Giá trị</th>
+                  <th>Ghi chú</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>PO Quantity</td>
+                  <td>100 chai</td>
+                  <td>Tổng đặt hàng</td>
+                </tr>
+                <tr>
+                  <td>GRN lần 1</td>
+                  <td>60 chai</td>
+                  <td>Đã nhập kho lần 1</td>
+                </tr>
+                <tr>
+                  <td>GRN lần 2</td>
+                  <td>40 chai</td>
+                  <td>Đã nhập kho lần 2</td>
+                </tr>
+                <tr>
+                  <td>Invoice lần 1</td>
+                  <td>60 chai</td>
+                  <td>Đã hóa đơn trước</td>
+                </tr>
+                <tr>
+                  <td>remaining_to_invoice</td>
+                  <td>40 chai</td>
+                  <td>= total_received - previously_invoiced</td>
+                </tr>
+                <tr>
+                  <td>Invoice lần 2 (hiện tại)</td>
+                  <td>40 chai</td>
+                  <td>= remaining → matched ✅</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="result-box auto">
+              <div class="result-icon">🤖</div>
+              <div class="result-content">
+                <h4>Kết quả: Tạo AP Invoice tự động lần 2</h4>
+                <p>
+                  <strong>Actor:</strong>
+                  <span class="actor actor-ai">🤖 AI / Hệ thống</span>
+                </p>
+                <ul>
+                  <li>
+                    Hệ thống tính
+                    <code>remaining_to_invoice = 100 - 60 = 40</code>
+                  </li>
+                  <li>
+                    Invoice qty (40) = remaining (40) → <code>matched</code>
+                  </li>
+                  <li>Tạo AP Invoice tự động, ghi nhận partial delivery</li>
+                  <li>
+                    Nếu invoice lần 3 cố tạo thêm → lỗi "Đã hóa đơn đủ số lượng"
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-03 -->
+        <div class="scenario-card theme-gray">
+          <div class="card-header">
+            <div class="card-number">03</div>
+            <div class="card-header-text">
+              <h3>TC-03 — Tạo Thủ Công Không Có PO (Hóa Đơn Dịch Vụ)</h3>
+              <p>
+                Kế toán tạo hóa đơn cho dịch vụ tư vấn, tiền điện, logistics...
+                không có PO trước đó.
+              </p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="tags">
+              <span class="tag tag-manual">✍️ Thủ công</span>
+            </div>
+            <table class="conditions">
+              <thead>
+                <tr>
+                  <th>Trường hợp thực tế</th>
+                  <th>Ví dụ</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Hóa đơn tư vấn</td>
+                  <td>Công ty tư vấn XYZ — 50 triệu</td>
+                </tr>
+                <tr>
+                  <td>Hóa đơn tiền điện</td>
+                  <td>EVN — 20 triệu/tháng</td>
+                </tr>
+                <tr>
+                  <td>Hóa đơn bảo hành</td>
+                  <td>Bảo hành máy CNC — 15 triệu</td>
+                </tr>
+                <tr>
+                  <td>Hóa đơn logistics</td>
+                  <td>Phí vận chuyển nhập khẩu — 8 triệu</td>
+                </tr>
+                <tr>
+                  <td>Hóa đơn điều chỉnh</td>
+                  <td>Hoàn tiền lỗi hàng — (-5 triệu)</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="result-box manual">
+              <div class="result-icon">✍️</div>
+              <div class="result-content">
+                <h4>Kết quả: Kế toán nhập tay toàn bộ</h4>
+                <p>
+                  <strong>Actor:</strong>
+                  <span class="actor actor-human">👤 Kế toán viên</span>
+                </p>
+                <ul>
+                  <li>Kế toán mở form tạo AP Invoice thủ công</li>
+                  <li>
+                    Nhập: supplier_id, invoice_no, invoice_date, các dòng hàng
+                  </li>
+                  <li>
+                    Hệ thống gọi
+                    <code>createAPInvoice(source='manual', po_id=null)</code>
+                  </li>
+                  <li>
+                    Bỏ qua 3-Way Matching, đặt
+                    <code>matching_status='pending'</code>
+                  </li>
+                  <li>Hóa đơn vẫn đi qua luồng phê duyệt bình thường</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-04 -->
+        <div class="scenario-card theme-yellow">
+          <div class="card-header">
+            <div class="card-number">04</div>
+            <div class="card-header-text">
+              <h3>
+                TC-04 — Confidence Thấp (0.50 – 0.84): Cần Xem Xét Thủ Công
+              </h3>
+              <p>
+                OCR trích xuất được nhưng độ tin cậy không đủ cao để tạo tự
+                động.
+              </p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="tags">
+              <span class="tag tag-manual">✍️ Cần xác nhận</span>
+              <span class="tag tag-warning">⚠️ Confidence thấp</span>
+            </div>
+            <table class="conditions">
+              <thead>
+                <tr>
+                  <th>Trường</th>
+                  <th>Giá trị OCR</th>
+                  <th>Confidence</th>
+                  <th>Vấn đề</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>invoice_no</td>
+                  <td>"HD-2024-001"</td>
+                  <td>0.75</td>
+                  <td>Chữ mờ, khó đọc</td>
+                </tr>
+                <tr>
+                  <td>vendor_tax_code</td>
+                  <td>"0123456789"</td>
+                  <td>0.70</td>
+                  <td>Số bị nhòe</td>
+                </tr>
+                <tr>
+                  <td>total</td>
+                  <td>15,000,000</td>
+                  <td>0.80</td>
+                  <td>Dấu phẩy không rõ</td>
+                </tr>
+                <tr>
+                  <td>Overall Confidence</td>
+                  <td colspan="2">0.74</td>
+                  <td>❌ Dưới ngưỡng 0.85</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="result-box manual">
+              <div class="result-icon">⚠️</div>
+              <div class="result-content">
+                <h4>Kết quả: Hiển thị form review, yêu cầu xác nhận</h4>
+                <p>
+                  <strong>Actor:</strong>
+                  <span class="actor actor-human">👤 Kế toán viên</span>
+                </p>
+                <ul>
+                  <li>UI hiển thị badge "Độ tin cậy: 74%" màu vàng</li>
+                  <li>Các trường confidence thấp được highlight đỏ/vàng</li>
+                  <li>Kế toán kiểm tra, sửa các trường sai nếu có</li>
+                  <li>
+                    Nhấn "Xác nhận tạo hóa đơn" → hệ thống tạo với
+                    <code>source='ai_ocr'</code>
+                  </li>
+                  <li>
+                    Audit log ghi nhận: manual_override=true, confidence=0.74
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-05 -->
+        <div class="scenario-card theme-purple">
+          <div class="card-header">
+            <div class="card-number">05</div>
+            <div class="card-header-text">
+              <h3>TC-05 — Vendor Không Khớp: Cần Chọn Thủ Công</h3>
+              <p>
+                OCR đọc được tên nhà cung cấp nhưng không tìm thấy Partner phù
+                hợp trong hệ thống.
+              </p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="tags">
+              <span class="tag tag-manual">✍️ Chọn vendor</span>
+              <span class="tag tag-warning">⚠️ Vendor mismatch</span>
+            </div>
+            <table class="conditions">
+              <thead>
+                <tr>
+                  <th>Thông tin</th>
+                  <th>Giá trị</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Tên OCR trích xuất</td>
+                  <td>"Cty TNHH Thương Mại ABC"</td>
+                </tr>
+                <tr>
+                  <td>Partner gần nhất trong DB</td>
+                  <td>"Công ty TNHH ABC Trading" (confidence: 0.65)</td>
+                </tr>
+                <tr>
+                  <td>Ngưỡng tối thiểu</td>
+                  <td>0.90</td>
+                </tr>
+                <tr>
+                  <td>Kết quả</td>
+                  <td>❌ Không đủ ngưỡng → matchedPartnerId = null</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="result-box warning">
+              <div class="result-icon">🏢</div>
+              <div class="result-content">
+                <h4>Kết quả: Hiển thị gợi ý, kế toán chọn vendor</h4>
+                <p>
+                  <strong>Actor:</strong>
+                  <span class="actor actor-human">👤 Kế toán viên</span>
+                </p>
+                <ul>
+                  <li>
+                    UI hiển thị cảnh báo "Không tìm thấy nhà cung cấp phù hợp"
+                  </li>
+                  <li>
+                    Hiển thị gợi ý: "Có phải 'Công ty TNHH ABC Trading'?" (65%)
+                  </li>
+                  <li>
+                    Cung cấp link "Tạo nhà cung cấp mới" nếu chưa có trong hệ
+                    thống
+                  </li>
+                  <li>Kế toán chọn vendor từ dropdown hoặc tạo mới</li>
+                  <li>Sau khi chọn → tiếp tục xác nhận tạo hóa đơn</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-06 -->
+        <div class="scenario-card theme-orange">
+          <div class="card-header">
+            <div class="card-number">06</div>
+            <div class="card-header-text">
+              <h3>TC-06 — Product Không Khớp: Cần Chọn Sản Phẩm Thủ Công</h3>
+              <p>
+                Một hoặc nhiều dòng hàng không tìm được sản phẩm phù hợp trong
+                hệ thống.
+              </p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="tags">
+              <span class="tag tag-manual">✍️ Chọn sản phẩm</span>
+              <span class="tag tag-warning">⚠️ Product mismatch</span>
+            </div>
+            <table class="conditions">
+              <thead>
+                <tr>
+                  <th>Dòng hàng</th>
+                  <th>Tên OCR</th>
+                  <th>Khớp tốt nhất</th>
+                  <th>Confidence</th>
+                  <th>Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Dòng 1</td>
+                  <td>"Nước suối Lavie 500ml"</td>
+                  <td>"Lavie 500ml" ✅</td>
+                  <td>0.92</td>
+                  <td>✅ Tự động</td>
+                </tr>
+                <tr>
+                  <td>Dòng 2</td>
+                  <td>"Máy lọc nước RO XYZ"</td>
+                  <td>"Máy lọc RO ABC" ❌</td>
+                  <td>0.55</td>
+                  <td>❌ Cần chọn tay</td>
+                </tr>
+                <tr>
+                  <td>Dòng 3</td>
+                  <td>"Phụ kiện lắp đặt"</td>
+                  <td>Không tìm thấy</td>
+                  <td>0.00</td>
+                  <td>❌ Cần chọn tay</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="result-box warning">
+              <div class="result-icon">📦</div>
+              <div class="result-content">
+                <h4>Kết quả: Dòng 2 và 3 cần chọn sản phẩm thủ công</h4>
+                <p>
+                  <strong>Actor:</strong>
+                  <span class="actor actor-human">👤 Kế toán viên</span>
+                </p>
+                <ul>
+                  <li>Dòng 1 tự động khớp, không cần làm gì</li>
+                  <li>
+                    Dòng 2 và 3 được đánh dấu
+                    <code>needsManualSelection=true</code>
+                  </li>
+                  <li>UI hiển thị dropdown chọn sản phẩm cho các dòng này</li>
+                  <li>Kế toán chọn sản phẩm đúng từ danh sách</li>
+                  <li>Sau khi chọn đủ → có thể xác nhận tạo hóa đơn</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-07 -->
+        <div class="scenario-card theme-pink">
+          <div class="card-header">
+            <div class="card-number">07</div>
+            <div class="card-header-text">
+              <h3>TC-07 — Phát Hiện Hóa Đơn Trùng Lặp</h3>
+              <p>
+                Hóa đơn với cùng invoice_no + supplier_id + branch_id đã tồn tại
+                trong hệ thống.
+              </p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="tags">
+              <span class="tag tag-duplicate">🔴 Trùng lặp</span>
+              <span class="tag tag-manual">✍️ Cần xác nhận</span>
+            </div>
+            <table class="conditions">
+              <thead>
+                <tr>
+                  <th>Thông tin</th>
+                  <th>Giá trị</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Invoice No (OCR)</td>
+                  <td>HD-2024-0055</td>
+                </tr>
+                <tr>
+                  <td>Supplier</td>
+                  <td>Công ty ABC (ID: 12)</td>
+                </tr>
+                <tr>
+                  <td>Hóa đơn đã tồn tại</td>
+                  <td>ID: 234, ngày 15/03/2024, 25 triệu</td>
+                </tr>
+                <tr>
+                  <td>Status hóa đơn cũ</td>
+                  <td>posted (không phải cancelled)</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="result-box warning">
+              <div class="result-icon">🔴</div>
+              <div class="result-content">
+                <h4>Kết quả: Cảnh báo trùng lặp, kế toán quyết định</h4>
+                <p>
+                  <strong>Actor:</strong>
+                  <span class="actor actor-human">👤 Kế toán viên</span>
+                </p>
+                <ul>
+                  <li>UI hiển thị banner đỏ "Phát hiện hóa đơn trùng lặp!"</li>
+                  <li>Hiển thị chi tiết hóa đơn cũ: số, ngày, số tiền</li>
+                  <li>Cung cấp link "Xem hóa đơn hiện có"</li>
+                  <li>
+                    Checkbox "Ghi đè hóa đơn trùng lặp" — phải tick mới được tạo
+                  </li>
+                  <li>
+                    Nếu xác nhận ghi đè: audit log ghi nhận
+                    override_duplicate=true
+                  </li>
+                  <li>Nếu không: hủy, không tạo hóa đơn mới</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-08 -->
+        <div class="scenario-card theme-red">
+          <div class="card-header">
+            <div class="card-number">08</div>
+            <div class="card-header-text">
+              <h3>TC-08 — 3-Way Matching: Lệch Số Lượng (qty_mismatch)</h3>
+              <p>
+                Số lượng trên hóa đơn vượt quá số lượng còn lại cần hóa đơn
+                (remaining_to_invoice).
+              </p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="tags">
+              <span class="tag tag-error">❌ qty_mismatch</span>
+              <span class="tag tag-manual">✍️ Cần xác nhận</span>
+            </div>
+            <table class="conditions">
+              <thead>
+                <tr>
+                  <th>Chỉ số</th>
+                  <th>Giá trị</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>PO Quantity</td>
+                  <td>100 chai</td>
+                </tr>
+                <tr>
+                  <td>Total Received (GRN)</td>
+                  <td>80 chai</td>
+                </tr>
+                <tr>
+                  <td>Previously Invoiced</td>
+                  <td>0 chai</td>
+                </tr>
+                <tr>
+                  <td>Remaining to Invoice</td>
+                  <td>80 chai</td>
+                </tr>
+                <tr>
+                  <td>Invoice Quantity (OCR)</td>
+                  <td>100 chai ❌</td>
+                </tr>
+                <tr>
+                  <td>Chênh lệch</td>
+                  <td>+20 chai (vượt quá)</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="result-box error">
+              <div class="result-icon">❌</div>
+              <div class="result-content">
+                <h4>Kết quả: Cảnh báo qty_mismatch, kế toán xác nhận</h4>
+                <p>
+                  <strong>Actor:</strong>
+                  <span class="actor actor-human">👤 Kế toán viên</span>
+                </p>
+                <ul>
+                  <li>
+                    UI hiển thị: "Số lượng hóa đơn (100) vượt quá remaining
+                    (80)"
+                  </li>
+                  <li>Gợi ý sửa số lượng về 80</li>
+                  <li>Kế toán có thể sửa qty hoặc xác nhận ghi đè với lý do</li>
+                  <li>
+                    Nếu xác nhận: <code>matching_status='mismatch'</code>, ghi
+                    audit log
+                  </li>
+                  <li>Hóa đơn vẫn được tạo nhưng cần giải thích sai lệch</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-09 -->
+        <div class="scenario-card theme-red">
+          <div class="card-header">
+            <div class="card-number">09</div>
+            <div class="card-header-text">
+              <h3>TC-09 — 3-Way Matching: Lệch Đơn Giá (price_mismatch)</h3>
+              <p>
+                Đơn giá trên hóa đơn khác với đơn giá đã thỏa thuận trong PO.
+              </p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="tags">
+              <span class="tag tag-error">❌ price_mismatch</span>
+              <span class="tag tag-manual">✍️ Cần xác nhận</span>
+            </div>
+            <table class="conditions">
+              <thead>
+                <tr>
+                  <th>Chỉ số</th>
+                  <th>Giá trị</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Đơn giá PO</td>
+                  <td>168,000 đ/thùng</td>
+                </tr>
+                <tr>
+                  <td>Đơn giá Invoice (OCR)</td>
+                  <td>175,000 đ/thùng ❌</td>
+                </tr>
+                <tr>
+                  <td>Chênh lệch</td>
+                  <td>+7,000 đ/thùng</td>
+                </tr>
+                <tr>
+                  <td>Tổng chênh lệch (10 thùng)</td>
+                  <td>+70,000 đ</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="result-box error">
+              <div class="result-icon">💰</div>
+              <div class="result-content">
+                <h4>Kết quả: Cảnh báo price_mismatch, kế toán xác nhận</h4>
+                <p>
+                  <strong>Actor:</strong>
+                  <span class="actor actor-human">👤 Kế toán viên</span>
+                </p>
+                <ul>
+                  <li>
+                    UI hiển thị: "Đơn giá hóa đơn (175,000) khác đơn giá PO
+                    (168,000)"
+                  </li>
+                  <li>Hiển thị số tiền chênh lệch: +70,000 đ</li>
+                  <li>Gợi ý dùng giá PO (168,000)</li>
+                  <li>
+                    Kế toán sửa giá hoặc xác nhận ghi đè với lý do (VD: nhà cung
+                    cấp tăng giá)
+                  </li>
+                  <li>
+                    Nếu xác nhận: <code>matching_status='mismatch'</code>, ghi
+                    audit log
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-10 -->
+        <div class="scenario-card theme-gray">
+          <div class="card-header">
+            <div class="card-number">10</div>
+            <div class="card-header-text">
+              <h3>TC-10 — OCR Thất Bại (Timeout / Lỗi API)</h3>
+              <p>
+                OpenAI Vision không phản hồi hoặc trả về lỗi trong quá trình xử
+                lý.
+              </p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="tags">
+              <span class="tag tag-error">❌ OCR Failed</span>
+            </div>
+            <table class="conditions">
+              <thead>
+                <tr>
+                  <th>Loại lỗi</th>
+                  <th>Nguyên nhân</th>
+                  <th>Xử lý</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Timeout</td>
+                  <td>OCR > 25 giây</td>
+                  <td>Retry 1 lần sau 3s</td>
+                </tr>
+                <tr>
+                  <td>API Error</td>
+                  <td>OpenAI 500/429</td>
+                  <td>Retry 1 lần sau 3s</td>
+                </tr>
+                <tr>
+                  <td>File corrupt</td>
+                  <td>PDF/ảnh hỏng</td>
+                  <td>Đánh dấu failed ngay</td>
+                </tr>
+                <tr>
+                  <td>Retry thất bại</td>
+                  <td>Lần 2 cũng lỗi</td>
+                  <td>ocr_status='failed'</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="result-box error">
+              <div class="result-icon">🔄</div>
+              <div class="result-content">
+                <h4>
+                  Kết quả: Retry tự động → nếu vẫn lỗi → thông báo kế toán
+                </h4>
+                <p>
+                  <strong>Actor:</strong>
+                  <span class="actor actor-system">⚙️ Hệ thống</span> →
+                  <span class="actor actor-human">👤 Kế toán viên</span>
+                </p>
+                <ul>
+                  <li>Hệ thống tự retry 1 lần sau 3 giây</li>
+                  <li>Nếu retry thành công → tiếp tục bình thường</li>
+                  <li>
+                    Nếu retry thất bại: <code>ocr_status='failed'</code>, lưu
+                    error_message
+                  </li>
+                  <li>UI hiển thị: "Xử lý thất bại — [thông báo lỗi]"</li>
+                  <li>Cung cấp nút "Thử lại" và "Nhập thủ công"</li>
+                  <li>Kế toán có thể chọn nhập tay toàn bộ</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-11 -->
+        <div class="scenario-card theme-red">
+          <div class="card-header">
+            <div class="card-number">11</div>
+            <div class="card-header-text">
+              <h3>TC-11 — File Không Hợp Lệ (Sai Định Dạng / Quá Lớn)</h3>
+              <p>
+                File bị từ chối ngay tại bước upload, trước khi OCR được gọi.
+              </p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="tags">
+              <span class="tag tag-error">❌ Từ chối</span>
+            </div>
+            <table class="conditions">
+              <thead>
+                <tr>
+                  <th>Trường hợp</th>
+                  <th>Điều kiện</th>
+                  <th>Thông báo lỗi</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>File quá lớn</td>
+                  <td>size > 10MB</td>
+                  <td>"File không được vượt quá 10MB"</td>
+                </tr>
+                <tr>
+                  <td>Sai định dạng</td>
+                  <td>Không phải PDF/JPG/PNG</td>
+                  <td>"Chỉ chấp nhận PDF, JPG, JPEG, PNG"</td>
+                </tr>
+                <tr>
+                  <td>File .docx</td>
+                  <td>application/msword</td>
+                  <td>"Định dạng không được hỗ trợ"</td>
+                </tr>
+                <tr>
+                  <td>File .xlsx</td>
+                  <td>application/excel</td>
+                  <td>"Định dạng không được hỗ trợ"</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="result-box error">
+              <div class="result-icon">🚫</div>
+              <div class="result-content">
+                <h4>Kết quả: Từ chối ngay, không tạo InvoiceDocument</h4>
+                <p>
+                  <strong>Actor:</strong>
+                  <span class="actor actor-system"
+                    >⚙️ Hệ thống (Frontend validation)</span
+                  >
+                </p>
+                <ul>
+                  <li>Validation xảy ra ở frontend trước khi gọi API</li>
+                  <li>Toast error hiển thị ngay lập tức</li>
+                  <li>Không tạo bản ghi InvoiceDocument</li>
+                  <li>Không tốn quota OCR</li>
+                  <li>Kế toán chọn lại file đúng định dạng</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TC-12 -->
+        <div class="scenario-card theme-yellow">
+          <div class="card-header">
+            <div class="card-number">12</div>
+            <div class="card-header-text">
+              <h3>
+                TC-12 — Confidence Cực Thấp (&lt; 0.50): Khuyến Nghị Nhập Tay
+              </h3>
+              <p>
+                OCR chạy xong nhưng chất lượng quá kém — ảnh mờ, hóa đơn viết
+                tay, scan nghiêng.
+              </p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="tags">
+              <span class="tag tag-warning">⚠️ Chất lượng kém</span>
+              <span class="tag tag-manual">✍️ Nhập tay</span>
+            </div>
+            <table class="conditions">
+              <thead>
+                <tr>
+                  <th>Trường</th>
+                  <th>Giá trị OCR</th>
+                  <th>Confidence</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>invoice_no</td>
+                  <td>"HD??-20?4" (không đọc được)</td>
+                  <td>0.20</td>
+                </tr>
+                <tr>
+                  <td>vendor_name</td>
+                  <td>"Cty ??? ABC"</td>
+                  <td>0.30</td>
+                </tr>
+                <tr>
+                  <td>total</td>
+                  <td>Không trích xuất được</td>
+                  <td>0.00</td>
+                </tr>
+                <tr>
+                  <td>Overall Confidence</td>
+                  <td colspan="2">0.38 ❌❌</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="result-box manual">
+              <div class="result-icon">⚠️</div>
+              <div class="result-content">
+                <h4>Kết quả: Khuyến nghị nhập tay toàn bộ</h4>
+                <p>
+                  <strong>Actor:</strong>
+                  <span class="actor actor-human">👤 Kế toán viên</span>
+                </p>
+                <ul>
+                  <li>UI hiển thị badge "Độ tin cậy: 38%" màu đỏ</li>
+                  <li>
+                    Cảnh báo: "Chất lượng hóa đơn quá thấp, khuyến nghị nhập thủ
+                    công"
+                  </li>
+                  <li>Dữ liệu OCR vẫn được pre-fill vào form để tham khảo</li>
+                  <li>Kế toán tự sửa toàn bộ các trường từ hóa đơn gốc</li>
+                  <li>
+                    Sau khi sửa xong → xác nhận tạo với
+                    <code>source='ai_ocr'</code>
+                  </li>
+                  <li>
+                    Audit log ghi nhận: confidence=0.38,
+                    full_manual_override=true
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- end scenario-grid -->
+    </div>
+    <!-- end section -->
+
+    <!-- ══════════════════════════════════════════════════════════
+     BẢNG TÓM TẮT ACTOR
+══════════════════════════════════════════════════════════ -->
+    <div class="section page-break">
+      <div class="section-title">Tóm Tắt: Ai Làm Gì?</div>
+      <div class="section-subtitle">
+        Phân công trách nhiệm theo từng kịch bản
+      </div>
+
+      <table class="summary-table">
+        <thead>
+          <tr>
+            <th>Kịch bản</th>
+            <th>Upload file</th>
+            <th>OCR xử lý</th>
+            <th>Quyết định tạo</th>
+            <th>Xác nhận cuối</th>
+            <th>Actor chính</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>TC-01</strong> Happy Path</td>
+            <td>👤 Kế toán</td>
+            <td>🤖 AI</td>
+            <td>🤖 AI tự động</td>
+            <td>—</td>
+            <td><span class="actor actor-ai">🤖 AI</span></td>
+          </tr>
+          <tr>
+            <td><strong>TC-02</strong> Partial Delivery</td>
+            <td>👤 Kế toán</td>
+            <td>🤖 AI</td>
+            <td>🤖 AI tự động</td>
+            <td>—</td>
+            <td><span class="actor actor-ai">🤖 AI</span></td>
+          </tr>
+          <tr>
+            <td><strong>TC-03</strong> Không có PO</td>
+            <td>—</td>
+            <td>—</td>
+            <td>👤 Kế toán nhập tay</td>
+            <td>👤 Kế toán</td>
+            <td><span class="actor actor-human">👤 Kế toán</span></td>
+          </tr>
+          <tr>
+            <td><strong>TC-04</strong> Confidence thấp</td>
+            <td>👤 Kế toán</td>
+            <td>🤖 AI</td>
+            <td>⚠️ Cần xác nhận</td>
+            <td>👤 Kế toán</td>
+            <td><span class="actor actor-human">👤 Kế toán</span></td>
+          </tr>
+          <tr>
+            <td><strong>TC-05</strong> Vendor không khớp</td>
+            <td>👤 Kế toán</td>
+            <td>🤖 AI</td>
+            <td>⚠️ Chọn vendor</td>
+            <td>👤 Kế toán</td>
+            <td><span class="actor actor-human">👤 Kế toán</span></td>
+          </tr>
+          <tr>
+            <td><strong>TC-06</strong> Product không khớp</td>
+            <td>👤 Kế toán</td>
+            <td>🤖 AI</td>
+            <td>⚠️ Chọn sản phẩm</td>
+            <td>👤 Kế toán</td>
+            <td><span class="actor actor-human">👤 Kế toán</span></td>
+          </tr>
+          <tr>
+            <td><strong>TC-07</strong> Trùng lặp</td>
+            <td>👤 Kế toán</td>
+            <td>🤖 AI</td>
+            <td>⚠️ Ghi đè?</td>
+            <td>👤 Kế toán</td>
+            <td><span class="actor actor-human">👤 Kế toán</span></td>
+          </tr>
+          <tr>
+            <td><strong>TC-08</strong> Qty mismatch</td>
+            <td>👤 Kế toán</td>
+            <td>🤖 AI</td>
+            <td>⚠️ Sửa qty?</td>
+            <td>👤 Kế toán</td>
+            <td><span class="actor actor-human">👤 Kế toán</span></td>
+          </tr>
+          <tr>
+            <td><strong>TC-09</strong> Price mismatch</td>
+            <td>👤 Kế toán</td>
+            <td>🤖 AI</td>
+            <td>⚠️ Sửa giá?</td>
+            <td>👤 Kế toán</td>
+            <td><span class="actor actor-human">👤 Kế toán</span></td>
+          </tr>
+          <tr>
+            <td><strong>TC-10</strong> OCR thất bại</td>
+            <td>👤 Kế toán</td>
+            <td>❌ Lỗi → Retry</td>
+            <td>⚙️ Hệ thống retry</td>
+            <td>👤 Kế toán (nếu retry fail)</td>
+            <td><span class="actor actor-system">⚙️ Hệ thống</span></td>
+          </tr>
+          <tr>
+            <td><strong>TC-11</strong> File không hợp lệ</td>
+            <td>❌ Từ chối</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td><span class="actor actor-system">⚙️ Hệ thống</span></td>
+          </tr>
+          <tr>
+            <td><strong>TC-12</strong> Confidence &lt; 0.50</td>
+            <td>👤 Kế toán</td>
+            <td>🤖 AI (kém)</td>
+            <td>⚠️ Nhập tay toàn bộ</td>
+            <td>👤 Kế toán</td>
+            <td><span class="actor actor-human">👤 Kế toán</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="margin-top: 40px">
+        <div class="flow">
+          <div class="flow-title">📊 Thống Kê Phân Bổ</div>
+          <div
+            style="
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 24px;
+              margin-top: 16px;
+            "
+          >
+            <div
+              style="
+                background: #d1fae5;
+                border-radius: 12px;
+                padding: 24px;
+                text-align: center;
+              "
+            >
+              <div style="font-size: 40px; font-weight: 800; color: #065f46">
+                2
+              </div>
+              <div
+                style="
+                  font-size: 14px;
+                  font-weight: 600;
+                  color: #065f46;
+                  margin-top: 4px;
+                "
+              >
+                Tự động hoàn toàn
+              </div>
+              <div style="font-size: 12px; color: #6ee7b7; margin-top: 4px">
+                TC-01, TC-02
+              </div>
+            </div>
+            <div
+              style="
+                background: #fef3c7;
+                border-radius: 12px;
+                padding: 24px;
+                text-align: center;
+              "
+            >
+              <div style="font-size: 40px; font-weight: 800; color: #92400e">
+                7
+              </div>
+              <div
+                style="
+                  font-size: 14px;
+                  font-weight: 600;
+                  color: #92400e;
+                  margin-top: 4px;
+                "
+              >
+                Cần can thiệp thủ công
+              </div>
+              <div style="font-size: 12px; color: #fcd34d; margin-top: 4px">
+                TC-03 đến TC-09, TC-12
+              </div>
+            </div>
+            <div
+              style="
+                background: #fee2e2;
+                border-radius: 12px;
+                padding: 24px;
+                text-align: center;
+              "
+            >
+              <div style="font-size: 40px; font-weight: 800; color: #991b1b">
+                2
+              </div>
+              <div
+                style="
+                  font-size: 14px;
+                  font-weight: 600;
+                  color: #991b1b;
+                  margin-top: 4px;
+                "
+              >
+                Lỗi / Từ chối
+              </div>
+              <div style="font-size: 12px; color: #fca5a5; margin-top: 4px">
+                TC-10, TC-11
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+     NGƯỠNG CẤU HÌNH
+══════════════════════════════════════════════════════════ -->
+    <div class="section page-break">
+      <div class="section-title">Ngưỡng Cấu Hình Hệ Thống</div>
+      <div class="section-subtitle">
+        Các biến môi trường ảnh hưởng đến quyết định tự động / thủ công
+      </div>
+
+      <div class="flow">
+        <table class="conditions" style="margin: 0">
+          <thead>
+            <tr>
+              <th>Biến môi trường</th>
+              <th>Mặc định</th>
+              <th>Ảnh hưởng đến</th>
+              <th>Kịch bản liên quan</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>OCR_MIN_CONFIDENCE_AUTO_CREATE</code></td>
+              <td>0.85</td>
+              <td>Ngưỡng tạo tự động</td>
+              <td>TC-01, TC-04, TC-12</td>
+            </tr>
+            <tr>
+              <td><code>VENDOR_MATCH_MIN_CONFIDENCE</code></td>
+              <td>0.90</td>
+              <td>Ngưỡng khớp vendor</td>
+              <td>TC-01, TC-05</td>
+            </tr>
+            <tr>
+              <td><code>PRODUCT_MATCH_MIN_CONFIDENCE</code></td>
+              <td>0.80</td>
+              <td>Ngưỡng khớp sản phẩm</td>
+              <td>TC-01, TC-06</td>
+            </tr>
+            <tr>
+              <td><code>AUTO_CREATE_WITH_MISMATCHES</code></td>
+              <td>false</td>
+              <td>Cho phép tạo tự động dù mismatch</td>
+              <td>TC-08, TC-09</td>
+            </tr>
+            <tr>
+              <td><code>MAX_FILE_SIZE_MB</code></td>
+              <td>10</td>
+              <td>Giới hạn kích thước file</td>
+              <td>TC-11</td>
+            </tr>
+            <tr>
+              <td><code>OCR_TIMEOUT_MS</code></td>
+              <td>25000</td>
+              <td>Timeout OCR engine</td>
+              <td>TC-10</td>
+            </tr>
+            <tr>
+              <td><code>USE_MOCK_LLM</code></td>
+              <td>false</td>
+              <td>Dùng mock OCR khi dev/test</td>
+              <td>Tất cả (dev only)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div
+        style="
+          margin-top: 32px;
+          background: white;
+          border-radius: 16px;
+          padding: 32px;
+          box-shadow: 0 4px 24px rgba(0, 0, 0, 0.07);
+        "
+      >
+        <h3
+          style="
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: #1a1a2e;
+          "
+        >
+          💡 Ghi Chú Quan Trọng
+        </h3>
+        <ul
+          style="
+            padding-left: 20px;
+            line-height: 2;
+            font-size: 14px;
+            color: #334155;
+          "
+        >
+          <li>
+            Giảm <code>OCR_MIN_CONFIDENCE_AUTO_CREATE</code> xuống 0.70 khi dev
+            để test nhanh hơn
+          </li>
+          <li>
+            Đặt <code>USE_MOCK_LLM=true</code> để test UI mà không tốn quota
+            OpenAI
+          </li>
+          <li>
+            Tất cả AP Invoice dù tạo tự động hay thủ công đều phải qua luồng phê
+            duyệt
+          </li>
+          <li>
+            Audit log được ghi cho mọi trường hợp — không thể xóa sau khi tạo
+          </li>
+          <li>
+            3-Way Matching chỉ chạy khi có <code>po_id</code> — hóa đơn dịch vụ
+            bỏ qua bước này
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div
+      style="
+        background: #1a1a2e;
+        color: #64748b;
+        text-align: center;
+        padding: 32px;
+        font-size: 13px;
+      "
+    >
+      <p>ERP Mini — AP Invoice OCR Integration · Phase 9 · 2026</p>
+      <p style="margin-top: 8px">
+        Tài liệu này mô tả tất cả 12 kịch bản có thể xảy ra trong luồng xử lý
+        OCR Invoice
+      </p>
+    </div>
+  </body>
+</html>

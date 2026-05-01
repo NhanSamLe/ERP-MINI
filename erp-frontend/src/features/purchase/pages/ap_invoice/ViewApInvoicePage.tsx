@@ -22,6 +22,12 @@ import {
   Phone,
   Send,
   ArrowLeft,
+  ScanLine,
+  PenLine,
+  AlertTriangle,
+  CheckCircle2,
+  History,
+  Link2,
 } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
@@ -31,6 +37,8 @@ import { getErrorMessage } from "@/utils/ErrorHelper";
 import {
   ApInvoiceApprovalStatus,
   ApInvoiceStatus,
+  ApInvoiceAuditLog,
+  MatchingDetails,
 } from "../../store/apInvoice/apInvoice.types";
 import { PurchaseOrderStatus } from "../../store/purchaseOrder.types";
 
@@ -164,7 +172,7 @@ export default function ViewApInvoicePage() {
         rejectApInvoiceThunk({
           id: invoice.id,
           reason: rejectReason.trim(),
-        })
+        }),
       ).unwrap();
 
       toast.success("Invoice rejected successfully");
@@ -252,7 +260,7 @@ export default function ViewApInvoicePage() {
             {/* STATUS */}
             <div
               className={`px-4 py-2 rounded-xl border-2 font-semibold text-sm flex items-center gap-2   ${getInvoiceStatusBadge(
-                invoice.status
+                invoice.status,
               )}`}
             >
               <div className="w-2 h-2 rounded-full bg-current"></div>
@@ -261,7 +269,7 @@ export default function ViewApInvoicePage() {
 
             <div
               className={`px-4 py-2 rounded-xl border-2 font-semibold text-sm flex items-center gap-2  ${getApprovalStatusBadge(
-                invoice.approval_status
+                invoice.approval_status,
               )}`}
             >
               <CheckCircle className="w-4 h-4" />
@@ -368,7 +376,7 @@ export default function ViewApInvoicePage() {
                 value={
                   <span
                     className={`px-3 py-1 rounded-full text-xs font-bold ${getPoStatusBadge(
-                      po.status
+                      po.status,
                     )}`}
                   >
                     {po.status.toUpperCase()}
@@ -579,6 +587,131 @@ export default function ViewApInvoicePage() {
           />
         </div>
       </div>
+
+      {/* ================= OCR & MATCHING INFO ================= */}
+      {(invoice.source === "ai_ocr" || invoice.matching_status) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* OCR Info */}
+          {invoice.source === "ai_ocr" && (
+            <div className="bg-purple-50 rounded-2xl border-2 border-purple-100 p-6 shadow-sm">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-purple-500 flex items-center justify-center">
+                  <ScanLine className="w-5 h-5 text-white" />
+                </div>
+                <h2 className="text-lg font-bold text-gray-900">
+                  OCR Information
+                </h2>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between py-2 px-3 bg-white rounded-lg">
+                  <span className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                    <PenLine className="w-4 h-4" /> Nguồn tạo
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                    <ScanLine className="w-3 h-3" /> OCR
+                  </span>
+                </div>
+                {invoice.ocr_confidence != null && (
+                  <div className="flex items-center justify-between py-2 px-3 bg-white rounded-lg">
+                    <span className="text-sm font-medium text-gray-600">
+                      Độ tin cậy OCR
+                    </span>
+                    <span
+                      className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                        invoice.ocr_confidence >= 0.85
+                          ? "bg-green-100 text-green-700"
+                          : invoice.ocr_confidence >= 0.6
+                            ? "bg-yellow-100 text-yellow-700"
+                            : "bg-red-100 text-red-700"
+                      }`}
+                    >
+                      {Math.round(invoice.ocr_confidence * 100)}%
+                    </span>
+                  </div>
+                )}
+                {invoice.invoice_document_id && (
+                  <div className="flex items-center justify-between py-2 px-3 bg-white rounded-lg">
+                    <span className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                      <Link2 className="w-4 h-4" /> Tài liệu gốc
+                    </span>
+                    <a
+                      href={`/purchase/document-intelligence/history`}
+                      className="text-sm font-medium text-purple-600 hover:underline"
+                    >
+                      Doc #{invoice.invoice_document_id}
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Matching Info */}
+          {invoice.matching_status && (
+            <div
+              className={`rounded-2xl border-2 p-6 shadow-sm ${
+                invoice.matching_status === "matched"
+                  ? "bg-green-50 border-green-100"
+                  : invoice.matching_status === "mismatch"
+                    ? "bg-red-50 border-red-100"
+                    : "bg-gray-50 border-gray-100"
+              }`}
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                    invoice.matching_status === "matched"
+                      ? "bg-green-500"
+                      : invoice.matching_status === "mismatch"
+                        ? "bg-red-500"
+                        : "bg-gray-400"
+                  }`}
+                >
+                  {invoice.matching_status === "matched" ? (
+                    <CheckCircle2 className="w-5 h-5 text-white" />
+                  ) : invoice.matching_status === "mismatch" ? (
+                    <AlertTriangle className="w-5 h-5 text-white" />
+                  ) : (
+                    <Clock className="w-5 h-5 text-white" />
+                  )}
+                </div>
+                <h2 className="text-lg font-bold text-gray-900">
+                  3-Way Matching
+                </h2>
+              </div>
+
+              {invoice.matching_details ? (
+                <MatchingDetailsPanel details={invoice.matching_details} />
+              ) : (
+                <p className="text-sm text-gray-500 italic">
+                  {invoice.matching_status === "pending"
+                    ? "Chưa thực hiện đối soát (không có PO hoặc đang chờ)"
+                    : "Không có chi tiết"}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ================= AUDIT TRAIL ================= */}
+      {invoice.audit_trail && invoice.audit_trail.length > 0 && (
+        <div className="bg-white rounded-2xl border-2 border-gray-100 p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+              <History className="w-5 h-5 text-gray-600" />
+            </div>
+            <h2 className="text-lg font-bold text-gray-900">
+              Lịch Sử Kiểm Toán
+            </h2>
+          </div>
+          <div className="space-y-3">
+            {invoice.audit_trail.map((log) => (
+              <AuditLogRow key={log.id} log={log} />
+            ))}
+          </div>
+        </div>
+      )}
       {openSubmitModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 animate-in fade-in zoom-in">
@@ -889,6 +1022,136 @@ function UserCard({
           {emptyText || "No data"}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ─── Matching Details Panel ─────────────────────────────────────────────── */
+function MatchingDetailsPanel({ details }: { details: MatchingDetails }) {
+  const { summary, line_results } = details;
+  return (
+    <div className="space-y-3">
+      {/* Summary */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="bg-white rounded-lg p-3 text-center">
+          <p className="text-xl font-bold text-green-600">
+            {summary.matched_lines}
+          </p>
+          <p className="text-xs text-gray-500">Matched</p>
+        </div>
+        <div className="bg-white rounded-lg p-3 text-center">
+          <p className="text-xl font-bold text-red-600">
+            {summary.price_mismatches + summary.qty_mismatches}
+          </p>
+          <p className="text-xs text-gray-500">Sai lệch</p>
+        </div>
+      </div>
+
+      {/* Line results */}
+      {line_results.length > 0 && (
+        <div className="space-y-2">
+          {line_results.map((lr) => (
+            <div
+              key={lr.ap_invoice_line_id}
+              className={`rounded-lg p-3 text-xs ${
+                lr.status === "matched"
+                  ? "bg-green-50 border border-green-200"
+                  : "bg-red-50 border border-red-200"
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-semibold text-gray-700">
+                  Dòng #{lr.ap_invoice_line_id}
+                </span>
+                <span
+                  className={`px-2 py-0.5 rounded-full font-medium ${
+                    lr.status === "matched"
+                      ? "bg-green-100 text-green-700"
+                      : "bg-red-100 text-red-700"
+                  }`}
+                >
+                  {lr.status === "matched"
+                    ? "Matched"
+                    : lr.status === "price_mismatch"
+                      ? "Lệch giá"
+                      : "Lệch SL"}
+                </span>
+              </div>
+              <div className="text-gray-600 space-y-0.5">
+                <p>
+                  Hóa đơn: {lr.invoice_qty} | Đã nhận: {lr.total_received} | Còn
+                  lại: {lr.remaining_to_invoice}
+                </p>
+                {lr.messages.map((msg, i) => (
+                  <p key={i} className="text-red-600">
+                    {msg}
+                  </p>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Audit Log Row ──────────────────────────────────────────────────────── */
+const auditActionLabel: Record<string, { label: string; color: string }> = {
+  created: { label: "Tạo hóa đơn", color: "bg-blue-100 text-blue-700" },
+  auto_created: {
+    label: "Tạo tự động (OCR)",
+    color: "bg-purple-100 text-purple-700",
+  },
+  override_duplicate: {
+    label: "Ghi đè trùng lặp",
+    color: "bg-yellow-100 text-yellow-700",
+  },
+  mismatch_accepted: {
+    label: "Chấp nhận sai lệch",
+    color: "bg-orange-100 text-orange-700",
+  },
+  manual_override: {
+    label: "Ghi đè thủ công",
+    color: "bg-gray-100 text-gray-700",
+  },
+};
+
+function AuditLogRow({ log }: { log: ApInvoiceAuditLog }) {
+  const meta = auditActionLabel[log.action] ?? {
+    label: log.action,
+    color: "bg-gray-100 text-gray-700",
+  };
+  return (
+    <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 border border-gray-100">
+      <div className="w-2 h-2 rounded-full bg-gray-400 mt-2 shrink-0" />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span
+            className={`px-2 py-0.5 rounded-full text-xs font-medium ${meta.color}`}
+          >
+            {meta.label}
+          </span>
+          {log.source && (
+            <span className="text-xs text-gray-500">
+              {log.source === "ai_ocr" ? "OCR" : "Manual"}
+            </span>
+          )}
+          {log.ocr_confidence != null && (
+            <span className="text-xs text-gray-500">
+              Confidence: {Math.round(log.ocr_confidence * 100)}%
+            </span>
+          )}
+        </div>
+        {log.override_reason && (
+          <p className="text-xs text-gray-600 mt-1">
+            Lý do: {log.override_reason}
+          </p>
+        )}
+        <p className="text-xs text-gray-400 mt-1">
+          {new Date(log.created_at).toLocaleString("vi-VN")}
+        </p>
+      </div>
     </div>
   );
 }

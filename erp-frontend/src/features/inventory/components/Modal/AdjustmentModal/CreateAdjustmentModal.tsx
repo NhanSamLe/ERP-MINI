@@ -166,7 +166,7 @@ export default function CreateTransferModal({
     }
 
     for (const p of lineItems) {
-      if (!p.quantity || p.quantity <= 0) {
+      if (!p.quantity) {
         toast.error(`Invalid quantity for product: ${p.name}`);
         return;
       }
