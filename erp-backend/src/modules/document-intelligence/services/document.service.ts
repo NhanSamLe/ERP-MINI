@@ -1,12 +1,8 @@
 import { Op } from "sequelize";
-import { sequelize } from "../../../config/db";
 import { InvoiceDocument } from "../models/invoiceDocument.model";
-import { ApInvoice } from "../../purchase/models/apInvoice.model";
-import { ApInvoiceLine } from "../../purchase/models/apInvoiceLine.model";
 import { VendorMatcherService } from "./vendorMatcher.service";
 import { ProductMatcherService } from "./productMatcher.service";
 import { DuplicateDetectorService } from "./duplicateDetector.service";
-import { ThreeWayMatcherService } from "./threeWayMatcher.service";
 import { OcrEngineFactory } from "./ocrEngine.factory";
 import { InvoiceParser } from "./invoiceParser.service";
 import {
@@ -15,6 +11,10 @@ import {
   sanitizeFilename,
 } from "../utils/fileUtils";
 import { logger } from "../../../config/logger";
+import {
+  apInvoiceService,
+  CreateAPInvoiceLineInput,
+} from "../../purchase/services/apInvoice.service";
 
 export interface ConfirmPayload {
   // Fields from frontend (simplified)
@@ -316,12 +316,6 @@ export class DocumentService {
       throw err;
     }
 
-    if (payload.overrideDuplicate) {
-      logger.warn(
-        `Override duplicate: userId=${userId}, documentId=${documentId}, timestamp=${new Date().toISOString()}`,
-      );
-    }
-
     // Resolve fields — frontend sends simplified payload, backend fills from ocr_result
     const ocr = doc.ocr_result as Record<string, any> | null;
 
@@ -330,13 +324,9 @@ export class DocumentService {
       payload.invoice_no ??
       ocr?.invoice_no ??
       `OCR-${documentId}-${Date.now()}`;
-    const invoiceSeries = payload.invoice_series ?? ocr?.invoice_series ?? null;
-    const invoiceTemplate =
-      payload.invoice_template ?? ocr?.invoice_template ?? null;
-    const taxCode = payload.tax_code ?? ocr?.vendor_tax_code ?? null;
+
     const parseInvoiceDate = (raw: string | undefined | null): Date => {
       if (!raw) return new Date();
-      // Handle DD/MM/YYYY format
       const ddmmyyyy = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
       const m = String(raw).trim().match(ddmmyyyy);
       if (m)
@@ -350,95 +340,75 @@ export class DocumentService {
     const invoiceDate = payload.invoice_date
       ? parseInvoiceDate(String(payload.invoice_date))
       : parseInvoiceDate(ocr?.invoice_date);
-    const totalBeforeTax = payload.total_before_tax ?? ocr?.subtotal ?? 0;
-    const totalTax = payload.total_tax ?? ocr?.tax_amount ?? 0;
-    const totalAfterTax = payload.total_after_tax ?? ocr?.total ?? 0;
 
-    // Resolve lines — frontend sends items[], backend expects lines[]
-    const resolvedLines = (payload.lines ?? payload.items ?? []).map(
-      (item: any) => {
-        const qty = item.quantity ?? item.qty ?? 0;
-        const price = item.unit_price ?? 0;
-        const lineTotal = item.line_total ?? qty * price;
-        return {
-          product_id: item.product_id ?? null,
-          description: item.description ?? item.name ?? "",
-          quantity: qty,
-          unit_price: price,
-          tax_rate_id: item.tax_rate_id ?? null,
-          line_total: lineTotal,
-          line_tax: item.line_tax ?? 0,
-          line_total_after_tax: item.line_total_after_tax ?? lineTotal,
-          po_line_id: item.po_line_id ?? null,
-          grn_line_id: item.grn_line_id ?? null,
-        };
-      },
-    );
+    // due_date: 30 ngày sau invoice_date nếu không được cung cấp
+    const dueDate: Date | undefined = payload.due_date
+      ? new Date(payload.due_date)
+      : (() => {
+          const d = new Date(invoiceDate);
+          d.setDate(d.getDate() + 30);
+          return d;
+        })();
 
+    const resolvedLines: CreateAPInvoiceLineInput[] = (
+      payload.lines ??
+      payload.items ??
+      []
+    ).map((item: any) => {
+      const qty = item.quantity ?? item.qty ?? 0;
+      const price = item.unit_price ?? 0;
+      const lineTotal = item.line_total ?? qty * price;
+      return {
+        product_id: item.product_id ?? null,
+        description: item.description ?? item.name ?? "",
+        quantity: qty,
+        unit_price: price,
+        tax_rate_id: item.tax_rate_id ?? null,
+        line_total: lineTotal,
+        line_tax: item.line_tax ?? 0,
+        line_total_after_tax: item.line_total_after_tax ?? lineTotal,
+        po_line_id: item.po_line_id ?? null,
+        grn_line_id: item.grn_line_id ?? null,
+      };
+    });
+
+    // Gọi unified entry point — xử lý validation, duplicate, 3-way matching, audit
     let newInvoiceId!: number;
-
     try {
-      await sequelize.transaction(async (t) => {
-        const newInvoice = await ApInvoice.create(
-          {
-            source: "ai_ocr",
-            invoice_document_id: documentId,
-            ...(doc.ocr_confidence != null && {
-              ocr_confidence: doc.ocr_confidence,
-            }),
-            branch_id: branchId,
-            created_by: userId,
-            approval_status: "draft",
-            supplier_id: supplierId,
-            invoice_no: invoiceNo,
-            invoice_date: invoiceDate,
-            ...(payload.due_date !== undefined && {
-              due_date: payload.due_date,
-            }),
-            ...(payload.po_id != null && { po_id: payload.po_id }),
-            ...(invoiceSeries != null && { invoice_series: invoiceSeries }),
-            ...(invoiceTemplate != null && {
-              invoice_template: invoiceTemplate,
-            }),
-            ...(taxCode != null && { tax_code: taxCode }),
-            total_before_tax: totalBeforeTax,
-            total_tax: totalTax,
-            total_after_tax: totalAfterTax,
-          },
-          { transaction: t },
-        );
+      const result = await apInvoiceService.createAPInvoice(
+        {
+          source: "ai_ocr",
+          invoice_no: invoiceNo,
+          invoice_date: invoiceDate,
+          due_date: dueDate,
+          supplier_id: supplierId!,
+          po_id: payload.po_id ?? null,
+          branch_id: branchId,
+          created_by: userId,
+          invoice_document_id: documentId,
+          ocr_confidence: doc.ocr_confidence ?? null,
+          invoice_series: payload.invoice_series ?? ocr?.invoice_series ?? null,
+          invoice_template:
+            payload.invoice_template ?? ocr?.invoice_template ?? null,
+          tax_code: payload.tax_code ?? ocr?.vendor_tax_code ?? null,
+          total_before_tax: payload.total_before_tax ?? ocr?.subtotal ?? 0,
+          total_tax: payload.total_tax ?? ocr?.tax_amount ?? 0,
+          total_after_tax: payload.total_after_tax ?? ocr?.total ?? 0,
+          lines: resolvedLines,
+          overrideDuplicate: payload.overrideDuplicate ?? false,
+          ...(payload.overrideDuplicate && {
+            override_reason: "Người dùng xác nhận ghi đè từ OCR review",
+          }),
+        },
+        { id: userId, branch_id: branchId, role: "ACCOUNT" },
+      );
 
-        newInvoiceId = newInvoice.id;
-
-        for (const line of resolvedLines) {
-          await ApInvoiceLine.create(
-            {
-              ap_invoice_id: newInvoice.id,
-              product_id: line.product_id,
-              description: line.description,
-              quantity: line.quantity,
-              unit_price: line.unit_price,
-              ...(line.tax_rate_id != null && {
-                tax_rate_id: line.tax_rate_id,
-              }),
-              line_total: line.line_total,
-              line_tax: line.line_tax,
-              line_total_after_tax: line.line_total_after_tax,
-              po_line_id: line.po_line_id ?? null,
-              grn_line_id: line.grn_line_id ?? null,
-            },
-            { transaction: t },
-          );
-        }
-
-        await doc.update(
-          { purchase_invoice_id: newInvoice.id },
-          { transaction: t },
-        );
-      });
+      newInvoiceId = result.invoice.id;
     } catch (txErr: any) {
-      if (txErr.status) throw txErr; // already a known error, re-throw as-is
-      logger.error(`confirmDocument: transaction failed — ${txErr.message}`);
+      if (txErr.status) throw txErr;
+      logger.error(
+        `confirmDocument: createAPInvoice failed — ${txErr.message}`,
+      );
       const err: any = new Error(
         "Lỗi cơ sở dữ liệu khi xác nhận tài liệu. Vui lòng thử lại.",
       );
@@ -446,17 +416,10 @@ export class DocumentService {
       throw err;
     }
 
-    // Run three-way matching asynchronously if PO exists
-    if (payload.po_id) {
-      const matcher = new ThreeWayMatcherService();
-      matcher.match(newInvoiceId!).catch((err) => {
-        logger.error(
-          `Three-way matching failed for invoice ${newInvoiceId!}: ${err.message}`,
-        );
-      });
-    }
+    // Cập nhật InvoiceDocument để liên kết với AP Invoice vừa tạo
+    await doc.update({ purchase_invoice_id: newInvoiceId });
 
-    return { purchase_invoice_id: newInvoiceId! };
+    return { purchase_invoice_id: newInvoiceId };
   }
 
   async getDocumentHistory(

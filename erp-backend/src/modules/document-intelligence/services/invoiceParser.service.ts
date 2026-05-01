@@ -1,12 +1,12 @@
 import { OcrRawResult, OcrInvoiceData, OcrLineItem } from "../types/ocr.types";
 
 // Weights for overall_confidence calculation
-const FIELD_WEIGHTS: Record<string, number> = {
+const FIELD_WEIGHTS = {
   invoice_no: 0.25,
   vendor_tax_code: 0.25,
   total: 0.2,
   items: 0.3,
-};
+} as const;
 
 function fieldConfidence(value: any): number {
   if (value === undefined || value === null) return 0.0;
@@ -42,7 +42,17 @@ export class InvoiceParser {
     });
 
     // Per-field confidence scores
-    const confidence_scores: Record<string, number> = {
+    const confidence_scores: {
+      vendor_name: number;
+      vendor_tax_code: number;
+      invoice_no: number;
+      invoice_series: number;
+      invoice_template: number;
+      invoice_date: number;
+      subtotal: number;
+      tax_amount: number;
+      total: number;
+    } = {
       vendor_name: fieldConfidence(data.vendor_name),
       vendor_tax_code: fieldConfidence(data.vendor_tax_code),
       invoice_no: fieldConfidence(data.invoice_no),

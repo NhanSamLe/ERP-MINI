@@ -138,6 +138,12 @@ export default function DocumentUploadPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // ── Vendor manual selection ──
+  const [selectedVendorId, setSelectedVendorId] = useState<number | null>(null);
+  const [availableSuppliers, setAvailableSuppliers] = useState<
+    Array<{ id: number; name: string }>
+  >([]);
+
   // ── PO selection ──
   const [availablePOs, setAvailablePOs] = useState<
     Array<{
@@ -172,16 +178,36 @@ export default function DocumentUploadPage() {
     }
   }, [result]);
 
-  // Load POs when vendor is matched
+  // Load POs when vendor is matched or manually selected
+  const effectiveVendorId =
+    result?.vendor_match?.matchedPartnerId ?? selectedVendorId ?? null;
+
   useEffect(() => {
-    if (result?.vendor_match?.matchedPartnerId) {
+    if (effectiveVendorId) {
       documentIntelligenceApi
-        .getPurchaseOrdersForVendor(result.vendor_match.matchedPartnerId)
+        .getPurchaseOrdersForVendor(effectiveVendorId)
         .then(setAvailablePOs)
         .catch(() => setAvailablePOs([]));
     } else {
       setAvailablePOs([]);
       setSelectedPoId(null);
+    }
+  }, [effectiveVendorId]);
+
+  // Load all suppliers when vendor is NOT matched (for manual selection)
+  useEffect(() => {
+    if (result && !result.vendor_match?.matchedPartnerId) {
+      import("@/api/axiosClient").then(({ default: axiosClient }) => {
+        axiosClient
+          .get("partners", { params: { type: "supplier", limit: 200 } })
+          .then((res) => {
+            const data = res.data?.data ?? res.data ?? [];
+            setAvailableSuppliers(
+              data.map((p: any) => ({ id: p.id, name: p.name })),
+            );
+          })
+          .catch(() => setAvailableSuppliers([]));
+      });
     }
   }, [result?.vendor_match?.matchedPartnerId]);
 
@@ -272,7 +298,8 @@ export default function DocumentUploadPage() {
   const handleConfirm = async (overrideDuplicate: boolean) => {
     if (!currentDocumentId || !result) return;
 
-    const vendorId = result.vendor_match?.matchedPartnerId ?? null;
+    const vendorId =
+      result.vendor_match?.matchedPartnerId ?? selectedVendorId ?? null;
 
     const items: ConfirmLineItem[] = editItems.map((item, idx) => ({
       product_id: result.product_matches?.[idx]?.matchedProductId ?? null,
@@ -506,11 +533,35 @@ export default function DocumentUploadPage() {
                     </span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 text-yellow-700">
-                    <AlertTriangle className="w-4 h-4" />
-                    <span className="text-sm">
-                      Không tìm thấy nhà cung cấp phù hợp
-                    </span>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-yellow-700">
+                      <AlertTriangle className="w-4 h-4 shrink-0" />
+                      <span className="text-sm">
+                        Không tìm thấy nhà cung cấp phù hợp — vui lòng chọn thủ
+                        công
+                      </span>
+                    </div>
+                    <select
+                      value={selectedVendorId ?? ""}
+                      onChange={(e) =>
+                        setSelectedVendorId(
+                          e.target.value ? Number(e.target.value) : null,
+                        )
+                      }
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm bg-white border-yellow-300"
+                    >
+                      <option value="">-- Chọn nhà cung cấp --</option>
+                      {availableSuppliers.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                    {!selectedVendorId && (
+                      <p className="text-xs text-red-500">
+                        ⚠️ Bắt buộc phải chọn nhà cung cấp trước khi xác nhận
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -525,9 +576,9 @@ export default function DocumentUploadPage() {
                 </p>
                 {availablePOs.length === 0 ? (
                   <p className="text-sm text-gray-400 italic">
-                    {result.vendor_match?.matchedPartnerId
+                    {effectiveVendorId
                       ? "Không có PO nào đang mở cho nhà cung cấp này"
-                      : "Cần match nhà cung cấp trước để xem PO"}
+                      : "Cần chọn nhà cung cấp trước để xem PO"}
                   </p>
                 ) : (
                   <select
@@ -730,10 +781,17 @@ export default function DocumentUploadPage() {
             </div>
 
             {/* Confirm button */}
-            <div className="flex justify-end">
+            <div className="flex justify-end items-center gap-3">
+              {!effectiveVendorId && (
+                <p className="text-sm text-red-500 flex items-center gap-1">
+                  <AlertTriangle className="w-4 h-4" />
+                  Chưa chọn nhà cung cấp
+                </p>
+              )}
               <button
                 onClick={() => setShowConfirmModal(true)}
-                className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                disabled={!effectiveVendorId}
+                className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-colors"
               >
                 <CheckCircle className="w-5 h-5" />
                 Xác nhận tạo hóa đơn

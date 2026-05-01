@@ -12,19 +12,29 @@ export interface ProductMatchResult {
 function levenshtein(a: string, b: string): number {
   const m = a.length;
   const n = b.length;
-  const dp: number[][] = Array.from({ length: m + 1 }, (_, i) =>
-    Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)),
-  );
+  // Dùng flat Uint32Array để tránh lỗi noUncheckedIndexedAccess với 2D array
+  const dp = new Uint32Array((m + 1) * (n + 1));
+  const idx = (i: number, j: number) => i * (n + 1) + j;
+
+  for (let i = 0; i <= m; i++) dp[idx(i, 0)] = i;
+  for (let j = 0; j <= n; j++) dp[idx(0, j)] = j;
+
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
       if (a[i - 1] === b[j - 1]) {
-        dp[i][j] = dp[i - 1][j - 1];
+        dp[idx(i, j)] = dp[idx(i - 1, j - 1)] ?? 0;
       } else {
-        dp[i][j] = 1 + Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1]);
+        dp[idx(i, j)] =
+          1 +
+          Math.min(
+            dp[idx(i - 1, j - 1)] ?? 0,
+            dp[idx(i - 1, j)] ?? 0,
+            dp[idx(i, j - 1)] ?? 0,
+          );
       }
     }
   }
-  return dp[m][n];
+  return dp[idx(m, n)] ?? 0;
 }
 
 export class ProductMatcherService {
@@ -60,9 +70,10 @@ export class ProductMatcherService {
       }
 
       if (bestProduct) {
+        const bestProductName = bestProduct.name?.trim().toLowerCase() ?? "";
         const maxLen = Math.max(
           normalizedItemName.length,
-          bestProduct.name.trim().toLowerCase().length,
+          bestProductName.length,
         );
         const ratio = maxLen > 0 ? bestDistance / maxLen : 1;
 
@@ -70,7 +81,7 @@ export class ProductMatcherService {
           const confidence =
             1 -
             bestDistance /
-              Math.max(normalizedItemName.length, bestProduct.name.length);
+              Math.max(normalizedItemName.length, bestProductName.length);
           return {
             lineIndex,
             matchedProductId: bestProduct.id,

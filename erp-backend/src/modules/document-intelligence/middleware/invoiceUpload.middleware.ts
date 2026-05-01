@@ -2,6 +2,7 @@ import multer, { FileFilterCallback } from "multer";
 import path from "path";
 import fs from "fs";
 import { Request } from "express";
+import { ocrConfig } from "../services/ocrConfig.service";
 
 const ALLOWED_MIMETYPES = [
   "application/pdf",
@@ -10,7 +11,6 @@ const ALLOWED_MIMETYPES = [
   "image/png",
 ];
 const ALLOWED_EXTENSIONS = [".pdf", ".jpg", ".jpeg", ".png"];
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const TEMP_DIR = "uploads/invoices/temp";
 
 // Ensure temp directory exists
@@ -49,17 +49,23 @@ const fileFilter = (
   }
 };
 
+// Lấy max file size từ config (MB → bytes)
+const maxFileSizeBytes = ocrConfig.get("maxFileSizeMb") * 1024 * 1024;
+
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: MAX_FILE_SIZE },
+  limits: { fileSize: maxFileSizeBytes },
 });
 
 export const invoiceUploadMiddleware = (req: Request, res: any, next: any) => {
   upload.single("file")(req, res, (err: any) => {
     if (err) {
       if (err.code === "LIMIT_FILE_SIZE") {
-        return next(new Error("File quá lớn. Kích thước tối đa là 10MB."));
+        const maxMb = ocrConfig.get("maxFileSizeMb");
+        return next(
+          new Error(`File quá lớn. Kích thước tối đa là ${maxMb}MB.`),
+        );
       }
       return next(err);
     }

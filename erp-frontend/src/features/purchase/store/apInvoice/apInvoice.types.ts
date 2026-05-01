@@ -10,6 +10,10 @@ export type ApInvoiceApprovalStatus =
   | "approved"
   | "rejected";
 
+export type ApInvoiceSource = "manual" | "ai_ocr";
+
+export type ApInvoiceMatchingStatus = "pending" | "matched" | "mismatch";
+
 export interface Branch {
   id: number;
   company_id: number;
@@ -34,6 +38,7 @@ export interface UserLite {
   phone: string;
   avatar_url: string | null;
 }
+
 export interface ApInvoiceLine {
   id: number;
   product_id?: number;
@@ -44,13 +49,56 @@ export interface ApInvoiceLine {
   line_total?: string;
   line_tax?: string;
   line_total_after_tax?: string;
-
+  po_line_id?: number | null;
+  grn_line_id?: number | null;
+  matching_result?: "matched" | "price_mismatch" | "qty_mismatch" | null;
   product?: {
     id: number;
     name: string;
     image_url?: string | null;
   };
 }
+
+export interface MatchingLineResult {
+  ap_invoice_line_id: number;
+  po_line_id?: number;
+  status: "matched" | "price_mismatch" | "qty_mismatch";
+  invoice_qty: number;
+  po_qty: number;
+  total_received: number;
+  previously_invoiced: number;
+  remaining_to_invoice: number;
+  messages: string[];
+}
+
+export interface MatchingDetails {
+  summary: {
+    total_lines: number;
+    matched_lines: number;
+    price_mismatches: number;
+    qty_mismatches: number;
+  };
+  line_results: MatchingLineResult[];
+}
+
+export interface ApInvoiceAuditLog {
+  id: number;
+  ap_invoice_id: number;
+  action:
+    | "created"
+    | "auto_created"
+    | "override_duplicate"
+    | "mismatch_accepted"
+    | "manual_override";
+  source?: ApInvoiceSource | null;
+  ocr_confidence?: number | null;
+  matching_status?: string | null;
+  matching_details?: MatchingDetails | null;
+  override_reason?: string | null;
+  created_by: number;
+  created_at: string;
+}
+
 export interface ApInvoice {
   id: number;
   po_id: number | null;
@@ -64,6 +112,14 @@ export interface ApInvoice {
 
   status: ApInvoiceStatus;
   approval_status: ApInvoiceApprovalStatus;
+
+  // OCR & Matching fields
+  source: ApInvoiceSource;
+  ocr_confidence?: number | null;
+  invoice_document_id?: number | null;
+  matching_status: ApInvoiceMatchingStatus;
+  matching_details?: MatchingDetails | null;
+  supplier_id?: number | null;
 
   created_by: number;
   approved_by: number | null;
@@ -82,6 +138,7 @@ export interface ApInvoice {
   approver: UserLite | null;
   order?: PurchaseOrder;
   lines?: ApInvoiceLine[];
+  audit_trail?: ApInvoiceAuditLog[];
 }
 export interface ApInvoiceSummary {
   id: number;

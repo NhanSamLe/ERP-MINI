@@ -22,12 +22,14 @@ import { auditService } from "./auditService";
 
 /**
  * Quy đổi quantity từ purchase UOM sang stock UOM của product.
+ * Priority lookup: product-specific → generic → reverse product-specific → reverse generic → fallback.
  * Nếu uom_id = product.uom_id hoặc không có conversion → trả về quantity gốc.
  */
 async function resolveQtyInStockUom(
   quantity: number,
   purchaseUomId: number | null | undefined,
   productStockUomId: number | null | undefined,
+  productId: number | null | undefined,
 ): Promise<number> {
   if (
     !purchaseUomId ||
@@ -36,19 +38,60 @@ async function resolveQtyInStockUom(
   ) {
     return quantity;
   }
-  const conversion = await UomConversion.findOne({
-    where: { from_uom_id: purchaseUomId, to_uom_id: productStockUomId },
-  });
-  if (conversion) {
-    return quantity * parseFloat(String(conversion.factor));
+
+  // Step 1: Forward product-specific
+  if (productId) {
+    const conversion = await UomConversion.findOne({
+      where: {
+        product_id: productId,
+        from_uom_id: purchaseUomId,
+        to_uom_id: productStockUomId,
+      },
+    });
+    if (conversion) {
+      return quantity * parseFloat(String(conversion.factor));
+    }
   }
-  // Thử chiều ngược lại
-  const reverse = await UomConversion.findOne({
-    where: { from_uom_id: productStockUomId, to_uom_id: purchaseUomId },
+
+  // Step 2: Forward generic
+  const genericConversion = await UomConversion.findOne({
+    where: {
+      product_id: null,
+      from_uom_id: purchaseUomId,
+      to_uom_id: productStockUomId,
+    },
   });
-  if (reverse) {
-    return quantity / parseFloat(String(reverse.factor));
+  if (genericConversion) {
+    return quantity * parseFloat(String(genericConversion.factor));
   }
+
+  // Step 3: Reverse product-specific
+  if (productId) {
+    const reverseProductSpecific = await UomConversion.findOne({
+      where: {
+        product_id: productId,
+        from_uom_id: productStockUomId,
+        to_uom_id: purchaseUomId,
+      },
+    });
+    if (reverseProductSpecific) {
+      return quantity / parseFloat(String(reverseProductSpecific.factor));
+    }
+  }
+
+  // Step 4: Reverse generic
+  const reverseGeneric = await UomConversion.findOne({
+    where: {
+      product_id: null,
+      from_uom_id: productStockUomId,
+      to_uom_id: purchaseUomId,
+    },
+  });
+  if (reverseGeneric) {
+    return quantity / parseFloat(String(reverseGeneric.factor));
+  }
+
+  // Step 5: Fallback — no conversion found
   return quantity;
 }
 
@@ -148,6 +191,7 @@ export const purchaseOrderService = {
           line.quantity,
           line.uom_id ?? null,
           productStockUomId,
+          line.product_id,
         );
 
         await PurchaseOrderLine.create(
@@ -252,6 +296,7 @@ export const purchaseOrderService = {
               line.quantity,
               line.uom_id ?? null,
               productStockUomId,
+              line.product_id,
             );
 
             await PurchaseOrderLine.update(
@@ -275,6 +320,7 @@ export const purchaseOrderService = {
               line.quantity,
               line.uom_id ?? null,
               productStockUomId,
+              line.product_id,
             );
 
             await PurchaseOrderLine.create(

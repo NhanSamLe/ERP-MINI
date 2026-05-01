@@ -7,6 +7,7 @@ import {
   approveApInvoiceThunk,
   rejectApInvoiceThunk,
   createApInvoiceFromPoThunk,
+  createManualApInvoiceThunk,
   fetchApPostedSummaryThunk,
 } from "./apInvoice.thunks";
 
@@ -52,6 +53,7 @@ const apInvoiceSlice = createSlice({
         state.selected = action.payload;
       })
 
+      /* ===== CREATE FROM PO ===== */
       .addCase(createApInvoiceFromPoThunk.pending, (state) => {
         state.loading = true;
         state.error = undefined;
@@ -62,6 +64,21 @@ const apInvoiceSlice = createSlice({
         state.selected = action.payload;
       })
       .addCase(createApInvoiceFromPoThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      /* ===== CREATE MANUAL ===== */
+      .addCase(createManualApInvoiceThunk.pending, (state) => {
+        state.loading = true;
+        state.error = undefined;
+      })
+      .addCase(createManualApInvoiceThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        state.list.unshift(action.payload);
+        state.selected = action.payload;
+      })
+      .addCase(createManualApInvoiceThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

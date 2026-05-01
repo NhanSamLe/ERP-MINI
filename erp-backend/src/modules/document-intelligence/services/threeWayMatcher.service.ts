@@ -7,7 +7,7 @@ import { StockMoveLine } from "../../inventory/models/stockMoveLine.model";
 
 export interface LineMatchResult {
   ap_invoice_line_id: number;
-  po_line_id?: number;
+  po_line_id?: number | undefined;
   status: "matched" | "price_mismatch" | "qty_mismatch";
   invoice_qty: number;
   po_qty: number;
