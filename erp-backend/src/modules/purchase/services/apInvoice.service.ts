@@ -522,6 +522,14 @@ export const apInvoiceService = {
     poId: number,
     selectedLines: Array<{ po_line_id: number; quantity: number }>,
     user: any,
+    metadata?: {
+      invoice_no?: string;
+      invoice_date?: string;
+      due_date?: string;
+      invoice_series?: string;
+      invoice_template?: string;
+      tax_code?: string;
+    },
   ) {
     if (![Role.ACCOUNT].includes(user.role)) {
       throw {
@@ -625,10 +633,25 @@ export const apInvoiceService = {
     const totalTax = lines.reduce((s, l) => s + (l.line_tax ?? 0), 0);
     const totalAfterTax = totalBeforeTax + totalTax;
 
-    const invoiceNo = `AP-${new Date().getFullYear()}-${Date.now()}`;
-    const invoiceDate = new Date();
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 30);
+    // ── Dùng metadata từ user nếu có, fallback về auto-generate ──────────
+    const invoiceNo =
+      metadata?.invoice_no?.trim() ||
+      `AP-${new Date().getFullYear()}-${Date.now()}`;
+
+    const parseDate = (raw?: string): Date => {
+      if (!raw) return new Date();
+      const d = new Date(raw);
+      return isNaN(d.getTime()) ? new Date() : d;
+    };
+
+    const invoiceDate = parseDate(metadata?.invoice_date);
+    const dueDate = metadata?.due_date
+      ? parseDate(metadata.due_date)
+      : (() => {
+          const d = new Date(invoiceDate);
+          d.setDate(d.getDate() + 30);
+          return d;
+        })();
 
     const result = await this.createAPInvoice(
       {
@@ -640,6 +663,9 @@ export const apInvoiceService = {
         po_id: po.id,
         branch_id: po.branch_id,
         created_by: user.id,
+        invoice_series: metadata?.invoice_series ?? null,
+        invoice_template: metadata?.invoice_template ?? null,
+        tax_code: metadata?.tax_code ?? null,
         total_before_tax: totalBeforeTax,
         total_tax: totalTax,
         total_after_tax: totalAfterTax,
@@ -876,8 +902,9 @@ export const apInvoiceService = {
         ai.invoice_no,
         ai.invoice_date,
         ai.total_after_tax,
+        ai.status,
         ai.po_id,
-        COALESCE(ai.total_after_tax - SUM(apa.applied_amount), ai.total_after_tax)
+        ai.total_after_tax - COALESCE(SUM(apa.applied_amount), 0)
           AS outstanding_amount,
         po.po_no,
         p.id   AS supplier_id,
@@ -887,9 +914,11 @@ export const apInvoiceService = {
       JOIN partners p ON p.id = ai.supplier_id
       LEFT JOIN ap_payment_allocations apa ON apa.ap_invoice_id = ai.id
       WHERE ai.branch_id = :branchId
-        AND ai.status IN ('posted')
+        AND ai.status IN ('posted', 'partially_paid')
+        AND ai.approval_status = 'approved'
         AND ai.supplier_id = :supplierId
       GROUP BY ai.id, po.id, p.id
+      HAVING (ai.total_after_tax - COALESCE(SUM(apa.applied_amount), 0)) > 0
       ORDER BY ai.invoice_date ASC
       `,
       {
@@ -908,7 +937,11 @@ export const apInvoiceService = {
 
   async getPostedSuppliers(user: any) {
     const invoices = await ApInvoice.findAll({
-      where: { branch_id: user.branch_id, status: "posted" },
+      where: {
+        branch_id: user.branch_id,
+        status: ["posted", "partially_paid"],
+        approval_status: "approved",
+      },
       include: [
         {
           model: Partner,

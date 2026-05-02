@@ -40,6 +40,7 @@ import { ApInvoice } from "../modules/purchase/models/apInvoice.model";
 import { ApInvoiceLine } from "../modules/purchase/models/apInvoiceLine.model";
 import { ApPayment } from "../modules/purchase/models/apPayment.model";
 import { ApPaymentAllocation } from "../modules/purchase/models/apPaymentAllocation.model";
+import { ApPaymentAuditLog } from "../modules/purchase/models/apPaymentAuditLog.model";
 // Inventory
 import { Warehouse } from "../modules/inventory/models/warehouse.model";
 import { StockMove } from "../modules/inventory/models/stockMove.model";
@@ -111,6 +112,7 @@ export {
   ApInvoiceLine,
   ApPayment,
   ApPaymentAllocation,
+  ApPaymentAuditLog,
   Warehouse,
   StockMove,
   StockMoveLine,

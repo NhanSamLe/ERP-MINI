@@ -8,6 +8,8 @@ import {
 export interface PoInvoiceSummaryLine {
   po_line_id: number;
   product_id?: number;
+  product_name?: string | null;
+  product_image?: string | null;
   quantity: number;
   unit_price: number;
   uom_id?: number | null;
@@ -118,5 +120,10 @@ export const purchaseOrderApi = {
       reason,
     });
     return res.data;
+  },
+
+  getAuditLogs: async (id: number): Promise<any[]> => {
+    const res = await axiosClient.get(`/purchase-order/${id}/audit-logs`);
+    return res.data.data;
   },
 };

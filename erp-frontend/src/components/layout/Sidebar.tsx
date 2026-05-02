@@ -112,12 +112,12 @@ const menuItems: MenuItem[] = [
         allowedRoles: ["PURCHASE", "PURCHASEMANAGER"],
       },
       {
-        name: "OCR Hóa Đơn",
+        name: "OCR Invoice",
         path: "/purchase/document-intelligence",
         allowedRoles: ["ACCOUNT", "CHACC"],
       },
       {
-        name: "Lịch Sử OCR",
+        name: "OCR History",
         path: "/purchase/document-intelligence/history",
         allowedRoles: ["ACCOUNT", "CHACC"],
       },

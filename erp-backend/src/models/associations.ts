@@ -26,6 +26,8 @@ import { ApInvoice } from "../modules/purchase/models/apInvoice.model";
 import { ApInvoiceLine } from "../modules/purchase/models/apInvoiceLine.model";
 import { ApPayment } from "../modules/purchase/models/apPayment.model";
 import { ApPaymentAllocation } from "../modules/purchase/models/apPaymentAllocation.model";
+import { ApPaymentAuditLog } from "../modules/purchase/models/apPaymentAuditLog.model";
+import { ApInvoiceAuditLog } from "../modules/purchase/models/apInvoiceAuditLog.model";
 import { Warehouse } from "../modules/inventory/models/warehouse.model";
 import { StockMove } from "../modules/inventory/models/stockMove.model";
 import { StockMoveLine } from "../modules/inventory/models/stockMoveLine.model";
@@ -421,8 +423,30 @@ export function applyAssociations() {
   ApInvoice.belongsTo(User, { as: "creator", foreignKey: "created_by" });
   ApInvoice.belongsTo(User, { as: "approver", foreignKey: "approved_by" });
 
+  // ApInvoiceAuditLog associations
+  ApInvoiceAuditLog.belongsTo(ApInvoice, {
+    foreignKey: "ap_invoice_id",
+    as: "invoice",
+  });
+  ApInvoice.hasMany(ApInvoiceAuditLog, {
+    foreignKey: "ap_invoice_id",
+    as: "auditLogs",
+  });
+  ApInvoiceAuditLog.belongsTo(User, { foreignKey: "created_by", as: "actor" });
+
   ApPayment.belongsTo(User, { as: "creator", foreignKey: "created_by" });
   ApPayment.belongsTo(User, { as: "approver", foreignKey: "approved_by" });
+
+  // ApPaymentAuditLog associations
+  ApPaymentAuditLog.belongsTo(ApPayment, {
+    foreignKey: "payment_id",
+    as: "payment",
+  });
+  ApPayment.hasMany(ApPaymentAuditLog, {
+    foreignKey: "payment_id",
+    as: "auditLogs",
+  });
+  ApPaymentAuditLog.belongsTo(User, { foreignKey: "created_by", as: "actor" });
 
   // InvoiceDocument associations
   InvoiceDocument.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });

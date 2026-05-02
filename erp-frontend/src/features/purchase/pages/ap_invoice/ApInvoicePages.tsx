@@ -27,7 +27,9 @@ import CreateInvoiceMethodModal from "../../components/CreateInvoiceMethodModal"
 import { getPurchaseOrdersAvailableForInvoiceThunk } from "../../store/purchaseOrder.thunks";
 import { loadPartnerDetail } from "@/features/partner/store/partner.thunks";
 import { PurchaseOrder } from "../../store/purchaseOrder.types";
-import ConfirmCreateInvoiceModal from "../../components/ConfirmCreateInvoiceModal";
+import ConfirmCreateInvoiceModal, {
+  InvoiceMetadata,
+} from "../../components/ConfirmCreateInvoiceModal";
 import { toast } from "react-toastify";
 import { getErrorMessage } from "@/utils/ErrorHelper";
 import { useNavigate } from "react-router-dom";
@@ -157,12 +159,17 @@ export default function ApInvoicePages() {
 
   const handleConfirmCreateInvoice = async (
     lines: Array<{ po_line_id: number; quantity: number }>,
+    metadata: InvoiceMetadata,
   ) => {
     if (!selectedPo) return;
     setCreatingInvoice(true);
     try {
       const invoice = await dispatch(
-        createPartialApInvoiceFromPoThunk({ poId: selectedPo.id, lines }),
+        createPartialApInvoiceFromPoThunk({
+          poId: selectedPo.id,
+          lines,
+          metadata,
+        }),
       ).unwrap();
       toast.success(`AP Invoice ${invoice.invoice_no} created successfully`);
       dispatch(getPurchaseOrdersAvailableForInvoiceThunk());
@@ -350,6 +357,9 @@ export default function ApInvoicePages() {
                 <option value="All">All</option>
                 <option value={ApInvoiceStatus.DRAFT}>Draft</option>
                 <option value={ApInvoiceStatus.POSTED}>Posted</option>
+                <option value={ApInvoiceStatus.PARTIALLY_PAID}>
+                  Partially Paid
+                </option>
                 <option value={ApInvoiceStatus.PAID}>Paid</option>
                 <option value={ApInvoiceStatus.CANCELLED}>Cancelled</option>
               </select>

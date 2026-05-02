@@ -16,14 +16,11 @@ export const apPaymentController = {
     const user = (req as any).user;
     try {
       const data = await apPaymentService.getById(Number(req.params.id), user);
-
       if (!data) {
-        return res.status(404).json({
-          success: false,
-          message: "AP Payment not found",
-        });
+        return res
+          .status(404)
+          .json({ success: false, message: "AP Payment not found" });
       }
-
       res.json({ success: true, data });
     } catch (error: any) {
       res.status(500).json({ success: false, message: error.message });
@@ -36,10 +33,9 @@ export const apPaymentController = {
       const data = await apPaymentService.create(req.body, user);
       res.status(201).json({ success: true, data });
     } catch (error: any) {
-      res.status(error.status || 400).json({
-        success: false,
-        message: error.message,
-      });
+      res
+        .status(error.status || 400)
+        .json({ success: false, message: error.message });
     }
   },
 
@@ -49,9 +45,8 @@ export const apPaymentController = {
       const data = await apPaymentService.submitForApproval(
         Number(req.params.id),
         user,
-        req.app
+        req.app,
       );
-
       res.json({
         success: true,
         message: "Payment submitted for approval",
@@ -65,8 +60,11 @@ export const apPaymentController = {
   async approve(req: Request, res: Response) {
     const user = (req as any).user;
     try {
-      const data = await apPaymentService.approve(Number(req.params.id), user);
-
+      const data = await apPaymentService.approve(
+        Number(req.params.id),
+        user,
+        req.app, // ✅ pass app để gửi notification
+      );
       res.json({
         success: true,
         message: "Payment approved successfully",
@@ -82,19 +80,16 @@ export const apPaymentController = {
     try {
       const { reason } = req.body;
       if (!reason?.trim()) {
-        return res.status(400).json({
-          success: false,
-          message: "Reject reason is required",
-        });
+        return res
+          .status(400)
+          .json({ success: false, message: "Reject reason is required" });
       }
-
       const data = await apPaymentService.reject(
         Number(req.params.id),
         reason,
         user,
-        req.app
+        req.app,
       );
-
       res.json({
         success: true,
         message: "Payment rejected successfully",
@@ -110,7 +105,7 @@ export const apPaymentController = {
     try {
       const data = await apPaymentService.getAvailableAmount(
         Number(req.params.id),
-        user
+        user,
       );
       res.json({ success: true, data });
     } catch (error: any) {
@@ -123,7 +118,7 @@ export const apPaymentController = {
     try {
       const data = await apPaymentService.getUnpaidInvoices(
         Number(req.params.id),
-        user
+        user,
       );
       res.json({ success: true, data });
     } catch (error: any) {
@@ -135,20 +130,32 @@ export const apPaymentController = {
     const user = (req as any).user;
     try {
       const { allocations } = req.body;
-
       if (!Array.isArray(allocations) || !allocations.length) {
-        return res.status(400).json({
-          success: false,
-          message: "Allocations are required",
-        });
+        return res
+          .status(400)
+          .json({ success: false, message: "Allocations are required" });
       }
+      await apPaymentService.allocate(
+        Number(req.params.id),
+        allocations,
+        user,
+        req.app,
+      );
+      res.json({ success: true, message: "Allocation applied successfully" });
+    } catch (error: any) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  },
 
-      await apPaymentService.allocate(Number(req.params.id), allocations, user);
-
-      res.json({
-        success: true,
-        message: "Allocation applied successfully",
-      });
+  // ✅ Phase 2: Audit log endpoint
+  async getAuditLogs(req: Request, res: Response) {
+    const user = (req as any).user;
+    try {
+      const data = await apPaymentService.getAuditLogs(
+        Number(req.params.id),
+        user,
+      );
+      res.json({ success: true, data });
     } catch (error: any) {
       res.status(400).json({ success: false, message: error.message });
     }

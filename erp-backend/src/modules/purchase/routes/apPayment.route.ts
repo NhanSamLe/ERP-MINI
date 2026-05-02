@@ -8,29 +8,34 @@ const router = Router();
 router.get(
   "/",
   authMiddleware([Role.ACCOUNT, Role.CHACC]),
-  apPaymentController.getAll
+  apPaymentController.getAll,
 );
 
 router.get(
   "/:id/available",
   authMiddleware([Role.ACCOUNT, Role.CHACC]),
-  apPaymentController.getAvailableAmount
+  apPaymentController.getAvailableAmount,
 );
 router.get(
   "/:id/unpaid-invoices",
   authMiddleware([Role.ACCOUNT, Role.CHACC]),
-  apPaymentController.getUnpaidInvoices
+  apPaymentController.getUnpaidInvoices,
+);
+router.get(
+  "/:id/audit-logs",
+  authMiddleware([Role.ACCOUNT, Role.CHACC]),
+  apPaymentController.getAuditLogs,
 );
 router.post(
   "/:id/allocate",
   authMiddleware([Role.ACCOUNT, Role.CHACC]),
-  apPaymentController.allocate
+  apPaymentController.allocate,
 );
 
 router.get(
   "/:id",
   authMiddleware([Role.ACCOUNT, Role.CHACC]),
-  apPaymentController.getById
+  apPaymentController.getById,
 );
 
 router.post("/", authMiddleware([Role.ACCOUNT]), apPaymentController.create);
@@ -38,19 +43,19 @@ router.post("/", authMiddleware([Role.ACCOUNT]), apPaymentController.create);
 router.post(
   "/:id/submit",
   authMiddleware([Role.ACCOUNT]),
-  apPaymentController.submitForApproval
+  apPaymentController.submitForApproval,
 );
 
 router.put(
   "/:id/approve",
   authMiddleware([Role.CHACC]),
-  apPaymentController.approve
+  apPaymentController.approve,
 );
 
 router.put(
   "/:id/reject",
   authMiddleware([Role.CHACC]),
-  apPaymentController.reject
+  apPaymentController.reject,
 );
 
 export default router;

@@ -6,18 +6,16 @@ import { Button } from "../../../components/ui/Button";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Roles } from "@/types/enum";
-import { Card, Space, Tooltip, Badge } from "antd";
+import { Tooltip, Badge } from "antd";
 import {
   FileText,
   FileSpreadsheet,
   RotateCw,
-  ChevronUp,
   Upload,
   Plus,
   Trash2,
   Download,
   Filter,
-  Eye,
 } from "lucide-react";
 
 import {
@@ -28,7 +26,6 @@ import {
   bulkCancelPurchaseOrdersThunk,
 } from "../store/purchaseOrder.thunks";
 import {
-  setSelectedIds,
   clearSelectedIds,
   setFilters,
 } from "../store/purchaseOrder.slice";

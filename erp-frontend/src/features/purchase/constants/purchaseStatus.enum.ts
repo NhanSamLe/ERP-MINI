@@ -19,6 +19,7 @@ export type PurchaseOrderStatus =
 export const ApInvoiceStatus = {
   DRAFT: "draft",
   POSTED: "posted",
+  PARTIALLY_PAID: "partially_paid",
   PAID: "paid",
   CANCELLED: "cancelled",
 } as const;

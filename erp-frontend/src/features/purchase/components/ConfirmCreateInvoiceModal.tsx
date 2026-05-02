@@ -8,6 +8,11 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
+  ArrowRight,
+  ArrowLeft,
+  Calendar,
+  Hash,
+  Receipt,
 } from "lucide-react";
 import { PurchaseOrder } from "../store/purchaseOrder.types";
 import {
@@ -15,20 +20,30 @@ import {
   PoInvoiceSummaryLine,
 } from "../api/purchaseOrder.api";
 
-/* ─── Types ─── */
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 interface SelectedLine {
   po_line_id: number;
   quantity: number;
   checked: boolean;
 }
 
+export interface InvoiceMetadata {
+  invoice_no: string;
+  invoice_date: string;
+  due_date: string;
+  invoice_series?: string;
+  invoice_template?: string;
+  tax_code?: string;
+}
+
 interface Props {
   open: boolean;
   po: PurchaseOrder | null;
   onCancel: () => void;
-  /** Called with selected lines for partial invoice */
   onConfirmPartial: (
     lines: Array<{ po_line_id: number; quantity: number }>,
+    metadata: InvoiceMetadata,
   ) => void;
   loading?: boolean;
 }
@@ -36,7 +51,16 @@ interface Props {
 const fmt = (v: number) =>
   v.toLocaleString("en-US", { minimumFractionDigits: 0 });
 
-/* ─── Component ─── */
+const today = () => new Date().toISOString().split("T")[0];
+const plusDays = (days: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split("T")[0];
+};
+const genInvoiceNo = () => `AP-${new Date().getFullYear()}-${Date.now()}`;
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export default function ConfirmCreateInvoiceModal({
   open,
   po,
@@ -44,12 +68,39 @@ export default function ConfirmCreateInvoiceModal({
   onConfirmPartial,
   loading = false,
 }: Props) {
+  // Step 1 = chọn lines, Step 2 = nhập metadata
+  const [step, setStep] = useState<1 | 2>(1);
+
   const [summaryLines, setSummaryLines] = useState<PoInvoiceSummaryLine[]>([]);
   const [selectedLines, setSelectedLines] = useState<SelectedLine[]>([]);
   const [fetchingLines, setFetchingLines] = useState(false);
   const [showLines, setShowLines] = useState(true);
 
-  // Fetch line summary when PO is selected
+  const [meta, setMeta] = useState<InvoiceMetadata>({
+    invoice_no: genInvoiceNo(),
+    invoice_date: today(),
+    due_date: plusDays(30),
+    invoice_series: "",
+    invoice_template: "",
+    tax_code: "",
+  });
+
+  // Reset khi mở lại
+  useEffect(() => {
+    if (open) {
+      setStep(1);
+      setMeta({
+        invoice_no: genInvoiceNo(),
+        invoice_date: today(),
+        due_date: plusDays(30),
+        invoice_series: "",
+        invoice_template: "",
+        tax_code: "",
+      });
+    }
+  }, [open]);
+
+  // Fetch line summary khi chọn PO
   useEffect(() => {
     if (!open || !po) return;
     setFetchingLines(true);
@@ -57,7 +108,6 @@ export default function ConfirmCreateInvoiceModal({
       .getPoInvoiceSummary(po.id)
       .then((summary) => {
         setSummaryLines(summary.lines);
-        // Pre-select all lines with remaining qty > 0, default qty = remaining
         setSelectedLines(
           summary.lines.map((l) => ({
             po_line_id: l.po_line_id,
@@ -67,7 +117,6 @@ export default function ConfirmCreateInvoiceModal({
         );
       })
       .catch(() => {
-        // Fallback: use PO lines if available
         setSummaryLines([]);
         setSelectedLines([]);
       })
@@ -81,28 +130,30 @@ export default function ConfirmCreateInvoiceModal({
   const invoiceCount = po.invoice_count ?? 0;
   const isPartialHistory = invoiceCount > 0;
 
-  // Calculate this invoice total from selected lines
   const thisInvoiceTotal = selectedLines.reduce((sum, sel) => {
     if (!sel.checked || sel.quantity <= 0) return sum;
     const line = summaryLines.find((l) => l.po_line_id === sel.po_line_id);
     if (!line) return sum;
     const lineTotal = sel.quantity * line.unit_price;
-    const taxRate = line.tax_rate_id ? 0.1 : 0; // simplified; backend recalculates
+    const taxRate = line.tax_rate_id ? 0.1 : 0;
     return sum + lineTotal * (1 + taxRate);
   }, 0);
 
   const checkedCount = selectedLines.filter(
     (s) => s.checked && s.quantity > 0,
   ).length;
-  const canSubmit = checkedCount > 0 && !loading && !fetchingLines;
+  const canGoNext = checkedCount > 0 && !fetchingLines;
+  const canSubmit =
+    meta.invoice_no.trim() !== "" && meta.invoice_date !== "" && !loading;
 
-  const handleToggleLine = (po_line_id: number) => {
+  // ─── Handlers ───────────────────────────────────────────────────────────────
+
+  const handleToggleLine = (po_line_id: number) =>
     setSelectedLines((prev) =>
       prev.map((s) =>
         s.po_line_id === po_line_id ? { ...s, checked: !s.checked } : s,
       ),
     );
-  };
 
   const handleQtyChange = (po_line_id: number, val: string) => {
     const num = parseFloat(val);
@@ -126,12 +177,14 @@ export default function ConfirmCreateInvoiceModal({
     const lines = selectedLines
       .filter((s) => s.checked && s.quantity > 0)
       .map((s) => ({ po_line_id: s.po_line_id, quantity: s.quantity }));
-    onConfirmPartial(lines);
+    onConfirmPartial(lines, meta);
   };
+
+  // ─── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
         {/* ── Header ── */}
         <div className="px-6 py-4 border-b flex items-center justify-between bg-gradient-to-r from-orange-50 to-white flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -147,6 +200,24 @@ export default function ConfirmCreateInvoiceModal({
               </p>
             </div>
           </div>
+
+          {/* Step indicator */}
+          <div className="flex items-center gap-2 mr-8">
+            <StepDot
+              active={step === 1}
+              done={step === 2}
+              label="1"
+              text="Lines"
+            />
+            <div className="w-8 h-px bg-gray-300" />
+            <StepDot
+              active={step === 2}
+              done={false}
+              label="2"
+              text="Details"
+            />
+          </div>
+
           <button
             onClick={onCancel}
             className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center"
@@ -155,239 +226,514 @@ export default function ConfirmCreateInvoiceModal({
           </button>
         </div>
 
-        {/* ── Scrollable body ── */}
+        {/* ── Body ── */}
         <div className="overflow-y-auto flex-1 px-6 py-5 space-y-4">
-          {/* PO amount summary */}
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-2 text-sm">
-            <div className="flex justify-between text-gray-600">
-              <span>PO Total</span>
-              <span className="font-semibold text-gray-900">
-                {fmt(poTotal)} VND
-              </span>
-            </div>
-            {isPartialHistory && (
-              <>
-                <div className="flex justify-between text-blue-600">
-                  <span>
-                    Already Invoiced ({invoiceCount} invoice
-                    {invoiceCount > 1 ? "s" : ""})
+          {/* ══ STEP 1: Select Lines ══ */}
+          {step === 1 && (
+            <>
+              {/* PO amount summary */}
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-2 text-sm">
+                <div className="flex justify-between text-gray-600">
+                  <span>PO Total</span>
+                  <span className="font-semibold text-gray-900">
+                    {fmt(poTotal)} VND
                   </span>
-                  <span className="font-semibold">{fmt(invoiced)} VND</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-1.5">
-                  <div
-                    className="h-1.5 rounded-full bg-orange-400"
-                    style={{
-                      width: `${Math.min(Math.round((invoiced / poTotal) * 100), 100)}%`,
-                    }}
-                  />
+                {isPartialHistory && (
+                  <>
+                    <div className="flex justify-between text-blue-600">
+                      <span>
+                        Already Invoiced ({invoiceCount} invoice
+                        {invoiceCount > 1 ? "s" : ""})
+                      </span>
+                      <span className="font-semibold">{fmt(invoiced)} VND</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-1.5">
+                      <div
+                        className="h-1.5 rounded-full bg-orange-400"
+                        style={{
+                          width: `${Math.min(Math.round((invoiced / poTotal) * 100), 100)}%`,
+                        }}
+                      />
+                    </div>
+                  </>
+                )}
+                <div className="flex justify-between font-bold text-orange-600 text-base border-t pt-2">
+                  <span>This Invoice</span>
+                  <span>{fmt(thisInvoiceTotal)} VND</span>
                 </div>
-              </>
-            )}
-            <div className="flex justify-between font-bold text-orange-600 text-base border-t pt-2">
-              <span>This Invoice</span>
-              <span>{fmt(thisInvoiceTotal)} VND</span>
-            </div>
-          </div>
+              </div>
 
-          {/* Info banner */}
-          {isPartialHistory ? (
-            <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-800">
-              <Info className="w-4 h-4 mt-0.5 shrink-0" />
-              <span>
-                Select the lines and quantities you want to invoice in this
-                delivery.
-              </span>
-            </div>
-          ) : (
-            <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-gray-700">
-              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-amber-500" />
-              <span>
-                You can invoice all lines at once or select specific lines for
-                partial delivery.
-              </span>
-            </div>
+              {/* Info banner */}
+              {isPartialHistory ? (
+                <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-800">
+                  <Info className="w-4 h-4 mt-0.5 shrink-0" />
+                  <span>
+                    Select the lines and quantities you want to invoice in this
+                    delivery.
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-gray-700">
+                  <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-amber-500" />
+                  <span>
+                    You can invoice all lines at once or select specific lines
+                    for partial delivery.
+                  </span>
+                </div>
+              )}
+
+              {/* Lines table */}
+              <div className="rounded-xl border border-gray-200 overflow-hidden">
+                <div
+                  className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b cursor-pointer select-none"
+                  onClick={() => setShowLines((v) => !v)}
+                >
+                  <div className="flex items-center gap-2">
+                    <Package className="w-4 h-4 text-gray-500" />
+                    <span className="font-semibold text-sm text-gray-700">
+                      PO Lines
+                    </span>
+                    {!fetchingLines && (
+                      <span className="text-xs text-gray-400">
+                        ({checkedCount}/{summaryLines.length} selected)
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {!fetchingLines && summaryLines.length > 0 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelectAll();
+                        }}
+                        className="text-xs text-orange-600 hover:underline font-medium"
+                      >
+                        {selectedLines.every((s) => s.checked)
+                          ? "Deselect All"
+                          : "Select All"}
+                      </button>
+                    )}
+                    {showLines ? (
+                      <ChevronUp className="w-4 h-4 text-gray-400" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-gray-400" />
+                    )}
+                  </div>
+                </div>
+
+                {showLines && (
+                  <>
+                    {fetchingLines ? (
+                      <div className="flex items-center justify-center py-10 gap-2 text-gray-500">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span className="text-sm">Loading lines...</span>
+                      </div>
+                    ) : summaryLines.length === 0 ? (
+                      <div className="py-8 text-center text-sm text-gray-400">
+                        No lines available
+                      </div>
+                    ) : (
+                      <div className="divide-y">
+                        {summaryLines.map((line) => {
+                          const sel = selectedLines.find(
+                            (s) => s.po_line_id === line.po_line_id,
+                          );
+                          const isFullyInvoiced = line.remaining_qty <= 0;
+                          const isChecked = sel?.checked ?? false;
+                          const qty = sel?.quantity ?? 0;
+                          const lineAmt = qty * line.unit_price;
+
+                          return (
+                            <div
+                              key={line.po_line_id}
+                              className={`px-4 py-3 flex items-center gap-3 transition-colors ${
+                                isFullyInvoiced
+                                  ? "opacity-40 bg-gray-50"
+                                  : isChecked
+                                    ? "bg-orange-50/40"
+                                    : "hover:bg-gray-50"
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                disabled={isFullyInvoiced}
+                                onChange={() =>
+                                  handleToggleLine(line.po_line_id)
+                                }
+                                className="w-4 h-4 accent-orange-500 cursor-pointer flex-shrink-0"
+                              />
+                              {/* Product image + info */}
+                              <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                                {/* Thumbnail */}
+                                {line.product_image ? (
+                                  <img
+                                    src={line.product_image}
+                                    alt={line.product_name ?? ""}
+                                    className="w-9 h-9 rounded-lg object-cover border border-gray-200 flex-shrink-0"
+                                  />
+                                ) : (
+                                  <div className="w-9 h-9 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center flex-shrink-0">
+                                    <Package className="w-4 h-4 text-gray-400" />
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-semibold text-gray-900 truncate">
+                                      {line.product_name
+                                        ? line.product_name
+                                        : line.product_id
+                                          ? `Product #${line.product_id}`
+                                          : `Line #${line.po_line_id}`}
+                                    </span>
+                                    {isFullyInvoiced && (
+                                      <span className="text-xs px-1.5 py-0.5 rounded bg-gray-200 text-gray-500 flex-shrink-0">
+                                        Fully Invoiced
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-gray-500 mt-0.5 flex gap-3">
+                                    <span>
+                                      PO qty: <strong>{line.quantity}</strong>
+                                    </span>
+                                    {line.invoiced_qty > 0 && (
+                                      <span className="text-blue-600">
+                                        Invoiced:{" "}
+                                        <strong>{line.invoiced_qty}</strong>
+                                      </span>
+                                    )}
+                                    <span className="text-orange-600">
+                                      Remaining:{" "}
+                                      <strong>{line.remaining_qty}</strong>
+                                    </span>
+                                    <span>@ {fmt(line.unit_price)} VND</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <input
+                                  type="number"
+                                  min={0.001}
+                                  max={line.remaining_qty}
+                                  step="any"
+                                  value={qty || ""}
+                                  disabled={!isChecked || isFullyInvoiced}
+                                  onChange={(e) =>
+                                    handleQtyChange(
+                                      line.po_line_id,
+                                      e.target.value,
+                                    )
+                                  }
+                                  className="w-24 px-2 py-1.5 border rounded-lg text-sm text-right focus:ring-2 focus:ring-orange-500 outline-none disabled:bg-gray-100 disabled:text-gray-400"
+                                  placeholder="Qty"
+                                />
+                                <span className="text-xs text-gray-500 w-28 text-right">
+                                  {isChecked && qty > 0
+                                    ? `${fmt(lineAmt)} VND`
+                                    : "—"}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </>
           )}
 
-          {/* Lines table */}
-          <div className="rounded-xl border border-gray-200 overflow-hidden">
-            {/* Table header */}
-            <div
-              className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b cursor-pointer select-none"
-              onClick={() => setShowLines((v) => !v)}
-            >
-              <div className="flex items-center gap-2">
-                <Package className="w-4 h-4 text-gray-500" />
-                <span className="font-semibold text-sm text-gray-700">
-                  PO Lines
+          {/* ══ STEP 2: Invoice Details ══ */}
+          {step === 2 && (
+            <div className="space-y-5">
+              {/* Summary chip */}
+              <div className="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-xl text-sm">
+                <span className="text-gray-600">
+                  <strong className="text-orange-600">{checkedCount}</strong>{" "}
+                  line{checkedCount > 1 ? "s" : ""} selected
                 </span>
-                {!fetchingLines && (
-                  <span className="text-xs text-gray-400">
-                    ({checkedCount}/{summaryLines.length} selected)
-                  </span>
-                )}
+                <span className="font-bold text-orange-600">
+                  {fmt(thisInvoiceTotal)} VND
+                </span>
               </div>
-              <div className="flex items-center gap-3">
-                {!fetchingLines && summaryLines.length > 0 && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSelectAll();
-                    }}
-                    className="text-xs text-orange-600 hover:underline font-medium"
+
+              {/* Required fields */}
+              <div className="space-y-4">
+                <SectionLabel
+                  icon={<Receipt className="w-4 h-4" />}
+                  text="Invoice Information"
+                  required
+                />
+
+                <div className="grid grid-cols-1 gap-4">
+                  {/* Invoice No */}
+                  <FormField
+                    label="Invoice No"
+                    required
+                    hint="Unique invoice number"
                   >
-                    {selectedLines.every((s) => s.checked)
-                      ? "Deselect All"
-                      : "Select All"}
-                  </button>
-                )}
-                {showLines ? (
-                  <ChevronUp className="w-4 h-4 text-gray-400" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
-                )}
+                    <input
+                      type="text"
+                      value={meta.invoice_no}
+                      onChange={(e) =>
+                        setMeta((p) => ({ ...p, invoice_no: e.target.value }))
+                      }
+                      placeholder="e.g. AP-2026-001"
+                      className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none"
+                    />
+                  </FormField>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Invoice Date */}
+                    <FormField
+                      label="Invoice Date"
+                      required
+                      icon={<Calendar className="w-3.5 h-3.5 text-gray-400" />}
+                    >
+                      <input
+                        type="date"
+                        value={meta.invoice_date}
+                        onChange={(e) =>
+                          setMeta((p) => ({
+                            ...p,
+                            invoice_date: e.target.value,
+                          }))
+                        }
+                        className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none"
+                      />
+                    </FormField>
+
+                    {/* Due Date */}
+                    <FormField
+                      label="Due Date"
+                      icon={<Calendar className="w-3.5 h-3.5 text-gray-400" />}
+                    >
+                      <input
+                        type="date"
+                        value={meta.due_date}
+                        onChange={(e) =>
+                          setMeta((p) => ({ ...p, due_date: e.target.value }))
+                        }
+                        className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none"
+                      />
+                    </FormField>
+                  </div>
+                </div>
+              </div>
+
+              {/* Optional fields */}
+              <div className="space-y-4">
+                <SectionLabel
+                  icon={<Hash className="w-4 h-4" />}
+                  text="Tax & Reference (Optional)"
+                />
+
+                <div className="grid grid-cols-3 gap-4">
+                  {/* Invoice Series */}
+                  <FormField label="Invoice Series" hint="e.g. AA/24E">
+                    <input
+                      type="text"
+                      value={meta.invoice_series ?? ""}
+                      onChange={(e) =>
+                        setMeta((p) => ({
+                          ...p,
+                          invoice_series: e.target.value,
+                        }))
+                      }
+                      placeholder="AA/24E"
+                      maxLength={20}
+                      className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none"
+                    />
+                  </FormField>
+
+                  {/* Invoice Template */}
+                  <FormField label="Invoice Template" hint="e.g. 01GTKT">
+                    <input
+                      type="text"
+                      value={meta.invoice_template ?? ""}
+                      onChange={(e) =>
+                        setMeta((p) => ({
+                          ...p,
+                          invoice_template: e.target.value,
+                        }))
+                      }
+                      placeholder="01GTKT"
+                      maxLength={20}
+                      className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none"
+                    />
+                  </FormField>
+
+                  {/* Tax Code */}
+                  <FormField label="Tax Code" hint="Supplier tax code">
+                    <input
+                      type="text"
+                      value={meta.tax_code ?? ""}
+                      onChange={(e) =>
+                        setMeta((p) => ({ ...p, tax_code: e.target.value }))
+                      }
+                      placeholder="0123456789"
+                      maxLength={20}
+                      className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none"
+                    />
+                  </FormField>
+                </div>
               </div>
             </div>
-
-            {showLines && (
-              <>
-                {fetchingLines ? (
-                  <div className="flex items-center justify-center py-10 gap-2 text-gray-500">
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    <span className="text-sm">Loading lines...</span>
-                  </div>
-                ) : summaryLines.length === 0 ? (
-                  <div className="py-8 text-center text-sm text-gray-400">
-                    No lines available
-                  </div>
-                ) : (
-                  <div className="divide-y">
-                    {summaryLines.map((line) => {
-                      const sel = selectedLines.find(
-                        (s) => s.po_line_id === line.po_line_id,
-                      );
-                      const isFullyInvoiced = line.remaining_qty <= 0;
-                      const isChecked = sel?.checked ?? false;
-                      const qty = sel?.quantity ?? 0;
-                      const lineAmt = qty * line.unit_price;
-
-                      return (
-                        <div
-                          key={line.po_line_id}
-                          className={`px-4 py-3 flex items-center gap-3 transition-colors ${
-                            isFullyInvoiced
-                              ? "opacity-40 bg-gray-50"
-                              : isChecked
-                                ? "bg-orange-50/40"
-                                : "hover:bg-gray-50"
-                          }`}
-                        >
-                          {/* Checkbox */}
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            disabled={isFullyInvoiced}
-                            onChange={() => handleToggleLine(line.po_line_id)}
-                            className="w-4 h-4 accent-orange-500 cursor-pointer flex-shrink-0"
-                          />
-
-                          {/* Line info */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-semibold text-gray-900 truncate">
-                                {line.product_id
-                                  ? `Product #${line.product_id}`
-                                  : `Line #${line.po_line_id}`}
-                              </span>
-                              {isFullyInvoiced && (
-                                <span className="text-xs px-1.5 py-0.5 rounded bg-gray-200 text-gray-500">
-                                  Fully Invoiced
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-xs text-gray-500 mt-0.5 flex gap-3">
-                              <span>
-                                PO qty: <strong>{line.quantity}</strong>
-                              </span>
-                              {line.invoiced_qty > 0 && (
-                                <span className="text-blue-600">
-                                  Invoiced: <strong>{line.invoiced_qty}</strong>
-                                </span>
-                              )}
-                              <span className="text-orange-600">
-                                Remaining: <strong>{line.remaining_qty}</strong>
-                              </span>
-                              <span>@ {fmt(line.unit_price)} VND</span>
-                            </div>
-                          </div>
-
-                          {/* Qty input */}
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <input
-                              type="number"
-                              min={0.001}
-                              max={line.remaining_qty}
-                              step="any"
-                              value={qty || ""}
-                              disabled={!isChecked || isFullyInvoiced}
-                              onChange={(e) =>
-                                handleQtyChange(line.po_line_id, e.target.value)
-                              }
-                              className="w-24 px-2 py-1.5 border rounded-lg text-sm text-right focus:ring-2 focus:ring-orange-500 outline-none disabled:bg-gray-100 disabled:text-gray-400"
-                              placeholder="Qty"
-                            />
-                            {/* Line amount preview */}
-                            <span className="text-xs text-gray-500 w-28 text-right">
-                              {isChecked && qty > 0
-                                ? `${fmt(lineAmt)} VND`
-                                : "—"}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+          )}
         </div>
 
         {/* ── Footer ── */}
         <div className="px-6 py-4 border-t flex items-center justify-between bg-gray-50 flex-shrink-0">
-          <div className="text-sm text-gray-600">
-            {checkedCount > 0 ? (
-              <span>
-                <strong className="text-orange-600">{checkedCount}</strong> line
-                {checkedCount > 1 ? "s" : ""} ·{" "}
-                <strong className="text-orange-600">
-                  {fmt(thisInvoiceTotal)}
-                </strong>{" "}
-                VND
-              </span>
-            ) : (
-              <span className="text-gray-400">No lines selected</span>
-            )}
-          </div>
-          <div className="flex gap-3">
-            <button
-              onClick={onCancel}
-              disabled={loading}
-              className="px-5 py-2.5 rounded-xl border border-gray-300 font-semibold text-gray-700 hover:bg-white transition"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleConfirm}
-              disabled={!canSubmit}
-              className="px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold transition disabled:opacity-40 flex items-center gap-2"
-            >
-              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-              Create Invoice
-            </button>
-          </div>
+          {step === 1 ? (
+            <>
+              <div className="text-sm text-gray-600">
+                {checkedCount > 0 ? (
+                  <span>
+                    <strong className="text-orange-600">{checkedCount}</strong>{" "}
+                    line{checkedCount > 1 ? "s" : ""} ·{" "}
+                    <strong className="text-orange-600">
+                      {fmt(thisInvoiceTotal)}
+                    </strong>{" "}
+                    VND
+                  </span>
+                ) : (
+                  <span className="text-gray-400">No lines selected</span>
+                )}
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={onCancel}
+                  className="px-5 py-2.5 rounded-xl border border-gray-300 font-semibold text-gray-700 hover:bg-white transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => setStep(2)}
+                  disabled={!canGoNext}
+                  className="px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold transition disabled:opacity-40 flex items-center gap-2"
+                >
+                  Next: Invoice Details
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setStep(1)}
+                className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 font-medium transition"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Lines
+              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={onCancel}
+                  disabled={loading}
+                  className="px-5 py-2.5 rounded-xl border border-gray-300 font-semibold text-gray-700 hover:bg-white transition disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirm}
+                  disabled={!canSubmit}
+                  className="px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold transition disabled:opacity-40 flex items-center gap-2"
+                >
+                  {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {loading ? "Creating..." : "Create Invoice"}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Small helpers ────────────────────────────────────────────────────────────
+
+function StepDot({
+  active,
+  done,
+  label,
+  text,
+}: {
+  active: boolean;
+  done: boolean;
+  label: string;
+  text: string;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <div
+        className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+          done
+            ? "bg-green-500 text-white"
+            : active
+              ? "bg-orange-500 text-white"
+              : "bg-gray-200 text-gray-500"
+        }`}
+      >
+        {done ? "✓" : label}
+      </div>
+      <span
+        className={`text-[10px] font-medium ${active ? "text-orange-600" : "text-gray-400"}`}
+      >
+        {text}
+      </span>
+    </div>
+  );
+}
+
+function SectionLabel({
+  icon,
+  text,
+  required,
+}: {
+  icon: React.ReactNode;
+  text: string;
+  required?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-2 pb-1 border-b border-gray-100">
+      <span className="text-gray-400">{icon}</span>
+      <span className="text-sm font-semibold text-gray-700">{text}</span>
+      {required && (
+        <span className="text-xs text-red-400 ml-auto">* Required</span>
+      )}
+    </div>
+  );
+}
+
+function FormField({
+  label,
+  required,
+  hint,
+  icon,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  hint?: string;
+  icon?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+        {icon && <span className="inline mr-1">{icon}</span>}
+        {label}
+        {required && <span className="text-red-500 ml-0.5">*</span>}
+        {hint && (
+          <span className="text-xs text-gray-400 font-normal ml-1.5">
+            — {hint}
+          </span>
+        )}
+      </label>
+      {children}
     </div>
   );
 }

@@ -1,4 +1,3 @@
-import React, { ReactNode } from "react";
 import { LucideIcon } from "lucide-react";
 
 interface StatsCardProps {

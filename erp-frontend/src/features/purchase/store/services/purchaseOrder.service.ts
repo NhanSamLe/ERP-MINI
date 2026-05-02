@@ -71,4 +71,8 @@ export const purchaseOrderService = {
     const res = await purchaseOrderApi.bulkCancel(po_ids, reason);
     return res;
   },
+
+  async getAuditLogs(id: number): Promise<any[]> {
+    return purchaseOrderApi.getAuditLogs(id);
+  },
 };

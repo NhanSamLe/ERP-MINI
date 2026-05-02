@@ -11,6 +11,7 @@ import {
   ApInvoiceLine,
   Branch,
   Partner,
+  Product,
   sequelize,
   TaxRate,
   User,
@@ -679,9 +680,16 @@ export const purchaseOrderService = {
           model: PurchaseOrderLine,
           as: "lines",
           required: false,
+          include: [
+            {
+              model: Product,
+              as: "product",
+              attributes: ["id", "name", "image_url"],
+              required: false,
+            },
+          ],
         },
         {
-          // No where filter here — filter cancelled in JS
           model: ApInvoice,
           as: "invoices",
           required: false,
@@ -720,6 +728,8 @@ export const purchaseOrderService = {
     const linesSummary = poLines.map((line: any) => ({
       po_line_id: line.id,
       product_id: line.product_id,
+      product_name: line.product?.name ?? null,
+      product_image: line.product?.image_url ?? null,
       quantity: Number(line.quantity ?? 0),
       unit_price: Number(line.unit_price ?? 0),
       uom_id: line.uom_id,
