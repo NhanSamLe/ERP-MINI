@@ -67,6 +67,16 @@ export const apInvoiceApi = {
     return res.data.data;
   },
 
+  createPartialFromPO: async (
+    poId: number,
+    lines: Array<{ po_line_id: number; quantity: number }>,
+  ): Promise<ApInvoice> => {
+    const res = await axiosClient.post(`ap/invoices/from-po/${poId}/partial`, {
+      lines,
+    });
+    return res.data.data;
+  },
+
   submitForApproval: async (id: number): Promise<ApInvoice> => {
     const res = await axiosClient.post(`ap/invoices/${id}/submit`);
     return res.data.data;
@@ -80,6 +90,10 @@ export const apInvoiceApi = {
   reject: async (id: number, reason: string): Promise<ApInvoice> => {
     const res = await axiosClient.put(`ap/invoices/${id}/reject`, { reason });
     return res.data.data;
+  },
+
+  deleteInvoice: async (id: number): Promise<void> => {
+    await axiosClient.delete(`ap/invoices/${id}`);
   },
 
   getPostedSummaryBySupplier: async (

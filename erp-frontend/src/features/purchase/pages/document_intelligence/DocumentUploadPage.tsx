@@ -25,6 +25,7 @@ import {
   ConfirmLineItem,
 } from "../../store/documentIntelligence/documentIntelligence.types";
 import { documentIntelligenceApi } from "../../api/documentIntelligence.api";
+import { OcrStatus } from "../../constants/purchaseStatus.enum";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const ACCEPTED_TYPES = ["application/pdf", "image/jpeg", "image/png"];
@@ -36,18 +37,18 @@ function ConfidenceBadge({ value }: { value: number }) {
   if (value >= 0.8)
     return (
       <span className="px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-700">
-        Độ tin cậy: {pct}%
+        Confidence: {pct}%
       </span>
     );
   if (value >= 0.6)
     return (
       <span className="px-3 py-1 rounded-full text-sm font-semibold bg-yellow-100 text-yellow-700">
-        Độ tin cậy: {pct}%
+        Confidence: {pct}%
       </span>
     );
   return (
     <span className="px-3 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-700">
-      Độ tin cậy: {pct}%
+      Confidence: {pct}%
     </span>
   );
 }
@@ -76,19 +77,19 @@ function ConfirmModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4">
         <h2 className="text-lg font-bold text-gray-900">
-          Xác nhận tạo hóa đơn
+          Confirm Invoice Creation
         </h2>
         <p className="text-gray-600 text-sm">
-          Hệ thống sẽ tạo hóa đơn mua hàng (AP Invoice) từ kết quả OCR. Bạn có
-          chắc chắn muốn tiếp tục?
+          The system will create an AP Invoice from the OCR result. Are you sure
+          you want to continue?
         </p>
 
         {hasDuplicate && (
           <div className="flex items-start gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
             <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5 shrink-0" />
             <div className="text-sm text-yellow-800">
-              <p className="font-semibold">Phát hiện hóa đơn trùng lặp!</p>
-              <p>Hóa đơn với số này đã tồn tại trong hệ thống.</p>
+              <p className="font-semibold">Duplicate Invoice Detected!</p>
+              <p>An invoice with this number already exists in the system.</p>
               <label className="flex items-center gap-2 mt-2 cursor-pointer">
                 <input
                   type="checkbox"
@@ -96,7 +97,7 @@ function ConfirmModal({
                   onChange={(e) => setOverride(e.target.checked)}
                   className="rounded"
                 />
-                <span>Ghi đè hóa đơn trùng lặp</span>
+                <span>Override duplicate invoice</span>
               </label>
             </div>
           </div>
@@ -108,7 +109,7 @@ function ConfirmModal({
             disabled={loading}
             className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
           >
-            Hủy
+            Cancel
           </button>
           <button
             onClick={() => onConfirm(override)}
@@ -116,7 +117,7 @@ function ConfirmModal({
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-medium transition-colors disabled:opacity-50"
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            Xác nhận
+            Confirm
           </button>
         </div>
       </div>
@@ -222,16 +223,20 @@ export default function DocumentUploadPage() {
   useEffect(() => {
     if (
       currentDocumentId &&
-      (status?.status === "processing" || status?.status === "pending")
+      (status?.status === OcrStatus.PROCESSING ||
+        status?.status === OcrStatus.PENDING)
     ) {
       stopPolling();
       pollRef.current = setInterval(async () => {
         const result = await dispatch(
           pollDocumentStatusThunk(currentDocumentId),
         ).unwrap();
-        if (result.status === "done" || result.status === "failed") {
+        if (
+          result.status === OcrStatus.DONE ||
+          result.status === OcrStatus.FAILED
+        ) {
           stopPolling();
-          if (result.status === "done") {
+          if (result.status === OcrStatus.DONE) {
             dispatch(getDocumentResultThunk(currentDocumentId));
           }
         }
@@ -251,10 +256,10 @@ export default function DocumentUploadPage() {
   // ── File validation ──
   const validateFile = (file: File): string | null => {
     if (!ACCEPTED_TYPES.includes(file.type)) {
-      return "Chỉ chấp nhận file PDF, JPG, JPEG, PNG";
+      return "Only PDF, JPG, JPEG, PNG files are accepted";
     }
     if (file.size > MAX_FILE_SIZE) {
-      return "File không được vượt quá 10MB";
+      return "File size cannot exceed 10MB";
     }
     return null;
   };
@@ -284,12 +289,12 @@ export default function DocumentUploadPage() {
     if (!selectedFile) return;
     try {
       await dispatch(uploadDocumentThunk(selectedFile)).unwrap();
-      toast.success("Tải lên thành công, đang xử lý OCR...");
+      toast.success("Upload successful, processing OCR...");
     } catch (err: any) {
       if (err?.includes?.("429") || String(err).includes("429")) {
-        toast.error("Quá nhiều yêu cầu. Vui lòng thử lại sau.");
+        toast.error("Too many requests. Please try again later.");
       } else {
-        toast.error(err ?? "Lỗi tải lên tài liệu");
+        toast.error(err ?? "Error uploading document");
       }
     }
   };
@@ -320,16 +325,16 @@ export default function DocumentUploadPage() {
       const res = await dispatch(
         confirmDocumentThunk({ id: currentDocumentId, payload }),
       ).unwrap();
-      toast.success("Tạo hóa đơn thành công!");
+      toast.success("Invoice created successfully!");
       setShowConfirmModal(false);
       navigate(`/purchase/invoices/${res.purchase_invoice_id}`);
     } catch (err: any) {
       if (String(err).includes("409")) {
-        toast.error("Hóa đơn đã được xác nhận trước đó.");
+        toast.error("Invoice has already been confirmed.");
       } else if (String(err).includes("429")) {
-        toast.error("Quá nhiều yêu cầu. Vui lòng thử lại sau.");
+        toast.error("Too many requests. Please try again later.");
       } else {
-        toast.error(err ?? "Lỗi xác nhận hóa đơn");
+        toast.error(err ?? "Error confirming invoice");
       }
     }
   };
@@ -341,9 +346,10 @@ export default function DocumentUploadPage() {
   };
 
   const isProcessing =
-    status?.status === "processing" || status?.status === "pending";
-  const isDone = status?.status === "done";
-  const isFailed = status?.status === "failed";
+    status?.status === OcrStatus.PROCESSING ||
+    status?.status === OcrStatus.PENDING;
+  const isDone = status?.status === OcrStatus.DONE;
+  const isFailed = status?.status === OcrStatus.FAILED;
 
   return (
     <div className="min-h-screen bg-gray-50 px-8 py-6">
@@ -351,16 +357,16 @@ export default function DocumentUploadPage() {
         {/* ── Header ── */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">OCR Hóa Đơn</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Invoice OCR</h1>
             <p className="text-gray-600 mt-1">
-              Tải lên hóa đơn để trích xuất dữ liệu tự động
+              Upload invoices to automatically extract data
             </p>
           </div>
           <button
             onClick={() => navigate("/purchase/document-intelligence/history")}
             className="flex items-center gap-2 text-sm text-orange-600 hover:text-orange-700 font-medium"
           >
-            Lịch sử OCR
+            OCR History
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
@@ -369,7 +375,7 @@ export default function DocumentUploadPage() {
         {!isProcessing && !isDone && !isFailed && (
           <div className="bg-white rounded-xl shadow-sm border p-6 space-y-4">
             <h2 className="text-lg font-semibold text-gray-800">
-              Bước 1: Chọn tệp hóa đơn
+              Step 1: Select Invoice File
             </h2>
 
             {/* Drop zone */}
@@ -389,11 +395,11 @@ export default function DocumentUploadPage() {
             >
               <Upload className="w-10 h-10 text-orange-400 mb-3" />
               <p className="text-gray-700 font-medium">
-                Kéo thả tệp vào đây hoặc{" "}
-                <span className="text-orange-500 underline">chọn tệp</span>
+                Drag and drop file here or{" "}
+                <span className="text-orange-500 underline">select file</span>
               </p>
               <p className="text-gray-400 text-sm mt-1">
-                PDF, JPG, JPEG, PNG — tối đa 10MB
+                PDF, JPG, JPEG, PNG — max 10MB
               </p>
               <input
                 ref={fileInputRef}
@@ -437,7 +443,7 @@ export default function DocumentUploadPage() {
               className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white px-6 py-2.5 rounded-lg font-medium transition-colors"
             >
               {uploading && <Loader2 className="w-4 h-4 animate-spin" />}
-              Tải lên & Xử lý
+              Upload & Process
             </button>
 
             {error && (
@@ -454,10 +460,10 @@ export default function DocumentUploadPage() {
           <div className="bg-white rounded-xl shadow-sm border p-10 flex flex-col items-center gap-4">
             <Loader2 className="w-12 h-12 text-orange-500 animate-spin" />
             <p className="text-lg font-semibold text-gray-700">
-              Đang xử lý OCR...
+              Processing OCR...
             </p>
             <p className="text-sm text-gray-500">
-              Hệ thống đang trích xuất dữ liệu từ hóa đơn của bạn
+              The system is extracting data from your invoice
             </p>
           </div>
         )}
@@ -466,9 +472,11 @@ export default function DocumentUploadPage() {
         {isFailed && (
           <div className="bg-white rounded-xl shadow-sm border p-8 flex flex-col items-center gap-4">
             <XCircle className="w-12 h-12 text-red-500" />
-            <p className="text-lg font-semibold text-red-700">Xử lý thất bại</p>
+            <p className="text-lg font-semibold text-red-700">
+              Processing Failed
+            </p>
             <p className="text-sm text-gray-600">
-              {status?.message ?? "Đã xảy ra lỗi trong quá trình OCR"}
+              {status?.message ?? "An error occurred during OCR processing"}
             </p>
             <button
               onClick={() => {
@@ -489,7 +497,7 @@ export default function DocumentUploadPage() {
             <div className="bg-white rounded-xl shadow-sm border p-5 space-y-3">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <h2 className="text-lg font-semibold text-gray-800">
-                  Kết quả OCR
+                  OCR Result
                 </h2>
                 {result.document.ocr_result?.overall_confidence != null && (
                   <ConfidenceBadge
@@ -517,9 +525,7 @@ export default function DocumentUploadPage() {
 
               {/* Vendor match */}
               <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-sm font-medium text-gray-700 mb-1">
-                  Nhà cung cấp
-                </p>
+                <p className="text-sm font-medium text-gray-700 mb-1">Vendor</p>
                 {result.vendor_match?.matchedPartnerId ? (
                   <div className="flex items-center gap-2">
                     <CheckCircle className="w-4 h-4 text-green-500" />
@@ -537,8 +543,7 @@ export default function DocumentUploadPage() {
                     <div className="flex items-center gap-2 text-yellow-700">
                       <AlertTriangle className="w-4 h-4 shrink-0" />
                       <span className="text-sm">
-                        Không tìm thấy nhà cung cấp phù hợp — vui lòng chọn thủ
-                        công
+                        No matching vendor found — please select manually
                       </span>
                     </div>
                     <select
@@ -550,7 +555,7 @@ export default function DocumentUploadPage() {
                       }
                       className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm bg-white border-yellow-300"
                     >
-                      <option value="">-- Chọn nhà cung cấp --</option>
+                      <option value="">-- Select Vendor --</option>
                       {availableSuppliers.map((s) => (
                         <option key={s.id} value={s.id}>
                           {s.name}
@@ -559,7 +564,7 @@ export default function DocumentUploadPage() {
                     </select>
                     {!selectedVendorId && (
                       <p className="text-xs text-red-500">
-                        ⚠️ Bắt buộc phải chọn nhà cung cấp trước khi xác nhận
+                        ⚠️ Vendor selection is required before confirming
                       </p>
                     )}
                   </div>
@@ -569,16 +574,16 @@ export default function DocumentUploadPage() {
               {/* PO selector */}
               <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
                 <p className="text-sm font-medium text-gray-700 mb-2">
-                  Liên kết với Đơn mua hàng (PO)
+                  Link to Purchase Order (PO)
                   <span className="ml-1 text-xs text-gray-400 font-normal">
-                    (tùy chọn — cần để chạy 3-way matching)
+                    (optional — required for 3-way matching)
                   </span>
                 </p>
                 {availablePOs.length === 0 ? (
                   <p className="text-sm text-gray-400 italic">
                     {effectiveVendorId
-                      ? "Không có PO nào đang mở cho nhà cung cấp này"
-                      : "Cần chọn nhà cung cấp trước để xem PO"}
+                      ? "No open POs for this vendor"
+                      : "Select vendor first to view POs"}
                   </p>
                 ) : (
                   <select
@@ -590,15 +595,15 @@ export default function DocumentUploadPage() {
                     }
                     className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm bg-white"
                   >
-                    <option value="">-- Không liên kết PO --</option>
+                    <option value="">-- No PO Link --</option>
                     {availablePOs.map((po) => (
                       <option key={po.id} value={po.id}>
                         {po.po_no}
                         {po.order_date
-                          ? ` — ${new Date(po.order_date).toLocaleDateString("vi-VN")}`
+                          ? ` — ${new Date(po.order_date).toLocaleDateString("en-US")}`
                           : ""}
                         {po.total_after_tax
-                          ? ` — ${Number(po.total_after_tax).toLocaleString("vi-VN")} VNĐ`
+                          ? ` — ${Number(po.total_after_tax).toLocaleString("en-US")} VND`
                           : ""}
                       </option>
                     ))}
@@ -626,11 +631,13 @@ export default function DocumentUploadPage() {
 
             {/* Editable invoice fields */}
             <div className="bg-white rounded-xl shadow-sm border p-5 space-y-4">
-              <h3 className="font-semibold text-gray-800">Thông tin hóa đơn</h3>
+              <h3 className="font-semibold text-gray-800">
+                Invoice Information
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tên nhà cung cấp
+                    Vendor Name
                   </label>
                   <input
                     type="text"
@@ -641,7 +648,7 @@ export default function DocumentUploadPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Số hóa đơn
+                    Invoice Number
                   </label>
                   <input
                     type="text"
@@ -652,7 +659,7 @@ export default function DocumentUploadPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Ngày hóa đơn
+                    Invoice Date
                   </label>
                   <input
                     type="text"
@@ -664,7 +671,7 @@ export default function DocumentUploadPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tiền trước thuế
+                    Subtotal
                   </label>
                   <input
                     type="number"
@@ -675,7 +682,7 @@ export default function DocumentUploadPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tiền thuế
+                    Tax Amount
                   </label>
                   <input
                     type="number"
@@ -686,7 +693,7 @@ export default function DocumentUploadPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tổng cộng
+                    Total
                   </label>
                   <input
                     type="number"
@@ -701,25 +708,23 @@ export default function DocumentUploadPage() {
             {/* Line items table */}
             <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
               <div className="px-5 py-4 border-b">
-                <h3 className="font-semibold text-gray-800">
-                  Chi tiết hàng hóa
-                </h3>
+                <h3 className="font-semibold text-gray-800">Line Items</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 border-b">
                     <tr>
                       <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                        Tên hàng
+                        Item Name
                       </th>
                       <th className="px-4 py-3 text-right font-semibold text-gray-700">
-                        Số lượng
+                        Quantity
                       </th>
                       <th className="px-4 py-3 text-right font-semibold text-gray-700">
-                        Đơn giá
+                        Unit Price
                       </th>
                       <th className="px-4 py-3 text-right font-semibold text-gray-700">
-                        Thành tiền
+                        Amount
                       </th>
                     </tr>
                   </thead>
@@ -730,7 +735,7 @@ export default function DocumentUploadPage() {
                           colSpan={4}
                           className="px-4 py-8 text-center text-gray-400"
                         >
-                          Không có dòng hàng hóa
+                          No line items
                         </td>
                       </tr>
                     )}

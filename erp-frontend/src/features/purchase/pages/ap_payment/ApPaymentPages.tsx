@@ -7,6 +7,13 @@ import { useNavigate } from "react-router-dom";
 import ApPaymentCreateModal from "../../components/ApPaymentCreateModal";
 import { exportExcelReport } from "@/utils/excel/exportExcelReport";
 import { toast } from "react-toastify";
+import {
+  PageHeader,
+  StatsCard,
+  StatusBadge,
+  EmptyState,
+} from "../../components/Common";
+import { ApPaymentStatus } from "../../constants";
 
 export default function ApPaymentPages() {
   const dispatch = useAppDispatch();
@@ -39,70 +46,109 @@ export default function ApPaymentPages() {
   const handleExport = async () => {
     try {
       await exportExcelReport({
-        title: "DANH SÁCH PHIẾU CHI (PAYMENTS)",
+        title: "PAYMENTS LIST",
         columns: [
-          { header: "Số Phiếu", key: "payment_no", width: 15 },
-          { header: "Nhà cung cấp", key: "supplier", width: 30, formatter: (val: any) => val?.name || "-" },
-          { header: "Số tiền", key: "amount", width: 20, format: "currency", align: "right" },
-          { header: "Trạng thái", key: "status", width: 15, formatter: (val) => String(val).toUpperCase() },
-          { header: "Duyệt", key: "approval_status", width: 15, formatter: (val) => String(val).toUpperCase() },
-          { header: "Ngày tạo", key: "created_at", width: 15, formatter: (val) => val ? new Date(String(val)).toLocaleDateString('vi-VN') : "" },
+          { header: "Payment No", key: "payment_no", width: 15 },
+          {
+            header: "Supplier",
+            key: "supplier",
+            width: 30,
+            formatter: (val: any) => val?.name || "-",
+          },
+          {
+            header: "Amount",
+            key: "amount",
+            width: 20,
+            format: "currency",
+            align: "right",
+          },
+          {
+            header: "Status",
+            key: "status",
+            width: 15,
+            formatter: (val) => String(val).toUpperCase(),
+          },
+          {
+            header: "Approval",
+            key: "approval_status",
+            width: 15,
+            formatter: (val) => String(val).toUpperCase(),
+          },
+          {
+            header: "Created Date",
+            key: "created_at",
+            width: 15,
+            formatter: (val) =>
+              val ? new Date(String(val)).toLocaleDateString("en-US") : "",
+          },
         ],
         data: filteredPayments,
-        fileName: `Bao_Cao_Phieu_Chi_${new Date().getTime()}.xlsx`,
+        fileName: `Payments_${new Date().getTime()}.xlsx`,
         footer: {
-          creator: user?.full_name || "Admin"
-        }
+          creator: user?.full_name || "Admin",
+        },
       });
     } catch (err) {
       console.error(err);
-      toast.error("Lỗi xuất báo cáo Excel");
+      toast.error("Error exporting report");
     }
   };
 
-  /* ================= BADGES ================= */
-  const statusBadge: Record<ApPayment["status"], string> = {
-    draft: "bg-gray-100 text-gray-700",
-    posted: "bg-green-100 text-green-700",
-    cancelled: "bg-red-100 text-red-700",
-    completed: "bg-indigo-100 text-indigo-700",
-  };
-
-  const approvalBadge: Record<ApPayment["approval_status"], string> = {
-    draft: "bg-gray-100 text-gray-700",
-    waiting_approval: "bg-yellow-100 text-yellow-700",
-    approved: "bg-green-100 text-green-700",
-    rejected: "bg-red-100 text-red-700",
-  };
+  /* ================= STATS ================= */
+  const draftCount = list.filter(
+    (p) => p.status === ApPaymentStatus.DRAFT,
+  ).length;
+  const postedCount = list.filter(
+    (p) => p.status === ApPaymentStatus.POSTED,
+  ).length;
 
   return (
     <div className="min-h-screen bg-gray-50 px-8 py-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* ================= HEADER ================= */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              AP Payment List
-            </h1>
-            <p className="text-gray-600 mt-1">Manage all supplier payments</p>
-          </div>
+        <PageHeader
+          title="AP Payments"
+          subtitle="Manage all supplier payments"
+          actions={
+            <div className="flex gap-2">
+              <button
+                onClick={handleExport}
+                className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2.5 rounded-lg font-medium transition-colors"
+              >
+                <Download className="w-5 h-5" />
+                Export Excel
+              </button>
+              <button
+                onClick={() => setOpenCreateModal(true)}
+                className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-lg font-medium transition-colors"
+              >
+                <Plus className="w-5 h-5" />
+                New Payment
+              </button>
+            </div>
+          }
+        />
 
-          <div className="flex gap-2">
-            <button
-              onClick={handleExport}
-              className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2.5 rounded-lg font-medium transition-colors"
-            >
-              <Download className="w-5 h-5" />
-              Export Excel
-            </button>
-            <button
-              onClick={() => setOpenCreateModal(true)}
-              className="flex items-center gap-2 bg-orange-500 text-white px-4 py-2.5 rounded-lg"
-            >
-              <Plus className="w-5 h-5" />
-              New Payment
-            </button>
-          </div>
+        {/* ================= STATS ================= */}
+        <div className="grid grid-cols-3 gap-4">
+          <StatsCard
+            icon={CreditCard}
+            label="Total Payments"
+            value={list.length}
+            color="orange"
+          />
+          <StatsCard
+            icon={CreditCard}
+            label="Draft"
+            value={draftCount}
+            color="blue"
+          />
+          <StatsCard
+            icon={CreditCard}
+            label="Posted"
+            value={postedCount}
+            color="green"
+          />
         </div>
 
         {/* ================= FILTER ================= */}
@@ -129,10 +175,10 @@ export default function ApPaymentPages() {
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
               >
-                <option>All</option>
-                <option value="draft">Draft</option>
-                <option value="posted">Posted</option>
-                <option value="cancelled">Cancelled</option>
+                <option value="All">All</option>
+                <option value={ApPaymentStatus.DRAFT}>Draft</option>
+                <option value={ApPaymentStatus.POSTED}>Posted</option>
+                <option value={ApPaymentStatus.CANCELLED}>Cancelled</option>
               </select>
             </div>
           </div>
@@ -168,8 +214,16 @@ export default function ApPaymentPages() {
 
               {!loading && filteredPayments.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-16 text-center text-gray-500">
-                    No payments found
+                  <td colSpan={6} className="py-16 text-center">
+                    <EmptyState
+                      icon={CreditCard}
+                      title="No payments found"
+                      description="Create your first payment by clicking the New Payment button"
+                      action={{
+                        label: "New Payment",
+                        onClick: () => setOpenCreateModal(true),
+                      }}
+                    />
                   </td>
                 </tr>
               )}
@@ -186,29 +240,20 @@ export default function ApPaymentPages() {
                     </td>
 
                     <td className="px-6 py-4 text-right font-medium">
-                      {Number(payment.amount || 0).toLocaleString("vi-VN", {
+                      {Number(payment.amount || 0).toLocaleString("en-US", {
                         minimumFractionDigits: 2,
                       })}
                     </td>
 
                     <td className="px-6 py-4">
-                      <span
-                        className={`px-3 py-1 rounded-md font-medium ${statusBadge[payment.status]
-                          }`}
-                      >
-                        {payment.status.toUpperCase()}
-                      </span>
+                      <StatusBadge status={payment.status} />
                     </td>
 
                     <td className="px-6 py-4">
-                      <span
-                        className={`px-3 py-1 rounded-md font-medium ${approvalBadge[payment.approval_status]
-                          }`}
-                      >
-                        {payment.approval_status
-                          .replace("_", " ")
-                          .toUpperCase()}
-                      </span>
+                      <StatusBadge
+                        status={payment.approval_status}
+                        variant="approval"
+                      />
                     </td>
 
                     <td className="px-6 py-4">

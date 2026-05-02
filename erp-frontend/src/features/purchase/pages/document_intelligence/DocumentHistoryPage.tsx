@@ -17,17 +17,18 @@ import {
   setResult,
 } from "../../store/documentIntelligence";
 import { documentIntelligenceApi } from "../../api/documentIntelligence.api";
-import { OcrStatus } from "../../store/documentIntelligence/documentIntelligence.types";
+import { OcrStatus as OcrStatusType } from "../../store/documentIntelligence/documentIntelligence.types";
 import { toast } from "react-toastify";
+import { OcrStatus } from "../../constants/purchaseStatus.enum";
 
-const STATUS_LABELS: Record<OcrStatus, string> = {
-  pending: "Chờ xử lý",
-  processing: "Đang xử lý",
-  done: "Hoàn thành",
-  failed: "Thất bại",
+const STATUS_LABELS: Record<OcrStatusType, string> = {
+  pending: "Pending",
+  processing: "Processing",
+  done: "Completed",
+  failed: "Failed",
 };
 
-const STATUS_BADGE: Record<OcrStatus, string> = {
+const STATUS_BADGE: Record<OcrStatusType, string> = {
   pending: "bg-gray-100 text-gray-700",
   processing: "bg-blue-100 text-blue-700",
   done: "bg-green-100 text-green-700",
@@ -80,7 +81,7 @@ export default function DocumentHistoryPage() {
       dispatch(setResult(resultRes));
       navigate("/purchase/document-intelligence");
     } catch (err: any) {
-      toast.error(err?.message ?? "Không thể tải kết quả OCR");
+      toast.error(err?.message ?? "Unable to load OCR result");
     } finally {
       setLoadingResult(null);
     }
@@ -88,7 +89,7 @@ export default function DocumentHistoryPage() {
 
   const formatDate = (dateStr: string) => {
     try {
-      return new Date(dateStr).toLocaleString("vi-VN");
+      return new Date(dateStr).toLocaleString("en-US");
     } catch {
       return dateStr;
     }
@@ -131,10 +132,10 @@ export default function DocumentHistoryPage() {
                 className="w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm"
               >
                 <option value="all">Tất cả</option>
-                <option value="pending">Chờ xử lý</option>
-                <option value="processing">Đang xử lý</option>
-                <option value="done">Hoàn thành</option>
-                <option value="failed">Thất bại</option>
+                <option value={OcrStatus.PENDING}>Chờ xử lý</option>
+                <option value={OcrStatus.PROCESSING}>Đang xử lý</option>
+                <option value={OcrStatus.DONE}>Hoàn thành</option>
+                <option value={OcrStatus.FAILED}>Thất bại</option>
               </select>
             </div>
 
@@ -275,10 +276,10 @@ export default function DocumentHistoryPage() {
                           onClick={() => handleViewResult(item.id)}
                           disabled={
                             loadingResult === item.id ||
-                            item.ocr_status !== "done"
+                            item.ocr_status !== OcrStatus.DONE
                           }
                           title={
-                            item.ocr_status !== "done"
+                            item.ocr_status !== OcrStatus.DONE
                               ? "Chỉ xem được kết quả khi OCR hoàn thành"
                               : "Xem kết quả"
                           }

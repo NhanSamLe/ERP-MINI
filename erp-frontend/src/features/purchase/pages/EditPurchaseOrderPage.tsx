@@ -35,6 +35,7 @@ import {
   getValidUomsForProduct,
   previewQtyInStockUom,
 } from "../utils/uomHelper";
+import { PurchaseOrderStatus } from "../constants/purchaseStatus.enum";
 
 interface LineItem {
   id?: number;
@@ -358,7 +359,7 @@ export default function EditPurchaseOrderPage() {
         fetchPurchaseOrderByIdThunk(Number(id)),
       ).unwrap();
 
-      if (checkStatusOrder.status !== "draft") {
+      if (checkStatusOrder.status !== PurchaseOrderStatus.DRAFT) {
         toast.error("This Purchase Order is no longer editable.");
         navigate("/purchase/orders");
         return;

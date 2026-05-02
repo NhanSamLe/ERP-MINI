@@ -41,6 +41,12 @@ router.get(
 );
 
 router.get(
+  "/:id/invoice-summary",
+  authMiddleware([Role.PURCHASE, Role.ACCOUNT]),
+  purchaseOrderController.getPoInvoiceSummary,
+);
+
+router.get(
   "/by-status",
   authMiddleware([
     Role.PURCHASE,

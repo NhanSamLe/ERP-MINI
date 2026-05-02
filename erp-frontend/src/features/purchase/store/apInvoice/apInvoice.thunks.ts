@@ -49,18 +49,34 @@ export const createManualApInvoiceThunk = createAsyncThunk<
   }
 });
 
-/* ================= CREATE FROM PO ================= */
+/* ================= CREATE FROM PO (full remaining) ================= */
 export const createApInvoiceFromPoThunk = createAsyncThunk<
   ApInvoice,
   number,
   { rejectValue: string }
 >("apInvoice/createFromPO", async (poId, { rejectWithValue }) => {
   try {
-    return await apInvoiceService.createFromPO(poId);
+    return await apInvoiceApi.createFromPO(poId);
   } catch (error) {
     return rejectWithValue(getErrorMessage(error));
   }
 });
+
+/* ================= CREATE PARTIAL FROM PO ================= */
+export const createPartialApInvoiceFromPoThunk = createAsyncThunk<
+  ApInvoice,
+  { poId: number; lines: Array<{ po_line_id: number; quantity: number }> },
+  { rejectValue: string }
+>(
+  "apInvoice/createPartialFromPO",
+  async ({ poId, lines }, { rejectWithValue }) => {
+    try {
+      return await apInvoiceApi.createPartialFromPO(poId, lines);
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  },
+);
 
 /* ================= SUBMIT ================= */
 export const submitApInvoiceThunk = createAsyncThunk<
@@ -96,6 +112,20 @@ export const rejectApInvoiceThunk = createAsyncThunk<
 >("apInvoice/reject", async ({ id, reason }, { rejectWithValue }) => {
   try {
     return await apInvoiceApi.reject(id, reason);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
+/* ================= DELETE ================= */
+export const deleteApInvoiceThunk = createAsyncThunk<
+  number,
+  number,
+  { rejectValue: string }
+>("apInvoice/delete", async (id, { rejectWithValue }) => {
+  try {
+    await apInvoiceApi.deleteInvoice(id);
+    return id;
   } catch (error) {
     return rejectWithValue(getErrorMessage(error));
   }

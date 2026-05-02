@@ -101,12 +101,10 @@ export const apInvoiceController = {
           .json({ success: false, message: "supplier_id là bắt buộc" });
       }
       if (!Array.isArray(body.lines) || body.lines.length === 0) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "lines phải có ít nhất 1 dòng hàng",
-          });
+        return res.status(400).json({
+          success: false,
+          message: "lines phải có ít nhất 1 dòng hàng",
+        });
       }
 
       const result = await apInvoiceService.createAPInvoice(
@@ -167,13 +165,43 @@ export const apInvoiceController = {
 
   /**
    * POST /api/ap/invoices/from-po/:poId
-   * Tạo AP Invoice từ PO — backward compatible
+   * Tạo AP Invoice từ PO — backward compatible (full remaining)
    */
   async createFromPO(req: Request, res: Response) {
     try {
       const poId = Number(req.params.poId);
       const user = (req as any).user;
       const data = await apInvoiceService.createFromPO(poId, user);
+      res.status(201).json({ success: true, data });
+    } catch (e: any) {
+      handleError(res, e);
+    }
+  },
+
+  /**
+   * POST /api/ap/invoices/from-po/:poId/partial
+   * Tạo partial AP Invoice — user chọn lines và qty cụ thể.
+   *
+   * Body: { lines: [{ po_line_id: number, quantity: number }] }
+   */
+  async createPartialFromPO(req: Request, res: Response) {
+    try {
+      const poId = Number(req.params.poId);
+      const user = (req as any).user;
+      const { lines } = req.body;
+
+      if (!Array.isArray(lines) || lines.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "lines is required and must not be empty",
+        });
+      }
+
+      const data = await apInvoiceService.createPartialFromPO(
+        poId,
+        lines,
+        user,
+      );
       res.status(201).json({ success: true, data });
     } catch (e: any) {
       handleError(res, e);
@@ -234,6 +262,20 @@ export const apInvoiceController = {
         message: "Invoice rejected successfully",
         data,
       });
+    } catch (error: any) {
+      handleError(res, error);
+    }
+  },
+
+  /**
+   * DELETE /api/ap/invoices/:id
+   * Xóa AP Invoice — chỉ khi draft + chưa submit + người tạo.
+   */
+  async deleteInvoice(req: Request, res: Response) {
+    const user = (req as any).user;
+    try {
+      await apInvoiceService.deleteInvoice(Number(req.params.id), user);
+      res.json({ success: true, message: "Invoice deleted successfully" });
     } catch (error: any) {
       handleError(res, error);
     }

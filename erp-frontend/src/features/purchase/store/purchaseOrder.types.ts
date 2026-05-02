@@ -45,6 +45,10 @@ export interface PurchaseOrder {
     phone: string;
   };
   lines?: PurchaseOrderLine[];
+  // Partial invoicing fields — populated by getAvailablePurchaseOrders
+  invoiced_amount?: number;
+  remaining_amount?: number;
+  invoice_count?: number;
 }
 
 export interface PurchaseOrderLine {

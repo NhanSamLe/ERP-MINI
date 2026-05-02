@@ -7,8 +7,10 @@ import {
   approveApInvoiceThunk,
   rejectApInvoiceThunk,
   createApInvoiceFromPoThunk,
+  createPartialApInvoiceFromPoThunk,
   createManualApInvoiceThunk,
   fetchApPostedSummaryThunk,
+  deleteApInvoiceThunk,
 } from "./apInvoice.thunks";
 
 interface ApInvoiceState {
@@ -68,6 +70,21 @@ const apInvoiceSlice = createSlice({
         state.error = action.payload;
       })
 
+      /* ===== CREATE PARTIAL FROM PO ===== */
+      .addCase(createPartialApInvoiceFromPoThunk.pending, (state) => {
+        state.loading = true;
+        state.error = undefined;
+      })
+      .addCase(createPartialApInvoiceFromPoThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        state.list.unshift(action.payload);
+        state.selected = action.payload;
+      })
+      .addCase(createPartialApInvoiceFromPoThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
       /* ===== CREATE MANUAL ===== */
       .addCase(createManualApInvoiceThunk.pending, (state) => {
         state.loading = true;
@@ -92,6 +109,14 @@ const apInvoiceSlice = createSlice({
       })
       .addCase(rejectApInvoiceThunk.fulfilled, (state, action) => {
         updateInvoiceInState(state, action.payload);
+      })
+
+      /* ===== DELETE ===== */
+      .addCase(deleteApInvoiceThunk.fulfilled, (state, action) => {
+        state.list = state.list.filter((i) => i.id !== action.payload);
+        if (state.selected?.id === action.payload) {
+          state.selected = undefined;
+        }
       })
 
       .addCase(fetchApPostedSummaryThunk.pending, (state) => {

@@ -18,6 +18,7 @@ import { PurchaseOrderLine } from "../store";
 import { toast } from "react-toastify";
 import { getErrorMessage } from "@/utils/ErrorHelper";
 import { loadPartnerDetail } from "@/features/partner/store/partner.thunks";
+import { PurchaseOrderStatus } from "../constants";
 import { Partner } from "@/features/partner/store";
 import { Roles } from "@/types/enum";
 import { formatVND } from "@/utils/currency.helper";
@@ -45,7 +46,7 @@ export default function ViewPurchaseOrderPage() {
   const dispatch = useDispatch<AppDispatch>();
 
   const purchaseOrder = useSelector(
-    (state: RootState) => state.purchaseOrder.selectedPO
+    (state: RootState) => state.purchaseOrder.selectedPO,
   );
 
   const currentUser = useSelector((state: RootState) => state.auth.user);
@@ -99,7 +100,7 @@ export default function ViewPurchaseOrderPage() {
       if (finalPO?.supplier_id) {
         try {
           const supplier = await dispatch(
-            loadPartnerDetail(finalPO.supplier_id)
+            loadPartnerDetail(finalPO.supplier_id),
           ).unwrap();
           setSupplierInfo(supplier);
         } catch (err) {
@@ -116,11 +117,11 @@ export default function ViewPurchaseOrderPage() {
       const enrichedLines = await Promise.all(
         linesToLoad.map(async (l: PurchaseOrderLine) => {
           const product = await dispatch(
-            fetchProductByIdThunk(Number(l.product_id))
+            fetchProductByIdThunk(Number(l.product_id)),
           ).unwrap();
 
           const tax = await dispatch(
-            fetchTaxRatesByIdThunk(product.tax_rate_id || 0)
+            fetchTaxRatesByIdThunk(product.tax_rate_id || 0),
           ).unwrap();
           const taxAmount =
             (Number(l.unit_price || 0) *
@@ -143,7 +144,7 @@ export default function ViewPurchaseOrderPage() {
             tax_amount: taxAmount,
             line_total: Number(l.line_total || 0),
           };
-        })
+        }),
       );
 
       setLines(enrichedLines);
@@ -151,7 +152,7 @@ export default function ViewPurchaseOrderPage() {
       // tính totals
       const before = enrichedLines.reduce(
         (s, l) => s + (l.sale_price || 0) * l.quantity,
-        0
+        0,
       );
       const tax = enrichedLines.reduce((s, l) => s + l.tax_amount, 0);
       // const after = enrichedLines.reduce((s, l) => s + l.line_total, 0);
@@ -174,7 +175,7 @@ export default function ViewPurchaseOrderPage() {
       console.log(">>> PO status:", finalPO.status);
 
       const result = await dispatch(
-        submitPurchaseOrderThunk(finalPO.id)
+        submitPurchaseOrderThunk(finalPO.id),
       ).unwrap();
 
       console.log(">>> Submit result:", result);
@@ -182,7 +183,7 @@ export default function ViewPurchaseOrderPage() {
       toast.success("Purchase order submitted for approval!");
 
       const refreshedPO = await dispatch(
-        fetchPurchaseOrderByIdThunk(finalPO.id)
+        fetchPurchaseOrderByIdThunk(finalPO.id),
       ).unwrap();
       console.log(">>> Refreshed PO:", refreshedPO);
       setConfirmSubmit(false);
@@ -220,7 +221,7 @@ export default function ViewPurchaseOrderPage() {
     try {
       setSubmitting(true);
       await dispatch(
-        cancelPurchaseOrderThunk({ id: finalPO.id, reason: rejectReason })
+        cancelPurchaseOrderThunk({ id: finalPO.id, reason: rejectReason }),
       ).unwrap();
       toast.success("Purchase Order cancelled!");
       setConfirmReject(false);
@@ -245,7 +246,7 @@ export default function ViewPurchaseOrderPage() {
         {finalPO &&
           currentUser &&
           currentUser.id === finalPO.creator.id &&
-          finalPO.status === "draft" &&
+          finalPO.status === PurchaseOrderStatus.DRAFT &&
           finalPO.branch_id === currentUser.branch.id && (
             <div className="flex gap-3">
               <Button
@@ -265,7 +266,7 @@ export default function ViewPurchaseOrderPage() {
           )}
 
         {currentUser?.role.code === Roles.PURCHASEMANAGER &&
-          finalPO?.status === "waiting_approval" &&
+          finalPO?.status === PurchaseOrderStatus.WAITING_APPROVAL &&
           finalPO?.branch_id === currentUser?.branch.id && (
             <div className="flex gap-3 mt-4">
               {/* APPROVE BUTTON */}
@@ -340,30 +341,36 @@ export default function ViewPurchaseOrderPage() {
               className={`
       inline-flex items-center px-5 py-2.5 rounded-xl text-sm font-semibold
       border shadow-sm
-      ${finalPO?.status === "draft"
-                  ? "bg-gray-50 text-gray-700 border-gray-300"
-                  : ""
-                }
-      ${finalPO?.status === "waiting_approval"
-                  ? "bg-amber-50 text-amber-700 border-amber-300"
-                  : ""
-                }
-      ${finalPO?.status === "confirmed"
-                  ? "bg-blue-50 text-blue-700 border-blue-300"
-                  : ""
-                }
-      ${finalPO?.status === "partially_received"
-                  ? "bg-purple-50 text-purple-700 border-purple-300"
-                  : ""
-                }
-      ${finalPO?.status === "completed"
-                  ? "bg-emerald-50 text-emerald-700 border-emerald-300"
-                  : ""
-                }
-      ${finalPO?.status === "cancelled"
-                  ? "bg-red-50 text-red-700 border-red-300"
-                  : ""
-                }
+      ${
+        finalPO?.status === PurchaseOrderStatus.DRAFT
+          ? "bg-gray-50 text-gray-700 border-gray-300"
+          : ""
+      }
+      ${
+        finalPO?.status === PurchaseOrderStatus.WAITING_APPROVAL
+          ? "bg-amber-50 text-amber-700 border-amber-300"
+          : ""
+      }
+      ${
+        finalPO?.status === PurchaseOrderStatus.CONFIRMED
+          ? "bg-blue-50 text-blue-700 border-blue-300"
+          : ""
+      }
+      ${
+        finalPO?.status === PurchaseOrderStatus.PARTIALLY_RECEIVED
+          ? "bg-purple-50 text-purple-700 border-purple-300"
+          : ""
+      }
+      ${
+        finalPO?.status === PurchaseOrderStatus.COMPLETED
+          ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+          : ""
+      }
+      ${
+        finalPO?.status === PurchaseOrderStatus.CANCELLED
+          ? "bg-red-50 text-red-700 border-red-300"
+          : ""
+      }
     `}
             >
               ● {finalPO?.status?.replace("_", " ") || "N/A"}
@@ -498,10 +505,11 @@ export default function ViewPurchaseOrderPage() {
 
             {/* Approver Card */}
             <div
-              className={`p-6 rounded-xl shadow-md border-2 transition-all duration-300 ${finalPO?.approver
-                ? "bg-white border-green-100 hover:shadow-xl hover:scale-[1.02]"
-                : "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200"
-                }`}
+              className={`p-6 rounded-xl shadow-md border-2 transition-all duration-300 ${
+                finalPO?.approver
+                  ? "bg-white border-green-100 hover:shadow-xl hover:scale-[1.02]"
+                  : "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200"
+              }`}
             >
               {finalPO?.approver ? (
                 <div className="flex items-start gap-4">

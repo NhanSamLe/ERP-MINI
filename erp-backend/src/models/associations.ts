@@ -326,8 +326,8 @@ export function applyAssociations() {
     as: "purchaseOrderLines",
   });
 
-  // PurchaseOrder ↔ Invoice
-  PurchaseOrder.hasOne(ApInvoice, { foreignKey: "po_id", as: "invoice" });
+  // PurchaseOrder ↔ Invoice (one-to-many: a PO can have multiple partial invoices)
+  PurchaseOrder.hasMany(ApInvoice, { foreignKey: "po_id", as: "invoices" });
   ApInvoice.belongsTo(PurchaseOrder, { foreignKey: "po_id", as: "order" });
 
   // PurchaseOrder ↔ Partner (Supplier)

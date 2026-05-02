@@ -5,6 +5,30 @@ import {
   PurchaseOrderUpdate,
 } from "../store/purchaseOrder.types";
 
+export interface PoInvoiceSummaryLine {
+  po_line_id: number;
+  product_id?: number;
+  quantity: number;
+  unit_price: number;
+  uom_id?: number | null;
+  tax_rate_id?: number | null;
+  line_total: number;
+  line_tax: number;
+  line_total_after_tax: number;
+  invoiced_qty: number;
+  remaining_qty: number;
+}
+
+export interface PoInvoiceSummary {
+  po_id: number;
+  po_no: string;
+  total_after_tax: number;
+  invoiced_amount: number;
+  remaining_amount: number;
+  invoice_count: number;
+  lines: PoInvoiceSummaryLine[];
+}
+
 export const purchaseOrderApi = {
   getAll: async (): Promise<PurchaseOrder[]> => {
     const res = await axiosClient.get("/purchase-order");
@@ -13,6 +37,13 @@ export const purchaseOrderApi = {
 
   getAvailableForInvoice: async (): Promise<PurchaseOrder[]> => {
     const res = await axiosClient.get("/purchase-order/available-for-invoice");
+    return res.data.data;
+  },
+
+  getPoInvoiceSummary: async (poId: number): Promise<PoInvoiceSummary> => {
+    const res = await axiosClient.get(
+      `/purchase-order/${poId}/invoice-summary`,
+    );
     return res.data.data;
   },
 

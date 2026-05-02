@@ -1,11 +1,17 @@
 import { Role } from "../../../core/types/enum";
-import { ApInvoiceLine, Partner, Product, sequelize } from "../../../models";
+import {
+  ApInvoiceLine,
+  Partner,
+  Product,
+  sequelize,
+  TaxRate,
+} from "../../../models";
 import { User } from "../../auth/models/user.model";
 import { Branch } from "../../company/models/branch.model";
 import { ApInvoice } from "../models/apInvoice.model";
 import { PurchaseOrder } from "../models/purchaseOrder.model";
 import { PurchaseOrderLine } from "../models/purchaseOrderLine.model";
-import { Transaction } from "sequelize";
+import { Transaction, Op } from "sequelize";
 import { GlJournal } from "../../finance/models/glJournal.model";
 import { GlEntry } from "../../finance/models/glEntry.model";
 import { GlEntryLine } from "../../finance/models/glEntryLine.model";
@@ -362,7 +368,9 @@ export const apInvoiceService = {
       };
     }
 
-    const po = await PurchaseOrder.findByPk(poId);
+    const po = await PurchaseOrder.findByPk(poId, {
+      include: [{ model: PurchaseOrderLine, as: "lines" }],
+    });
     if (!po) throw { status: 404, message: "Purchase Order not found" };
 
     if (po.branch_id !== user.branch_id) {
@@ -372,47 +380,112 @@ export const apInvoiceService = {
       };
     }
 
-    if (po.status !== "confirmed" && po.status !== "completed") {
+    if (
+      po.status !== "confirmed" &&
+      po.status !== "partially_received" &&
+      po.status !== "completed"
+    ) {
       throw {
         status: 400,
         message:
-          "Only CONFIRMED And COMPLETED Purchase Orders can create AP Invoice",
+          "Only CONFIRMED, PARTIALLY_RECEIVED or COMPLETED Purchase Orders can create AP Invoice",
       };
     }
 
-    // Kiểm tra đã có invoice cho PO này chưa (logic cũ giữ nguyên)
-    const existed = await ApInvoice.findOne({ where: { po_id: po.id } });
-    if (existed) {
-      throw {
-        status: 400,
-        message: "AP Invoice already exists for this Purchase Order",
-      };
-    }
-
-    const poLines = await PurchaseOrderLine.findAll({
-      where: { po_id: po.id },
-    });
+    const poLines = (po as any).lines ?? [];
     if (!poLines.length) {
       throw { status: 400, message: "Purchase Order has no line items" };
     }
+
+    // ── Validate: total invoiced amount must not exceed PO total ──────────
+    const existingInvoices = await ApInvoice.findAll({
+      where: {
+        po_id: po.id,
+        status: { [Op.notIn]: ["cancelled"] },
+      },
+    });
+
+    const totalInvoiced = existingInvoices.reduce(
+      (sum, inv) => sum + Number(inv.total_after_tax ?? 0),
+      0,
+    );
+    const poTotal = Number(po.total_after_tax ?? 0);
+
+    if (totalInvoiced >= poTotal) {
+      throw {
+        status: 400,
+        message: `This Purchase Order has been fully invoiced (${totalInvoiced.toLocaleString()} / ${poTotal.toLocaleString()} VND). No remaining amount to invoice.`,
+      };
+    }
+
+    // ── Validate per-line: remaining qty per po_line ──────────────────────
+    const existingInvoiceLines = await ApInvoiceLine.findAll({
+      include: [
+        {
+          model: ApInvoice,
+          as: "invoice",
+          where: {
+            po_id: po.id,
+            status: { [Op.notIn]: ["cancelled"] },
+          },
+          required: true,
+        },
+      ],
+    });
+
+    const invoicedQtyByPoLine: Record<number, number> = {};
+    for (const invLine of existingInvoiceLines) {
+      if (invLine.po_line_id) {
+        invoicedQtyByPoLine[invLine.po_line_id] =
+          (invoicedQtyByPoLine[invLine.po_line_id] ?? 0) +
+          Number(invLine.quantity ?? 0);
+      }
+    }
+
+    // Build lines with remaining quantities only
+    const lines: CreateAPInvoiceLineInput[] = [];
+    for (const line of poLines) {
+      const invoicedQty = invoicedQtyByPoLine[line.id] ?? 0;
+      const remainingQty = Number(line.quantity ?? 0) - invoicedQty;
+      if (remainingQty <= 0) continue; // skip fully invoiced lines
+
+      const unitPrice = Number(line.unit_price ?? 0);
+      const lineTotal = remainingQty * unitPrice;
+      const taxRate = line.tax_rate_id
+        ? await TaxRate.findByPk(line.tax_rate_id)
+        : null;
+      const taxRateValue = taxRate ? Number((taxRate as any).rate ?? 0) : 0;
+      const lineTax = (lineTotal * taxRateValue) / 100;
+
+      lines.push({
+        product_id: line.product_id ?? null,
+        description: po.description ?? "",
+        quantity: remainingQty,
+        unit_price: unitPrice,
+        uom_id: line.uom_id ?? null,
+        tax_rate_id: line.tax_rate_id ?? null,
+        line_total: lineTotal,
+        line_tax: lineTax,
+        line_total_after_tax: lineTotal + lineTax,
+        po_line_id: line.id,
+      });
+    }
+
+    if (lines.length === 0) {
+      throw {
+        status: 400,
+        message: "All lines in this Purchase Order have already been invoiced.",
+      };
+    }
+
+    const totalBeforeTax = lines.reduce((s, l) => s + (l.line_total ?? 0), 0);
+    const totalTax = lines.reduce((s, l) => s + (l.line_tax ?? 0), 0);
+    const totalAfterTax = totalBeforeTax + totalTax;
 
     const invoiceNo = `AP-${new Date().getFullYear()}-${Date.now()}`;
     const invoiceDate = new Date();
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 30);
-
-    const lines: CreateAPInvoiceLineInput[] = poLines.map((line) => ({
-      product_id: line.product_id ?? null,
-      description: po.description ?? "",
-      quantity: Number(line.quantity),
-      unit_price: Number(line.unit_price),
-      uom_id: line.uom_id ?? null,
-      tax_rate_id: line.tax_rate_id ?? null,
-      line_total: Number(line.line_total),
-      line_tax: Number(line.line_tax ?? 0),
-      line_total_after_tax: Number(line.line_total_after_tax),
-      po_line_id: line.id,
-    }));
 
     const result = await this.createAPInvoice(
       {
@@ -424,9 +497,152 @@ export const apInvoiceService = {
         po_id: po.id,
         branch_id: po.branch_id,
         created_by: user.id,
-        total_before_tax: Number(po.total_before_tax),
-        total_tax: Number(po.total_tax),
-        total_after_tax: Number(po.total_after_tax),
+        total_before_tax: totalBeforeTax,
+        total_tax: totalTax,
+        total_after_tax: totalAfterTax,
+        lines,
+      },
+      user,
+    );
+
+    return result.invoice;
+  },
+
+  // ─── PARTIAL INVOICE FROM PO ───────────────────────────────────────────────
+
+  /**
+   * Tạo partial AP Invoice từ PO — user chọn từng line và nhập qty muốn invoice.
+   *
+   * Body: { lines: [{ po_line_id, quantity }] }
+   *
+   * Ví dụ: PO có 2 lines (Lavie 100 thùng + iPhone 10 hộp),
+   * user chỉ invoice 60 thùng Lavie trước → giao hàng đợt 1.
+   */
+  async createPartialFromPO(
+    poId: number,
+    selectedLines: Array<{ po_line_id: number; quantity: number }>,
+    user: any,
+  ) {
+    if (![Role.ACCOUNT].includes(user.role)) {
+      throw {
+        status: 403,
+        message: "You do not have permission to create AP Invoice",
+      };
+    }
+    if (!selectedLines || selectedLines.length === 0) {
+      throw { status: 400, message: "At least one line must be selected" };
+    }
+
+    const po = await PurchaseOrder.findByPk(poId, {
+      include: [{ model: PurchaseOrderLine, as: "lines" }],
+    });
+    if (!po) throw { status: 404, message: "Purchase Order not found" };
+    if (po.branch_id !== user.branch_id) {
+      throw {
+        status: 403,
+        message: "You cannot create invoice for another branch",
+      };
+    }
+    if (!["confirmed", "partially_received", "completed"].includes(po.status)) {
+      throw {
+        status: 400,
+        message:
+          "Only CONFIRMED, PARTIALLY_RECEIVED or COMPLETED POs can create AP Invoice",
+      };
+    }
+
+    const poLines: PurchaseOrderLine[] = (po as any).lines ?? [];
+    const poLineMap = new Map(poLines.map((l) => [l.id, l]));
+
+    // Get already-invoiced qty per po_line
+    const existingInvoiceLines = await ApInvoiceLine.findAll({
+      include: [
+        {
+          model: ApInvoice,
+          as: "invoice",
+          where: { po_id: po.id, status: { [Op.notIn]: ["cancelled"] } },
+          required: true,
+        },
+      ],
+    });
+    const invoicedQtyByPoLine: Record<number, number> = {};
+    for (const invLine of existingInvoiceLines) {
+      if (invLine.po_line_id) {
+        invoicedQtyByPoLine[invLine.po_line_id] =
+          (invoicedQtyByPoLine[invLine.po_line_id] ?? 0) +
+          Number(invLine.quantity ?? 0);
+      }
+    }
+
+    // Validate each selected line
+    const lines: CreateAPInvoiceLineInput[] = [];
+    for (const sel of selectedLines) {
+      const poLine = poLineMap.get(sel.po_line_id);
+      if (!poLine) {
+        throw { status: 400, message: `PO line ${sel.po_line_id} not found` };
+      }
+      if (sel.quantity <= 0) {
+        throw {
+          status: 400,
+          message: `Quantity must be > 0 for line ${sel.po_line_id}`,
+        };
+      }
+
+      const totalQty = Number(poLine.quantity ?? 0);
+      const alreadyInvoiced = invoicedQtyByPoLine[poLine.id] ?? 0;
+      const remainingQty = totalQty - alreadyInvoiced;
+
+      if (sel.quantity > remainingQty) {
+        throw {
+          status: 400,
+          message: `Line ${sel.po_line_id}: requested qty ${sel.quantity} exceeds remaining qty ${remainingQty}`,
+        };
+      }
+
+      const unitPrice = Number(poLine.unit_price ?? 0);
+      const lineTotal = sel.quantity * unitPrice;
+      const taxRate = poLine.tax_rate_id
+        ? await TaxRate.findByPk(poLine.tax_rate_id)
+        : null;
+      const taxRateValue = taxRate ? Number((taxRate as any).rate ?? 0) : 0;
+      const lineTax = (lineTotal * taxRateValue) / 100;
+
+      lines.push({
+        product_id: poLine.product_id ?? null,
+        description: po.description ?? "",
+        quantity: sel.quantity,
+        unit_price: unitPrice,
+        uom_id: poLine.uom_id ?? null,
+        tax_rate_id: poLine.tax_rate_id ?? null,
+        line_total: lineTotal,
+        line_tax: lineTax,
+        line_total_after_tax: lineTotal + lineTax,
+        po_line_id: poLine.id,
+      });
+    }
+
+    const totalBeforeTax = lines.reduce((s, l) => s + (l.line_total ?? 0), 0);
+    const totalTax = lines.reduce((s, l) => s + (l.line_tax ?? 0), 0);
+    const totalAfterTax = totalBeforeTax + totalTax;
+
+    const invoiceNo = `AP-${new Date().getFullYear()}-${Date.now()}`;
+    const invoiceDate = new Date();
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 30);
+
+    const result = await this.createAPInvoice(
+      {
+        source: "manual",
+        invoice_no: invoiceNo,
+        invoice_date: invoiceDate,
+        due_date: dueDate,
+        supplier_id: po.supplier_id!,
+        po_id: po.id,
+        branch_id: po.branch_id,
+        created_by: user.id,
+        total_before_tax: totalBeforeTax,
+        total_tax: totalTax,
+        total_after_tax: totalAfterTax,
         lines,
       },
       user,
@@ -613,6 +829,41 @@ export const apInvoiceService = {
     }
 
     return this.getById(invoice.id, user);
+  },
+
+  // ─── DELETE ────────────────────────────────────────────────────────────────
+
+  /**
+   * Xóa AP Invoice — chỉ cho phép khi status = draft và approval_status = draft
+   * (chưa submit for approval).
+   */
+  async deleteInvoice(id: number, user: any) {
+    const invoice = await ApInvoice.findByPk(id);
+    if (!invoice) throw { status: 404, message: "AP Invoice not found" };
+
+    if (invoice.branch_id !== user.branch_id) {
+      throw {
+        status: 403,
+        message: "You cannot delete an invoice from another branch",
+      };
+    }
+    if (invoice.created_by !== user.id) {
+      throw {
+        status: 403,
+        message: "Only the creator can delete this invoice",
+      };
+    }
+    if (invoice.status !== "draft" || invoice.approval_status !== "draft") {
+      throw {
+        status: 400,
+        message:
+          "Only draft invoices that have not been submitted can be deleted",
+      };
+    }
+
+    // Delete lines first (cascade safety)
+    await ApInvoiceLine.destroy({ where: { ap_invoice_id: id } });
+    await invoice.destroy();
   },
 
   // ─── REPORTS ───────────────────────────────────────────────────────────────
