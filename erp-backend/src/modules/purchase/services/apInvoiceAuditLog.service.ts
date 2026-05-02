@@ -113,16 +113,23 @@ export class ApInvoiceAuditLogService {
   }
 
   /**
-   * Lấy toàn bộ audit trail của một AP Invoice
-   *
-   * Ví dụ: Trưởng phòng tài chính muốn xem lịch sử
-   * hóa đơn AP-2024-001 đã được tạo như thế nào, có ghi đè gì không
+   * Lấy toàn bộ audit trail của một AP Invoice (kèm actor info)
    */
-  async getAuditTrail(ap_invoice_id: number): Promise<ApInvoiceAuditLog[]> {
-    return ApInvoiceAuditLog.findAll({
+  async getAuditTrail(ap_invoice_id: number): Promise<any[]> {
+    const { User } = await import("../../auth/models/user.model");
+    const logs = await ApInvoiceAuditLog.findAll({
       where: { ap_invoice_id },
+      include: [
+        {
+          model: User,
+          as: "actor",
+          attributes: ["id", "full_name", "email"],
+          foreignKey: "created_by",
+        },
+      ],
       order: [["created_at", "ASC"]],
     });
+    return logs;
   }
 }
 

@@ -6,6 +6,7 @@ import {
   getApInvoiceByIdThunk,
   rejectApInvoiceThunk,
   submitApInvoiceThunk,
+  getApInvoiceAuditLogsThunk,
 } from "../../store/apInvoice/apInvoice.thunks";
 import {
   Loader2,
@@ -46,6 +47,7 @@ import {
   InvoiceSource,
   MatchingStatus,
 } from "../../constants/purchaseStatus.enum";
+import { AuditLogCard } from "../../components/Common";
 
 export default function ViewApInvoicePage() {
   const { id } = useParams();
@@ -60,9 +62,33 @@ export default function ViewApInvoicePage() {
   const [openRejectModal, setOpenRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
 
+  // ✅ Audit log state
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [loadingAuditLogs, setLoadingAuditLogs] = useState(false);
+
+  const refreshAuditLogs = async () => {
+    if (!id) return;
+    try {
+      setLoadingAuditLogs(true);
+      const logs = await dispatch(
+        getApInvoiceAuditLogsThunk(Number(id)),
+      ).unwrap();
+      setAuditLogs(logs);
+    } catch {
+      // silent
+    } finally {
+      setLoadingAuditLogs(false);
+    }
+  };
+
   useEffect(() => {
     if (id) dispatch(getApInvoiceByIdThunk(Number(id)));
   }, [id, dispatch]);
+
+  useEffect(() => {
+    refreshAuditLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-32">
@@ -308,6 +334,27 @@ export default function ViewApInvoicePage() {
               label="Due Date"
               value={new Date(invoice.due_date).toLocaleDateString("en-US")}
             />
+            {(invoice as any).invoice_series && (
+              <InfoRow
+                icon={<FileText className="w-4 h-4" />}
+                label="Invoice Series"
+                value={(invoice as any).invoice_series}
+              />
+            )}
+            {(invoice as any).invoice_template && (
+              <InfoRow
+                icon={<FileText className="w-4 h-4" />}
+                label="Invoice Template"
+                value={(invoice as any).invoice_template}
+              />
+            )}
+            {(invoice as any).tax_code && (
+              <InfoRow
+                icon={<TrendingUp className="w-4 h-4" />}
+                label="Tax Code"
+                value={(invoice as any).tax_code}
+              />
+            )}
             <InfoRow
               icon={<Building2 className="w-4 h-4" />}
               label="Branch"
@@ -491,13 +538,19 @@ export default function ViewApInvoicePage() {
                     Product
                   </th>
                   <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">
-                    Quantity
+                    Qty / UOM
                   </th>
                   <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">
                     Unit Price
                   </th>
                   <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">
-                    Line Total
+                    Tax
+                  </th>
+                  <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">
+                    Total (incl. tax)
+                  </th>
+                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                    Match
                   </th>
                 </tr>
               </thead>
@@ -511,8 +564,7 @@ export default function ViewApInvoicePage() {
                     {/* PRODUCT */}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-4">
-                        {/* IMAGE */}
-                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
                           {line.product?.image_url ? (
                             <img
                               src={line.product.image_url}
@@ -523,20 +575,21 @@ export default function ViewApInvoicePage() {
                             <Package className="w-6 h-6 text-gray-400" />
                           )}
                         </div>
-
-                        {/* INFO */}
                         <div>
                           <p className="font-semibold text-gray-900">
                             {line.product?.name ?? "Unknown product"}
                           </p>
-                          <p className="text-xs text-gray-500">
-                            Item {idx + 1}
-                          </p>
+                          {line.description && (
+                            <p className="text-xs text-gray-400 mt-0.5 max-w-xs truncate">
+                              {line.description}
+                            </p>
+                          )}
+                          <p className="text-xs text-gray-400">#{idx + 1}</p>
                         </div>
                       </div>
                     </td>
 
-                    {/* QUANTITY */}
+                    {/* QUANTITY + UOM */}
                     <td className="px-6 py-4 text-right">
                       <span className="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 text-sm font-semibold text-gray-700">
                         {line.quantity}
@@ -550,11 +603,51 @@ export default function ViewApInvoicePage() {
                       </span>
                     </td>
 
-                    {/* LINE TOTAL */}
+                    {/* TAX */}
+                    <td className="px-6 py-4 text-right">
+                      <span className="text-sm text-blue-600 font-medium">
+                        {line.line_tax
+                          ? `${Number(line.line_tax).toLocaleString("vi-VN")} VND`
+                          : "—"}
+                      </span>
+                    </td>
+
+                    {/* LINE TOTAL AFTER TAX */}
                     <td className="px-6 py-4 text-right">
                       <span className="text-base font-bold text-gray-900">
-                        {Number(line.line_total).toLocaleString("vi-VN")} VND
+                        {Number(
+                          line.line_total_after_tax ?? line.line_total,
+                        ).toLocaleString("vi-VN")}{" "}
+                        VND
                       </span>
+                    </td>
+
+                    {/* MATCHING RESULT */}
+                    <td className="px-6 py-4 text-center">
+                      {line.matching_result ? (
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                            line.matching_result === "matched"
+                              ? "bg-green-100 text-green-700"
+                              : line.matching_result === "price_mismatch"
+                                ? "bg-yellow-100 text-yellow-700"
+                                : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {line.matching_result === "matched" ? (
+                            <CheckCircle2 className="w-3 h-3" />
+                          ) : (
+                            <AlertTriangle className="w-3 h-3" />
+                          )}
+                          {line.matching_result === "matched"
+                            ? "Matched"
+                            : line.matching_result === "price_mismatch"
+                              ? "Price ≠"
+                              : "Qty ≠"}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -700,21 +793,12 @@ export default function ViewApInvoicePage() {
       )}
 
       {/* ================= AUDIT TRAIL ================= */}
-      {invoice.audit_trail && invoice.audit_trail.length > 0 && (
-        <div className="bg-white rounded-2xl border-2 border-gray-100 p-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
-              <History className="w-5 h-5 text-gray-600" />
-            </div>
-            <h2 className="text-lg font-bold text-gray-900">Audit Trail</h2>
-          </div>
-          <div className="space-y-3">
-            {invoice.audit_trail.map((log) => (
-              <AuditLogRow key={log.id} log={log} />
-            ))}
-          </div>
-        </div>
-      )}
+      <AuditLogCard
+        title="Audit Trail"
+        logs={auditLogs}
+        loading={loadingAuditLogs}
+        variant="invoice"
+      />
       {openSubmitModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 animate-in fade-in zoom-in">

@@ -1,27 +1,23 @@
 import { Role } from "../../../core/types/enum";
 import { ApPayment } from "../models/apPayment.model";
+import { ApPaymentAuditLog } from "../models/apPaymentAuditLog.model";
 import { User } from "../../auth/models/user.model";
 import { Branch } from "../../company/models/branch.model";
 import { Transaction } from "sequelize";
 import { GlJournal } from "../../finance/models/glJournal.model";
 import { GlEntry } from "../../finance/models/glEntry.model";
 import { GlEntryLine } from "../../finance/models/glEntryLine.model";
-import {
-  ApInvoice,
-  ApPaymentAllocation,
-  Partner,
-  sequelize,
-} from "../../../models";
-import { QueryTypes } from "sequelize";
+import { ApPaymentAllocation, Partner, sequelize } from "../../../models";
+import { Op, QueryTypes } from "sequelize";
 import { notificationService } from "../../../core/services/notification.service";
 
 export const apPaymentService = {
+  // ─── READ ──────────────────────────────────────────────────────────────────
+
   async getAll(query: any, user: any) {
     const { status, approval_status } = query;
 
-    const where: any = {
-      branch_id: user.branch_id,
-    };
+    const where: any = { branch_id: user.branch_id };
 
     if (user.role === Role.ACCOUNT) {
       where.created_by = user.id;
@@ -55,10 +51,7 @@ export const apPaymentService = {
   },
 
   async getById(id: number, user: any) {
-    const where: any = {
-      id,
-      branch_id: user.branch_id,
-    };
+    const where: any = { id, branch_id: user.branch_id };
 
     if (user.role === Role.ACCOUNT) {
       where.created_by = user.id;
@@ -86,6 +79,30 @@ export const apPaymentService = {
       ],
     });
   },
+
+  // ─── AUDIT LOG ─────────────────────────────────────────────────────────────
+
+  async getAuditLogs(paymentId: number, user: any) {
+    const payment = await ApPayment.findOne({
+      where: { id: paymentId, branch_id: user.branch_id },
+    });
+
+    if (!payment) throw new Error("AP Payment not found");
+
+    return ApPaymentAuditLog.findAll({
+      where: { payment_id: paymentId },
+      include: [
+        {
+          model: User,
+          as: "actor",
+          attributes: ["id", "full_name", "email", "avatar_url"],
+        },
+      ],
+      order: [["created_at", "ASC"]],
+    });
+  },
+
+  // ─── CREATE ────────────────────────────────────────────────────────────────
 
   async create(payload: any, user: any) {
     if (user.role !== Role.ACCOUNT) {
@@ -121,8 +138,23 @@ export const apPaymentService = {
       branch_id: user.branch_id,
     });
 
+    await ApPaymentAuditLog.create({
+      payment_id: payment.id,
+      action: "CREATE",
+      old_status: null,
+      new_status: "draft/draft",
+      details: {
+        amount: payload.amount,
+        method: payload.method,
+        supplier_id: payload.supplier_id,
+      },
+      created_by: user.id,
+    });
+
     return this.getById(payment.id, user);
   },
+
+  // ─── SUBMIT ────────────────────────────────────────────────────────────────
 
   async submitForApproval(id: number, user: any, app?: any) {
     const payment = await this.getById(id, user);
@@ -136,12 +168,21 @@ export const apPaymentService = {
       throw new Error("Only draft payment can be submitted");
     }
 
+    const oldStatus = `${payment.status}/${payment.approval_status}`;
+
     payment.approval_status = "waiting_approval";
     payment.submitted_at = new Date();
-
     await payment.save();
 
-    // Gửi thông báo
+    await ApPaymentAuditLog.create({
+      payment_id: payment.id,
+      action: "SUBMIT",
+      old_status: oldStatus,
+      new_status: "draft/waiting_approval",
+      details: { submitted_at: payment.submitted_at },
+      created_by: user.id,
+    });
+
     if (app) {
       const io = app.get("io");
       await notificationService.createNotification({
@@ -159,8 +200,11 @@ export const apPaymentService = {
     return this.getById(payment.id, user);
   },
 
-  async approve(id: number, user: any) {
-    if (user.role !== Role.CHACC) throw new Error("Only Chief Accountant can approve");
+  // ─── APPROVE ───────────────────────────────────────────────────────────────
+
+  async approve(id: number, user: any, app?: any) {
+    if (user.role !== Role.CHACC)
+      throw new Error("Only Chief Accountant can approve");
 
     const t: Transaction = await sequelize.transaction();
     try {
@@ -173,7 +217,8 @@ export const apPaymentService = {
       if (payment.approval_status !== "waiting_approval")
         throw new Error("Payment is not waiting for approval");
 
-      // 1) update trạng thái payment
+      const oldStatus = `${payment.status}/${payment.approval_status}`;
+
       await payment.update(
         {
           approval_status: "approved",
@@ -182,28 +227,24 @@ export const apPaymentService = {
           approved_at: new Date(),
           reject_reason: null,
         },
-        { transaction: t }
+        { transaction: t },
       );
 
-      // 2) Xác định account Có theo method
-      // giả sử: cash->111 (id=1), bank/transfer->112 (id=2)
-      const creditAccountId =
-        payment.method === "cash"
-          ? 1  // 111
-          : 2; // 112
+      // GL: cash->111 (id=1), bank/transfer->112 (id=2)
+      const creditAccountId = payment.method === "cash" ? 1 : 2;
+      const debitAccountId = 3; // 331 - Phải trả NCC
 
-      const debitAccountId = 3; // 331 - Phải trả NCC (bạn mapping id theo hệ thống bạn)
-
-      // 3) Journal: CASH/BANK
       const journalCode = payment.method === "cash" ? "CASH" : "BANK";
-      const journal = await GlJournal.findOne({ where: { code: journalCode }, transaction: t });
+      const journal = await GlJournal.findOne({
+        where: { code: journalCode },
+        transaction: t,
+      });
       if (!journal) throw new Error(`${journalCode} journal not found`);
 
       const entryDate: Date = payment.payment_date || new Date();
       const amount = Number(payment.amount || 0);
       if (amount <= 0) throw new Error("Payment amount must be > 0");
 
-      // 4) Create GL Entry
       const entry = await GlEntry.create(
         {
           journal_id: journal.id,
@@ -214,12 +255,11 @@ export const apPaymentService = {
           memo: `AP Payment ${payment.payment_no}`,
           status: "posted",
         },
-        { transaction: t }
+        { transaction: t },
       );
 
       const supplierId = payment.supplier_id as number | undefined;
 
-      // 5) Create GL Lines: Nợ 331 / Có 111-112
       const lineDebit: any = {
         entry_id: entry.id,
         account_id: debitAccountId,
@@ -240,13 +280,46 @@ export const apPaymentService = {
 
       await GlEntryLine.bulkCreate([lineDebit, lineCredit], { transaction: t });
 
+      await ApPaymentAuditLog.create(
+        {
+          payment_id: id,
+          action: "APPROVE",
+          old_status: oldStatus,
+          new_status: "posted/approved",
+          details: {
+            approved_by: user.id,
+            approved_at: new Date(),
+            gl_entry_no: entry.entry_no,
+          },
+          created_by: user.id,
+        },
+        { transaction: t },
+      );
+
       await t.commit();
-      return this.getById(payment.id, user);
+
+      if (app) {
+        const io = app.get("io");
+        await notificationService.createNotification({
+          type: "APPROVE",
+          referenceType: "AP_PAYMENT",
+          referenceId: id,
+          referenceNo: payment.payment_no!,
+          branchId: payment.branch_id!,
+          submitterId: payment.created_by,
+          approverName: user.fullName || user.username,
+          io,
+        });
+      }
+
+      return this.getById(id, user);
     } catch (err) {
       await t.rollback();
       throw err;
     }
   },
+
+  // ─── REJECT ────────────────────────────────────────────────────────────────
 
   async reject(id: number, reason: string, user: any, app?: any) {
     if (user.role !== Role.CHACC) {
@@ -264,15 +337,24 @@ export const apPaymentService = {
       throw new Error("Payment is not waiting for approval");
     }
 
+    const oldStatus = `${payment.status}/${payment.approval_status}`;
+
     payment.approval_status = "rejected";
     payment.status = "cancelled";
     payment.approved_by = user.id;
     payment.approved_at = new Date();
     payment.reject_reason = reason;
-
     await payment.save();
 
-    // Gửi thông báo
+    await ApPaymentAuditLog.create({
+      payment_id: id,
+      action: "REJECT",
+      old_status: oldStatus,
+      new_status: "cancelled/rejected",
+      details: { reject_reason: reason, rejected_by: user.id },
+      created_by: user.id,
+    });
+
     if (app && payment.created_by) {
       const io = app.get("io");
       await notificationService.createNotification({
@@ -291,6 +373,8 @@ export const apPaymentService = {
     return this.getById(payment.id, user);
   },
 
+  // ─── AVAILABLE AMOUNT ──────────────────────────────────────────────────────
+
   async getAvailableAmount(id: number, user: any) {
     const payment = await ApPayment.findOne({
       where: {
@@ -301,21 +385,15 @@ export const apPaymentService = {
       },
     });
 
-    if (!payment) {
-      throw new Error("Payment not available for allocation");
-    }
+    if (!payment) throw new Error("Payment not available for allocation");
 
     const [result]: any = await sequelize.query(
-      `
-    SELECT
-      ap.amount - COALESCE(SUM(apa.applied_amount), 0) AS available_amount
-    FROM ap_payments ap
-    LEFT JOIN ap_payment_allocations apa
-      ON apa.payment_id = ap.id
-    WHERE ap.id = ?
-    GROUP BY ap.id
-    `,
-      { replacements: [id], type: "SELECT" }
+      `SELECT ap.amount - COALESCE(SUM(apa.applied_amount), 0) AS available_amount
+       FROM ap_payments ap
+       LEFT JOIN ap_payment_allocations apa ON apa.payment_id = ap.id
+       WHERE ap.id = ?
+       GROUP BY ap.id`,
+      { replacements: [id], type: "SELECT" },
     );
 
     return {
@@ -323,6 +401,8 @@ export const apPaymentService = {
       available_amount: Number(result.available_amount),
     };
   },
+
+  // ─── UNPAID INVOICES ───────────────────────────────────────────────────────
 
   async getUnpaidInvoices(paymentId: number, user: any) {
     const payment = await ApPayment.findOne({
@@ -334,43 +414,43 @@ export const apPaymentService = {
       },
     });
 
-    if (!payment) {
-      throw new Error("Payment not available for allocation");
-    }
+    if (!payment) throw new Error("Payment not available for allocation");
 
-    const rows = await sequelize.query(
-      `
-  SELECT
-    ai.id,
-    ai.invoice_no,
-    ai.total_after_tax,
-    COALESCE(SUM(apa.applied_amount), 0) AS allocated_amount,
-    ai.total_after_tax - COALESCE(SUM(apa.applied_amount), 0) AS unpaid_amount
-  FROM ap_invoices ai
-  JOIN purchase_orders po ON po.id = ai.po_id
-  LEFT JOIN ap_payment_allocations apa ON apa.ap_invoice_id = ai.id
-  WHERE ai.status = 'posted'
-    AND po.supplier_id = ?
-  GROUP BY ai.id
-  HAVING unpaid_amount > 0
-  `,
+    return sequelize.query(
+      `SELECT
+         ai.id,
+         ai.invoice_no,
+         ai.total_after_tax,
+         COALESCE(SUM(apa.applied_amount), 0) AS allocated_amount,
+         ai.total_after_tax - COALESCE(SUM(apa.applied_amount), 0) AS unpaid_amount
+       FROM ap_invoices ai
+       JOIN purchase_orders po ON po.id = ai.po_id
+       LEFT JOIN ap_payment_allocations apa ON apa.ap_invoice_id = ai.id
+       WHERE ai.status IN ('posted', 'partially_paid')
+         AND ai.approval_status = 'approved'
+         AND po.supplier_id = ?
+         AND ai.branch_id = ?
+       GROUP BY ai.id
+       HAVING unpaid_amount > 0`,
       {
-        replacements: [payment.supplier_id],
+        replacements: [payment.supplier_id, user.branch_id],
         type: QueryTypes.SELECT,
-      }
+      },
     );
-
-    return rows;
   },
+
+  // ─── ALLOCATE ──────────────────────────────────────────────────────────────
 
   async allocate(
     paymentId: number,
     allocations: { invoice_id: number; amount: number }[],
-    user: any
+    user: any,
+    app?: any,
   ) {
     const t = await sequelize.transaction();
 
     try {
+      // Lock payment row
       const payment = await ApPayment.findOne({
         where: {
           id: paymentId,
@@ -382,66 +462,98 @@ export const apPaymentService = {
         transaction: t,
       });
 
-      if (!payment) {
-        throw new Error("Payment not available for allocation");
-      }
+      if (!payment) throw new Error("Payment not available for allocation");
 
-      // available amount
+      // Calculate available amount
       const [result]: any = await sequelize.query(
-        `
-      SELECT
-        ap.amount - COALESCE(SUM(apa.applied_amount), 0) AS available_amount
-      FROM ap_payments ap
-      LEFT JOIN ap_payment_allocations apa
-        ON apa.payment_id = ap.id
-      WHERE ap.id = ?
-      GROUP BY ap.id
-      `,
-        { replacements: [paymentId], transaction: t, type: "SELECT" }
+        `SELECT ap.amount - COALESCE(SUM(apa.applied_amount), 0) AS available_amount
+         FROM ap_payments ap
+         LEFT JOIN ap_payment_allocations apa ON apa.payment_id = ap.id
+         WHERE ap.id = ?
+         GROUP BY ap.id`,
+        { replacements: [paymentId], transaction: t, type: "SELECT" },
       );
 
       const availableAmount = Number(result.available_amount);
-
       const totalAllocate = allocations.reduce(
         (sum, a) => sum + Number(a.amount),
-        0
+        0,
       );
 
-      if (totalAllocate <= 0) {
+      if (totalAllocate <= 0)
         throw new Error("Allocation amount must be greater than zero");
-      }
-
-      if (totalAllocate > availableAmount) {
+      if (totalAllocate > availableAmount)
         throw new Error("Allocated amount exceeds available payment amount");
-      }
 
-      // process each invoice
+      const allocatedInvoices: {
+        invoice_id: number;
+        amount: number;
+        status: string;
+      }[] = [];
+
       for (const item of allocations) {
-        if (item.amount <= 0) continue;
+        if (item.amount <= 0)
+          throw new Error("Allocation amount must be greater than zero");
 
-        // unpaid amount of invoice
+        // Validate invoice: supplier + status + approval + branch + lock
         const [invoice]: any = await sequelize.query(
-          `
-        SELECT
-          ai.id,
-          ai.total_after_tax -
-          COALESCE(SUM(apa.applied_amount), 0) AS unpaid_amount
-        FROM ap_invoices ai
-        LEFT JOIN ap_payment_allocations apa
-          ON apa.ap_invoice_id = ai.id
-        WHERE ai.id = ?
-        GROUP BY ai.id
-        `,
-          { replacements: [item.invoice_id], transaction: t, type: "SELECT" }
+          `SELECT ai.id,
+                  ai.total_after_tax - COALESCE(SUM(apa.applied_amount), 0) AS unpaid_amount
+           FROM ap_invoices ai
+           JOIN purchase_orders po ON po.id = ai.po_id
+           LEFT JOIN ap_payment_allocations apa ON apa.ap_invoice_id = ai.id
+           WHERE ai.id = ?
+             AND po.supplier_id = ?
+             AND ai.status IN ('posted', 'partially_paid')
+             AND ai.approval_status = 'approved'
+             AND ai.branch_id = ?
+           GROUP BY ai.id
+           FOR UPDATE`,
+          {
+            replacements: [
+              item.invoice_id,
+              payment.supplier_id,
+              user.branch_id,
+            ],
+            transaction: t,
+            type: "SELECT",
+          },
         );
 
         if (!invoice) {
-          throw new Error(`Invoice ${item.invoice_id} not found`);
+          throw new Error(
+            `Invoice ${item.invoice_id} not found, not posted/partially_paid, not approved, or belongs to different supplier/branch`,
+          );
+        }
+
+        // Check duplicate from same payment
+        const existingAllocation = await ApPaymentAllocation.findOne({
+          where: { payment_id: paymentId, ap_invoice_id: item.invoice_id },
+          transaction: t,
+        });
+        if (existingAllocation) {
+          throw new Error(
+            `Invoice ${item.invoice_id} already allocated from this payment`,
+          );
+        }
+
+        // Check allocation from other payment
+        const allocatedFromOther = await ApPaymentAllocation.findOne({
+          where: {
+            ap_invoice_id: item.invoice_id,
+            payment_id: { [Op.ne]: paymentId },
+          },
+          transaction: t,
+        });
+        if (allocatedFromOther) {
+          throw new Error(
+            `Invoice ${item.invoice_id} already allocated from another payment`,
+          );
         }
 
         if (item.amount > invoice.unpaid_amount) {
           throw new Error(
-            `Allocated amount exceeds unpaid amount of invoice ${item.invoice_id}`
+            `Allocated amount exceeds unpaid amount of invoice ${item.invoice_id}`,
           );
         }
 
@@ -451,27 +563,77 @@ export const apPaymentService = {
             ap_invoice_id: item.invoice_id,
             applied_amount: item.amount,
           },
-          { transaction: t }
+          { transaction: t },
         );
 
-        // update invoice status if fully paid
-        if (invoice.unpaid_amount - item.amount === 0) {
-          await sequelize.query(
-            `UPDATE ap_invoices SET status = 'paid' WHERE id = ?`,
-            { replacements: [item.invoice_id], transaction: t }
-          );
+        // Update invoice status
+        const unpaidAfter = invoice.unpaid_amount - item.amount;
+        let newInvoiceStatus: string;
+
+        if (unpaidAfter === 0) {
+          newInvoiceStatus = "paid";
+        } else {
+          newInvoiceStatus = "partially_paid";
         }
+
+        await sequelize.query(
+          `UPDATE ap_invoices SET status = ? WHERE id = ?`,
+          { replacements: [newInvoiceStatus, item.invoice_id], transaction: t },
+        );
+
+        allocatedInvoices.push({
+          invoice_id: item.invoice_id,
+          amount: item.amount,
+          status: newInvoiceStatus,
+        });
       }
 
-      // check remaining
+      // Update payment status if fully allocated
       const remaining = availableAmount - totalAllocate;
+      const newPaymentStatus = remaining === 0 ? "completed" : "posted";
 
       if (remaining === 0) {
         payment.status = "completed";
         await payment.save({ transaction: t });
       }
 
+      // Audit log for allocation
+      await ApPaymentAuditLog.create(
+        {
+          payment_id: paymentId,
+          action: "ALLOCATE",
+          old_status: "posted/approved",
+          new_status: `${newPaymentStatus}/approved`,
+          details: {
+            allocations: allocatedInvoices,
+            total_allocated: totalAllocate,
+            remaining,
+          },
+          created_by: user.id,
+        },
+        { transaction: t },
+      );
+
       await t.commit();
+
+      // ✅ Phase 3: Notification on allocate
+      if (app) {
+        try {
+          const io = app.get("io");
+          await notificationService.createNotification({
+            type: "SYSTEM",
+            referenceType: "AP_PAYMENT",
+            referenceId: paymentId,
+            referenceNo: payment.payment_no!,
+            branchId: payment.branch_id!,
+            submitterId: user.id,
+            io,
+          });
+        } catch {
+          // notification failure không block response
+        }
+      }
+
       return { success: true };
     } catch (err) {
       await t.rollback();

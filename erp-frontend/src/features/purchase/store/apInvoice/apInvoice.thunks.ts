@@ -65,13 +65,24 @@ export const createApInvoiceFromPoThunk = createAsyncThunk<
 /* ================= CREATE PARTIAL FROM PO ================= */
 export const createPartialApInvoiceFromPoThunk = createAsyncThunk<
   ApInvoice,
-  { poId: number; lines: Array<{ po_line_id: number; quantity: number }> },
+  {
+    poId: number;
+    lines: Array<{ po_line_id: number; quantity: number }>;
+    metadata?: {
+      invoice_no?: string;
+      invoice_date?: string;
+      due_date?: string;
+      invoice_series?: string;
+      invoice_template?: string;
+      tax_code?: string;
+    };
+  },
   { rejectValue: string }
 >(
   "apInvoice/createPartialFromPO",
-  async ({ poId, lines }, { rejectWithValue }) => {
+  async ({ poId, lines, metadata }, { rejectWithValue }) => {
     try {
-      return await apInvoiceApi.createPartialFromPO(poId, lines);
+      return await apInvoiceApi.createPartialFromPO(poId, lines, metadata);
     } catch (error) {
       return rejectWithValue(getErrorMessage(error));
     }
@@ -152,5 +163,18 @@ export const fetchPostedSuppliersThunk = createAsyncThunk<
     return await apInvoiceService.getPostedSuppliers();
   } catch (e) {
     return rejectWithValue(getErrorMessage(e));
+  }
+});
+
+/* ================= GET AUDIT LOGS ================= */
+export const getApInvoiceAuditLogsThunk = createAsyncThunk<
+  any[],
+  number,
+  { rejectValue: string }
+>("apInvoice/getAuditLogs", async (id, { rejectWithValue }) => {
+  try {
+    return await apInvoiceApi.getAuditLogs(id);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
   }
 });

@@ -39,8 +39,12 @@ export const apPaymentService = {
 
   async allocate(
     id: number,
-    allocations: { invoice_id: number; amount: number }[]
+    allocations: { invoice_id: number; amount: number }[],
   ): Promise<{ success: boolean }> {
     return apPaymentApi.allocate(id, allocations);
+  },
+
+  async getAuditLogs(id: number): Promise<any[]> {
+    return apPaymentApi.getAuditLogs(id);
   },
 };

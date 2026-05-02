@@ -10,7 +10,7 @@ export interface ApInvoiceAttrs {
   total_before_tax?: number;
   total_tax?: number;
   total_after_tax?: number;
-  status: "draft" | "posted" | "paid" | "cancelled";
+  status: "draft" | "posted" | "partially_paid" | "paid" | "cancelled";
   approval_status: "draft" | "waiting_approval" | "approved" | "rejected";
   created_by: number;
   approved_by?: number | null;
@@ -46,7 +46,7 @@ export class ApInvoice
   public total_before_tax?: number;
   public total_tax?: number;
   public total_after_tax?: number;
-  public status!: "draft" | "posted" | "paid" | "cancelled";
+  public status!: "draft" | "posted" | "partially_paid" | "paid" | "cancelled";
   public approval_status!:
     | "draft"
     | "waiting_approval"
@@ -80,7 +80,13 @@ ApInvoice.init(
     total_tax: { type: DataTypes.DECIMAL(18, 2) },
     total_after_tax: { type: DataTypes.DECIMAL(18, 2) },
     status: {
-      type: DataTypes.ENUM("draft", "posted", "paid", "cancelled"),
+      type: DataTypes.ENUM(
+        "draft",
+        "posted",
+        "partially_paid",
+        "paid",
+        "cancelled",
+      ),
       defaultValue: "draft",
     },
     approval_status: {

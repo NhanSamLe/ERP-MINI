@@ -30,6 +30,9 @@ router.get(
 // GET /api/ap/invoices/:id  — kèm matching_details + audit_trail
 router.get("/:id", accountRoles, apInvoiceController.getById);
 
+// GET /api/ap/invoices/:id/audit-logs
+router.get("/:id/audit-logs", accountRoles, apInvoiceController.getAuditLogs);
+
 // ─── CREATE ────────────────────────────────────────────────────────────────
 // POST /api/ap/invoices  — tạo thủ công (manual), không cần PO
 router.post("/", accountOnly, apInvoiceController.createManual);

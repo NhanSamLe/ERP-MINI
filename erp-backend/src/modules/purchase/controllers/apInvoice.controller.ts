@@ -201,6 +201,14 @@ export const apInvoiceController = {
         poId,
         lines,
         user,
+        {
+          invoice_no: req.body.invoice_no,
+          invoice_date: req.body.invoice_date,
+          due_date: req.body.due_date,
+          invoice_series: req.body.invoice_series,
+          invoice_template: req.body.invoice_template,
+          tax_code: req.body.tax_code,
+        },
       );
       res.status(201).json({ success: true, data });
     } catch (e: any) {
@@ -276,6 +284,27 @@ export const apInvoiceController = {
     try {
       await apInvoiceService.deleteInvoice(Number(req.params.id), user);
       res.json({ success: true, message: "Invoice deleted successfully" });
+    } catch (error: any) {
+      handleError(res, error);
+    }
+  },
+
+  // ─── AUDIT LOGS ────────────────────────────────────────────────────────────
+
+  async getAuditLogs(req: Request, res: Response) {
+    const user = (req as any).user;
+    try {
+      const invoice = await apInvoiceService.getById(
+        Number(req.params.id),
+        user,
+      );
+      if (!invoice) {
+        return res
+          .status(404)
+          .json({ success: false, message: "AP Invoice not found" });
+      }
+      const logs = await apInvoiceAuditLogService.getAuditTrail(invoice.id);
+      res.json({ success: true, data: logs });
     } catch (error: any) {
       handleError(res, error);
     }

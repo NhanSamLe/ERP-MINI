@@ -70,9 +70,18 @@ export const apInvoiceApi = {
   createPartialFromPO: async (
     poId: number,
     lines: Array<{ po_line_id: number; quantity: number }>,
+    metadata?: {
+      invoice_no?: string;
+      invoice_date?: string;
+      due_date?: string;
+      invoice_series?: string;
+      invoice_template?: string;
+      tax_code?: string;
+    },
   ): Promise<ApInvoice> => {
     const res = await axiosClient.post(`ap/invoices/from-po/${poId}/partial`, {
       lines,
+      ...metadata,
     });
     return res.data.data;
   },
@@ -107,6 +116,11 @@ export const apInvoiceApi = {
 
   getPostedSuppliers: async (): Promise<Partner[]> => {
     const res = await axiosClient.get("/ap/invoices/posted-suppliers");
+    return res.data.data;
+  },
+
+  getAuditLogs: async (id: number): Promise<any[]> => {
+    const res = await axiosClient.get(`ap/invoices/${id}/audit-logs`);
     return res.data.data;
   },
 };

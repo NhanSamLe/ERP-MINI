@@ -161,3 +161,16 @@ export const bulkCancelPurchaseOrdersThunk = createAsyncThunk<
     }
   },
 );
+
+// ================= AUDIT LOGS =================
+export const fetchPurchaseOrderAuditLogsThunk = createAsyncThunk<
+  any[],
+  number,
+  { rejectValue: string }
+>("purchaseOrder/fetchAuditLogs", async (id, { rejectWithValue }) => {
+  try {
+    return await purchaseOrderService.getAuditLogs(id);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
