@@ -28,6 +28,7 @@ import {
 import saleOrderReducer from "@/features/sales/store/saleOrder.slice";
 import invoiceReducer from "@/features/sales/store/invoice.slice";
 import receiptReducer from "@/features/sales/store/receipt.slice";
+import quotationReducer from "@/features/sales/store/quotation.slice";
 import attendanceReducer from "../features/hrm/store/attendance/attendance.slice";
 import payrollPeriodReducer from "../features/hrm/store/payrollPeriod/payrollPeriod.slice";
 import payrollItemReducer from "../features/hrm/store/payrollItem/payrollItem.slice";
@@ -61,6 +62,7 @@ const rootReducer = combineReducers({
   attendance: attendanceReducer,
   payrollPeriod: payrollPeriodReducer,
   saleOrder: saleOrderReducer,
+  quotation: quotationReducer,
   invoice: invoiceReducer,
   receipt: receiptReducer,
   payrollItem: payrollItemReducer,

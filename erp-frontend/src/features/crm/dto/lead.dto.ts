@@ -6,6 +6,9 @@ export interface CreateLeadDto {
   email?: string;
   phone?: string;
   source?: string;
+  source_id?: number | null;
+  industry?: string | null;
+  company_size?: string | null;
 }
 export interface UpdateLeadEvaluationDto {
   leadId: number;
@@ -19,6 +22,9 @@ export interface UpdateLeadBasicDto {
   email?: string;
   phone?: string;
   source?: string;
+  source_id?: number | null;
+  industry?: string | null;
+  company_size?: string | null;
 }
 export interface ConvertLeadToOpportunityDto {
   leadId: number;
@@ -37,6 +43,10 @@ export interface Lead {
   email?: string;
   phone?: string;
   source?: string;
+  source_id?: number | null;
+  industry?: string | null;
+  company_size?: string | null;
+  lead_score?: number | null;
   assigned_to?: number;
   stage: LeadStage;
   contacted_at?: Date;        // Thời điểm sales liên hệ lần đầu

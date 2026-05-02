@@ -1,59 +1,57 @@
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 
-interface PasswordInputProps {
-  label: string;
+interface Props {
+  label?: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   required?: boolean;
   disabled?: boolean;
   error?: string;
+  hint?: string;
 }
 
-export function PasswordInput({
-  label,
-  value,
-  onChange,
-  placeholder,
-  required,
-  disabled,
-  error
-}: PasswordInputProps) {
-  const [showPassword, setShowPassword] = useState(false);
+export function PasswordInput({ label, value, onChange, placeholder, required, disabled, error, hint }: Props) {
+  const [show, setShow] = useState(false);
 
   return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
+    <div className="space-y-1.5">
+      {label && (
+        <label className="block text-sm font-medium text-gray-700">
+          {label}
+          {required && <span className="text-red-500 ml-0.5">*</span>}
+        </label>
+      )}
+
       <div className="relative">
         <input
-          type={showPassword ? "text" : "password"}
+          type={show ? "text" : "password"}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className={`w-full px-4 py-3 pr-10 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none ${
-            disabled ? 'bg-gray-50 cursor-not-allowed' : ''
-          } ${error ? 'border-red-500' : 'border-gray-300'}`}
           placeholder={placeholder}
           required={required}
           disabled={disabled}
+          className={[
+            "w-full h-9 px-3 pr-9 rounded-md border text-sm text-gray-900",
+            "placeholder:text-gray-400 transition-colors duration-150",
+            "focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500",
+            "disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed",
+            error ? "border-red-400" : "border-gray-300 bg-white",
+          ].join(" ")}
         />
         <button
           type="button"
-          onClick={() => setShowPassword(!showPassword)}
-          className="absolute right-3 top-3.5"
+          onClick={() => setShow((v) => !v)}
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+          tabIndex={-1}
         >
-          {showPassword ? (
-            <EyeOff className="w-5 h-5 text-gray-400" />
-          ) : (
-            <Eye className="w-5 h-5 text-gray-400" />
-          )}
+          {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
         </button>
       </div>
-      {error && (
-        <p className="text-red-600 text-sm mt-1">{error}</p>
-      )}
+
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      {!error && hint && <p className="text-xs text-gray-500">{hint}</p>}
     </div>
   );
 }

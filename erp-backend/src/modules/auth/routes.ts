@@ -1,5 +1,6 @@
 import { Router } from "express";
 import * as authController from "./controllers/auth.controller";
+import { permissionController } from "./controllers/permission.controller";
 import { authMiddleware } from "../../core/middleware/auth";
 import { upload } from "../../core/middleware/upload";
 
@@ -24,5 +25,14 @@ router.get(
   authMiddleware([]),
   authController.getMeAttendance
 );
+
+// ==================== PERMISSIONS (RBAC) ====================
+
+router.get("/permissions", authMiddleware(["ADMIN"]), permissionController.getAll);
+router.get("/permissions/grouped", authMiddleware(["ADMIN"]), permissionController.getGrouped);
+router.get("/roles/:roleId/permissions", authMiddleware(["ADMIN"]), permissionController.getByRole);
+router.put("/roles/:roleId/permissions", authMiddleware(["ADMIN"]), permissionController.assignToRole);
+router.post("/roles/:roleId/permissions", authMiddleware(["ADMIN"]), permissionController.addToRole);
+router.delete("/roles/:roleId/permissions/:permissionId", authMiddleware(["ADMIN"]), permissionController.removeFromRole);
 
 export default router;

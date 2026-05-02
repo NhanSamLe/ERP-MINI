@@ -10,7 +10,45 @@ import InvoiceDetailPage from "@/features/sales/pages/InvoiceDetailPage";
 import ReceiptListPage from "@/features/sales/pages/ReceiptListPage";
 import ReceiptCreatePage from "@/features/sales/pages/ReceiptCreatePage";
 import ReceiptDetailPage from "@/features/sales/pages/ReceiptDetailPage";
+import QuotationListPage from "@/features/sales/pages/QuotationListPage";
+import QuotationCreatePage from "@/features/sales/pages/QuotationCreatePage";
+import QuotationDetailPage from "@/features/sales/pages/QuotationDetailPage";
+import QuotationEditPage from "@/features/sales/pages/QuotationEditPage";
 const salesRoutes: RouteObject[] = [
+  // ── Quotations ──
+  {
+    path: "/sales/quotations",
+    element: (
+      <ProtectedRoute allowedRoles={["SALES", "SALESMANAGER", "ADMIN"]}>
+        <QuotationListPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/sales/quotations/create",
+    element: (
+      <ProtectedRoute allowedRoles={["SALES", "SALESMANAGER"]}>
+        <QuotationCreatePage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/sales/quotations/:id/edit",
+    element: (
+      <ProtectedRoute allowedRoles={["SALES", "SALESMANAGER"]}>
+        <QuotationEditPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/sales/quotations/:id",
+    element: (
+      <ProtectedRoute allowedRoles={["SALES", "SALESMANAGER", "ADMIN", "ACCOUNT", "CEO"]}>
+        <QuotationDetailPage />
+      </ProtectedRoute>
+    ),
+  },
+  // ── Sales Dashboard ──
   {
     path: "/sales",
     element: (

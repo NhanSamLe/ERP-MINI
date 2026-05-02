@@ -5,6 +5,7 @@ import { ActivityType, ActivityRelatedType, PartnerStatus, LeadStage } from "../
 import { addTimeline } from "./timeLine.service"
 import * as XLSX from "xlsx";
 import { notificationService } from "../../../core/services/notification.service";
+import { calculateLeadScore } from "./scoringRule.service";
 
 export function canManage(role: string, userId: number, ownerId: number) {
   const isManager = ["SALESMANAGER", "ADMIN"].includes(role);
@@ -101,6 +102,9 @@ export async function createLead(data: {
   email?: string;
   phone?: string;
   source?: string;
+  source_id?: number | null;
+  industry?: string | null;
+  company_size?: string | null;
   assigned_to: number;
 }) {
   const lead = await Lead.create({
@@ -116,6 +120,9 @@ export async function createLead(data: {
     description: `Lead ${lead.name} đã được tạo`,
     created_by: data.assigned_to
   });
+
+  // Tự động tính điểm sau khi tạo
+  await calculateLeadScore(lead.id).catch(e => console.error("Score Error", e));
 
   return lead;
 
@@ -137,6 +144,10 @@ export async function updateLeadBasic(leadId: number, data: any, userId: number,
     description: `Lead ${lead.name} đã được cập nhật`,
     created_by: userId
   });
+
+  // Tự động tính lại điểm sau khi cập nhật cơ bản
+  await calculateLeadScore(lead.id).catch(e => console.error("Score Error", e));
+
   return lead;
 }
 
@@ -189,14 +200,34 @@ export async function convertToCustomer(leadId: number, userId: number, role: st
     qualified_by: userId
   });
 
-  // Tạo Customer (Partner)
-  const customer = await model.Partner.create({
-    type: "customer",
-    name: lead.name ?? null,
-    phone: lead.phone ?? null,
-    email: lead.email ?? null,
-    status: PartnerStatus.ACTIVE,
-  });
+  // Tối ưu: Kiểm tra xem đã có khách hàng nào trùng Email hoặc SĐT chưa
+  let customer: any = null;
+  if (lead.email || lead.phone) {
+    const conditions = [];
+    if (lead.email) conditions.push({ email: lead.email });
+    if (lead.phone) conditions.push({ phone: lead.phone });
+
+    customer = await model.Partner.findOne({ 
+      where: { 
+        type: "customer", 
+        [Op.or]: conditions 
+      } 
+    });
+  }
+
+  // Nếu chưa có thì mới đẻ mới
+  if (!customer) {
+    customer = await model.Partner.create({
+      type: "customer",
+      is_customer: true, // Chốt danh tính là Khách hàng
+      name: lead.company_name || lead.name || "Unknown", // B2B ưu tiên lấy tên công ty
+      phone: lead.phone ?? null,
+      email: lead.email ?? null,
+      industry: lead.industry ?? null, // Đồng bộ thông tin ngành nghề
+      sales_person_id: lead.assigned_to ?? userId, // Giữ chân Sale đã chăm sóc
+      status: PartnerStatus.ACTIVE,
+    });
+  }
   await addTimeline({
     related_type: "lead",
     related_id: leadId,

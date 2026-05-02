@@ -45,8 +45,13 @@ export async function createOpportunity(data: {
   stage?: OpportunityStage;
   closing_date?: Date | null;
 }) {
+  const branchId = data.lead_id 
+    ? (await Lead.findByPk(data.lead_id))?.branch_id 
+    : null;
+
   const opp = await Opportunity.create({
     ...data,
+    branch_id: branchId ?? null, 
     stage: data.stage || "prospecting",
     closing_date: data.closing_date || null,
   });
@@ -104,10 +109,40 @@ export async function updateOpportunity(
 }
 
 // ===============================
+// 2.5 Đổi Stage theo Pipeline
+// ===============================
+export async function changePipelineStage(oppId: number, newStageId: number, userId: number, role: string) {
+  const opp = await Opportunity.findOne({ where: { id: oppId, is_deleted: false } });
+  if (!opp) throw new Error("Opportunity không tồn tại");
+
+  if (!canManage(role, userId, opp.owner_id ?? 1))
+    throw new Error("Bạn không có quyền chỉnh sửa deal này");
+
+  const stage = await model.PipelineStage.findByPk(newStageId);
+  if (!stage) throw new Error("Stage không tồn tại");
+
+  await opp.update({
+    pipeline_stage_id: newStageId,
+    stage: stage.is_won ? "won" : stage.is_lost ? "lost" : opp.stage
+  });
+
+  await addTimeline({
+    related_type: "opportunity",
+    related_id: oppId,
+    event_type: "stage_changed",
+    title: "Chuyển giai đoạn",
+    description: `Deal chuyển sang: ${stage.name}`,
+    created_by: userId,
+  });
+
+  return opp;
+}
+
+// ===============================
 // 3. Chuyển Stage → Negotiation
 // ===============================
 export async function moveToNegotiation(oppId: number, userId: number,role :string) {
- const opp = await Opportunity.findOne({
+  const opp = await Opportunity.findOne({
     where: { id: oppId, is_deleted: false },
   });
   if (!opp) throw new Error("Opportunity không tồn tại");
@@ -126,8 +161,6 @@ export async function moveToNegotiation(oppId: number, userId: number,role :stri
     description: `Deal ${opp.name} chuyển sang giai đoạn thương lượng`,
     created_by: userId,
   });
-
- 
 
   return opp;
 }
@@ -160,9 +193,12 @@ export async function markWon(oppId: number, userId: number,role:string) {
     if (!lead) throw new Error("Lead gốc không tồn tại");
 
     customer = await model.Partner.create({
-      name: lead.name,
+      name: lead.company_name || lead.name,
       email: lead.email ?? null,
       phone: lead.phone ?? null,
+      industry: lead.industry ?? null,
+      is_customer: true,
+      sales_person_id: lead.assigned_to || null,
       type: "customer", 
     });
     await opp.update({ customer_id: customer.id });

@@ -10,6 +10,8 @@ export interface GlEntryAttrs {
   reference_id?: number;
   memo?: string;
   status: "draft" | "posted";
+  fiscal_period_id?: number | null;
+  branch_id?: number | null;
 }
 
 type GlEntryCreation = Optional<GlEntryAttrs, "id" | "reference_type" | "reference_id" | "memo">;
@@ -23,6 +25,8 @@ export class GlEntry extends Model<GlEntryAttrs, GlEntryCreation> implements GlE
   public reference_id?: number;
   public memo?: string;
   public status!: "draft" | "posted";
+  public fiscal_period_id?: number | null;
+  public branch_id?: number | null;
 }
 
 GlEntry.init(
@@ -35,6 +39,8 @@ GlEntry.init(
     reference_id: { type: DataTypes.BIGINT },
     memo: { type: DataTypes.TEXT },
     status: { type: DataTypes.ENUM("draft", "posted"), defaultValue: "draft" },
+    fiscal_period_id: { type: DataTypes.BIGINT, allowNull: true },
+    branch_id: { type: DataTypes.BIGINT, allowNull: true },
   },
   { sequelize, tableName: "gl_entries", timestamps: true, createdAt: "created_at", updatedAt: "updated_at" }
 );

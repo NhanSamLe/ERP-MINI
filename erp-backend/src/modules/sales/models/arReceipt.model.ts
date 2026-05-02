@@ -10,13 +10,18 @@ export interface ArReceiptAttrs {
   method: "cash" | "bank" | "transfer";
   status: "draft" | "posted";
   approval_status: "draft" | "waiting_approval" | "approved" | "rejected";
-  allocation_status: "unallocated"|"fully_allocated";
+  allocation_status: "unallocated"|"partially_allocated"|"fully_allocated";
   created_by: number;
   approved_by?: number | null;
   submitted_at?: Date | null;
   approved_at?: Date | null;
   reject_reason?: string | null;
   branch_id: number; 
+  // Phase 4 enhancements
+  bank_account_id?: number | null;
+  transaction_reference?: string | null;
+  currency_id?: number | null;
+  exchange_rate?: number;
 }
 
 type ArReceiptCreation = Optional<ArReceiptAttrs, "id" | "status">;
@@ -32,6 +37,7 @@ export class ArReceipt extends Model<ArReceiptAttrs, ArReceiptCreation> implemen
   public approval_status!: "draft" | "waiting_approval" | "approved" | "rejected";
   public allocation_status!:
     | "unallocated"
+    | "partially_allocated"
     | "fully_allocated";
   public created_by!: number;
   public approved_by?: number | null;
@@ -39,6 +45,11 @@ export class ArReceipt extends Model<ArReceiptAttrs, ArReceiptCreation> implemen
   public approved_at?: Date | null;
   public reject_reason?: string | null;
   public branch_id!: number; 
+  // Phase 4 enhancements
+  public bank_account_id?: number | null;
+  public transaction_reference?: string | null;
+  public currency_id?: number | null;
+  public exchange_rate?: number;
 }
 
 ArReceipt.init(
@@ -57,6 +68,7 @@ ArReceipt.init(
     allocation_status: {
     type: DataTypes.ENUM(
       "unallocated",
+      "partially_allocated",
       "fully_allocated"
     ),
     allowNull: false,
@@ -68,6 +80,11 @@ ArReceipt.init(
     approved_at: { type: DataTypes.DATE },
     reject_reason: { type: DataTypes.STRING(255) },
     branch_id: { type: DataTypes.BIGINT, allowNull: false },
+    // Phase 4 enhancements
+    bank_account_id: { type: DataTypes.BIGINT, allowNull: true },
+    transaction_reference: { type: DataTypes.STRING(100), allowNull: true },
+    currency_id: { type: DataTypes.BIGINT, allowNull: true },
+    exchange_rate: { type: DataTypes.DECIMAL(18, 6), defaultValue: 1.000000 },
   },
   { sequelize, tableName: "ar_receipts", timestamps: true, createdAt: "created_at", updatedAt: "updated_at" }
 );

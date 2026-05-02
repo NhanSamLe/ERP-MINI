@@ -2,6 +2,9 @@ import { sequelize } from "../config/db";
 // Auth
 import { User } from "../modules/auth/models/user.model";
 import { Role } from "../modules/auth/models/role.model";
+import { Permission } from "../modules/auth/models/permission.model";
+import { RolePermission } from "../modules/auth/models/rolePermission.model";
+import { UserRole } from "../modules/auth/models/userRole.model";
 // Company
 import { Company } from "../modules/company/models/company.model";
 import { Branch } from "../modules/company/models/branch.model";
@@ -15,6 +18,8 @@ import { UomConversion } from "../modules/master-data/models/uomConversion.model
 import { Currency } from "../modules/master-data/models/currency.model";
 import { ExchangeRate } from "../modules/master-data/models/exchangeRate.model";
 import { TaxRate } from "../modules/master-data/models/taxRate.model";
+import { PaymentTerm } from "../modules/master-data/models/paymentTerm.model";
+import { BankAccount } from "../modules/master-data/models/bankAccount.model";
 // Customer, Partner
 import { Partner } from "../modules/partner/models/partner.model";
 // CRM
@@ -26,6 +31,10 @@ import { MeetingActivity } from "../modules/crm/models/meetingActivity.model";
 import { TaskActivity } from "../modules/crm/models/taskActivity.model";
 import { EmailActivity } from "../modules/crm/models/emailActivity.model";
 import { TimelineEvent } from "../modules/crm/models/timelineEvent.model";
+import { LeadSource } from "../modules/crm/models/leadSource.model";
+import { Pipeline } from "../modules/crm/models/pipeline.model";
+import { PipelineStage } from "../modules/crm/models/pipelineStage.model";
+import { ScoringRule } from "../modules/crm/models/scoringRule.model";
 // Sales & AR
 import { SaleOrder } from "../modules/sales/models/saleOrder.model";
 import { SaleOrderLine } from "../modules/sales/models/saleOrderLine.model";
@@ -33,6 +42,16 @@ import { ArInvoice } from "../modules/sales/models/arInvoice.model";
 import { ArInvoiceLine } from "../modules/sales/models/arInvoiceLine.model";
 import { ArReceipt } from "../modules/sales/models/arReceipt.model";
 import { ArReceiptAllocation } from "../modules/sales/models/arReceiptAllocation.model";
+import { Quotation } from "../modules/sales/models/quotation.model";
+import { QuotationLine } from "../modules/sales/models/quotationLine.model";
+import { PriceList } from "../modules/sales/models/priceList.model";
+import { PriceListItem } from "../modules/sales/models/priceListItem.model";
+import { SalesReturnAuthorization } from "../modules/sales/models/salesReturnAuthorization.model";
+import { SalesReturn } from "../modules/sales/models/salesReturn.model";
+import { SalesReturnLine } from "../modules/sales/models/salesReturnLine.model";
+import { ArCreditNote } from "../modules/sales/models/arCreditNote.model";
+import { ArCreditNoteLine } from "../modules/sales/models/arCreditNoteLine.model";
+import { ArRefund } from "../modules/sales/models/arRefund.model";
 // Purchase & AP
 import { PurchaseOrder } from "../modules/purchase/models/purchaseOrder.model";
 import { PurchaseOrderLine } from "../modules/purchase/models/purchaseOrderLine.model";
@@ -63,6 +82,8 @@ import { GlAccount } from "../modules/finance/models/glAccount.model";
 import { GlJournal } from "../modules/finance/models/glJournal.model";
 import { GlEntry } from "../modules/finance/models/glEntry.model";
 import { GlEntryLine } from "../modules/finance/models/glEntryLine.model";
+import { FiscalYear } from "../modules/finance/models/fiscalYear.model";
+import { FiscalPeriod } from "../modules/finance/models/fiscalPeriod.model";
 // Core
 import { Notification } from "../core/models/notification.model";
 // Associations
@@ -74,6 +95,9 @@ export {
   sequelize,
   User,
   Role,
+  Permission,
+  RolePermission,
+  UserRole,
   Company,
   Branch,
   Product,
@@ -125,5 +149,26 @@ export {
   GlJournal,
   GlEntry,
   GlEntryLine,
+  FiscalYear,
+  FiscalPeriod,
+  PaymentTerm,
+  BankAccount,
+  // Phase 2: CRM
+  LeadSource,
+  Pipeline,
+  PipelineStage,
+  ScoringRule,
+  // Phase 3: Quotation + PriceList
+  Quotation,
+  QuotationLine,
+  PriceList,
+  PriceListItem,
+  // Phase 4: Sales Return + Credit Notes
+  SalesReturnAuthorization,
+  SalesReturn,
+  SalesReturnLine,
+  ArCreditNote,
+  ArCreditNoteLine,
+  ArRefund,
   Notification,
 };

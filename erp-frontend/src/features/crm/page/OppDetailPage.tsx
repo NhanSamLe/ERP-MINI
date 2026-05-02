@@ -25,7 +25,7 @@ import InfoItem from "../components/InfoItem";
 import OppStageActions from "../components/OppStageActions";
 import StatCards from "../components/StatCards";
 
-import { ArrowLeft, User, ChevronRight } from "lucide-react";
+import { ArrowLeft, User, ChevronRight, FileText } from "lucide-react";
 import { formatVND, formatPercent } from "../../../utils/currency.helper";
 export default function OppDetailPage() {
   const { id } = useParams();
@@ -141,6 +141,16 @@ export default function OppDetailPage() {
             </div>
           </div>
 
+          <div className="flex items-center gap-2">
+            {/* Create Quotation shortcut */}
+            <button
+              onClick={() => navigate(`/sales/quotations/create?opportunity_id=${oppId}`)}
+              className="inline-flex items-center gap-1.5 h-8 px-3 text-sm font-medium text-white bg-orange-500 rounded-md hover:bg-orange-600 transition-colors shadow-sm"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              Create Quotation
+            </button>
+
           <OppStageActions
             stage={opp.stage}
             onChangeStage={async (newStage) => {
@@ -165,6 +175,7 @@ export default function OppDetailPage() {
             }}
             onDelete={handleDelete}
           />
+          </div>
         </div>
 
         {/* ALERT */}

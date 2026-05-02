@@ -17,7 +17,10 @@ export const updateOpportunity = (data: UpdateOpportunityDto) => {
   return axiosClient.put(`/crm/opportunities/${data.oppId}`, data);
 }
 export const moveToNegotiation = (oppId: number) => {
-  return axiosClient.patch(`/crm/opportunities/${oppId}/negotiation`,);
+  return axiosClient.patch(`/crm/opportunities/${oppId}/negotiation`);
+}
+export const changePipelineStage = (oppId: number, newStageId: number) => {
+  return axiosClient.patch(`/crm/opportunities/${oppId}/stage`, { newStageId });
 }
 export const markWon = (oppId: number) => {
   return axiosClient.patch(`/crm/opportunities/${oppId}/won`);

@@ -3,6 +3,9 @@ import { authMiddleware } from "../../core/middleware/auth";
 import * as leadController from "./controllers/lead.controller";
 import * as opportunityController from "./controllers/opportunity.controller";
 import * as activityController from "./controllers/activity.controller";
+import * as leadSourceController from "./controllers/leadSource.controller";
+import * as pipelineController from "./controllers/pipeline.controller";
+import * as scoringRuleController from "./controllers/scoringRule.controller";
 import { getSalesDashboard } from "./controllers/dashboard.controller"
 import multer from "multer";
 
@@ -32,7 +35,8 @@ router.get("/opportunities", authMiddleware([]), opportunityController.getOpport
 router.get("/opportunities/:oppId", authMiddleware([]), opportunityController.getOpportunityById);
 router.post("/opportunities", authMiddleware([]), opportunityController.createOpportunity);
 router.patch("/opportunities/:oppId", authMiddleware([]), opportunityController.updateOpportunity);
-router.patch("/opportunities/:oppId/negotiation", authMiddleware([]), opportunityController.moveToNegotiation);
+router.post("/opportunities/:oppId/negotiation", authMiddleware([]), opportunityController.moveToNegotiation);
+router.patch("/opportunities/:oppId/stage", authMiddleware([]), opportunityController.changePipelineStage);
 router.patch("/opportunities/:oppId/won", authMiddleware([]), opportunityController.markWon);
 router.patch("/opportunities/:oppId/lost", authMiddleware([]), opportunityController.markLost);
 router.patch("/opportunities/:oppId/reassign", authMiddleware([]), opportunityController.reassignOpportunity);
@@ -135,4 +139,32 @@ router.post("/activities/meeting/complete", authMiddleware([]), activityControll
 router.post("/activities/email/send", authMiddleware([]), activityController.sendEmailForActivity);
 
 router.get("/dashboard/sales", authMiddleware([]), getSalesDashboard);
+
+// =====================
+// PHASE 2: NEW CRM ROUTES
+// =====================
+
+// Lead Sources
+router.get("/lead-sources", authMiddleware([]), leadSourceController.getAll);
+router.post("/lead-sources", authMiddleware([]), leadSourceController.create);
+router.put("/lead-sources/:id", authMiddleware([]), leadSourceController.update);
+router.delete("/lead-sources/:id", authMiddleware([]), leadSourceController.remove);
+
+// Pipelines & Stages
+router.get("/pipelines", authMiddleware([]), pipelineController.getAllPipelines);
+router.post("/pipelines", authMiddleware([]), pipelineController.createPipeline);
+router.put("/pipelines/:id", authMiddleware([]), pipelineController.updatePipeline);
+
+router.post("/pipelines/:id/stages", authMiddleware([]), pipelineController.addStage);
+router.put("/pipelines/stages/:stageId", authMiddleware([]), pipelineController.updateStage);
+
+// Scoring Rules
+router.get("/scoring-rules", authMiddleware([]), scoringRuleController.getAll);
+router.post("/scoring-rules", authMiddleware([]), scoringRuleController.create);
+router.put("/scoring-rules/:id", authMiddleware([]), scoringRuleController.update);
+router.delete("/scoring-rules/:id", authMiddleware([]), scoringRuleController.remove);
+
+// Auto-recalculate individual Lead Score
+router.post("/leads/:leadId/recalculate-score", authMiddleware([]), scoringRuleController.recalculateLead);
+
 export default router;

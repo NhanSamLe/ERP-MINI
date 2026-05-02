@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "../../../store/store";
 import { createLead } from "../store/lead/lead.thunks";
@@ -7,6 +7,7 @@ import { FormInput } from "../../../components/ui/FormInput";
 import { Button } from "../../../components/ui/Button";
 import { Alert } from "../../../components/ui/Alert";
 import { ArrowLeft, User, Mail, Phone, Globe } from "lucide-react";
+import * as leadApi from "../api/lead.api";
 
 export default function LeadCreatePage() {
   const dispatch = useDispatch<AppDispatch>();
@@ -15,28 +16,31 @@ export default function LeadCreatePage() {
     name: "",
     email: "",
     phone: "",
-    source: ""
+    source: "",
+    source_id: null,
+    industry: "",
+    company_size: "",
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const sourceOptions = [
-    { value: "", label: "Select source..." },
-    { value: "Online Store", label: "Online Store" },
-    { value: "Advertisement", label: "Advertisement" },
-    { value: "Cold Call", label: "Cold Call" },
-    { value: "Web Download", label: "Web Download" },
-    { value: "External Referral", label: "External Referral" },
-    { value: "Seminar Partner", label: "Seminar Partner" },
-    { value: "Partner", label: "Partner" },
-    { value: "Employee Referral", label: "Employee Referral" },
-    { value: "Trade Show", label: "Trade Show" },
-    { value: "Social Media", label: "Social Media" },
-    { value: "Email Campaign", label: "Email Campaign" },
-    { value: "Other", label: "Other" }
-  ];
+  const [sourceOptions, setSourceOptions] = useState<{value: string, label: string, id: number}[]>([]);
+
+  useEffect(() => {
+    leadApi.getAllLeadSources()
+    .then((res) => {
+      const data = res.data.data;
+      if (Array.isArray(data)) {
+        setSourceOptions(data.map((item: any) => ({
+          value: item.name,
+          label: item.name,
+          id: item.id
+        })));
+      }
+    }).catch((err) => console.error("Could not fetch lead sources", err));
+  }, []);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -161,6 +165,25 @@ export default function LeadCreatePage() {
                       error={errors.phone}
                     />
                   </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <FormInput
+                      label="Industry"
+                      type="text"
+                      value={form.industry || ""}
+                      onChange={(value) => setForm({ ...form, industry: value })}
+                      placeholder="E.g. Technology, Healthcare..."
+                      icon={<Globe className="w-5 h-5 text-gray-400" />}
+                    />
+                    <FormInput
+                      label="Company Size"
+                      type="text"
+                      value={form.company_size || ""}
+                      onChange={(value) => setForm({ ...form, company_size: value })}
+                      placeholder="E.g. 1-10, 50-200, 1000+"
+                      icon={<User className="w-5 h-5 text-gray-400" />}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -177,12 +200,18 @@ export default function LeadCreatePage() {
                     <div className="relative">
                       <Globe className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
                       <select
-                        value={form.source || ""}
-                        onChange={(e) => setForm({ ...form, source: e.target.value })}
+                        value={form.source_id || ""}
+                        onChange={(e) => {
+                          const valStr = e.target.value;
+                          const valId = parseInt(valStr);
+                          const sourceObj = sourceOptions.find(o => o.id === valId);
+                          setForm({ ...form, source_id: valId, source: sourceObj?.value || "" });
+                        }}
                         className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none"
                       >
+                        <option value="">Select source...</option>
                         {sourceOptions.map(option => (
-                          <option key={option.value} value={option.value}>
+                          <option key={option.id} value={option.id}>
                             {option.label}
                           </option>
                         ))}

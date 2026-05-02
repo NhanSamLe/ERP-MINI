@@ -9,6 +9,19 @@ import { uploadBufferToCloudinary, deleteFromCloudinary } from "../../../core/ut
 import { Op } from "sequelize";
 import {getRelations, hasLinkedData} from "../../../core/utils/getRelation";
 import{env} from "../../../config/env"
+import { RolePermission } from "../models/rolePermission.model";
+import { Permission } from "../models/permission.model";
+
+// Helper: Load tất cả permission codes cho 1 role
+async function loadUserPermissions(roleId: number): Promise<string[]> {
+  const rolePerms = await RolePermission.findAll({
+    where: { role_id: roleId },
+    include: [{ model: Permission, as: "permission", attributes: ["code"] }],
+  });
+  return rolePerms
+    .map((rp: any) => rp.permission?.code)
+    .filter(Boolean);
+}
 export async function createUser(data: {
   branch_id: number;
   username: string;
@@ -197,10 +210,15 @@ export async function login(username: string, password: string) {
   if (!user.is_active) {
     throw new Error("Account is not activated. Please set your password.");
   }
+
+  // Load permissions từ DB cho role hiện tại
+  const permissions = user.role_id ? await loadUserPermissions(user.role_id) : [];
+
   const payload: JwtPayload = {
     id: user.id,
     username: user.username,
     role: user.role?.code ?? "UNKNOWN",
+    permissions,
     ...(user.full_name ? { fullName: user.full_name } : {}),
     ...(user.email ? { email: user.email } : {}),
     ...(user.branch_id ? { branch_id: user.branch_id } : {}),

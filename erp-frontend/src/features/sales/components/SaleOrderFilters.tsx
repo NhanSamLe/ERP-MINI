@@ -1,3 +1,4 @@
+import { Search, SlidersHorizontal } from "lucide-react";
 
 interface Props {
   search: string;
@@ -6,40 +7,41 @@ interface Props {
   onStatusChange: (v: string) => void;
 }
 
-export default function SaleOrderFilters({
-  search,
-  status,
-  onSearchChange,
-  onStatusChange
-}: Props) {
-  return (
-    <div className="p-6 border-b bg-gray-50 space-y-4">
-      <div className="flex gap-4 flex-wrap items-end">
-        <div className="flex-1 min-w-64">
-          <label className="block text-sm font-medium">Search</label>
-          <input
-            value={search}
-            placeholder="Search by Order # or Customer..."
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full px-4 py-2 border rounded-lg"
-          />
-        </div>
+const statusOptions = [
+  { value: "",                 label: "All Status" },
+  { value: "draft",            label: "Draft" },
+  { value: "waiting_approval", label: "Waiting Approval" },
+  { value: "approved",         label: "Approved" },
+  { value: "confirmed",        label: "Confirmed" },
+  { value: "rejected",         label: "Rejected" },
+];
 
-        <div className="min-w-48">
-          <label className="block text-sm font-medium">Status</label>
-          <select
-            value={status}
-            onChange={(e) => onStatusChange(e.target.value)}
-            className="w-full px-4 py-2 border rounded-lg"
-          >
-            <option value="">All Status</option>
-            <option value="draft">Draft</option>
-            <option value="waiting_approval">Waiting Approval</option>
-            <option value="approved">Approved</option>
-            <option value="confirmed">Confirmed</option>
-            <option value="rejected">Rejected</option>
-          </select>
-        </div>
+export default function SaleOrderFilters({ search, status, onSearchChange, onStatusChange }: Props) {
+  return (
+    <div className="flex items-center gap-3 flex-wrap">
+      {/* Search */}
+      <div className="relative flex-1 min-w-[200px] max-w-xs">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+        <input
+          value={search}
+          placeholder="Search order # or customer..."
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="w-full h-8 pl-8 pr-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 placeholder:text-gray-400"
+        />
+      </div>
+
+      {/* Status filter */}
+      <div className="relative">
+        <SlidersHorizontal className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+        <select
+          value={status}
+          onChange={(e) => onStatusChange(e.target.value)}
+          className="h-8 pl-8 pr-8 text-sm border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 appearance-none cursor-pointer"
+        >
+          {statusOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
       </div>
     </div>
   );

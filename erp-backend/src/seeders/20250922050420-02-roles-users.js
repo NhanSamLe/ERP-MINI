@@ -18,7 +18,7 @@ module.exports = {
       { code: "HRMANAGER", name: "HR Manager", created_at: now, updated_at: now },
       { code: "PURCHASE", name: "Purchasing Staff", created_at: now, updated_at: now },
 
-    ]);
+    ], { ignoreDuplicates: true });
 
     // 2. Lấy id branch để gán user
     const [branches] = await queryInterface.sequelize.query(
@@ -170,7 +170,7 @@ module.exports = {
         created_at: now,
         updated_at: now,
       },
-    ]);
+    ], { ignoreDuplicates: true });
   },
 
  async down(queryInterface) {

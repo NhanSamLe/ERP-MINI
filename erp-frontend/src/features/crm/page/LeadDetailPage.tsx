@@ -72,6 +72,8 @@ export default function LeadDetailPage() {
     email: "",
     phone: "",
     source: "",
+    industry: "",
+    company_size: "",
   });
 
   const [evalForm, setEvalForm] = useState<UpdateLeadEvaluationDto>({
@@ -131,6 +133,8 @@ export default function LeadDetailPage() {
       email: lead.email ?? "",
       phone: lead.phone ?? "",
       source: lead.source ?? "",
+      industry: lead.industry ?? "",
+      company_size: lead.company_size ?? "",
     });
 
     setEvalForm({
@@ -251,7 +255,14 @@ export default function LeadDetailPage() {
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-xl font-bold text-orange-600 tracking-tight">{lead.name}</h1>
+              <div className="flex items-center gap-3">
+                <h1 className="text-xl font-bold text-orange-600 tracking-tight">{lead.name}</h1>
+                {typeof lead.lead_score === 'number' && (
+                  <span className="px-2 py-1 bg-gradient-to-r from-orange-400 to-red-500 text-white text-xs font-bold rounded-full">
+                    Score: {lead.lead_score}
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-gray-500 mt-1">Lead ID: {leadId}</p>
             </div>
           </div>
@@ -319,10 +330,12 @@ export default function LeadDetailPage() {
               <CardContent className="pt-5">
 
                 {!basicEdit ? (
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                     <InfoItem label="Email" value={lead.email ?? "-"} />
                     <InfoItem label="Phone" value={lead.phone ?? "-"} />
                     <InfoItem label="Source" value={lead.source ?? "-"} />
+                    <InfoItem label="Industry" value={lead.industry ?? "-"} />
+                    <InfoItem label="Company Size" value={lead.company_size ?? "-"} />
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -334,6 +347,10 @@ export default function LeadDetailPage() {
                       onChange={(v) => setBasicForm({ ...basicForm, phone: v })} />
                     <FormInput label="Source" value={basicForm.source ?? ""}
                       onChange={(v) => setBasicForm({ ...basicForm, source: v })} />
+                    <FormInput label="Industry" value={basicForm.industry ?? ""}
+                      onChange={(v) => setBasicForm({ ...basicForm, industry: v })} />
+                    <FormInput label="Company Size" value={basicForm.company_size ?? ""}
+                      onChange={(v) => setBasicForm({ ...basicForm, company_size: v })} />
                   </div>
                 )}
               </CardContent>

@@ -24,6 +24,9 @@ module.exports = {
       return partners.find((p) => p.type === "customer").id;
     }
 
+    const [users] = await queryInterface.sequelize.query(`SELECT id FROM users LIMIT 1`);
+    const adminId = users[0].id;
+
     // 1. AR Invoices
     await queryInterface.bulkInsert("ar_invoices", [
       {
@@ -34,6 +37,7 @@ module.exports = {
         total_tax: 100,         // 10%
         total_after_tax: 1100,
         status: "posted",
+        created_by: adminId,
         created_at: now,
         updated_at: now,
       },
@@ -45,10 +49,11 @@ module.exports = {
         total_tax: 200,
         total_after_tax: 2200,
         status: "draft",
+        created_by: adminId,
         created_at: now,
         updated_at: now,
       },
-    ]);
+    ], { ignoreDuplicates: true });
 
     const [invoices] = await queryInterface.sequelize.query(`SELECT id, invoice_no FROM ar_invoices;`);
 
@@ -80,7 +85,7 @@ module.exports = {
         created_at: now,
         updated_at: now,
       },
-    ]);
+    ], { ignoreDuplicates: true });
 
     // 3. AR Receipts
     await queryInterface.bulkInsert("ar_receipts", [
@@ -91,6 +96,7 @@ module.exports = {
         amount: 1100, // full payment for INV001
         method: "cash",
         status: "posted",
+        created_by: adminId,
         created_at: now,
         updated_at: now,
       },
@@ -101,10 +107,11 @@ module.exports = {
         amount: 1000, // partial payment for INV002
         method: "bank",
         status: "draft",
+        created_by: adminId,
         created_at: now,
         updated_at: now,
       },
-    ]);
+    ], { ignoreDuplicates: true });
 
     const [receipts] = await queryInterface.sequelize.query(`SELECT id, receipt_no FROM ar_receipts;`);
 
@@ -128,7 +135,7 @@ module.exports = {
         created_at: now,
         updated_at: now,
       },
-    ]);
+    ], { ignoreDuplicates: true });
   },
 
   async down(queryInterface) {

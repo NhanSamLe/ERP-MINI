@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { SaleOrderDto } from "../dto/saleOrder.dto";
-import SaleOrderStatusBadge from "./SaleOrderStatusBadge";
+import { StatusBadge } from "@/components/common";
 import { Link } from "react-router-dom";
 import { Eye, Edit, Send, CheckCircle, XCircle } from "lucide-react";
 import { formatVND } from "@/utils/currency.helper";
@@ -12,7 +12,7 @@ import {
   rejectSaleOrder,
   fetchSaleOrders,
 } from "@/features/sales/store/saleOrder.slice";
-import RejectReasonModal from "./RejectReasonModal";
+import { ActionConfirmModal } from "@/components/common";
 
 interface Props {
   items: SaleOrderDto[];
@@ -20,171 +20,146 @@ interface Props {
 
 export default function SaleOrderTable({ items }: Props) {
   const dispatch = useAppDispatch();
-  const { user } = useAppSelector(s => s.auth);
-  const [rejectModalOpen, setRejectModalOpen] = useState(false);
-  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
+  const { user } = useAppSelector((s) => s.auth);
+  const [rejectModal, setRejectModal] = useState<{ open: boolean; orderId: number | null }>({
+    open: false, orderId: null,
+  });
 
-  // ✅ Check permissions for actions
-  const canEdit = (order: SaleOrderDto): boolean => {
-    if (!user) return false;
-    // SALES can edit their own draft orders
-    if (user.role?.code === "SALES") {
-      return order.approval_status === "draft" && order.created_by === user.id;
-    }
-    return false;
-  };
+  const canEdit   = (o: SaleOrderDto) => user?.role?.code === "SALES" && o.approval_status === "draft" && o.created_by === user.id;
+  const canSubmit = (o: SaleOrderDto) => user?.role?.code === "SALES" && o.approval_status === "draft" && o.created_by === user.id;
+  const canApprove= (o: SaleOrderDto) => user?.role?.code === "SALESMANAGER" && o.approval_status === "waiting_approval";
+  const canReject = (o: SaleOrderDto) => user?.role?.code === "SALESMANAGER" && o.approval_status === "waiting_approval";
 
-  const canSubmit = (order: SaleOrderDto): boolean => {
-    if (!user) return false;
-    // SALES can submit their own draft orders
-    if (user.role?.code === "SALES") {
-      return order.approval_status === "draft" && order.created_by === user.id;
-    }
-    return false;
-  };
+  const refresh = () => dispatch(fetchSaleOrders());
 
-  const canApprove = (order: SaleOrderDto): boolean => {
-    if (!user) return false;
-    // Only SALESMANAGER can approve
-    return user.role?.code === "SALESMANAGER" && order.approval_status === "waiting_approval";
-  };
-
-  const canReject = (order: SaleOrderDto): boolean => {
-    if (!user) return false;
-    // Only SALESMANAGER can reject
-    return user.role?.code === "SALESMANAGER" && order.approval_status === "waiting_approval";
-  };
+  if (items.length === 0) {
+    return (
+      <div className="py-14 text-center text-sm text-gray-400">No orders found.</div>
+    );
+  }
 
   return (
-    <div className="rounded-lg border shadow-sm bg-white overflow-hidden">
-      <table className="w-full text-sm">
-        <thead className="bg-gray-50 text-gray-600">
-          <tr>
-            <th className="p-3 text-left">Order No</th>
-            <th className="p-3 text-left">Customer</th>
-            <th className="p-3 text-left">Status</th>
-            <th className="p-3 text-left">Total</th>
-            <th className="p-3 text-left">Created By</th>
-            <th className="p-3 text-left">Created At</th>
-            <th className="p-3 text-right">Actions</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {items.map((item) => (
-            <tr key={item.id} className="border-t hover:bg-gray-50">
-              <td className="p-3 font-medium text-blue-600">
-                <Link to={`/sales/orders/${item.id}`}>{item.order_no}</Link>
-              </td>
-
-              <td className="p-3">{item.customer_id}</td>
-
-              <td className="p-3">
-                <SaleOrderStatusBadge status={item.approval_status} />
-              </td>
-
-              <td className="p-3">{formatVND(item.total_after_tax)} </td>
-
-              <td className="p-3">{item.creator?.full_name}</td>
-
-              <td className="p-3">
-                {formatDateTime(item.created_at)}
-              </td>
-
-              <td className="p-3 text-right flex items-center justify-end gap-2">
-                {/* VIEW */}
-                <Link
-                  to={`/sales/orders/${item.id}`}
-                  className="p-1.5 border border-gray-300 rounded text-blue-600 hover:bg-blue-50 transition"
-                  title="View"
+    <>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50/80">
+              {["Order No", "Customer", "Status", "Total", "Created By", "Date", "Actions"].map((h) => (
+                <th
+                  key={h}
+                  className={`px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap ${h === "Actions" ? "text-right" : "text-left"}`}
                 >
-                  <Eye size={16} />
-                </Link>
-
-                {/* EDIT - Only SALES on their own draft orders */}
-                {canEdit(item) && (
-                  <Link
-                    to={`/sales/orders/${item.id}/edit`}
-                    className="p-1.5 border border-gray-300 rounded text-gray-600 hover:bg-gray-100 transition"
-                    title="Edit"
-                  >
-                    <Edit size={16} />
-                  </Link>
-                )}
-
-                {/* SUBMIT - Only SALES on their own draft orders */}
-                {canSubmit(item) && (
-                  <button
-                    onClick={() => {
-                      if (window.confirm("Submit order for approval?")) {
-                        dispatch(submitSaleOrder(item.id)).then(() => {
-                          // ✅ Refresh table after submit
-                          dispatch(fetchSaleOrders());
-                        });
-                      }
-                    }}
-                    className="p-1.5 border border-gray-300 rounded text-yellow-600 hover:bg-yellow-50 transition"
-                    title="Submit for Approval"
-                  >
-                    <Send size={16} />
-                  </button>
-                )}
-
-                {/* APPROVE - Only SALESMANAGER on waiting_approval orders */}
-                {canApprove(item) && (
-                  <button
-                    onClick={() => {
-                      if (window.confirm("Approve this order?")) {
-                        dispatch(approveSaleOrder(item.id)).then(() => {
-                          // ✅ Refresh table after approve
-                          dispatch(fetchSaleOrders());
-                        });
-                      }
-                    }}
-                    className="p-1.5 border border-gray-300 rounded text-green-600 hover:bg-green-50 transition"
-                    title="Approve"
-                  >
-                    <CheckCircle size={16} />
-                  </button>
-                )}
-
-                {/* REJECT - Only SALESMANAGER on waiting_approval orders */}
-                {canReject(item) && (
-                  <button
-                    onClick={() => {
-                      setSelectedOrderId(item.id);
-                      setRejectModalOpen(true);
-                    }}
-                    className="p-1.5 border border-gray-300 rounded text-red-600 hover:bg-red-50 transition"
-                    title="Reject"
-                  >
-                    <XCircle size={16} />
-                  </button>
-                )}
-              </td>
+                  {h}
+                </th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
 
-      {/* REJECT MODAL */}
-      <RejectReasonModal
-        open={rejectModalOpen}
-        onClose={() => {
-          setRejectModalOpen(false);
-          setSelectedOrderId(null);
-        }}
+          <tbody className="divide-y divide-gray-100">
+            {items.map((item) => (
+              <tr key={item.id} className="hover:bg-orange-50/40 transition-colors duration-100 group">
+                <td className="px-4 py-3 font-semibold text-orange-600 whitespace-nowrap">
+                  <Link to={`/sales/orders/${item.id}`} className="hover:underline">
+                    {item.order_no}
+                  </Link>
+                </td>
+
+                <td className="px-4 py-3 text-gray-700 max-w-[180px] truncate">
+                  {item.customer?.name || `Partner #${item.customer_id}`}
+                </td>
+
+                <td className="px-4 py-3">
+                  <StatusBadge status={item.approval_status} />
+                </td>
+
+                <td className="px-4 py-3 text-gray-800 font-medium whitespace-nowrap">
+                  {formatVND(item.total_after_tax)}
+                </td>
+
+                <td className="px-4 py-3 text-gray-600">
+                  {item.creator?.full_name}
+                </td>
+
+                <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                  {formatDateTime(item.created_at)}
+                </td>
+
+                <td className="px-4 py-3">
+                  <div className="flex items-center justify-end gap-1">
+                    <Link
+                      to={`/sales/orders/${item.id}`}
+                      title="View"
+                      className="p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                    </Link>
+
+                    {canEdit(item) && (
+                      <Link
+                        to={`/sales/orders/${item.id}/edit`}
+                        title="Edit"
+                        className="p-1.5 rounded text-gray-400 hover:text-orange-600 hover:bg-orange-50 transition-colors"
+                      >
+                        <Edit className="w-3.5 h-3.5" />
+                      </Link>
+                    )}
+
+                    {canSubmit(item) && (
+                      <button
+                        title="Submit for Approval"
+                        onClick={() =>
+                          dispatch(submitSaleOrder(item.id)).then(refresh)
+                        }
+                        className="p-1.5 rounded text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+
+                    {canApprove(item) && (
+                      <button
+                        title="Approve"
+                        onClick={() =>
+                          dispatch(approveSaleOrder(item.id)).then(refresh)
+                        }
+                        className="p-1.5 rounded text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                      >
+                        <CheckCircle className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+
+                    {canReject(item) && (
+                      <button
+                        title="Reject"
+                        onClick={() => setRejectModal({ open: true, orderId: item.id })}
+                        className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        <XCircle className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <ActionConfirmModal
+        isOpen={rejectModal.open}
+        onClose={() => setRejectModal({ open: false, orderId: null })}
+        title="Reject Sale Order"
+        description="Please provide a reason for rejecting this sale order."
+        confirmText="Reject Order"
+        variant="danger"
+        requireReason
         onConfirm={(reason) => {
-          if (selectedOrderId) {
-            dispatch(rejectSaleOrder({ id: selectedOrderId, reason })).then(() => {
-              // ✅ Refresh table after reject
-              dispatch(fetchSaleOrders());
-            });
+          if (rejectModal.orderId) {
+            dispatch(rejectSaleOrder({ id: rejectModal.orderId, reason: reason ?? "" })).then(refresh);
           }
-          setRejectModalOpen(false);
-          setSelectedOrderId(null);
+          setRejectModal({ open: false, orderId: null });
         }}
       />
-    </div>
+    </>
   );
 }

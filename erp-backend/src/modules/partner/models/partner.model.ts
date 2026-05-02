@@ -17,6 +17,16 @@ export interface PartnerAttrs {
   bank_account?: string | null;
   bank_name?: string | null;
   status: "active" | "inactive";
+  // Phase 1 enhancements
+  credit_limit?: number;
+  payment_term_id?: number | null;
+  currency_id?: number | null;
+  is_customer?: boolean;
+  is_supplier?: boolean;
+  website?: string | null;
+  industry?: string | null;
+  company_size?: string | null;
+  sales_person_id?: number | null;
 }
 
 type PartnerCreation = Optional<PartnerAttrs, "id" | "status">;
@@ -37,6 +47,16 @@ export class Partner extends Model<PartnerAttrs, PartnerCreation> implements Par
   public bank_account?: string;
   public bank_name?: string;
   public status!: "active" | "inactive";
+  // Phase 1 enhancements
+  public credit_limit?: number;
+  public payment_term_id?: number | null;
+  public currency_id?: number | null;
+  public is_customer?: boolean;
+  public is_supplier?: boolean;
+  public website?: string | null;
+  public industry?: string | null;
+  public company_size?: string | null;
+  public sales_person_id?: number | null;
 
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -59,6 +79,33 @@ Partner.init(
     bank_account: { type: DataTypes.STRING(50) },
     bank_name: { type: DataTypes.STRING(100) },
     status: { type: DataTypes.ENUM("active", "inactive"), allowNull: false, defaultValue: "active" },
+    // Phase 1 enhancements
+    credit_limit: { type: DataTypes.DECIMAL(18, 2), defaultValue: 0 },
+    payment_term_id: { type: DataTypes.BIGINT, allowNull: true },
+    currency_id: { type: DataTypes.BIGINT, allowNull: true },
+    is_customer: { type: DataTypes.TINYINT, defaultValue: 0 },
+    is_supplier: { type: DataTypes.TINYINT, defaultValue: 0 },
+    website: { type: DataTypes.STRING(255), allowNull: true },
+    industry: { type: DataTypes.STRING(100), allowNull: true },
+    company_size: { type: DataTypes.STRING(50), allowNull: true },
+    sales_person_id: { type: DataTypes.BIGINT, allowNull: true },
   },
-  { sequelize, tableName: "partners", timestamps: true, createdAt: "created_at", updatedAt: "updated_at" }
+  { 
+    sequelize, 
+    tableName: "partners", 
+    timestamps: true, 
+    createdAt: "created_at", 
+    updatedAt: "updated_at",
+    hooks: {
+      afterDestroy: async (partner: Partner, options) => {
+        const { Activity } = require("../../../models/index");
+        if (Activity) {
+          await Activity.update(
+            { is_deleted: true, deleted_at: new Date() },
+            { where: { related_type: 'customer', related_id: partner.id } }
+          );
+        }
+      }
+    }
+  }
 );

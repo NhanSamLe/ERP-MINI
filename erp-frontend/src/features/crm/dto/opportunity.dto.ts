@@ -24,17 +24,19 @@ export interface Opportunity {
   lead_id: number | null;
   customer_id: number | null;
   name: string;
-  stage:  OpportunityStage;
+  stage: OpportunityStage | string;
   expected_value?: number | null;
   probability?: number | null;
   owner_id: number | null;
+  pipeline_id?: number | null;
+  pipeline_stage_id?: number | null;
   closing_date: string | null;
   loss_reason?: string | null;
   created_at: string;
   updated_at: string;
   lead: Lead | null;
-  customer: Partner | null ;
-  owner : User| null;
+  customer: Partner | null;
+  owner: User | null;
 }
 export interface MarkWonResponse {
   opp: Opportunity;

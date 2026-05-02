@@ -1,23 +1,16 @@
 // src/features/crm/pages/OpportunityBoardPage.tsx
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 import { RootState } from "../../../store/store";
-import { fetchAllOpportunities } from "../store/opportunity/opportunity.thunks";
+import { fetchAllOpportunities, changePipelineStage } from "../store/opportunity/opportunity.thunks";
 import { Opportunity } from "../dto/opportunity.dto";
-import { OpportunityStage } from "../../../types/enum";
 import { Button } from "../../../components/ui/Button";
 import { Alert } from "../../../components/ui/Alert";
 import { formatVND } from "../../../utils/currency.helper";
 import { Download } from "lucide-react";
 import { exportExcelReport } from "../../../utils/excel/exportExcelReport";
-
-const COLUMNS: { key: OpportunityStage; label: string; color: string }[] = [
-  { key: "prospecting", label: "Prospecting", color: "bg-blue-50" },
-  { key: "negotiation", label: "Negotiation/Review", color: "bg-yellow-50" },
-  { key: "won", label: "Closed Won", color: "bg-green-50" },
-  { key: "lost", label: "Closed Lost", color: "bg-red-50" },
-];
+import * as pipelineApi from "../api/pipeline.api";
 
 export default function OpportunityBoardPage() {
   const dispatch = useAppDispatch();
@@ -28,8 +21,22 @@ export default function OpportunityBoardPage() {
   );
   const user = useAppSelector((s: RootState) => s.auth.user);
 
+  // Dynamic Pipeline Columns State
+  const [columns, setColumns] = useState<any[]>([]);
+
   useEffect(() => {
     dispatch(fetchAllOpportunities());
+    
+    // Load dynamic pipeline stages from backend
+    pipelineApi.getAllPipelines().then((res) => {
+      const pipelines = res.data.data;
+      if (pipelines && pipelines.length > 0) {
+        // Just use the first pipeline for the board
+        const stages = pipelines[0].stages;
+        setColumns(stages);
+      }
+    }).catch(err => console.error("Failed to load pipelines", err));
+
   }, [dispatch]);
 
   const handleExport = async () => {
@@ -54,13 +61,6 @@ export default function OpportunityBoardPage() {
             align: "right"
           },
           {
-            header: "Xác suất (%)",
-            key: "probability",
-            width: 15,
-            align: "center",
-            formatter: (val) => val ? `${val}%` : "-"
-          },
-          {
             header: "Ngày chốt dự kiến",
             key: "closing_date",
             width: 15,
@@ -81,30 +81,55 @@ export default function OpportunityBoardPage() {
       });
     } catch (err) {
       console.error("Export Error:", err);
-      // Optional: Add simple alert logic here if needed, but Page uses redux error only
       alert("Lỗi xuất file excel");
     }
   };
 
-  const grouped: Record<OpportunityStage, Opportunity[]> = {
-    prospecting: [],
-    negotiation: [],
-    won: [],
-    lost: [],
-  };
+  // Group deals into dynamic pipelines.
+  // We use pipeline_stage_id instead of 'stage' enum now
+  const grouped: Record<number, Opportunity[]> = {};
+  columns.forEach(col => { grouped[col.id] = []; });
+  
+  // Create a bucket for unmapped stages (e.g. legacy deals with enum stage but no pipeline_stage_id)
+  const legacyOrphanDeals: Opportunity[] = [];
 
   allOpportunities.forEach((opp: Opportunity) => {
-    grouped[opp.stage].push(opp);
+    if (opp.pipeline_stage_id && grouped[opp.pipeline_stage_id]) {
+      grouped[opp.pipeline_stage_id].push(opp);
+    } else if (!opp.pipeline_stage_id && columns.length > 0) {
+      // Map legacy "prospecting" to the first col, "won" to the last manually if desired,
+      // or just put them temporarily on the first bucket so users can drag & drop them to clear legacy.
+      grouped[columns[0].id].push(opp);
+    } else {
+      legacyOrphanDeals.push(opp);
+    }
   });
 
+  // DRAG AND DROP
+  const onDragStart = (e: React.DragEvent, oppId: number) => {
+    e.dataTransfer.setData("oppId", oppId.toString());
+  };
+
+  const onDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const onDrop = (e: React.DragEvent, targetStageId: number) => {
+    const oppId = Number(e.dataTransfer.getData("oppId"));
+    if (!oppId) return;
+    
+    // Call API Thunk
+    dispatch(changePipelineStage({ oppId, newStageId: targetStageId }));
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto space-y-4">
+    <div className="min-h-screen bg-gray-50 p-6 overflow-x-hidden">
+      <div className="max-w-[1400px] mx-auto space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Deals</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Deals Pipeline</h1>
             <p className="text-sm text-gray-500">
-              Pipeline deals theo từng stage.
+              Kéo thả các Deal để chuyển đổi giai đoạn kinh doanh
             </p>
           </div>
           <div className="flex gap-2">
@@ -126,71 +151,82 @@ export default function OpportunityBoardPage() {
           </div>
         </div>
 
-        {error && (
-          <Alert type="error" message={error} />
-        )}
+        {error && <Alert type="error" message={error} />}
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {COLUMNS.map((col) => {
-            const list = grouped[col.key];
-            const total = list.reduce(
-              (sum, o) => sum + Number(o.expected_value || 0),
-              0
-            );
+        {columns.length === 0 ? (
+          <div className="p-8 text-center bg-white rounded-lg border-dashed border-2 border-gray-300">
+            <p className="text-gray-500 mb-4">Bạn chưa cấu hình Phễu (Pipeline) nào cho doanh nghiệp.</p>
+            {/* Could add a shortcut button to Settings to configure Pipelines here */}
+          </div>
+        ) : (
+          <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar" style={{ minHeight: '75vh' }}>
+            {columns.map((col, idx) => {
+              const list = grouped[col.id] || [];
+              const total = list.reduce((sum, o) => sum + Number(o.expected_value || 0), 0);
+              
+              // Give some colors automatically based on index
+              const colorBg = col.is_won ? 'bg-green-50/70 border-green-200' : col.is_lost ? 'bg-red-50/70 border-red-200' : 'bg-gray-50 border-gray-200';
+              const headerColor = col.is_won ? 'text-green-800' : col.is_lost ? 'text-red-800' : 'text-blue-800';
 
-            return (
-              <div key={col.key} className="bg-white rounded-xl shadow-sm flex flex-col h-[70vh]">
-                <div
-                  className={`px-4 py-3 border-b text-sm font-semibold flex justify-between items-center ${col.color}`}
+              return (
+                <div 
+                  key={col.id} 
+                  className={`min-w-[320px] max-w-[320px] rounded-xl flex flex-col border shadow-sm ${colorBg}`}
+                  onDragOver={onDragOver}
+                  onDrop={(e) => onDrop(e, col.id)}
                 >
-                  <span>
-                    {col.label}{" "}
-                    <span className="text-gray-500">({list.length})</span>
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    {formatVND(total)}
-                  </span>
-                </div>
-                <div className="flex-1 overflow-y-auto p-3 space-y-3">
-                  {loading && !list.length && (
-                    <p className="text-xs text-gray-400">Loading...</p>
-                  )}
-                  {!loading && !list.length && (
-                    <p className="text-xs text-gray-400">No deals found.</p>
-                  )}
-                  {list.map((opp) => (
-                    <button
-                      key={opp.id}
-                      onClick={() =>
-                        navigate(`/crm/opportunities/${opp.id}`)
-                      }
-                      className="w-full text-left bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm hover:shadow-md hover:border-orange-300 transition"
-                    >
-                      <p className="text-sm font-semibold text-gray-800">
-                        {opp.name}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {opp.customer?.name || opp.lead?.name || "-"}
-                      </p>
-                      <div className="flex justify-between items-center mt-1">
-                        <span className="text-xs font-medium text-gray-600">
-                          {formatVND(opp.expected_value)}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          {opp.closing_date
-                            ? new Date(opp.closing_date).toLocaleDateString(
-                              "vi-VN"
-                            )
-                            : "—"}
-                        </span>
+                  <div className={`px-4 py-3 border-b border-gray-200 text-sm font-semibold flex justify-between items-center`}>
+                    <span className={headerColor}>
+                      {col.name} <span className="text-gray-500 text-xs font-normal ml-1">({list.length})</span>
+                    </span>
+                    <span className="text-xs text-gray-500 font-mono">
+                      {formatVND(total)}
+                    </span>
+                  </div>
+                  
+                  <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                    {loading && !list.length && <p className="text-xs text-gray-400">Loading...</p>}
+                    
+                    {list.map((opp) => (
+                      <div
+                        key={opp.id}
+                        draggable
+                        onDragStart={(e) => onDragStart(e, opp.id)}
+                        className="w-full text-left bg-white border border-gray-200 rounded-lg px-4 py-3 shadow-sm hover:shadow-md hover:border-blue-400 transition cursor-grab active:cursor-grabbing group relative"
+                      >
+                         <button 
+                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600 transition"
+                            onClick={() => navigate(`/crm/opportunities/${opp.id}`)}
+                          >
+                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                         </button>
+
+                        <p className="text-sm font-semibold text-gray-800 pr-6 truncate">
+                          {opp.name}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-0.5 truncate">
+                          {opp.customer?.name || opp.lead?.name || "-"}
+                        </p>
+                        
+                        <div className="flex justify-between items-center mt-3 pt-2 border-t border-gray-50">
+                          <span className="text-sm font-medium text-blue-700">
+                            {formatVND(opp.expected_value)}
+                          </span>
+                          <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
+                            {opp.closing_date ? new Date(opp.closing_date).toLocaleDateString("vi-VN").slice(0,5) : "—"}
+                          </span>
+                        </div>
                       </div>
-                    </button>
-                  ))}
+                    ))}
+                    
+                    {/* Ghost card area to help with dropping to empty columns */}
+                    <div className="h-20 border-2 border-transparent border-dashed rounded-lg"></div>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

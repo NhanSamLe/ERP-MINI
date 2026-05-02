@@ -36,7 +36,7 @@ module.exports = {
         created_at: now,
         updated_at: now,
       },
-    ]);
+    ], { ignoreDuplicates: true });
 
     // 3. Truy xuất dữ liệu cần cho CRM & Sales
     const [leads] = await queryInterface.sequelize.query(`SELECT id FROM crm_leads;`);
@@ -85,7 +85,7 @@ module.exports = {
         created_at: now,
         updated_at: now,
       },
-    ]);
+    ], { ignoreDuplicates: true });
 
     const [opps] = await queryInterface.sequelize.query(`SELECT id, name FROM crm_opportunities;`);
 
@@ -113,7 +113,7 @@ module.exports = {
         created_at: now,
         updated_at: now,
       },
-    ]);
+    ], { ignoreDuplicates: true });
 
     // 6. Sale Orders
     await queryInterface.bulkInsert("sale_orders", [
@@ -123,6 +123,7 @@ module.exports = {
         customer_id: getCustomer(),
         order_date: new Date(),
         status: "confirmed",
+        created_by: salesUserId,
         total_before_tax: 1000,
         total_tax: 100,
         total_after_tax: 1100,
@@ -135,13 +136,14 @@ module.exports = {
         customer_id: getCustomer(),
         order_date: new Date(),
         status: "draft",
+        created_by: salesUserId,
         total_before_tax: 2000,
         total_tax: 200,
         total_after_tax: 2200,
         created_at: now,
         updated_at: now,
       },
-    ]);
+    ], { ignoreDuplicates: true });
 
     const [orders] = await queryInterface.sequelize.query(`SELECT id, order_no FROM sale_orders;`);
 
@@ -173,7 +175,7 @@ module.exports = {
         created_at: now,
         updated_at: now,
       },
-    ]);
+    ], { ignoreDuplicates: true });
   },
 
   async down(queryInterface) {

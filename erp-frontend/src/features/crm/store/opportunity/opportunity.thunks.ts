@@ -50,7 +50,17 @@ export const moveToNegotiation = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error);
     }
+  }
+);
+export const changePipelineStage = createAsyncThunk(
+  "opportunity/changePipelineStage",
+  async (payload: { oppId: number; newStageId: number }, { rejectWithValue }) => {
+    try {
+      return await opportunityService.changePipelineStage(payload.oppId, payload.newStageId);
+    } catch (err) {
+      return rejectWithValue(err);
     }
+  }
 );
 export const markWon = createAsyncThunk(
   "opportunity/markWon",

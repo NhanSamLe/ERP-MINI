@@ -7,6 +7,8 @@ import {
 
 export const getAllLeads = () => axiosClient.get("/crm/leads");
 
+export const getAllLeadSources = () => axiosClient.get("/crm/lead-sources");
+
 // export const getMyLeads = () => axiosClient.get("/crm/leads/my");
 
 export const getLeadById = (leadId: number) =>

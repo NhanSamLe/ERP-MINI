@@ -9,6 +9,7 @@ import { Transaction } from "sequelize";
 import { GlJournal } from "../../finance/models/glJournal.model";
 import { GlEntry } from "../../finance/models/glEntry.model";
 import { GlEntryLine } from "../../finance/models/glEntryLine.model";
+import { GlAccount } from "../../finance/models/glAccount.model";
 import { notificationService } from "../../../core/services/notification.service";
 
 export const arReceiptService = {
@@ -138,6 +139,8 @@ export const arReceiptService = {
       approval_status: "draft",
       allocation_status: "unallocated",
       status: "draft",
+      currency_id: data.currency_id || null,
+      exchange_rate: data.exchange_rate || 1,
     });
   },
 
@@ -201,15 +204,20 @@ export const arReceiptService = {
       );
 
       // 3. Xác định tài khoản Nợ/Có theo method
-      //  id = 1 → TK 111 (Tiền mặt)
-      //  id = 2 → TK 112 (Tiền gửi NH)
-      //  id = 3 → TK 131 (Phải thu khách hàng)
-      const debitAccountId =
-        receipt.method === "cash"
-          ? 1 // Nợ 111 - Tiền mặt
-          : 2; // Nợ 112 - Tiền gửi ngân hàng
+      const debitAccCode = receipt.method === "cash" ? "111" : "112";
+      const creditAccCode = "131";
 
-      const creditAccountId = 3; // Có 131 - Phải thu khách hàng
+      const [debitAcc, creditAcc] = await Promise.all([
+        GlAccount.findOne({ where: { code: debitAccCode }, transaction: t }),
+        GlAccount.findOne({ where: { code: creditAccCode }, transaction: t }),
+      ]);
+
+      if (!debitAcc || !creditAcc) {
+        throw new Error(`Missing GL Accounts ${debitAccCode} / ${creditAccCode}`);
+      }
+
+      const debitAccountId = debitAcc.id;
+      const creditAccountId = creditAcc.id;
 
       // 4. Lấy journal: CASH hoặc BANK
       const journalCode = receipt.method === "cash" ? "CASH" : "BANK";
@@ -240,7 +248,8 @@ export const arReceiptService = {
         { transaction: t }
       );
 
-      const amount = Number(receipt.amount || 0);
+      const rate = Number(receipt.exchange_rate || 1);
+      const amountBase = Number(receipt.amount || 0) * rate;
 
       // 👇 FIX 2: ép kiểu partnerId sang number cho TS vui
       const partnerId = receipt.customer_id as number | undefined;
@@ -248,7 +257,7 @@ export const arReceiptService = {
       const lineDebit: any = {
         entry_id: entry.id,
         account_id: debitAccountId,
-        debit: amount,
+        debit: amountBase,
         credit: 0,
       };
 
@@ -256,7 +265,7 @@ export const arReceiptService = {
         entry_id: entry.id,
         account_id: creditAccountId,
         debit: 0,
-        credit: amount,
+        credit: amountBase,
       };
 
       // chỉ set partner_id nếu có customer_id
@@ -354,9 +363,9 @@ export const arReceiptService = {
         0
       );
 
-      if (totalAllocInput !== receiptAmount) {
+      if (totalAllocInput > receiptAmount) {
         throw new Error(
-          `Total allocation (${totalAllocInput}) must equal receipt amount (${receiptAmount})`
+          `Tổng tiền phân bổ (${totalAllocInput}) không được vượt quá số tiền thực thu (${receiptAmount})`
         );
       }
 
@@ -372,6 +381,10 @@ export const arReceiptService = {
           transaction: t,
         });
         if (!invoice) throw new Error("Invoice not found");
+
+        if (invoice.branch_id !== receipt.branch_id) {
+          throw new Error(`Invoice ${invoice.invoice_no} belongs to a different branch.`);
+        }
 
         if (invoice.status === "paid") {
           throw new Error(
@@ -416,16 +429,35 @@ export const arReceiptService = {
           newInvoiceStatus = "partially_paid";
         }
 
+        const paymentDateStr = receipt.receipt_date 
+          ? new Date(receipt.receipt_date).toISOString().substring(0, 10)
+          : new Date().toISOString().substring(0, 10);
+
         await invoice.update(
-          { status: newInvoiceStatus },
+          { 
+            status: newInvoiceStatus,
+            paid_amount: newAllocated,
+            last_payment_date: paymentDateStr
+          },
           { transaction: t }
         );
       }
       let allocationStatus: ArReceipt["allocation_status"] = "unallocated";
 
-      if (totalAllocated === receiptAmount) {
+      const previousAllocOfReceipt =
+        (await ArReceiptAllocation.sum("applied_amount", {
+          where: { receipt_id: receiptId },
+          transaction: t,
+        })) || 0;
+        
+      const currentGrandTotal = previousAllocOfReceipt + totalAllocated;
+
+      if (currentGrandTotal >= receiptAmount) {
         allocationStatus = "fully_allocated";
+      } else if (currentGrandTotal > 0) {
+        allocationStatus = "partially_allocated" as any; // Ep kiểu vì model cần thêm enum
       }
+      
       await receipt.update(
         { allocation_status: allocationStatus },
         { transaction: t }
@@ -465,6 +497,8 @@ export const arReceiptService = {
       customer_id: data.customer_id,
       amount: data.amount,
       method: data.method,
+      currency_id: data.currency_id,
+      exchange_rate: data.exchange_rate,
     });
 
     return this.getById(id, user);

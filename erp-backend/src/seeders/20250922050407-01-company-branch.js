@@ -22,7 +22,7 @@ module.exports = {
         created_at: now,
         updated_at: now,
       },
-    ]);
+    ], { ignoreDuplicates: true });
 
     // Lấy id company để tạo branches
     const [companies] = await queryInterface.sequelize.query(

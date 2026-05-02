@@ -132,6 +132,24 @@ export const moveToNegotiation = async (req: Request, res: Response) => {
 };
 
 /* ============================================================
+   5.5 CHANGE PIPELINE STAGE 
+============================================================ */
+export const changePipelineStage = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const oppId = Number(req.params.oppId);
+    const { newStageId } = req.body;
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const data = await opportunityService.changePipelineStage(oppId, newStageId, user.id, user.role);
+
+    return res.json({ message: "Đổi Pipeline Stage thành công", data });
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message });
+  }
+};
+
+/* ============================================================
    6. MARK WON
 ============================================================ */
 export const markWon = async (req: Request, res: Response) => {

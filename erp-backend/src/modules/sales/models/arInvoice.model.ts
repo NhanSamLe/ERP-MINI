@@ -4,6 +4,7 @@ import { sequelize } from "../../../config/db";
 export interface ArInvoiceAttrs {
   id: number;
   order_id?: number;
+  customer_id?: number | null;
   invoice_no: string;
   invoice_date?: Date;
   total_before_tax?: number;
@@ -17,6 +18,13 @@ export interface ArInvoiceAttrs {
   approved_at?: Date | null;
   reject_reason?: string | null;
   branch_id: number;
+  // Phase 4 AR enhancements
+  payment_term_id?: number | null;
+  due_date?: string | null;
+  paid_amount?: number;
+  currency_id?: number | null;
+  exchange_rate?: number;
+  last_payment_date?: string | null;
 }
 
 type ArInvoiceCreation = Optional<ArInvoiceAttrs, "id" | "status">;
@@ -24,6 +32,7 @@ type ArInvoiceCreation = Optional<ArInvoiceAttrs, "id" | "status">;
 export class ArInvoice extends Model<ArInvoiceAttrs, ArInvoiceCreation> implements ArInvoiceAttrs {
   public id!: number;
   public order_id?: number;
+  public customer_id?: number | null;
   public invoice_no!: string;
   public invoice_date?: Date;
   public total_before_tax?: number;
@@ -37,13 +46,20 @@ export class ArInvoice extends Model<ArInvoiceAttrs, ArInvoiceCreation> implemen
   public approved_at?: Date | null;
   public reject_reason?: string | null;
   public branch_id!: number;
-
+  // Phase 4 AR enhancements
+  public payment_term_id?: number | null;
+  public due_date?: string | null;
+  public paid_amount?: number;
+  public currency_id?: number | null;
+  public exchange_rate?: number;
+  public last_payment_date?: string | null;
 }
 
 ArInvoice.init(
   {
     id: { type: DataTypes.BIGINT, autoIncrement: true, primaryKey: true },
     order_id: { type: DataTypes.BIGINT },
+    customer_id: { type: DataTypes.BIGINT, allowNull: true },
     invoice_no: { type: DataTypes.STRING(50), allowNull: false, unique: true },
     invoice_date: { type: DataTypes.DATE },
     total_before_tax: { type: DataTypes.DECIMAL(18,2) },
@@ -60,6 +76,13 @@ ArInvoice.init(
     approved_at: { type: DataTypes.DATE },
     reject_reason: { type: DataTypes.STRING(255) },
      branch_id: { type: DataTypes.BIGINT, allowNull: false },
+    // Phase 4 AR enhancements
+    payment_term_id: { type: DataTypes.BIGINT, allowNull: true },
+    due_date: { type: DataTypes.DATEONLY, allowNull: true },
+    paid_amount: { type: DataTypes.DECIMAL(18, 2), defaultValue: 0 },
+    currency_id: { type: DataTypes.BIGINT, allowNull: true },
+    exchange_rate: { type: DataTypes.DECIMAL(18, 6), defaultValue: 1.000000 },
+    last_payment_date: { type: DataTypes.DATEONLY, allowNull: true },
   },
   { sequelize, tableName: "ar_invoices", timestamps: true, createdAt: "created_at", updatedAt: "updated_at" }
 );

@@ -9,6 +9,7 @@ export interface EmailActivityAttrs {
   email_to?: string | null;
   cc?: string | null;
   bcc?: string | null; 
+  in_reply_to_id?: string | null;
   subject?: string | null;
   html_body?:string | null;
   text_body?:string | null;
@@ -34,6 +35,7 @@ export class EmailActivity
 
   public cc?: string | null;
   public bcc?: string | null;
+  public in_reply_to_id?: string | null;
 
   public subject?: string | null;
 
@@ -56,6 +58,7 @@ EmailActivity.init(
     email_to: { type: DataTypes.STRING(255) },
     cc: { type: DataTypes.TEXT, allowNull: true },
     bcc: { type: DataTypes.TEXT, allowNull: true },
+    in_reply_to_id: { type: DataTypes.STRING(255), allowNull: true },
     subject: { type: DataTypes.STRING(255), allowNull: true },
 
     html_body: { type: DataTypes.TEXT, allowNull: true },

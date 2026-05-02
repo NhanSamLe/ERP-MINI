@@ -10,7 +10,7 @@ module.exports = {
       { code: "PCS", name: "Piece", created_at: now, updated_at: now },
       { code: "BOX", name: "Box", created_at: now, updated_at: now },
       { code: "KG", name: "Kilogram", created_at: now, updated_at: now },
-    ]);
+    ], { ignoreDuplicates: true });
 
     // 2. Lấy ID UOM để tạo conversion
     const [uoms] = await queryInterface.sequelize.query(`SELECT id, code FROM uoms;`);
@@ -33,14 +33,14 @@ module.exports = {
         created_at: now,
         updated_at: now,
       },
-    ]);
+    ], { ignoreDuplicates: true });
 
     // 3. Currency
     await queryInterface.bulkInsert("currencies", [
       { code: "VND", name: "Vietnam Dong", symbol: "₫", created_at: now, updated_at: now },
       { code: "USD", name: "US Dollar", symbol: "$", created_at: now, updated_at: now },
       { code: "EUR", name: "Euro", symbol: "€", created_at: now, updated_at: now },
-    ]);
+    ], { ignoreDuplicates: true });
 
     // 4. Exchange Rate
     const [currencies] = await queryInterface.sequelize.query(`SELECT id, code FROM currencies;`);
@@ -65,7 +65,7 @@ module.exports = {
         created_at: now,
         updated_at: now,
       },
-    ]);
+    ], { ignoreDuplicates: true });
 
     // 5. Tax Rates
     await queryInterface.bulkInsert("tax_rates", [
@@ -99,7 +99,7 @@ module.exports = {
         created_at: now,
         updated_at: now,
       },
-    ]);
+    ], { ignoreDuplicates: true });
   },
 
   async down(queryInterface) {
