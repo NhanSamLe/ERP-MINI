@@ -41,6 +41,11 @@ import {
   MatchingDetails,
 } from "../../store/apInvoice/apInvoice.types";
 import { PurchaseOrderStatus } from "../../store/purchaseOrder.types";
+import {
+  ApprovalStatus,
+  InvoiceSource,
+  MatchingStatus,
+} from "../../constants/purchaseStatus.enum";
 
 export default function ViewApInvoicePage() {
   const { id } = useParams();
@@ -87,11 +92,11 @@ export default function ViewApInvoicePage() {
     user?.role.code === Roles.ACCOUNT &&
     user?.branch.id === invoice.branch_id &&
     invoice.created_by === user.id &&
-    invoice.approval_status === "draft";
+    invoice.approval_status === ApprovalStatus.DRAFT;
 
   const canApproveOrReject =
     user?.role.code === Roles.CHACC &&
-    invoice.approval_status === "waiting_approval" &&
+    invoice.approval_status === ApprovalStatus.WAITING_APPROVAL &&
     invoice.created_by !== user.id &&
     user?.branch.id === invoice.branch_id;
 
@@ -202,12 +207,12 @@ export default function ViewApInvoicePage() {
                 <Calendar className="w-4 h-4" />
                 <span>
                   Created:{" "}
-                  {new Date(invoice.invoice_date).toLocaleDateString("vi-VN")}
+                  {new Date(invoice.invoice_date).toLocaleDateString("en-US")}
                 </span>
                 <span className="text-gray-400">•</span>
                 <Clock className="w-4 h-4" />
                 <span>
-                  Due: {new Date(invoice.due_date).toLocaleDateString("vi-VN")}
+                  Due: {new Date(invoice.due_date).toLocaleDateString("en-US")}
                 </span>
               </div>
             </div>
@@ -296,12 +301,12 @@ export default function ViewApInvoicePage() {
             <InfoRow
               icon={<Calendar className="w-4 h-4" />}
               label="Invoice Date"
-              value={new Date(invoice.invoice_date).toLocaleDateString("vi-VN")}
+              value={new Date(invoice.invoice_date).toLocaleDateString("en-US")}
             />
             <InfoRow
               icon={<Clock className="w-4 h-4" />}
               label="Due Date"
-              value={new Date(invoice.due_date).toLocaleDateString("vi-VN")}
+              value={new Date(invoice.due_date).toLocaleDateString("en-US")}
             />
             <InfoRow
               icon={<Building2 className="w-4 h-4" />}
@@ -320,7 +325,7 @@ export default function ViewApInvoicePage() {
                 value={invoice.approver.full_name}
               />
             )}
-            {invoice.approval_status === "rejected" &&
+            {invoice.approval_status === ApprovalStatus.REJECTED &&
               invoice.reject_reason && (
                 <div className="mt-4 rounded-xl border-2 border-red-200 bg-red-50 p-4">
                   <div className="flex items-start gap-3">
@@ -366,7 +371,7 @@ export default function ViewApInvoicePage() {
                 label="Order Date"
                 value={
                   po?.order_date
-                    ? new Date(po.order_date).toLocaleDateString("vi-VN")
+                    ? new Date(po.order_date).toLocaleDateString("en-US")
                     : "-"
                 }
               />
@@ -589,10 +594,10 @@ export default function ViewApInvoicePage() {
       </div>
 
       {/* ================= OCR & MATCHING INFO ================= */}
-      {(invoice.source === "ai_ocr" || invoice.matching_status) && (
+      {(invoice.source === InvoiceSource.AI_OCR || invoice.matching_status) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* OCR Info */}
-          {invoice.source === "ai_ocr" && (
+          {invoice.source === InvoiceSource.AI_OCR && (
             <div className="bg-purple-50 rounded-2xl border-2 border-purple-100 p-6 shadow-sm">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-purple-500 flex items-center justify-center">
@@ -605,7 +610,7 @@ export default function ViewApInvoicePage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between py-2 px-3 bg-white rounded-lg">
                   <span className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                    <PenLine className="w-4 h-4" /> Nguồn tạo
+                    <PenLine className="w-4 h-4" /> Source
                   </span>
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
                     <ScanLine className="w-3 h-3" /> OCR
@@ -614,7 +619,7 @@ export default function ViewApInvoicePage() {
                 {invoice.ocr_confidence != null && (
                   <div className="flex items-center justify-between py-2 px-3 bg-white rounded-lg">
                     <span className="text-sm font-medium text-gray-600">
-                      Độ tin cậy OCR
+                      OCR Confidence
                     </span>
                     <span
                       className={`px-2.5 py-1 rounded-full text-xs font-bold ${
@@ -632,7 +637,7 @@ export default function ViewApInvoicePage() {
                 {invoice.invoice_document_id && (
                   <div className="flex items-center justify-between py-2 px-3 bg-white rounded-lg">
                     <span className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                      <Link2 className="w-4 h-4" /> Tài liệu gốc
+                      <Link2 className="w-4 h-4" /> Source Document
                     </span>
                     <a
                       href={`/purchase/document-intelligence/history`}
@@ -650,9 +655,9 @@ export default function ViewApInvoicePage() {
           {invoice.matching_status && (
             <div
               className={`rounded-2xl border-2 p-6 shadow-sm ${
-                invoice.matching_status === "matched"
+                invoice.matching_status === MatchingStatus.MATCHED
                   ? "bg-green-50 border-green-100"
-                  : invoice.matching_status === "mismatch"
+                  : invoice.matching_status === MatchingStatus.MISMATCH
                     ? "bg-red-50 border-red-100"
                     : "bg-gray-50 border-gray-100"
               }`}
@@ -660,16 +665,16 @@ export default function ViewApInvoicePage() {
               <div className="flex items-center gap-3 mb-4">
                 <div
                   className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                    invoice.matching_status === "matched"
+                    invoice.matching_status === MatchingStatus.MATCHED
                       ? "bg-green-500"
-                      : invoice.matching_status === "mismatch"
+                      : invoice.matching_status === MatchingStatus.MISMATCH
                         ? "bg-red-500"
                         : "bg-gray-400"
                   }`}
                 >
-                  {invoice.matching_status === "matched" ? (
+                  {invoice.matching_status === MatchingStatus.MATCHED ? (
                     <CheckCircle2 className="w-5 h-5 text-white" />
-                  ) : invoice.matching_status === "mismatch" ? (
+                  ) : invoice.matching_status === MatchingStatus.MISMATCH ? (
                     <AlertTriangle className="w-5 h-5 text-white" />
                   ) : (
                     <Clock className="w-5 h-5 text-white" />
@@ -684,9 +689,9 @@ export default function ViewApInvoicePage() {
                 <MatchingDetailsPanel details={invoice.matching_details} />
               ) : (
                 <p className="text-sm text-gray-500 italic">
-                  {invoice.matching_status === "pending"
-                    ? "Chưa thực hiện đối soát (không có PO hoặc đang chờ)"
-                    : "Không có chi tiết"}
+                  {invoice.matching_status === MatchingStatus.PENDING
+                    ? "3-way matching not performed (no PO or pending)"
+                    : "No details available"}
                 </p>
               )}
             </div>
@@ -701,9 +706,7 @@ export default function ViewApInvoicePage() {
             <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
               <History className="w-5 h-5 text-gray-600" />
             </div>
-            <h2 className="text-lg font-bold text-gray-900">
-              Lịch Sử Kiểm Toán
-            </h2>
+            <h2 className="text-lg font-bold text-gray-900">Audit Trail</h2>
           </div>
           <div className="space-y-3">
             {invoice.audit_trail.map((log) => (
@@ -1134,7 +1137,7 @@ function AuditLogRow({ log }: { log: ApInvoiceAuditLog }) {
           </span>
           {log.source && (
             <span className="text-xs text-gray-500">
-              {log.source === "ai_ocr" ? "OCR" : "Manual"}
+              {log.source === InvoiceSource.AI_OCR ? "OCR" : "Manual"}
             </span>
           )}
           {log.ocr_confidence != null && (

@@ -33,7 +33,7 @@ export const AuditLogPage: React.FC = () => {
         }) as any,
       );
     } catch (error: any) {
-      message.error(error.message || "Lỗi khi tải lịch sử");
+      message.error(error.message || "Error loading history");
     }
   };
 
@@ -43,10 +43,10 @@ export const AuditLogPage: React.FC = () => {
       <Breadcrumb
         items={[
           {
-            title: <a onClick={() => navigate("/purchase")}>Đơn đặt hàng</a>,
+            title: <a onClick={() => navigate("/purchase")}>Purchase Orders</a>,
           },
           {
-            title: `Lịch sử thay đổi (PO #${po_id})`,
+            title: `Change History (PO #${po_id})`,
           },
         ]}
         style={{ marginBottom: 24 }}
@@ -55,19 +55,19 @@ export const AuditLogPage: React.FC = () => {
       {/* Header */}
       <Card
         style={{ marginBottom: 24 }}
-        title={`Lịch sử thay đổi - Đơn đặt hàng #${po_id}`}
+        title={`Change History - Purchase Order #${po_id}`}
         extra={
           <Button
             icon={<ArrowLeftOutlined />}
             onClick={() => navigate("/purchase")}
           >
-            Quay lại
+            Back
           </Button>
         }
       >
         <p>
-          Xem tất cả các thay đổi được thực hiện trên đơn đặt hàng này, bao gồm
-          tạo mới, cập nhật, phê duyệt và hủy.
+          View all changes made to this purchase order, including creation,
+          updates, approvals, and cancellations.
         </p>
       </Card>
 

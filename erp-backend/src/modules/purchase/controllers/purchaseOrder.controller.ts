@@ -129,6 +129,18 @@ export const purchaseOrderController = {
     });
   },
 
+  async getPoInvoiceSummary(req: Request, res: Response) {
+    const user = (req as any).user;
+    try {
+      const poId = Number(req.params.id);
+      const data = await purchaseOrderService.getPoInvoiceSummary(poId, user);
+      return res.json({ success: true, data });
+    } catch (e: any) {
+      const status = e.status || 500;
+      return res.status(status).json({ message: e.message });
+    }
+  },
+
   /**
    * Tìm kiếm PO với các filter
    * GET /api/purchase-orders/search

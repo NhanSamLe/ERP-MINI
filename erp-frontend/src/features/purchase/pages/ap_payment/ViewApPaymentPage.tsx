@@ -25,6 +25,10 @@ import { toast } from "react-toastify";
 import { getErrorMessage } from "@/utils/ErrorHelper";
 import { Roles } from "@/types/enum";
 import { UnpaidInvoice } from "../../store/apPayment/apPayment.types";
+import {
+  ApprovalStatus,
+  ApPaymentStatus,
+} from "../../constants/purchaseStatus.enum";
 
 export default function ViewApPaymentPage() {
   const { id } = useParams();
@@ -63,19 +67,19 @@ export default function ViewApPaymentPage() {
   /* ================= PERMISSIONS ================= */
   const canSubmit =
     user?.role.code === Roles.ACCOUNT &&
-    payment.approval_status === "draft" &&
-    payment.status === "draft" &&
+    payment.approval_status === ApprovalStatus.DRAFT &&
+    payment.status === ApPaymentStatus.DRAFT &&
     payment.created_by === user.id;
 
   const canApproveReject =
     user?.role.code === Roles.CHACC &&
-    payment.approval_status === "waiting_approval" &&
+    payment.approval_status === ApprovalStatus.WAITING_APPROVAL &&
     payment.created_by !== user.id;
 
   const canAllocate =
     user?.role.code === Roles.ACCOUNT &&
-    payment.status === "posted" &&
-    payment.approval_status === "approved" &&
+    payment.status === ApPaymentStatus.POSTED &&
+    payment.approval_status === ApprovalStatus.APPROVED &&
     payment.created_by === user.id;
 
   /* ================= HANDLERS ================= */
@@ -117,7 +121,7 @@ export default function ViewApPaymentPage() {
         rejectApPaymentThunk({
           id: payment.id,
           reason: rejectReason.trim(),
-        })
+        }),
       ).unwrap();
       toast.success("Payment rejected");
       setOpenReject(false);
@@ -150,7 +154,7 @@ export default function ViewApPaymentPage() {
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Calendar className="w-4 h-4" />
                 <span>
-                  {new Date(payment.payment_date).toLocaleDateString("vi-VN")}
+                  {new Date(payment.payment_date).toLocaleDateString("en-US")}
                 </span>
               </div>
             </div>
@@ -235,7 +239,7 @@ export default function ViewApPaymentPage() {
             <InfoRow
               icon={<Calendar className="w-4 h-4" />}
               label="Payment Date"
-              value={new Date(payment.payment_date).toLocaleDateString("vi-VN")}
+              value={new Date(payment.payment_date).toLocaleDateString("en-US")}
             />
             <InfoRow
               icon={<CreditCard className="w-4 h-4" />}
@@ -306,20 +310,23 @@ export default function ViewApPaymentPage() {
         />
       </div>
       {/* ================= REJECTION INFO ================= */}
-      {payment.approval_status === "rejected" && payment.reject_reason && (
-        <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-red-500 flex items-center justify-center">
-              <XCircle className="w-5 h-5 text-white" />
+      {payment.approval_status === ApprovalStatus.REJECTED &&
+        payment.reject_reason && (
+          <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-6 shadow-sm">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-xl bg-red-500 flex items-center justify-center">
+                <XCircle className="w-5 h-5 text-white" />
+              </div>
+              <h3 className="text-lg font-bold text-red-700">
+                Rejection Reason
+              </h3>
             </div>
-            <h3 className="text-lg font-bold text-red-700">Rejection Reason</h3>
-          </div>
 
-          <p className="text-sm text-red-800 leading-relaxed whitespace-pre-line">
-            {payment.reject_reason}
-          </p>
-        </div>
-      )}
+            <p className="text-sm text-red-800 leading-relaxed whitespace-pre-line">
+              {payment.reject_reason}
+            </p>
+          </div>
+        )}
 
       {/* ================= SUBMIT MODAL ================= */}
       {openSubmitModal && (
@@ -510,11 +517,11 @@ function AllocateModal({
         setLoading(true);
 
         const result = await dispatch(
-          getApPaymentAvailableAmountThunk(paymentId)
+          getApPaymentAvailableAmountThunk(paymentId),
         ).unwrap();
 
         const invoices = await dispatch(
-          getApPaymentUnpaidInvoicesThunk(paymentId)
+          getApPaymentUnpaidInvoicesThunk(paymentId),
         ).unwrap();
 
         setAvailableAmount(result.available_amount);
@@ -533,7 +540,7 @@ function AllocateModal({
   /* ===== CALCULATIONS ===== */
   const totalAllocate = localInvoices.reduce(
     (sum, i) => sum + Number(i.allocate_amount || 0),
-    0
+    0,
   );
 
   const remaining = availableAmount - totalAllocate;
@@ -542,14 +549,14 @@ function AllocateModal({
     totalAllocate <= 0 ||
     totalAllocate > availableAmount ||
     localInvoices.some(
-      (i) => i.allocate_amount! < 0 || i.allocate_amount! > i.unpaid_amount
+      (i) => i.allocate_amount! < 0 || i.allocate_amount! > i.unpaid_amount,
     );
 
   /* ===== HANDLERS ===== */
   const handleChange = (id: number, value: string) => {
     const num = Number(value);
     setLocalInvoices((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, allocate_amount: num } : i))
+      prev.map((i) => (i.id === id ? { ...i, allocate_amount: num } : i)),
     );
   };
 
@@ -568,7 +575,7 @@ function AllocateModal({
         allocateApPaymentThunk({
           paymentId,
           allocations,
-        })
+        }),
       ).unwrap();
 
       toast.success("Allocation completed");

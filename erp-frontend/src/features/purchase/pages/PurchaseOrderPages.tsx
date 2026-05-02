@@ -44,6 +44,13 @@ import { reportApi } from "@/features/reports/api/report.api";
 // Import new components
 import AdvancedFilterPanel from "../components/AdvancedFilterPanel";
 import BulkActionModal from "../components/BulkActionModal";
+import { PurchaseOrderStatus } from "../constants/purchaseStatus.enum";
+import {
+  PageHeader,
+  StatsCard,
+  StatusBadge,
+  EmptyState,
+} from "../components/Common";
 
 export default function PurchaseOrderPage() {
   const dispatch = useDispatch<AppDispatch>();
@@ -127,45 +134,45 @@ export default function PurchaseOrderPage() {
     try {
       if (config.reportType === "detailed") {
         await exportExcelReport({
-          title: "DANH SÁCH ĐƠN MUA HÀNG (PURCHASE ORDERS)",
+          title: "PURCHASE ORDERS LIST",
           columns: [
-            { header: "Số PO", key: "po_no", width: 15 },
+            { header: "PO No", key: "po_no", width: 15 },
             {
-              header: "Ngày đặt",
+              header: "Order Date",
               key: "order_date",
               width: 15,
               formatter: (val) =>
-                val ? new Date(String(val)).toLocaleDateString("vi-VN") : "",
+                val ? new Date(String(val)).toLocaleDateString("en-US") : "",
             },
             {
-              header: "Người tạo",
+              header: "Created By",
               key: "creator",
               width: 25,
               formatter: (val: any) => val?.full_name || "-",
             },
             {
-              header: "Tổng tiền",
+              header: "Total Amount",
               key: "total_after_tax",
               width: 20,
               format: "currency",
               align: "right",
             },
             {
-              header: "Trạng thái",
+              header: "Status",
               key: "status",
               width: 15,
               formatter: (val) => String(val).toUpperCase(),
             },
             {
-              header: "Ngày tạo",
+              header: "Created At",
               key: "created_at",
               width: 15,
               formatter: (val) =>
-                val ? new Date(String(val)).toLocaleDateString("vi-VN") : "",
+                val ? new Date(String(val)).toLocaleDateString("en-US") : "",
             },
           ],
           data: purchaseOrders,
-          fileName: `Bao_Cao_Don_Mua_Hang_${new Date().getTime()}.xlsx`,
+          fileName: `Purchase_Orders_${new Date().getTime()}.xlsx`,
           footer: {
             creator: user?.full_name || "Admin",
           },
@@ -179,22 +186,20 @@ export default function PurchaseOrderPage() {
         }));
 
         await exportExcelReport({
-          title: `BÁO CÁO CHI PHÍ MUA HÀNG THEO ${config.period.toUpperCase()}`,
-          subtitle: `Từ ngày: ${new Date(config.startDate!).toLocaleDateString(
-            "vi-VN",
-          )} - Đên ngày: ${new Date(config.endDate!).toLocaleDateString(
-            "vi-VN",
-          )}`,
+          title: `PURCHASE EXPENSE REPORT BY ${config.period.toUpperCase()}`,
+          subtitle: `From: ${new Date(config.startDate!).toLocaleDateString(
+            "en-US",
+          )} - To: ${new Date(config.endDate!).toLocaleDateString("en-US")}`,
           columns: [
-            { header: "Thời gian", key: "time_period", width: 20 },
+            { header: "Period", key: "time_period", width: 20 },
             {
-              header: "Tổng số đơn",
+              header: "Total Orders",
               key: "total_orders",
               width: 15,
               align: "center",
             },
             {
-              header: "Tổng chi phí",
+              header: "Total Expense",
               key: "total_expense",
               width: 25,
               format: "currency",
@@ -202,7 +207,7 @@ export default function PurchaseOrderPage() {
             },
           ],
           data: reportData,
-          fileName: `Bao_Cao_Chi_Phi_${config.period}_${new Date().getTime()}.xlsx`,
+          fileName: `Purchase_Expense_Report_${config.period}_${new Date().getTime()}.xlsx`,
           footer: {
             creator: user?.full_name || "Admin",
           },
@@ -210,9 +215,18 @@ export default function PurchaseOrderPage() {
       }
     } catch (err) {
       console.error(err);
-      toast.error("Lỗi xuất báo cáo Excel");
+      toast.error("Error exporting report");
     }
   };
+
+  // Calculate stats
+  const totalPOs = purchaseOrders.length;
+  const draftCount = purchaseOrders.filter(
+    (po) => po.status === PurchaseOrderStatus.DRAFT,
+  ).length;
+  const confirmedCount = purchaseOrders.filter(
+    (po) => po.status === PurchaseOrderStatus.CONFIRMED,
+  ).length;
 
   const columns = [
     { key: "po_no", label: "PO No" },
@@ -221,7 +235,7 @@ export default function PurchaseOrderPage() {
       label: "Order Date",
       render: (po: PurchaseOrder) =>
         po.order_date
-          ? new Date(po.order_date).toLocaleDateString("vi-VN")
+          ? new Date(po.order_date).toLocaleDateString("en-US")
           : "—",
     },
     {
@@ -239,104 +253,90 @@ export default function PurchaseOrderPage() {
       key: "status",
       label: "Status",
       render: (po: PurchaseOrder) => (
-        <span
-          className={`px-2 py-1 rounded text-xs font-medium
-    ${
-      po.status === "draft"
-        ? "bg-gray-100 text-gray-600"
-        : po.status === "waiting_approval"
-          ? "bg-amber-100 text-amber-700"
-          : po.status === "confirmed"
-            ? "bg-blue-100 text-blue-700"
-            : po.status === "partially_received"
-              ? "bg-indigo-100 text-indigo-700"
-              : po.status === "completed"
-                ? "bg-green-100 text-green-700"
-                : po.status === "cancelled"
-                  ? "bg-red-100 text-red-700"
-                  : "bg-gray-100 text-gray-600"
-    }
-  `}
-        >
-          {po.status.replace("_", " ")}
-        </span>
+        <StatusBadge status={po.status} variant="status" />
       ),
     },
     {
       key: "created_at",
       label: "Created At",
       render: (po: PurchaseOrder) =>
-        new Date(po.created_at).toLocaleDateString("vi-VN"),
+        new Date(po.created_at).toLocaleDateString("en-US"),
     },
   ];
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between bg-white px-6 py-4 rounded-xl border shadow-sm">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-800">
-            Purchase Orders
-          </h1>
-          <p className="text-sm text-gray-500">
-            Manage supplier purchase orders
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          <button className="flex items-center gap-1 border border-red-300 bg-red-100 text-red-600 px-3 py-1.5 rounded-lg text-sm hover:bg-red-200 transition">
-            <FileText className="w-4 h-4" />
-          </button>
-
-          <button className="flex items-center gap-1 border border-green-300 bg-green-100 text-green-600 px-3 py-1.5 rounded-lg text-sm hover:bg-green-200 transition">
-            <FileSpreadsheet className="w-4 h-4" />
-          </button>
-
-          <button
-            onClick={() => setOpenReportModal(true)}
-            className="flex items-center gap-1 border border-blue-300 bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg text-sm hover:bg-blue-200 transition"
-            title="Export Excel"
-          >
-            <Download className="w-4 h-4" />
-          </button>
-
-          <button
-            onClick={() => dispatch(fetchPurchaseOrdersThunk())}
-            className="flex items-center gap-1 border border-gray-300 bg-gray-50 text-gray-600 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-100 transition"
-          >
-            <RotateCw className="w-4 h-4" />
-          </button>
-
-          <button
-            onClick={() => setShowAdvancedFilter(!showAdvancedFilter)}
-            className="flex items-center gap-1 border border-gray-300 bg-gray-50 text-gray-600 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-100 transition"
-            title="Advanced Filter"
-          >
-            <Filter className="w-4 h-4" />
-          </button>
-
-          <Tooltip title={`Bulk Actions (${selectedIds.length} selected)`}>
-            <button
-              onClick={() => setBulkActionModalVisible(true)}
-              disabled={selectedIds.length === 0}
-              className="flex items-center gap-1 border border-purple-300 bg-purple-100 text-purple-600 px-3 py-1.5 rounded-lg text-sm hover:bg-purple-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Badge count={selectedIds.length} />
+      <PageHeader
+        title="Purchase Orders"
+        subtitle="Manage supplier purchase orders"
+        actions={
+          <div className="flex items-center gap-2 flex-wrap">
+            <button className="flex items-center gap-1 border border-red-300 bg-red-100 text-red-600 px-3 py-1.5 rounded-lg text-sm hover:bg-red-200 transition">
+              <FileText className="w-4 h-4" />
             </button>
-          </Tooltip>
 
-          <Link to="/purchase-orders/create">
-            <Button className="flex items-center gap-1 bg-[#ff8c00] hover:bg-[#ff7700] text-white px-4 py-2 rounded-lg shadow text-sm font-medium transition">
-              <Plus className="w-4 h-4" />
-              Add Purchase Order
+            <button className="flex items-center gap-1 border border-green-300 bg-green-100 text-green-600 px-3 py-1.5 rounded-lg text-sm hover:bg-green-200 transition">
+              <FileSpreadsheet className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => setOpenReportModal(true)}
+              className="flex items-center gap-1 border border-blue-300 bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg text-sm hover:bg-blue-200 transition"
+              title="Export Excel"
+            >
+              <Download className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => dispatch(fetchPurchaseOrdersThunk())}
+              className="flex items-center gap-1 border border-gray-300 bg-gray-50 text-gray-600 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-100 transition"
+            >
+              <RotateCw className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => setShowAdvancedFilter(!showAdvancedFilter)}
+              className="flex items-center gap-1 border border-gray-300 bg-gray-50 text-gray-600 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-100 transition"
+              title="Advanced Filter"
+            >
+              <Filter className="w-4 h-4" />
+            </button>
+
+            <Tooltip title={`Bulk Actions (${selectedIds.length} selected)`}>
+              <button
+                onClick={() => setBulkActionModalVisible(true)}
+                disabled={selectedIds.length === 0}
+                className="flex items-center gap-1 border border-purple-300 bg-purple-100 text-purple-600 px-3 py-1.5 rounded-lg text-sm hover:bg-purple-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Badge count={selectedIds.length} />
+              </button>
+            </Tooltip>
+
+            <Link to="/purchase-orders/create">
+              <Button className="flex items-center gap-1 bg-[#ff8c00] hover:bg-[#ff7700] text-white px-4 py-2 rounded-lg shadow text-sm font-medium transition">
+                <Plus className="w-4 h-4" />
+                Add Purchase Order
+              </Button>
+            </Link>
+
+            <Button className="flex items-center gap-1 bg-[#1a1d29] hover:bg-[#0f111a] text-white px-4 py-2 rounded-lg shadow text-sm font-medium transition">
+              <Upload className="w-4 h-4" />
+              Import PO
             </Button>
-          </Link>
+          </div>
+        }
+      />
 
-          <Button className="flex items-center gap-1 bg-[#1a1d29] hover:bg-[#0f111a] text-white px-4 py-2 rounded-lg shadow text-sm font-medium transition">
-            <Upload className="w-4 h-4" />
-            Import PO
-          </Button>
-        </div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <StatsCard
+          label="Total Purchase Orders"
+          value={totalPOs}
+          icon={FileText}
+        />
+        <StatsCard label="Draft" value={draftCount} icon={FileText} />
+        <StatsCard label="Confirmed" value={confirmedCount} icon={FileText} />
       </div>
 
       {/* Advanced Filter Panel */}
@@ -348,33 +348,46 @@ export default function PurchaseOrderPage() {
         />
       )}
 
-      {/* Data Table */}
-      <DataTable
-        data={purchaseOrders}
-        columns={columns}
-        loading={loading}
-        searchKeys={["po_no"]}
-        onView={(item) => {
-          navigate(`/purchase-orders/view/${item.id}`, { state: { po: item } });
-        }}
-        onEdit={(item) =>
-          item.status === "draft"
-            ? navigate(`/purchase-orders/edit/${item.id}`, {
-                state: { po: item },
-              })
-            : undefined
-        }
-        onDelete={
-          role === Roles.PURCHASE
-            ? (item) => {
-                setSelectedPO(item);
-                setConfirmOpen(true);
-              }
-            : undefined
-        }
-        canEdit={(item) => item.status === "draft" && role === Roles.PURCHASE}
-        canDelete={(item) => item.status === "draft"}
-      />
+      {/* Data Table or Empty State */}
+      {purchaseOrders.length === 0 ? (
+        <EmptyState
+          title="No Purchase Orders"
+          description="Start by creating a new purchase order"
+          actionLabel="Create Purchase Order"
+          onAction={() => navigate("/purchase-orders/create")}
+        />
+      ) : (
+        <DataTable
+          data={purchaseOrders}
+          columns={columns}
+          loading={loading}
+          searchKeys={["po_no"]}
+          onView={(item) => {
+            navigate(`/purchase-orders/view/${item.id}`, {
+              state: { po: item },
+            });
+          }}
+          onEdit={(item) =>
+            item.status === PurchaseOrderStatus.DRAFT
+              ? navigate(`/purchase-orders/edit/${item.id}`, {
+                  state: { po: item },
+                })
+              : undefined
+          }
+          onDelete={
+            role === Roles.PURCHASE
+              ? (item) => {
+                  setSelectedPO(item);
+                  setConfirmOpen(true);
+                }
+              : undefined
+          }
+          canEdit={(item) =>
+            item.status === PurchaseOrderStatus.DRAFT && role === Roles.PURCHASE
+          }
+          canDelete={(item) => item.status === PurchaseOrderStatus.DRAFT}
+        />
+      )}
 
       {/* Confirm Delete Modal */}
       {confirmOpen && (
@@ -382,7 +395,7 @@ export default function PurchaseOrderPage() {
           <div className="bg-white rounded-xl shadow-lg p-6 w-96 text-center">
             <Trash2 className="w-10 h-10 text-red-500 mx-auto mb-3" />
             <h2 className="text-lg font-semibold mb-2">
-              Are you sure you want to delete this Purchase Order?
+              Delete Purchase Order?
             </h2>
             <p className="text-sm text-gray-500 mb-5">
               This action cannot be undone.

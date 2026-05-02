@@ -34,8 +34,15 @@ router.get("/:id", accountRoles, apInvoiceController.getById);
 // POST /api/ap/invoices  — tạo thủ công (manual), không cần PO
 router.post("/", accountOnly, apInvoiceController.createManual);
 
-// POST /api/ap/invoices/from-po/:poId  — tạo từ PO (backward compatible)
+// POST /api/ap/invoices/from-po/:poId  — tạo từ PO (backward compatible, full remaining)
 router.post("/from-po/:poId", accountOnly, apInvoiceController.createFromPO);
+
+// POST /api/ap/invoices/from-po/:poId/partial  — tạo partial invoice với lines tùy chọn
+router.post(
+  "/from-po/:poId/partial",
+  accountOnly,
+  apInvoiceController.createPartialFromPO,
+);
 
 // ─── APPROVAL WORKFLOW ─────────────────────────────────────────────────────
 // POST /api/ap/invoices/:id/submit
@@ -46,5 +53,8 @@ router.put("/:id/approve", chaccOnly, apInvoiceController.approve);
 
 // PUT /api/ap/invoices/:id/reject
 router.put("/:id/reject", chaccOnly, apInvoiceController.reject);
+
+// DELETE /api/ap/invoices/:id  — chỉ draft chưa submit
+router.delete("/:id", accountOnly, apInvoiceController.deleteInvoice);
 
 export default router;

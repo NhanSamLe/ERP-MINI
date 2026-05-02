@@ -8,6 +8,7 @@ import { UomConversion } from "../../master-data/models/uomConversion.model";
 import { JwtPayload } from "../../../core/types/jwt";
 import {
   ApInvoice,
+  ApInvoiceLine,
   Branch,
   Partner,
   sequelize,
@@ -602,18 +603,25 @@ export const purchaseOrderService = {
   },
 
   async getAvailablePurchaseOrders(user: any) {
-    return PurchaseOrder.findAll({
+    // Step 1: Fetch POs
+    const pos = await PurchaseOrder.findAll({
       where: {
         branch_id: user.branch_id,
         status: {
-          [Op.in]: ["confirmed", "completed"],
+          [Op.in]: ["confirmed", "partially_received", "completed"],
         },
-        "$invoice.id$": { [Op.is]: null },
       },
       include: [
         {
+          // Include ALL invoices (no where filter here — filter in JS)
           model: ApInvoice,
-          as: "invoice",
+          as: "invoices",
+          required: false,
+          attributes: ["id", "total_after_tax", "status"],
+        },
+        {
+          model: PurchaseOrderLine,
+          as: "lines",
           required: false,
         },
         {
@@ -634,6 +642,113 @@ export const purchaseOrderService = {
       ],
       order: [["created_at", "DESC"]],
     });
+
+    // Step 2: Calculate invoiced/remaining in JS — exclude cancelled invoices
+    return pos.map((po: any) => {
+      const allInvoices: any[] = po.invoices ?? [];
+      const activeInvoices = allInvoices.filter(
+        (inv: any) => inv.status !== "cancelled",
+      );
+
+      const invoicedAmount = activeInvoices.reduce(
+        (sum: number, inv: any) => sum + Number(inv.total_after_tax ?? 0),
+        0,
+      );
+      const poTotal = Number(po.total_after_tax ?? 0);
+      const remainingAmount = Math.max(0, poTotal - invoicedAmount);
+      const invoiceCount = activeInvoices.length;
+
+      return {
+        ...po.toJSON(),
+        invoiced_amount: invoicedAmount,
+        remaining_amount: remainingAmount,
+        invoice_count: invoiceCount,
+      };
+    });
+  },
+
+  /**
+   * Get invoice summary for a specific PO — used when creating partial invoices.
+   * Returns per-line invoiced quantities so frontend can show remaining qty.
+   */
+  async getPoInvoiceSummary(poId: number, user: any) {
+    const po = await PurchaseOrder.findOne({
+      where: { id: poId, branch_id: user.branch_id },
+      include: [
+        {
+          model: PurchaseOrderLine,
+          as: "lines",
+          required: false,
+        },
+        {
+          // No where filter here — filter cancelled in JS
+          model: ApInvoice,
+          as: "invoices",
+          required: false,
+          attributes: ["id", "total_after_tax", "status"],
+          include: [
+            {
+              model: ApInvoiceLine,
+              as: "lines",
+              required: false,
+            },
+          ],
+        },
+      ],
+    });
+
+    if (!po) throw { status: 404, message: "Purchase Order not found" };
+
+    const poLines = (po as any).lines ?? [];
+    // Filter out cancelled invoices in JS
+    const invoices = ((po as any).invoices ?? []).filter(
+      (inv: any) => inv.status !== "cancelled",
+    );
+
+    // Sum invoiced qty per po_line_id across all non-cancelled invoices
+    const invoicedQtyByPoLine: Record<number, number> = {};
+    for (const inv of invoices) {
+      for (const invLine of inv.lines ?? []) {
+        if (invLine.po_line_id) {
+          invoicedQtyByPoLine[invLine.po_line_id] =
+            (invoicedQtyByPoLine[invLine.po_line_id] ?? 0) +
+            Number(invLine.quantity ?? 0);
+        }
+      }
+    }
+
+    const linesSummary = poLines.map((line: any) => ({
+      po_line_id: line.id,
+      product_id: line.product_id,
+      quantity: Number(line.quantity ?? 0),
+      unit_price: Number(line.unit_price ?? 0),
+      uom_id: line.uom_id,
+      tax_rate_id: line.tax_rate_id,
+      line_total: Number(line.line_total ?? 0),
+      line_tax: Number(line.line_tax ?? 0),
+      line_total_after_tax: Number(line.line_total_after_tax ?? 0),
+      invoiced_qty: invoicedQtyByPoLine[line.id] ?? 0,
+      remaining_qty:
+        Number(line.quantity ?? 0) - (invoicedQtyByPoLine[line.id] ?? 0),
+    }));
+
+    const totalInvoiced = invoices.reduce(
+      (sum: number, inv: any) => sum + Number(inv.total_after_tax ?? 0),
+      0,
+    );
+
+    return {
+      po_id: po.id,
+      po_no: (po as any).po_no,
+      total_after_tax: Number((po as any).total_after_tax ?? 0),
+      invoiced_amount: totalInvoiced,
+      remaining_amount: Math.max(
+        0,
+        Number((po as any).total_after_tax ?? 0) - totalInvoiced,
+      ),
+      invoice_count: invoices.length,
+      lines: linesSummary,
+    };
   },
   async calculateLine(line: any) {
     const taxRate = line.tax_rate_id
