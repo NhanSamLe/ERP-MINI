@@ -35,6 +35,7 @@ import chatbotRoutes from "../modules/ai-chatbot/routes";
 import documentRoutes, {
   matchingRouter,
 } from "../modules/document-intelligence/routes";
+import { narrativeRoutes } from "../modules/ai-narrative/routes";
 const router = express.Router();
 
 router.use("/auth", authRoutes);
@@ -78,5 +79,6 @@ router.use("/physical-inventories", physicalInventoryRoutes);
 router.use("/chatbot", chatbotRoutes);
 router.use("/documents", documentRoutes);
 router.use("/matching", matchingRouter);
+router.use("/ai-narrative", narrativeRoutes);
 
 export default router;

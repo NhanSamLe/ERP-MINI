@@ -58,6 +58,7 @@ export interface PurchaseOrderLine {
   uom_id?: number | null;
   qty_in_stock_uom?: number | null;
   unit_price: number;
+  discount?: number | null;
   tax_rate_id?: number;
   line_total: number;
   line_tax: number;

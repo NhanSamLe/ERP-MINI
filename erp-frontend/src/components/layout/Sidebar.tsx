@@ -16,6 +16,7 @@ import {
   ChevronRight,
   ChevronDown,
   Building2,
+  BrainCircuit,
 } from "lucide-react";
 
 interface MenuItem {
@@ -367,6 +368,14 @@ const menuItems: MenuItem[] = [
         allowedRoles: ["CEO", "ADMIN"],
       },
     ],
+  },
+
+  // ---------------- AI NARRATIVE ----------------
+  {
+    name: "AI Narrative",
+    icon: BrainCircuit,
+    path: "/ai-narrative",
+    allowedRoles: ["CEO", "ADMIN", "CHACC", "ACCOUNT", "BRANCH_MANAGER"],
   },
 
   // ---------------- ADMIN ----------------
