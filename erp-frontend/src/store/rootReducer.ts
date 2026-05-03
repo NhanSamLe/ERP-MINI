@@ -38,6 +38,7 @@ import { employeeReducer } from "../features/hrm/store/employee/employee.slice";
 import apInvoiceRouter from "../features/purchase/store/apInvoice/apInvoice.slice";
 import apPaymentReducer from "@/features/purchase/store/apPayment";
 import documentIntelligenceReducer from "@/features/purchase/store/documentIntelligence";
+import { narrativeReducer } from "@/features/ai-narrative/store/narrativeSlice";
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -74,6 +75,7 @@ const rootReducer = combineReducers({
   apInvoice: apInvoiceRouter,
   apPayment: apPaymentReducer,
   documentIntelligence: documentIntelligenceReducer,
+  narrative: narrativeReducer,
 });
 
 export default rootReducer;
