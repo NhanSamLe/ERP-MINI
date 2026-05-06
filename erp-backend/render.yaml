@@ -4,7 +4,7 @@ services:
     runtime: docker
     plan: free
     
-    # Build configuration
+    # Build configuration - Render will use docker-compose.yml
     dockerfilePath: ./Dockerfile
     
     # Environment variables
@@ -17,17 +17,17 @@ services:
       - key: LOG_LEVEL
         value: info
       
-      # Database Configuration (Railway/External)
+      # Database Configuration (Docker Compose MySQL)
       - key: DB_HOST
-        sync: false
+        value: mysql
       - key: DB_PORT
-        sync: false
+        value: "3306"
       - key: DB_USER
-        sync: false
+        value: root
       - key: DB_PASS
-        sync: false
+        sync: false  # Set in Render dashboard
       - key: DB_NAME
-        sync: false
+        value: erp_mini3
       
       # CORS Configuration
       - key: CORS_ORIGINS
