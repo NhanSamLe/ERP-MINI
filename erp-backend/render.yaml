@@ -4,8 +4,8 @@ services:
     runtime: docker
     plan: free
     
-    # Build configuration - Render will use docker-compose.yml
-    dockerfilePath: ./Dockerfile
+    # Build configuration - Render will use docker-compose.yml from root
+    dockerfilePath: ./erp-backend/Dockerfile
     
     # Environment variables
     envVars:
