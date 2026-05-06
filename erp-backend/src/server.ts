@@ -6,7 +6,7 @@ import { logger } from "./config/logger";
 import { initializeWebSocket } from "./config/websocket.config";
 import "./models";
 
-const PORT = env.port || 4040;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : env.port || 4040;
 
 async function startServer() {
   try {

@@ -2,9 +2,9 @@ services:
   - type: web
     name: erp-backend
     runtime: docker
-    plan: free  # FREE TIER
+    plan: free
     
-    # Build configuration - using docker-compose
+    # Build configuration
     dockerfilePath: ./Dockerfile
     
     # Environment variables
@@ -17,17 +17,17 @@ services:
       - key: LOG_LEVEL
         value: info
       
-      # Database Configuration (Docker Compose)
+      # Database Configuration (Railway/External)
       - key: DB_HOST
-        value: mysql
+        sync: false
       - key: DB_PORT
-        value: "3306"
+        sync: false
       - key: DB_USER
-        value: root
+        sync: false
       - key: DB_PASS
-        sync: false  # Set in Render dashboard for security
+        sync: false
       - key: DB_NAME
-        value: erp_mini3
+        sync: false
       
       # CORS Configuration
       - key: CORS_ORIGINS
@@ -35,9 +35,9 @@ services:
       
       # JWT Configuration
       - key: JWT_SECRET
-        sync: false  # Set in Render dashboard
+        sync: false
       - key: JWT_REFRESH_SECRET
-        sync: false  # Set in Render dashboard
+        sync: false
       - key: JWT_EXPIRES_IN
         value: 1h
       - key: REFRESH_TOKEN_EXPIRES_IN
@@ -45,23 +45,23 @@ services:
       - key: SALT_ROUNDS
         value: "10"
       
-      # Email Configuration (SMTP)
+      # Email Configuration
       - key: SMTP_HOST
         value: smtp.gmail.com
       - key: SMTP_PORT
         value: "587"
       - key: SMTP_USER
-        sync: false  # Set in Render dashboard
+        sync: false
       - key: SMTP_PASS
-        sync: false  # Set in Render dashboard
+        sync: false
       
       # Cloudinary Configuration
       - key: CLOUDINARY_CLOUD_NAME
         value: doxn6ztxq
       - key: CLOUDINARY_API_KEY
-        sync: false  # Set in Render dashboard
+        sync: false
       - key: CLOUDINARY_API_SECRET
-        sync: false  # Set in Render dashboard
+        sync: false
       
       # AI Chatbot Configuration
       - key: LLM_PROVIDER
@@ -69,7 +69,7 @@ services:
       - key: LLM_MODEL
         value: gpt-4o-mini
       - key: LLM_API_KEY
-        sync: false  # Set in Render dashboard
+        sync: false
       - key: LLM_TIMEOUT_MS
         value: "30000"
       - key: CHATBOT_CONTEXT_WINDOW
@@ -79,32 +79,11 @@ services:
       - key: USE_MOCK_LLM
         value: "false"
     
-    # Health check (required for free tier to prevent spin-down)
+    # Health check
     healthCheckPath: /health
     
-    # Scaling - FREE TIER: max 1 instance
+    # Scaling
     numInstances: 1
-    
-    # NO DISK for free tier (use SQLite or external storage)
-    # disk:
-    #   name: erp-backend-disk
-    #   mountPath: /app/uploads
-    #   sizeGB: 1
-
-# ⚠️ IMPORTANT NOTES FOR FREE TIER:
-# 1. Free tier services spin down after 15 minutes of inactivity
-# 2. First request after spin-down takes 30+ seconds
-# 3. No persistent disk storage - use Cloudinary for file uploads
-# 4. Limited to 1 instance
-# 5. 0.5 GB RAM, shared CPU
-# 6. Keep health check endpoint active to prevent spin-down
-# 7. Consider using external database (Railway, Supabase) instead of docker-compose MySQL
-#
-# RECOMMENDATIONS:
-# - Use Railway or Supabase for database (free tier available)
-# - Use Cloudinary for file uploads (already configured)
-# - Add keep-alive service to prevent spin-down
-# - Monitor performance and upgrade if needed
 #     plan: standard
 #     version: "8.0"  # MySQL version
 #     ipAllowList: []  # Allow all IPs from Render services
