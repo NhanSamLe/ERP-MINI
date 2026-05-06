@@ -2,7 +2,7 @@ services:
   - type: web
     name: erp-backend
     runtime: docker
-    plan: standard
+    plan: free  # FREE TIER
     
     # Build configuration - using docker-compose
     dockerfilePath: ./Dockerfile
@@ -13,7 +13,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 8888
+        value: 10000
       - key: LOG_LEVEL
         value: info
       
@@ -31,7 +31,7 @@ services:
       
       # CORS Configuration
       - key: CORS_ORIGINS
-        value: https://yourdomain.com,https://www.yourdomain.com
+        value: https://yourdomain.onrender.com
       
       # JWT Configuration
       - key: JWT_SECRET
@@ -75,24 +75,44 @@ services:
       - key: CHATBOT_CONTEXT_WINDOW
         value: "20"
       - key: APP_BASE_URL
-        value: https://yourdomain.com/api
+        value: https://yourdomain.onrender.com/api
       - key: USE_MOCK_LLM
         value: "false"
     
-    # Health check
+    # Health check (required for free tier to prevent spin-down)
     healthCheckPath: /health
     
-    # Scaling
+    # Scaling - FREE TIER: max 1 instance
     numInstances: 1
     
-    # Disk for uploads
-    disk:
-      name: erp-backend-disk
-      mountPath: /app/uploads
-      sizeGB: 10
+    # NO DISK for free tier (use SQLite or external storage)
+    # disk:
+    #   name: erp-backend-disk
+    #   mountPath: /app/uploads
+    #   sizeGB: 1
 
-# Note: For docker-compose deployment on Render:
-# 1. Render will use docker-compose.yml if present
-# 2. Make sure docker-compose.yml is in the root directory
-# 3. Services defined in docker-compose.yml will be deployed together
-# 4. Environment variables from render.yaml will be passed to docker-compose services
+# ⚠️ IMPORTANT NOTES FOR FREE TIER:
+# 1. Free tier services spin down after 15 minutes of inactivity
+# 2. First request after spin-down takes 30+ seconds
+# 3. No persistent disk storage - use Cloudinary for file uploads
+# 4. Limited to 1 instance
+# 5. 0.5 GB RAM, shared CPU
+# 6. Keep health check endpoint active to prevent spin-down
+# 7. Consider using external database (Railway, Supabase) instead of docker-compose MySQL
+#
+# RECOMMENDATIONS:
+# - Use Railway or Supabase for database (free tier available)
+# - Use Cloudinary for file uploads (already configured)
+# - Add keep-alive service to prevent spin-down
+# - Monitor performance and upgrade if needed
+#     plan: standard
+#     version: "8.0"  # MySQL version
+#     ipAllowList: []  # Allow all IPs from Render services
+
+# Cron jobs (optional)
+# jobs:
+#   - name: database-backup
+#     runtime: docker
+#     dockerfilePath: ./Dockerfile
+#     startCommand: npm run backup
+#     schedule: "0 2 * * *"  # Daily at 2 AM UTC
