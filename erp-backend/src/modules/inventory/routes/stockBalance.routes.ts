@@ -8,21 +8,33 @@ const router = Router();
 router.get(
   "/",
   authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
-  stockBalanceController.getAll
+  stockBalanceController.getAll,
+);
+router.get(
+  "/grouped",
+  authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
+  stockBalanceController.getGrouped,
 );
 router.get(
   "/:id",
   authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
-  stockBalanceController.getById
+  stockBalanceController.getById,
 );
 router.get(
   "/warehouse/:warehouseId",
   authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
-  stockBalanceController.findByWarehouse
+  stockBalanceController.findByWarehouse,
 );
 router.get(
   "/product/:productId",
   authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
-  stockBalanceController.findByProduct
+  stockBalanceController.findByProduct,
 );
+
+router.post(
+  "/recalculate-costs",
+  authMiddleware([Role.ADMIN, Role.WHMANAGER]),
+  stockBalanceController.recalculateCosts,
+);
+
 export default router;

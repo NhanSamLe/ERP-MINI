@@ -21,6 +21,8 @@ import {
   searchProductsThunk,
 } from "../../products/store/product.thunks";
 import { fetchTaxRatesByIdThunk } from "../../master-data/store/master-data/tax/tax.thunks";
+import { fetchAllUomsThunk } from "../../master-data/store/master-data/uom/uom.thunks";
+import { fetchAllConversionsThunk } from "../../master-data/store/master-data/conversion/conversion.thunks";
 import {
   fetchPurchaseOrderByIdThunk,
   updatePurchaseOrderThunk,
@@ -29,6 +31,11 @@ import { toast } from "react-toastify";
 import { PurchaseOrderLine, PurchaseOrderUpdate } from "../store";
 import { Branch, fetchBranch } from "@/features/company/branch.service";
 import { loadPartners } from "@/features/partner/store/partner.thunks";
+import {
+  getValidUomsForProduct,
+  previewQtyInStockUom,
+} from "../utils/uomHelper";
+import { PurchaseOrderStatus } from "../constants/purchaseStatus.enum";
 
 interface LineItem {
   id?: number;
@@ -39,6 +46,8 @@ interface LineItem {
   sale_price?: number;
   sku?: string;
   quantity: number;
+  uom_id?: number | null;
+  stock_uom_id?: number | null;
   tax_rate_id?: number;
   tax_type: string;
   tax_rate: number;
@@ -53,10 +62,16 @@ export default function EditPurchaseOrderPage() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const purchaseOrder = useSelector(
-    (state: RootState) => state.purchaseOrder.selectedPO
+    (state: RootState) => state.purchaseOrder.selectedPO,
   );
 
   const partners = useSelector((state: RootState) => state.partners);
+  const uoms = useSelector(
+    (state: RootState) => (state as any).uom?.Uoms ?? [],
+  );
+  const conversions = useSelector(
+    (state: RootState) => (state as any).conversion?.UomConversions ?? [],
+  );
 
   const [supplierId, setSupplierId] = useState("");
   const [date, setDate] = useState("");
@@ -79,6 +94,8 @@ export default function EditPurchaseOrderPage() {
   useEffect(() => {
     if (id) dispatch(fetchPurchaseOrderByIdThunk(Number(id)));
     dispatch(loadPartners({ type: "supplier" }));
+    dispatch(fetchAllUomsThunk());
+    dispatch(fetchAllConversionsThunk());
   }, [dispatch, id]);
 
   const selectedSupplierName =
@@ -142,14 +159,21 @@ export default function EditPurchaseOrderPage() {
     }
 
     const tax = await dispatch(
-      fetchTaxRatesByIdThunk(product.tax_rate_id || 0)
+      fetchTaxRatesByIdThunk(product.tax_rate_id || 0),
     ).unwrap();
 
     console.log("Selected Product Tax:", tax);
 
     const rate = Number(tax?.rate || 0);
     const qty = 1;
-    const price = Number(product.sale_price || 0);
+
+    // Ưu tiên: giá từ supplier info của NCC đang chọn → cost_price → 0
+    const allSupplierInfos =
+      (product as any).supplierInfos ?? product.supplierInfo ?? [];
+    const supplierPrice = allSupplierInfos.find(
+      (s: any) => s.supplier_id === Number(supplierId),
+    )?.price;
+    const price = Number(supplierPrice ?? product.cost_price ?? 0);
 
     const taxAmount = qty * price * (rate / 100);
     const lineTotal = qty * price + taxAmount;
@@ -163,6 +187,8 @@ export default function EditPurchaseOrderPage() {
       sku: product.sku,
       sale_price: price,
       quantity: qty,
+      uom_id: product.purchase_uom_id ?? product.uom_id ?? null,
+      stock_uom_id: product.uom_id ?? null,
       tax_rate_id: product.tax_rate_id,
       tax_type: tax?.type ?? "VAT",
       tax_rate: rate,
@@ -175,15 +201,15 @@ export default function EditPurchaseOrderPage() {
 
     const totalBeforeTax = updatedLines.reduce(
       (sum, l) => sum + (l.sale_price || 0) * l.quantity,
-      0
+      0,
     );
     const totalTax = updatedLines.reduce(
       (sum, l) => Number(sum) + Number(l.tax_amount || 0),
-      0
+      0,
     );
     const totalAfterTax = updatedLines.reduce(
       (sum, l) => sum + l.line_total,
-      0
+      0,
     );
 
     setTotalBeforeTax(totalBeforeTax);
@@ -210,11 +236,11 @@ export default function EditPurchaseOrderPage() {
       const enrichedLines = await Promise.all(
         linesToLoad.map(async (l: PurchaseOrderLine) => {
           const product = await dispatch(
-            fetchProductByIdThunk(Number(l.product_id))
+            fetchProductByIdThunk(Number(l.product_id)),
           ).unwrap();
 
           const tax = await dispatch(
-            fetchTaxRatesByIdThunk(product.tax_rate_id || 0)
+            fetchTaxRatesByIdThunk(product.tax_rate_id || 0),
           ).unwrap();
           return {
             id: l.id ?? undefined,
@@ -225,13 +251,19 @@ export default function EditPurchaseOrderPage() {
             product_image: product.image_url ?? "",
             sale_price: Number(l.unit_price || 0),
             quantity: Number(l.quantity || 0),
+            uom_id:
+              (l as any).uom_id ??
+              product.purchase_uom_id ??
+              product.uom_id ??
+              null,
+            stock_uom_id: product.uom_id ?? null,
             tax_rate: tax?.rate || 0,
             tax_rate_id: product.tax_rate_id,
             tax_type: tax?.type || "VAT",
             tax_amount: Number(l.line_tax || 0),
             line_total: Number(l.line_total_after_tax || 0),
           };
-        })
+        }),
       );
 
       setLines(enrichedLines);
@@ -239,11 +271,11 @@ export default function EditPurchaseOrderPage() {
       // tính totals
       const before = enrichedLines.reduce(
         (s, l) => s + (l.sale_price || 0) * l.quantity,
-        0
+        0,
       );
       const tax = enrichedLines.reduce(
         (sum, line) => sum + Number(line.tax_amount || 0),
-        0
+        0,
       );
       const after = finalPO?.total_after_tax ?? 0;
 
@@ -258,7 +290,7 @@ export default function EditPurchaseOrderPage() {
   const updateLine = (
     temp_id: number,
     field: keyof LineItem,
-    value: number
+    value: number,
   ) => {
     if (field === "quantity" && value <= 0) {
       removeLine(temp_id);
@@ -284,12 +316,12 @@ export default function EditPurchaseOrderPage() {
 
     const totalBeforeTax = updatedLines.reduce(
       (sum, l) => sum + (l.sale_price || 0) * l.quantity,
-      0
+      0,
     );
     const totalTax = updatedLines.reduce((sum, l) => sum + l.tax_amount, 0);
     const totalAfterTax = updatedLines.reduce(
       (sum, l) => sum + l.line_total,
-      0
+      0,
     );
 
     setTotalBeforeTax(totalBeforeTax);
@@ -303,7 +335,7 @@ export default function EditPurchaseOrderPage() {
 
       const totalBeforeTax = updated.reduce(
         (sum, l) => sum + (l.sale_price || 0) * l.quantity,
-        0
+        0,
       );
 
       const totalTax = updated.reduce((sum, l) => sum + l.tax_amount, 0);
@@ -324,10 +356,10 @@ export default function EditPurchaseOrderPage() {
     setIsSubmitting(true);
     try {
       const checkStatusOrder = await dispatch(
-        fetchPurchaseOrderByIdThunk(Number(id))
+        fetchPurchaseOrderByIdThunk(Number(id)),
       ).unwrap();
 
-      if (checkStatusOrder.status !== "draft") {
+      if (checkStatusOrder.status !== PurchaseOrderStatus.DRAFT) {
         toast.error("This Purchase Order is no longer editable.");
         navigate("/purchase/orders");
         return;
@@ -354,13 +386,14 @@ export default function EditPurchaseOrderPage() {
       const currentLineIds = lines.map((l) => l.id).filter(Boolean);
 
       const deletedLineIds = existingLineIds.filter(
-        (id): id is number => id !== undefined && !currentLineIds.includes(id)
+        (id): id is number => id !== undefined && !currentLineIds.includes(id),
       );
 
       const updatedLines: PurchaseOrderLine[] = lines.map((l) => ({
         id: l.id,
         product_id: Number(l.product_id),
         quantity: Number(l.quantity),
+        uom_id: l.uom_id ?? undefined,
         unit_price: Number(l.sale_price ?? 0),
         tax_rate_id: l.tax_rate_id ? Number(l.tax_rate_id) : undefined,
         line_total: Number(l.line_total),
@@ -375,7 +408,7 @@ export default function EditPurchaseOrderPage() {
         order_date: date,
         total_before_tax: lines.reduce(
           (sum, l) => sum + (l.sale_price ?? 0) * l.quantity,
-          0
+          0,
         ),
         total_tax: lines.reduce((sum, l) => sum + l.tax_amount, 0),
         total_after_tax: lines.reduce((sum, l) => sum + l.line_total, 0),
@@ -385,7 +418,7 @@ export default function EditPurchaseOrderPage() {
       };
 
       await dispatch(
-        updatePurchaseOrderThunk({ id: Number(id), body: requestBody })
+        updatePurchaseOrderThunk({ id: Number(id), body: requestBody }),
       ).unwrap();
 
       toast.success("Purchase Order updated!");
@@ -516,6 +549,7 @@ export default function EditPurchaseOrderPage() {
                 <th className="px-4 py-3 text-center font-medium">Image</th>
                 <th className="px-4 py-3 text-center font-medium">Price</th>
                 <th className="px-4 py-3 text-center font-medium">Quantity</th>
+                <th className="px-4 py-3 text-center font-medium">UOM</th>
                 <th className="px-4 py-3 text-center font-medium">Tax Type</th>
                 <th className="px-4 py-3 text-center font-medium">
                   Tax Rate(%)
@@ -527,7 +561,7 @@ export default function EditPurchaseOrderPage() {
             <tbody>
               {lines.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-16 text-gray-500">
+                  <td colSpan={10} className="text-center py-16 text-gray-500">
                     Chưa có sản phẩm. Hãy tìm kiếm và thêm ở trên
                   </td>
                 </tr>
@@ -576,6 +610,59 @@ export default function EditPurchaseOrderPage() {
                             updateLine(line.temp_id, "quantity", qty);
                         }}
                       />
+                    </td>
+
+                    <td className="px-4 py-3 text-center">
+                      {(() => {
+                        const validUoms = getValidUomsForProduct(
+                          uoms,
+                          conversions,
+                          line.stock_uom_id,
+                        );
+                        const qtyPreview = previewQtyInStockUom(
+                          line.quantity,
+                          line.uom_id,
+                          line.stock_uom_id,
+                          conversions,
+                        );
+                        const stockUomName =
+                          uoms.find((u) => u.id === line.stock_uom_id)?.name ??
+                          "";
+                        return (
+                          <div className="flex flex-col items-center gap-1">
+                            <select
+                              className="border rounded px-2 py-1 text-sm w-28"
+                              value={line.uom_id ?? ""}
+                              onChange={(e) => {
+                                const val = e.target.value
+                                  ? Number(e.target.value)
+                                  : null;
+                                setLines((prev) =>
+                                  prev.map((l) =>
+                                    l.temp_id === line.temp_id
+                                      ? { ...l, uom_id: val }
+                                      : l,
+                                  ),
+                                );
+                              }}
+                            >
+                              <option value="">-- UOM --</option>
+                              {validUoms.map((u) => (
+                                <option key={u.id} value={u.id}>
+                                  {u.name}
+                                </option>
+                              ))}
+                            </select>
+                            {line.uom_id &&
+                              line.stock_uom_id &&
+                              line.uom_id !== line.stock_uom_id && (
+                                <span className="text-xs text-gray-400">
+                                  ≈ {qtyPreview.toFixed(2)} {stockUomName}
+                                </span>
+                              )}
+                          </div>
+                        );
+                      })()}
                     </td>
 
                     <td className="px-4 py-3 text-center capitalize">

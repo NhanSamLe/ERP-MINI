@@ -6,6 +6,8 @@ export interface PurchaseOrderLineAttrs {
   po_id: number;
   product_id?: number;
   quantity?: number;
+  uom_id?: number;
+  qty_in_stock_uom?: number;
   unit_price?: number;
   discount?: number;
   tax_rate_id?: number;
@@ -24,6 +26,8 @@ export class PurchaseOrderLine
   public po_id!: number;
   public product_id?: number;
   public quantity?: number;
+  public uom_id?: number;
+  public qty_in_stock_uom?: number;
   public unit_price?: number;
   public discount?: number;
   public tax_rate_id?: number;
@@ -38,6 +42,8 @@ PurchaseOrderLine.init(
     po_id: { type: DataTypes.BIGINT, allowNull: false },
     product_id: { type: DataTypes.BIGINT },
     quantity: { type: DataTypes.DECIMAL(18, 3) },
+    uom_id: { type: DataTypes.BIGINT, allowNull: true },
+    qty_in_stock_uom: { type: DataTypes.DECIMAL(18, 3), allowNull: true },
     unit_price: { type: DataTypes.DECIMAL(18, 2) },
     discount: {
       type: DataTypes.DECIMAL(5, 2),

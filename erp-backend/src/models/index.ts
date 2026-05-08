@@ -59,6 +59,7 @@ import { ApInvoice } from "../modules/purchase/models/apInvoice.model";
 import { ApInvoiceLine } from "../modules/purchase/models/apInvoiceLine.model";
 import { ApPayment } from "../modules/purchase/models/apPayment.model";
 import { ApPaymentAllocation } from "../modules/purchase/models/apPaymentAllocation.model";
+import { ApPaymentAuditLog } from "../modules/purchase/models/apPaymentAuditLog.model";
 // Inventory
 import { Warehouse } from "../modules/inventory/models/warehouse.model";
 import { StockMove } from "../modules/inventory/models/stockMove.model";
@@ -86,6 +87,12 @@ import { FiscalYear } from "../modules/finance/models/fiscalYear.model";
 import { FiscalPeriod } from "../modules/finance/models/fiscalPeriod.model";
 // Core
 import { Notification } from "../core/models/notification.model";
+// AI Chatbot
+import { Conversation } from "../modules/ai-chatbot/models/conversation.model";
+import { ChatMessage } from "../modules/ai-chatbot/models/message.model";
+// Document Intelligence
+import { InvoiceDocument } from "../modules/document-intelligence/models/invoiceDocument.model";
+import { OcrFieldMapping } from "../modules/document-intelligence/models/ocrFieldMapping.model";
 // Associations
 import { applyAssociations } from "./associations";
 
@@ -129,6 +136,7 @@ export {
   ApInvoiceLine,
   ApPayment,
   ApPaymentAllocation,
+  ApPaymentAuditLog,
   Warehouse,
   StockMove,
   StockMoveLine,
@@ -171,4 +179,8 @@ export {
   ArCreditNoteLine,
   ArRefund,
   Notification,
+  Conversation,
+  ChatMessage,
+  InvoiceDocument,
+  OcrFieldMapping,
 };

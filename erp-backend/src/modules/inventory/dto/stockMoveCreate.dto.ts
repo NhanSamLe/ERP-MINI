@@ -22,6 +22,9 @@ export interface StockMoveLineDTO {
     lot_no: string;
     expiry_date?: string | null;
     manufacture_date?: string | null;
+    serial_no?: string | null;
+    supplier_id?: number | null;
+    notes?: string | null;
   } | null;
 }
 

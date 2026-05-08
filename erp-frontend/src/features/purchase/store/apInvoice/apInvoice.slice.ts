@@ -7,7 +7,10 @@ import {
   approveApInvoiceThunk,
   rejectApInvoiceThunk,
   createApInvoiceFromPoThunk,
+  createPartialApInvoiceFromPoThunk,
+  createManualApInvoiceThunk,
   fetchApPostedSummaryThunk,
+  deleteApInvoiceThunk,
 } from "./apInvoice.thunks";
 
 interface ApInvoiceState {
@@ -52,6 +55,7 @@ const apInvoiceSlice = createSlice({
         state.selected = action.payload;
       })
 
+      /* ===== CREATE FROM PO ===== */
       .addCase(createApInvoiceFromPoThunk.pending, (state) => {
         state.loading = true;
         state.error = undefined;
@@ -66,6 +70,36 @@ const apInvoiceSlice = createSlice({
         state.error = action.payload;
       })
 
+      /* ===== CREATE PARTIAL FROM PO ===== */
+      .addCase(createPartialApInvoiceFromPoThunk.pending, (state) => {
+        state.loading = true;
+        state.error = undefined;
+      })
+      .addCase(createPartialApInvoiceFromPoThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        state.list.unshift(action.payload);
+        state.selected = action.payload;
+      })
+      .addCase(createPartialApInvoiceFromPoThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      /* ===== CREATE MANUAL ===== */
+      .addCase(createManualApInvoiceThunk.pending, (state) => {
+        state.loading = true;
+        state.error = undefined;
+      })
+      .addCase(createManualApInvoiceThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        state.list.unshift(action.payload);
+        state.selected = action.payload;
+      })
+      .addCase(createManualApInvoiceThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
       /* ===== SUBMIT / APPROVE / REJECT ===== */
       .addCase(submitApInvoiceThunk.fulfilled, (state, action) => {
         updateInvoiceInState(state, action.payload);
@@ -75,6 +109,14 @@ const apInvoiceSlice = createSlice({
       })
       .addCase(rejectApInvoiceThunk.fulfilled, (state, action) => {
         updateInvoiceInState(state, action.payload);
+      })
+
+      /* ===== DELETE ===== */
+      .addCase(deleteApInvoiceThunk.fulfilled, (state, action) => {
+        state.list = state.list.filter((i) => i.id !== action.payload);
+        if (state.selected?.id === action.payload) {
+          state.selected = undefined;
+        }
       })
 
       .addCase(fetchApPostedSummaryThunk.pending, (state) => {

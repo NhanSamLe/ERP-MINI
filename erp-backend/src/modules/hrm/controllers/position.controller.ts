@@ -4,8 +4,8 @@ import {
   getPositionById,
   createPosition,
   updatePosition,
-  deletePosition,
   PositionFilter,
+  togglePositionStatus,
 } from "../services/position.service";
 
 export async function listPositions(req: Request, res: Response) {
@@ -66,15 +66,20 @@ export async function updatePositionHandler(req: Request, res: Response) {
     });
   }
 }
-
-export async function deletePositionHandler(req: Request, res: Response) {
+export async function togglePositionStatusHandler(
+  req: Request,
+  res: Response
+) {
   try {
     const id = Number(req.params.id);
-    await deletePosition(id);
-    res.json({ success: true });
+    const { status } = req.body;
+
+    const row = await togglePositionStatus(id, status);
+
+    res.json(row);
   } catch (err: any) {
     res.status(400).json({
-      message: err.message || "Error deleting position",
+      message: err.message || "Error updating position status",
     });
   }
 }

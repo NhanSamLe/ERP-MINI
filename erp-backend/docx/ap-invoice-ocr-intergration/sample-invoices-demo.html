@@ -1,0 +1,1719 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Hóa Đơn Mẫu Demo — OCR Test</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: "Times New Roman", serif;
+        background: #e5e7eb;
+      }
+
+      /* ── Page wrapper ── */
+      .invoice-page {
+        width: 210mm;
+        min-height: 297mm;
+        background: white;
+        margin: 20px auto;
+        padding: 20mm 18mm;
+        position: relative;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+        page-break-after: always;
+      }
+
+      /* ── Header ── */
+      .inv-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 8px;
+      }
+      .inv-logo {
+        font-size: 22px;
+        font-weight: 900;
+        color: #1a1a2e;
+        letter-spacing: -0.5px;
+      }
+      .inv-logo span {
+        color: #e94560;
+      }
+      .inv-type {
+        text-align: right;
+      }
+      .inv-type h1 {
+        font-size: 20px;
+        font-weight: 900;
+        color: #1a1a2e;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+      .inv-type .inv-no {
+        font-size: 13px;
+        color: #64748b;
+        margin-top: 4px;
+      }
+      .inv-type .inv-date {
+        font-size: 13px;
+        color: #64748b;
+      }
+
+      .divider-thick {
+        height: 3px;
+        background: linear-gradient(90deg, #1a1a2e, #e94560);
+        margin: 12px 0;
+        border-radius: 2px;
+      }
+      .divider-thin {
+        height: 1px;
+        background: #e2e8f0;
+        margin: 10px 0;
+      }
+
+      /* ── Parties ── */
+      .parties {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        margin: 16px 0;
+      }
+      .party-box {
+        background: #f8fafc;
+        border-radius: 8px;
+        padding: 14px 16px;
+        border-left: 3px solid #e94560;
+      }
+      .party-box.buyer {
+        border-left-color: #3b82f6;
+      }
+      .party-label {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #94a3b8;
+        margin-bottom: 8px;
+      }
+      .party-name {
+        font-size: 14px;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin-bottom: 4px;
+      }
+      .party-detail {
+        font-size: 12px;
+        color: #475569;
+        line-height: 1.7;
+      }
+
+      /* ── Table ── */
+      .inv-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+        font-size: 12px;
+      }
+      .inv-table thead tr {
+        background: #1a1a2e;
+        color: white;
+      }
+      .inv-table thead th {
+        padding: 10px 12px;
+        text-align: left;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .inv-table thead th:last-child,
+      .inv-table thead th:nth-child(3),
+      .inv-table thead th:nth-child(4) {
+        text-align: right;
+      }
+      .inv-table tbody tr {
+        border-bottom: 1px solid #f1f5f9;
+      }
+      .inv-table tbody tr:nth-child(even) {
+        background: #f8fafc;
+      }
+      .inv-table tbody td {
+        padding: 10px 12px;
+        color: #334155;
+        vertical-align: top;
+      }
+      .inv-table tbody td:nth-child(3),
+      .inv-table tbody td:nth-child(4),
+      .inv-table tbody td:last-child {
+        text-align: right;
+      }
+      .inv-table tfoot tr {
+        background: #f1f5f9;
+      }
+      .inv-table tfoot td {
+        padding: 8px 12px;
+        font-size: 12px;
+      }
+      .inv-table tfoot .total-row {
+        background: #1a1a2e;
+        color: white;
+        font-weight: 700;
+        font-size: 13px;
+      }
+
+      /* ── Summary ── */
+      .inv-summary {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 8px;
+      }
+      .summary-box {
+        width: 260px;
+      }
+      .summary-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 0;
+        font-size: 13px;
+        border-bottom: 1px solid #f1f5f9;
+      }
+      .summary-row.total {
+        font-weight: 800;
+        font-size: 15px;
+        color: #e94560;
+        border-bottom: none;
+        padding-top: 10px;
+      }
+      .summary-label {
+        color: #64748b;
+      }
+      .summary-value {
+        font-weight: 600;
+        color: #1a1a2e;
+      }
+
+      /* ── Notes ── */
+      .inv-notes {
+        margin-top: 24px;
+        padding: 14px 16px;
+        background: #fef3c7;
+        border-radius: 8px;
+        border-left: 3px solid #f59e0b;
+      }
+      .inv-notes p {
+        font-size: 12px;
+        color: #92400e;
+        line-height: 1.7;
+      }
+
+      /* ── Footer ── */
+      .inv-footer {
+        margin-top: 32px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+      }
+      .sign-box {
+        text-align: center;
+      }
+      .sign-label {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #64748b;
+        letter-spacing: 0.5px;
+      }
+      .sign-space {
+        height: 60px;
+        border-bottom: 1px dashed #cbd5e1;
+        margin: 12px 0 8px;
+      }
+      .sign-name {
+        font-size: 12px;
+        color: #334155;
+      }
+
+      /* ── Watermark for bad quality invoice ── */
+      .watermark {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-35deg);
+        font-size: 80px;
+        font-weight: 900;
+        color: rgba(0, 0, 0, 0.04);
+        white-space: nowrap;
+        pointer-events: none;
+        z-index: 0;
+        letter-spacing: 4px;
+      }
+      .blurry {
+        filter: blur(0.6px);
+        opacity: 0.85;
+      }
+      .blurry-text {
+        color: #9ca3af !important;
+      }
+
+      /* ── Badge ── */
+      .demo-badge {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        background: #e94560;
+        color: white;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 20px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      /* ── Page label ── */
+      .page-label {
+        background: #1a1a2e;
+        color: white;
+        text-align: center;
+        padding: 10px;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        margin-bottom: 0;
+      }
+      .page-label span {
+        color: #e94560;
+      }
+
+      @media print {
+        body {
+          background: white;
+        }
+        .invoice-page {
+          margin: 0;
+          box-shadow: none;
+        }
+        .page-label {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ══════════════════════════════════════════════════════
+     HÓA ĐƠN 1: CÓ PO — TC-01 HAPPY PATH
+     Nước suối Lavie — Confidence cao — Tạo tự động
+══════════════════════════════════════════════════════ -->
+    <div class="page-label">
+      📄 HÓA ĐƠN 1 — <span>Có PO · Confidence Cao · TC-01 Happy Path</span> — In
+      trang này để test upload OCR tự động
+    </div>
+    <div class="invoice-page">
+      <div class="demo-badge">Demo TC-01</div>
+
+      <div class="inv-header">
+        <div>
+          <div class="inv-logo">ERP<span>Mini</span></div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 4px">
+            Hệ thống quản lý doanh nghiệp
+          </div>
+        </div>
+        <div class="inv-type">
+          <h1>Hóa Đơn Giá Trị Gia Tăng</h1>
+          <div class="inv-no">Số hóa đơn: <strong>HD-2024-0055</strong></div>
+          <div class="inv-date">Ngày: <strong>15/03/2024</strong></div>
+          <div class="inv-date">
+            Ký hiệu: <strong>1C24TAA</strong> &nbsp;|&nbsp; Mẫu số:
+            <strong>01GTKT0/001</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider-thick"></div>
+
+      <div class="parties">
+        <div class="party-box">
+          <div class="party-label">🏭 Người Bán (Nhà Cung Cấp)</div>
+          <div class="party-name">
+            Công Ty TNHH Nước Giải Khát Lavie Việt Nam
+          </div>
+          <div class="party-detail">
+            Mã số thuế: <strong>0301234567</strong><br />
+            Địa chỉ: 123 Đường Nguyễn Văn Linh, Q.7, TP.HCM<br />
+            Điện thoại: 028-3456-7890<br />
+            Email: billing@lavie.com.vn<br />
+            Tài khoản: 1234567890 — Vietcombank
+          </div>
+        </div>
+        <div class="party-box buyer">
+          <div class="party-label">🏢 Người Mua</div>
+          <div class="party-name">Công Ty Cổ Phần Thương Mại XYZ</div>
+          <div class="party-detail">
+            Mã số thuế: <strong>0987654321</strong><br />
+            Địa chỉ: 456 Lê Văn Việt, Q.9, TP.HCM<br />
+            Điện thoại: 028-9876-5432<br />
+            Người nhận: Nguyễn Thị Lan (Kế toán)<br />
+            Đơn đặt hàng: <strong>PO-2024-0123</strong>
+          </div>
+        </div>
+      </div>
+
+      <table class="inv-table">
+        <thead>
+          <tr>
+            <th style="width: 5%">STT</th>
+            <th style="width: 35%">Tên hàng hóa / Dịch vụ</th>
+            <th style="width: 8%">ĐVT</th>
+            <th style="width: 10%">Số lượng</th>
+            <th style="width: 18%">Đơn giá (VNĐ)</th>
+            <th style="width: 10%">Thuế (%)</th>
+            <th style="width: 14%">Thành tiền (VNĐ)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>
+              <strong>Nước suối Lavie 500ml</strong><br />
+              <span style="color: #94a3b8; font-size: 11px"
+                >SKU: LAV500 · Lô: L2024031501</span
+              >
+            </td>
+            <td>Thùng</td>
+            <td>10</td>
+            <td>168,000</td>
+            <td>10%</td>
+            <td>1,680,000</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>
+              <strong>Nước suối Lavie 1.5L</strong><br />
+              <span style="color: #94a3b8; font-size: 11px"
+                >SKU: LAV1500 · Lô: L2024031502</span
+              >
+            </td>
+            <td>Thùng</td>
+            <td>5</td>
+            <td>210,000</td>
+            <td>10%</td>
+            <td>1,050,000</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td>
+              <strong>Nước khoáng Lavie Sparkling 330ml</strong><br />
+              <span style="color: #94a3b8; font-size: 11px"
+                >SKU: LAVSP330 · Lô: L2024031503</span
+              >
+            </td>
+            <td>Thùng</td>
+            <td>8</td>
+            <td>195,000</td>
+            <td>10%</td>
+            <td>1,560,000</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="6" style="text-align: right; color: #64748b">
+              Cộng tiền hàng:
+            </td>
+            <td style="text-align: right; font-weight: 700">4,290,000</td>
+          </tr>
+          <tr>
+            <td colspan="6" style="text-align: right; color: #64748b">
+              Thuế GTGT (10%):
+            </td>
+            <td style="text-align: right; font-weight: 700">429,000</td>
+          </tr>
+          <tr class="total-row">
+            <td colspan="6" style="text-align: right">TỔNG CỘNG THANH TOÁN:</td>
+            <td style="text-align: right">4,719,000</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <div class="inv-notes">
+        <p>
+          <strong>Ghi chú:</strong> Hàng hóa đã được giao đầy đủ theo Phiếu Nhập
+          Kho số <strong>GRN-2024-0089</strong> ngày 14/03/2024.<br />
+          Thanh toán trong vòng 30 ngày kể từ ngày nhận hóa đơn. Chuyển khoản:
+          Vietcombank — 1234567890.<br />
+          Hóa đơn này liên kết với Đơn Mua Hàng <strong>PO-2024-0123</strong>.
+        </p>
+      </div>
+
+      <div class="inv-footer">
+        <div class="sign-box">
+          <div class="sign-label">Người Mua Hàng</div>
+          <div class="sign-space"></div>
+          <div class="sign-name">Nguyễn Thị Lan</div>
+        </div>
+        <div class="sign-box">
+          <div class="sign-label">Người Bán Hàng</div>
+          <div class="sign-space"></div>
+          <div class="sign-name">Trần Văn Minh — Giám đốc kinh doanh</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════
+     HÓA ĐƠN 2: KHÔNG CÓ PO — TC-03 DỊCH VỤ
+     Hóa đơn tư vấn — Nhập thủ công
+══════════════════════════════════════════════════════ -->
+    <div class="page-label">
+      📄 HÓA ĐƠN 2 — <span>Không có PO · Dịch vụ tư vấn · TC-03 Manual</span> —
+      In trang này để test nhập thủ công
+    </div>
+    <div class="invoice-page">
+      <div class="demo-badge">Demo TC-03</div>
+
+      <div class="inv-header">
+        <div>
+          <div class="inv-logo" style="color: #0f3460">
+            Tư Vấn <span style="color: #3b82f6">Pro</span>
+          </div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 4px">
+            Công ty Tư Vấn Quản Lý Doanh Nghiệp
+          </div>
+        </div>
+        <div class="inv-type">
+          <h1 style="color: #0f3460">Hóa Đơn Dịch Vụ</h1>
+          <div class="inv-no">Số hóa đơn: <strong>SVC-2024-0012</strong></div>
+          <div class="inv-date">Ngày: <strong>20/03/2024</strong></div>
+          <div class="inv-date" style="color: #e94560; font-weight: 700">
+            ⚠️ Không có Đơn Mua Hàng (PO)
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="divider-thick"
+        style="background: linear-gradient(90deg, #0f3460, #3b82f6)"
+      ></div>
+
+      <div class="parties">
+        <div class="party-box" style="border-left-color: #3b82f6">
+          <div class="party-label">🏭 Đơn Vị Cung Cấp Dịch Vụ</div>
+          <div class="party-name">Công Ty TNHH Tư Vấn XYZ Consulting</div>
+          <div class="party-detail">
+            Mã số thuế: <strong>0312345678</strong><br />
+            Địa chỉ: 789 Đinh Tiên Hoàng, Q.Bình Thạnh, TP.HCM<br />
+            Điện thoại: 028-1234-5678<br />
+            Email: invoice@xyzconsulting.vn<br />
+            Tài khoản: 9876543210 — Techcombank
+          </div>
+        </div>
+        <div class="party-box buyer">
+          <div class="party-label">🏢 Khách Hàng</div>
+          <div class="party-name">Công Ty Cổ Phần Thương Mại XYZ</div>
+          <div class="party-detail">
+            Mã số thuế: <strong>0987654321</strong><br />
+            Địa chỉ: 456 Lê Văn Việt, Q.9, TP.HCM<br />
+            Người liên hệ: Lê Văn Hùng (Giám đốc)<br />
+            Hợp đồng: <strong>HĐ-TV-2024-003</strong><br />
+            <span style="color: #e94560; font-weight: 600"
+              >Không có PO — Dịch vụ theo hợp đồng</span
+            >
+          </div>
+        </div>
+      </div>
+
+      <table class="inv-table">
+        <thead>
+          <tr style="background: #0f3460">
+            <th style="width: 5%">STT</th>
+            <th style="width: 45%">Mô tả dịch vụ</th>
+            <th style="width: 10%">ĐVT</th>
+            <th style="width: 10%">Số lượng</th>
+            <th style="width: 15%">Đơn giá (VNĐ)</th>
+            <th style="width: 15%">Thành tiền (VNĐ)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>
+              <strong>Tư vấn tái cơ cấu quy trình quản lý dự án</strong><br />
+              <span style="color: #94a3b8; font-size: 11px"
+                >Tháng 3/2024 · 20 ngày công · Chuyên gia cao cấp</span
+              >
+            </td>
+            <td>Ngày công</td>
+            <td>20</td>
+            <td>2,000,000</td>
+            <td>40,000,000</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>
+              <strong>Đào tạo nhân sự quản lý cấp trung</strong><br />
+              <span style="color: #94a3b8; font-size: 11px"
+                >2 buổi · 4 giờ/buổi · 15 học viên</span
+              >
+            </td>
+            <td>Buổi</td>
+            <td>2</td>
+            <td>5,000,000</td>
+            <td>10,000,000</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="5" style="text-align: right; color: #64748b">
+              Cộng tiền dịch vụ:
+            </td>
+            <td style="text-align: right; font-weight: 700">50,000,000</td>
+          </tr>
+          <tr>
+            <td colspan="5" style="text-align: right; color: #64748b">
+              Thuế GTGT (10%):
+            </td>
+            <td style="text-align: right; font-weight: 700">5,000,000</td>
+          </tr>
+          <tr class="total-row" style="background: #0f3460">
+            <td colspan="5" style="text-align: right">TỔNG CỘNG THANH TOÁN:</td>
+            <td style="text-align: right">55,000,000</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <div
+        class="inv-notes"
+        style="background: #dbeafe; border-left-color: #3b82f6"
+      >
+        <p style="color: #1e40af">
+          <strong>Lưu ý quan trọng:</strong> Đây là hóa đơn dịch vụ tư vấn theo
+          Hợp đồng số HĐ-TV-2024-003.<br />
+          <strong>Không có Đơn Mua Hàng (PO)</strong> — Kế toán cần tạo AP
+          Invoice thủ công (TC-03).<br />
+          3-Way Matching sẽ bị bỏ qua. Matching status = 'pending'.<br />
+          Thanh toán chuyển khoản trong vòng 15 ngày: Techcombank — 9876543210.
+        </p>
+      </div>
+
+      <div class="inv-footer">
+        <div class="sign-box">
+          <div class="sign-label">Đại Diện Khách Hàng</div>
+          <div class="sign-space"></div>
+          <div class="sign-name">Lê Văn Hùng — Giám đốc</div>
+        </div>
+        <div class="sign-box">
+          <div class="sign-label">Đại Diện Nhà Cung Cấp</div>
+          <div class="sign-space"></div>
+          <div class="sign-name">Phạm Thị Hoa — Giám đốc điều hành</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════
+     HÓA ĐƠN 3: MỜ / KÉM CHẤT LƯỢNG — TC-12
+     Confidence thấp — Khuyến nghị nhập tay
+══════════════════════════════════════════════════════ -->
+    <div class="page-label">
+      📄 HÓA ĐƠN 3 — <span>Chất lượng kém · Mờ · TC-12 Low Confidence</span> —
+      In trang này để test OCR confidence thấp
+    </div>
+    <div class="invoice-page blurry">
+      <div class="demo-badge" style="background: #f59e0b">Demo TC-12</div>
+      <div class="watermark">MỜ</div>
+
+      <div class="inv-header">
+        <div>
+          <div
+            class="inv-logo blurry-text"
+            style="font-size: 18px; letter-spacing: 2px"
+          >
+            C??Y TN?? ??? TRADING
+          </div>
+          <div style="font-size: 10px; color: #9ca3af; margin-top: 4px">
+            Đ/c: 1?? Đường L? V?n Vi?t, Q.?
+          </div>
+        </div>
+        <div class="inv-type">
+          <h1 style="color: #6b7280; font-size: 17px">
+            HÓA ĐƠN GIÁ TRỊ GIA TĂNG
+          </h1>
+          <div class="inv-no blurry-text">
+            Số: <strong>HD-20??-00??</strong>
+          </div>
+          <div class="inv-date blurry-text">
+            Ngày: <strong>??/??/2024</strong>
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="divider-thick"
+        style="background: #9ca3af; opacity: 0.5"
+      ></div>
+
+      <div class="parties">
+        <div
+          class="party-box"
+          style="border-left-color: #9ca3af; background: #f9fafb"
+        >
+          <div class="party-label">Người Bán</div>
+          <div class="party-name blurry-text">
+            C??y TN?? ??? Trading Vi?t Nam
+          </div>
+          <div class="party-detail blurry-text">
+            MST: <strong>03?????789</strong><br />
+            Địa chỉ: ??? Nguy?n V?n Linh, Q.?<br />
+            ĐT: 028-????-????
+          </div>
+        </div>
+        <div class="party-box buyer" style="background: #f9fafb">
+          <div class="party-label">Người Mua</div>
+          <div class="party-name blurry-text">C??y C? Ph?n TM XYZ</div>
+          <div class="party-detail blurry-text">
+            MST: <strong>098?????21</strong><br />
+            Địa chỉ: ??? Lê V?n Vi?t, Q.9<br />
+            PO: <strong>PO-????-????</strong>
+          </div>
+        </div>
+      </div>
+
+      <table class="inv-table" style="opacity: 0.8">
+        <thead>
+          <tr style="background: #6b7280">
+            <th>STT</th>
+            <th>Tên hàng hóa</th>
+            <th>ĐVT</th>
+            <th>SL</th>
+            <th>Đơn giá</th>
+            <th>Thuế</th>
+            <th>Thành tiền</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td class="blurry-text">
+              <strong>Máy l?c n??c RO ??? XYZ</strong><br />
+              <span style="font-size: 11px; color: #d1d5db"
+                >SKU: ???-??? · Lô: ???</span
+              >
+            </td>
+            <td class="blurry-text">Cái</td>
+            <td class="blurry-text">?</td>
+            <td class="blurry-text">?,???,000</td>
+            <td>10%</td>
+            <td class="blurry-text">??,???,000</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td class="blurry-text">
+              <strong>Ph? ki?n l?p đ?t ???</strong><br />
+              <span style="font-size: 11px; color: #d1d5db"
+                >Bộ phụ kiện đi kèm</span
+              >
+            </td>
+            <td class="blurry-text">Bộ</td>
+            <td class="blurry-text">?</td>
+            <td class="blurry-text">???,000</td>
+            <td>10%</td>
+            <td class="blurry-text">?,???,000</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="6" style="text-align: right; color: #9ca3af">
+              Cộng tiền hàng:
+            </td>
+            <td class="blurry-text" style="text-align: right">??,???,000</td>
+          </tr>
+          <tr>
+            <td colspan="6" style="text-align: right; color: #9ca3af">
+              Thuế GTGT:
+            </td>
+            <td class="blurry-text" style="text-align: right">?,???,000</td>
+          </tr>
+          <tr style="background: #6b7280; color: white">
+            <td colspan="6" style="text-align: right">TỔNG CỘNG:</td>
+            <td class="blurry-text" style="text-align: right; color: #fde68a">
+              ??,???,000
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <div
+        class="inv-notes"
+        style="background: #fef9c3; border-left-color: #ca8a04"
+      >
+        <p style="color: #713f12">
+          <strong>⚠️ Lưu ý khi demo TC-12:</strong> Hóa đơn này mô phỏng ảnh
+          scan mờ, chữ không rõ.<br />
+          OCR sẽ trả về <strong>overall_confidence &lt; 0.50</strong> — hệ thống
+          sẽ khuyến nghị nhập thủ công.<br />
+          Kế toán cần tự điền lại toàn bộ thông tin từ hóa đơn gốc vào form.<br />
+          Trong thực tế: chụp lại ảnh rõ hơn hoặc yêu cầu nhà cung cấp gửi file
+          PDF gốc.
+        </p>
+      </div>
+
+      <div class="inv-footer">
+        <div class="sign-box">
+          <div class="sign-label blurry-text">Người Mua Hàng</div>
+          <div class="sign-space"></div>
+          <div class="sign-name blurry-text">??? — Kế toán</div>
+        </div>
+        <div class="sign-box">
+          <div class="sign-label blurry-text">Người Bán Hàng</div>
+          <div class="sign-space"></div>
+          <div class="sign-name blurry-text">??? — Giám đốc</div>
+        </div>
+      </div>
+    </div>
+    <!-- ══════════════════════════════════════════════════════
+     HÓA ĐƠN 4: TRÙNG LẶP — TC-07
+     Cùng số hóa đơn HD-2024-0055 của Lavie → Duplicate
+══════════════════════════════════════════════════════ -->
+    <div class="page-label">
+      📄 HÓA ĐƠN 4 — <span>Trùng lặp · TC-07 Duplicate</span> — Upload sau TC-01
+      để test phát hiện trùng
+    </div>
+    <div class="invoice-page">
+      <div class="demo-badge" style="background: #ec4899">Demo TC-07</div>
+      <div class="inv-header">
+        <div>
+          <div class="inv-logo">ERP<span>Mini</span></div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 4px">
+            Hệ thống quản lý doanh nghiệp
+          </div>
+        </div>
+        <div class="inv-type">
+          <h1>Hóa Đơn Giá Trị Gia Tăng</h1>
+          <div class="inv-no">Số hóa đơn: <strong>HD-2024-0055</strong></div>
+          <div class="inv-date">Ngày: <strong>15/03/2024</strong></div>
+          <div class="inv-date" style="color: #ec4899; font-weight: 700">
+            ⚠️ SỐ HÓA ĐƠN TRÙNG VỚI HĐ 1
+          </div>
+        </div>
+      </div>
+      <div
+        class="divider-thick"
+        style="background: linear-gradient(90deg, #ec4899, #f43f5e)"
+      ></div>
+      <div class="parties">
+        <div class="party-box" style="border-left-color: #ec4899">
+          <div class="party-label">🏭 Người Bán</div>
+          <div class="party-name">
+            Công Ty TNHH Nước Giải Khát Lavie Việt Nam
+          </div>
+          <div class="party-detail">
+            Mã số thuế: <strong>0301234567</strong><br />
+            Địa chỉ: 123 Đường Nguyễn Văn Linh, Q.7, TP.HCM<br />
+            Email: billing@lavie.com.vn
+          </div>
+        </div>
+        <div class="party-box buyer">
+          <div class="party-label">🏢 Người Mua</div>
+          <div class="party-name">Công Ty Cổ Phần Thương Mại XYZ</div>
+          <div class="party-detail">
+            MST: <strong>0987654321</strong><br />
+            PO: <strong>PO-2024-0123</strong><br />
+            <span style="color: #ec4899; font-weight: 600"
+              >⚠️ Hóa đơn này TRÙNG với HD-2024-0055 đã tạo trước</span
+            >
+          </div>
+        </div>
+      </div>
+      <table class="inv-table">
+        <thead>
+          <tr>
+            <th style="width: 5%">STT</th>
+            <th style="width: 40%">Tên hàng hóa</th>
+            <th style="width: 8%">ĐVT</th>
+            <th style="width: 10%">SL</th>
+            <th style="width: 18%">Đơn giá (VNĐ)</th>
+            <th style="width: 10%">Thuế</th>
+            <th style="width: 9%">Thành tiền</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td><strong>Nước suối Lavie 500ml</strong></td>
+            <td>Thùng</td>
+            <td>10</td>
+            <td>168,000</td>
+            <td>10%</td>
+            <td>1,680,000</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td><strong>Nước suối Lavie 1.5L</strong></td>
+            <td>Thùng</td>
+            <td>5</td>
+            <td>210,000</td>
+            <td>10%</td>
+            <td>1,050,000</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="6" style="text-align: right; color: #64748b">
+              Cộng tiền hàng:
+            </td>
+            <td style="text-align: right; font-weight: 700">2,730,000</td>
+          </tr>
+          <tr>
+            <td colspan="6" style="text-align: right; color: #64748b">
+              Thuế GTGT (10%):
+            </td>
+            <td style="text-align: right; font-weight: 700">273,000</td>
+          </tr>
+          <tr class="total-row" style="background: #ec4899">
+            <td colspan="6" style="text-align: right">TỔNG CỘNG:</td>
+            <td style="text-align: right">3,003,000</td>
+          </tr>
+        </tfoot>
+      </table>
+      <div
+        class="inv-notes"
+        style="background: #fce7f3; border-left-color: #ec4899"
+      >
+        <p style="color: #9d174d">
+          <strong>⚠️ Demo TC-07 — Hóa đơn trùng lặp:</strong><br />
+          Hóa đơn này có cùng số <strong>HD-2024-0055</strong> + cùng nhà cung
+          cấp Lavie (MST: 0301234567).<br />
+          Hệ thống sẽ phát hiện trùng lặp và hiển thị cảnh báo.<br />
+          Kế toán phải tick "Ghi đè hóa đơn trùng lặp" mới được tạo.<br />
+          <strong>Cách test:</strong> Upload HĐ 1 trước → tạo thành công →
+          upload HĐ 4 này → xem cảnh báo trùng.
+        </p>
+      </div>
+      <div class="inv-footer">
+        <div class="sign-box">
+          <div class="sign-label">Người Mua Hàng</div>
+          <div class="sign-space"></div>
+          <div class="sign-name">Nguyễn Thị Lan</div>
+        </div>
+        <div class="sign-box">
+          <div class="sign-label">Người Bán Hàng</div>
+          <div class="sign-space"></div>
+          <div class="sign-name">Trần Văn Minh</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════
+     HÓA ĐƠN 5: QTY MISMATCH — TC-08
+     Số lượng hóa đơn > remaining_to_invoice
+══════════════════════════════════════════════════════ -->
+    <div class="page-label">
+      📄 HÓA ĐƠN 5 — <span>Qty Mismatch · TC-08</span> — Số lượng vượt quá GRN
+      đã nhập kho
+    </div>
+    <div class="invoice-page">
+      <div class="demo-badge" style="background: #ef4444">Demo TC-08</div>
+      <div class="inv-header">
+        <div>
+          <div class="inv-logo">ERP<span>Mini</span></div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 4px">
+            Hệ thống quản lý doanh nghiệp
+          </div>
+        </div>
+        <div class="inv-type">
+          <h1>Hóa Đơn Giá Trị Gia Tăng</h1>
+          <div class="inv-no">Số hóa đơn: <strong>HD-2024-0099</strong></div>
+          <div class="inv-date">Ngày: <strong>20/03/2024</strong></div>
+          <div class="inv-date" style="color: #ef4444; font-weight: 700">
+            ⚠️ SỐ LƯỢNG VƯỢT QUÁ GRN
+          </div>
+        </div>
+      </div>
+      <div
+        class="divider-thick"
+        style="background: linear-gradient(90deg, #ef4444, #dc2626)"
+      ></div>
+      <div class="parties">
+        <div class="party-box" style="border-left-color: #ef4444">
+          <div class="party-label">🏭 Người Bán</div>
+          <div class="party-name">
+            Công Ty TNHH Nước Giải Khát Lavie Việt Nam
+          </div>
+          <div class="party-detail">
+            Mã số thuế: <strong>0301234567</strong><br />
+            Địa chỉ: 123 Đường Nguyễn Văn Linh, Q.7, TP.HCM
+          </div>
+        </div>
+        <div class="party-box buyer">
+          <div class="party-label">🏢 Người Mua</div>
+          <div class="party-name">Công Ty Cổ Phần Thương Mại XYZ</div>
+          <div class="party-detail">
+            MST: <strong>0987654321</strong><br />
+            PO: <strong>PO-2024-0123</strong><br />
+            <span style="color: #ef4444; font-weight: 600"
+              >GRN nhập 10 thùng, hóa đơn ghi 15 thùng ❌</span
+            >
+          </div>
+        </div>
+      </div>
+      <table class="inv-table">
+        <thead>
+          <tr style="background: #ef4444">
+            <th style="width: 5%">STT</th>
+            <th style="width: 40%">Tên hàng hóa</th>
+            <th style="width: 8%">ĐVT</th>
+            <th style="width: 10%">SL</th>
+            <th style="width: 18%">Đơn giá (VNĐ)</th>
+            <th style="width: 10%">Thuế</th>
+            <th style="width: 9%">Thành tiền</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>
+              <strong>Nước suối Lavie 500ml</strong><br />
+              <span style="color: #ef4444; font-size: 11px"
+                >⚠️ SL hóa đơn: 15 | GRN nhập kho: 10 | Chênh lệch: +5</span
+              >
+            </td>
+            <td>Thùng</td>
+            <td style="color: #ef4444; font-weight: 700">15 ❌</td>
+            <td>168,000</td>
+            <td>10%</td>
+            <td>2,520,000</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td><strong>Nước suối Lavie 1.5L</strong></td>
+            <td>Thùng</td>
+            <td>5</td>
+            <td>210,000</td>
+            <td>10%</td>
+            <td>1,050,000</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="6" style="text-align: right; color: #64748b">
+              Cộng tiền hàng:
+            </td>
+            <td style="text-align: right; font-weight: 700">3,570,000</td>
+          </tr>
+          <tr>
+            <td colspan="6" style="text-align: right; color: #64748b">
+              Thuế GTGT (10%):
+            </td>
+            <td style="text-align: right; font-weight: 700">357,000</td>
+          </tr>
+          <tr class="total-row" style="background: #ef4444">
+            <td colspan="6" style="text-align: right">TỔNG CỘNG:</td>
+            <td style="text-align: right">3,927,000</td>
+          </tr>
+        </tfoot>
+      </table>
+      <div
+        class="inv-notes"
+        style="background: #fee2e2; border-left-color: #ef4444"
+      >
+        <p style="color: #991b1b">
+          <strong>⚠️ Demo TC-08 — Qty Mismatch:</strong><br />
+          PO-2024-0123 đặt 10 thùng Lavie 500ml. GRN-2024-0089 nhập kho đúng 10
+          thùng.<br />
+          Hóa đơn này ghi <strong>15 thùng</strong> → vượt quá
+          remaining_to_invoice (10).<br />
+          3-Way Matching sẽ báo: <strong>qty_mismatch</strong> — "Số lượng hóa
+          đơn (15) vượt quá remaining (10)".<br />
+          Kế toán cần sửa về 10 hoặc xác nhận ghi đè với lý do.
+        </p>
+      </div>
+      <div class="inv-footer">
+        <div class="sign-box">
+          <div class="sign-label">Người Mua Hàng</div>
+          <div class="sign-space"></div>
+          <div class="sign-name">Nguyễn Thị Lan</div>
+        </div>
+        <div class="sign-box">
+          <div class="sign-label">Người Bán Hàng</div>
+          <div class="sign-space"></div>
+          <div class="sign-name">Trần Văn Minh</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════
+     HÓA ĐƠN 6: PRICE MISMATCH — TC-09
+     Đơn giá khác PO
+══════════════════════════════════════════════════════ -->
+    <div class="page-label">
+      📄 HÓA ĐƠN 6 — <span>Price Mismatch · TC-09</span> — Đơn giá khác với PO
+      đã ký
+    </div>
+    <div class="invoice-page">
+      <div class="demo-badge" style="background: #f97316">Demo TC-09</div>
+      <div class="inv-header">
+        <div>
+          <div class="inv-logo">ERP<span>Mini</span></div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 4px">
+            Hệ thống quản lý doanh nghiệp
+          </div>
+        </div>
+        <div class="inv-type">
+          <h1>Hóa Đơn Giá Trị Gia Tăng</h1>
+          <div class="inv-no">Số hóa đơn: <strong>HD-2024-0100</strong></div>
+          <div class="inv-date">Ngày: <strong>20/03/2024</strong></div>
+          <div class="inv-date" style="color: #f97316; font-weight: 700">
+            ⚠️ ĐƠN GIÁ KHÁC VỚI PO
+          </div>
+        </div>
+      </div>
+      <div
+        class="divider-thick"
+        style="background: linear-gradient(90deg, #f97316, #ea580c)"
+      ></div>
+      <div class="parties">
+        <div class="party-box" style="border-left-color: #f97316">
+          <div class="party-label">🏭 Người Bán</div>
+          <div class="party-name">
+            Công Ty TNHH Nước Giải Khát Lavie Việt Nam
+          </div>
+          <div class="party-detail">
+            Mã số thuế: <strong>0301234567</strong><br />
+            Địa chỉ: 123 Đường Nguyễn Văn Linh, Q.7, TP.HCM
+          </div>
+        </div>
+        <div class="party-box buyer">
+          <div class="party-label">🏢 Người Mua</div>
+          <div class="party-name">Công Ty Cổ Phần Thương Mại XYZ</div>
+          <div class="party-detail">
+            MST: <strong>0987654321</strong><br />
+            PO: <strong>PO-2024-0123</strong><br />
+            <span style="color: #f97316; font-weight: 600"
+              >Giá PO: 168,000đ | Giá HĐ: 175,000đ ❌ (+7,000đ)</span
+            >
+          </div>
+        </div>
+      </div>
+      <table class="inv-table">
+        <thead>
+          <tr style="background: #f97316">
+            <th style="width: 5%">STT</th>
+            <th style="width: 40%">Tên hàng hóa</th>
+            <th style="width: 8%">ĐVT</th>
+            <th style="width: 10%">SL</th>
+            <th style="width: 18%">Đơn giá (VNĐ)</th>
+            <th style="width: 10%">Thuế</th>
+            <th style="width: 9%">Thành tiền</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>
+              <strong>Nước suối Lavie 500ml</strong><br />
+              <span style="color: #f97316; font-size: 11px"
+                >⚠️ Giá PO: 168,000 | Giá HĐ: 175,000 | Chênh:
+                +7,000/thùng</span
+              >
+            </td>
+            <td>Thùng</td>
+            <td>10</td>
+            <td style="color: #f97316; font-weight: 700">175,000 ❌</td>
+            <td>10%</td>
+            <td>1,750,000</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td><strong>Nước suối Lavie 1.5L</strong></td>
+            <td>Thùng</td>
+            <td>5</td>
+            <td>210,000</td>
+            <td>10%</td>
+            <td>1,050,000</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td><strong>Nước khoáng Lavie Sparkling 330ml</strong></td>
+            <td>Thùng</td>
+            <td>8</td>
+            <td>195,000</td>
+            <td>10%</td>
+            <td>1,560,000</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="6" style="text-align: right; color: #64748b">
+              Cộng tiền hàng:
+            </td>
+            <td style="text-align: right; font-weight: 700">4,360,000</td>
+          </tr>
+          <tr>
+            <td colspan="6" style="text-align: right; color: #64748b">
+              Thuế GTGT (10%):
+            </td>
+            <td style="text-align: right; font-weight: 700">436,000</td>
+          </tr>
+          <tr class="total-row" style="background: #f97316">
+            <td colspan="6" style="text-align: right">TỔNG CỘNG:</td>
+            <td style="text-align: right">4,796,000</td>
+          </tr>
+        </tfoot>
+      </table>
+      <div
+        class="inv-notes"
+        style="background: #fde8d8; border-left-color: #f97316"
+      >
+        <p style="color: #9a3412">
+          <strong>⚠️ Demo TC-09 — Price Mismatch:</strong><br />
+          PO-2024-0123 ký giá <strong>168,000đ/thùng</strong> Lavie 500ml.<br />
+          Hóa đơn này ghi <strong>175,000đ/thùng</strong> → chênh +7,000đ × 10
+          thùng = <strong>+70,000đ</strong>.<br />
+          3-Way Matching sẽ báo: <strong>price_mismatch</strong> — "Đơn giá hóa
+          đơn (175,000) khác đơn giá PO (168,000)".<br />
+          Kế toán cần sửa về 168,000 hoặc xác nhận với lý do (VD: nhà cung cấp
+          tăng giá).
+        </p>
+      </div>
+      <div class="inv-footer">
+        <div class="sign-box">
+          <div class="sign-label">Người Mua Hàng</div>
+          <div class="sign-space"></div>
+          <div class="sign-name">Nguyễn Thị Lan</div>
+        </div>
+        <div class="sign-box">
+          <div class="sign-label">Người Bán Hàng</div>
+          <div class="sign-space"></div>
+          <div class="sign-name">Trần Văn Minh</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════
+     HÓA ĐƠN 7: VENDOR KHÔNG KHỚP — TC-05
+     Tên vendor lạ, không có trong DB
+══════════════════════════════════════════════════════ -->
+    <div class="page-label">
+      📄 HÓA ĐƠN 7 — <span>Vendor Mismatch · TC-05</span> — Nhà cung cấp chưa có
+      trong hệ thống
+    </div>
+    <div class="invoice-page">
+      <div class="demo-badge" style="background: #8b5cf6">Demo TC-05</div>
+      <div class="inv-header">
+        <div>
+          <div class="inv-logo" style="color: #5b21b6">
+            Tech<span style="color: #8b5cf6">Supply</span>
+          </div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 4px">
+            Công Ty TNHH Cung Ứng Thiết Bị Công Nghệ
+          </div>
+        </div>
+        <div class="inv-type">
+          <h1 style="color: #5b21b6">Hóa Đơn Giá Trị Gia Tăng</h1>
+          <div class="inv-no">Số hóa đơn: <strong>TS-2024-0088</strong></div>
+          <div class="inv-date">Ngày: <strong>18/03/2024</strong></div>
+          <div class="inv-date" style="color: #8b5cf6; font-weight: 700">
+            ⚠️ VENDOR CHƯA CÓ TRONG HỆ THỐNG
+          </div>
+        </div>
+      </div>
+      <div
+        class="divider-thick"
+        style="background: linear-gradient(90deg, #5b21b6, #8b5cf6)"
+      ></div>
+      <div class="parties">
+        <div class="party-box" style="border-left-color: #8b5cf6">
+          <div class="party-label">🏭 Người Bán</div>
+          <div class="party-name">
+            Cty TNHH Thương Mại Công Nghệ ABC Việt Nam
+          </div>
+          <div class="party-detail">
+            Mã số thuế: <strong>0399887766</strong><br />
+            Địa chỉ: 55 Lý Thường Kiệt, Q.10, TP.HCM<br />
+            Email: sales@abctech.vn<br />
+            <span style="color: #8b5cf6; font-weight: 600"
+              >⚠️ Vendor này CHƯA có trong DB Partners</span
+            >
+          </div>
+        </div>
+        <div class="party-box buyer">
+          <div class="party-label">🏢 Người Mua</div>
+          <div class="party-name">Công Ty Cổ Phần Thương Mại XYZ</div>
+          <div class="party-detail">
+            MST: <strong>0987654321</strong><br />
+            Địa chỉ: 456 Lê Văn Việt, Q.9, TP.HCM<br />
+            <span style="color: #8b5cf6">Không có PO — mua lẻ</span>
+          </div>
+        </div>
+      </div>
+      <table class="inv-table">
+        <thead>
+          <tr style="background: #5b21b6">
+            <th style="width: 5%">STT</th>
+            <th style="width: 40%">Tên hàng hóa</th>
+            <th style="width: 8%">ĐVT</th>
+            <th style="width: 10%">SL</th>
+            <th style="width: 18%">Đơn giá (VNĐ)</th>
+            <th style="width: 10%">Thuế</th>
+            <th style="width: 9%">Thành tiền</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>
+              <strong>Máy tính xách tay Dell Inspiron 15</strong><br /><span
+                style="color: #94a3b8; font-size: 11px"
+                >SKU: LAP001 · Model: 3520</span
+              >
+            </td>
+            <td>Cái</td>
+            <td>2</td>
+            <td>15,000,000</td>
+            <td>10%</td>
+            <td>30,000,000</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>
+              <strong>Chuột không dây Logitech M185</strong><br /><span
+                style="color: #94a3b8; font-size: 11px"
+                >SKU: MOUSE001</span
+              >
+            </td>
+            <td>Cái</td>
+            <td>5</td>
+            <td>250,000</td>
+            <td>10%</td>
+            <td>1,250,000</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="6" style="text-align: right; color: #64748b">
+              Cộng tiền hàng:
+            </td>
+            <td style="text-align: right; font-weight: 700">31,250,000</td>
+          </tr>
+          <tr>
+            <td colspan="6" style="text-align: right; color: #64748b">
+              Thuế GTGT (10%):
+            </td>
+            <td style="text-align: right; font-weight: 700">3,125,000</td>
+          </tr>
+          <tr class="total-row" style="background: #5b21b6">
+            <td colspan="6" style="text-align: right">TỔNG CỘNG:</td>
+            <td style="text-align: right">34,375,000</td>
+          </tr>
+        </tfoot>
+      </table>
+      <div
+        class="inv-notes"
+        style="background: #ede9fe; border-left-color: #8b5cf6"
+      >
+        <p style="color: #5b21b6">
+          <strong>⚠️ Demo TC-05 — Vendor Mismatch:</strong><br />
+          OCR sẽ đọc được tên "Cty TNHH Thương Mại Công Nghệ ABC Việt Nam" (MST:
+          0399887766).<br />
+          Vendor này <strong>chưa có trong DB Partners</strong> →
+          matchedPartnerId = null.<br />
+          UI sẽ hiển thị dropdown để kế toán chọn vendor thủ công hoặc tạo
+          vendor mới.<br />
+          <strong>Cách test:</strong> Upload → OCR xong → thấy "Không tìm thấy
+          nhà cung cấp" → chọn từ dropdown.
+        </p>
+      </div>
+      <div class="inv-footer">
+        <div class="sign-box">
+          <div class="sign-label">Người Mua Hàng</div>
+          <div class="sign-space"></div>
+          <div class="sign-name">Nguyễn Thị Lan</div>
+        </div>
+        <div class="sign-box">
+          <div class="sign-label">Người Bán Hàng</div>
+          <div class="sign-space"></div>
+          <div class="sign-name">Nguyễn Văn Tùng — GĐ</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════
+     HƯỚNG DẪN SỬ DỤNG
+══════════════════════════════════════════════════════ -->
+    <div
+      style="
+        width: 210mm;
+        margin: 20px auto;
+        background: white;
+        padding: 20mm 18mm;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+      "
+    >
+      <div style="text-align: center; margin-bottom: 32px">
+        <div style="font-size: 28px; font-weight: 900; color: #1a1a2e">
+          📋 Hướng Dẫn Sử Dụng Hóa Đơn Mẫu
+        </div>
+        <div style="color: #64748b; margin-top: 8px; font-size: 14px">
+          Dùng 7 hóa đơn trên để demo các kịch bản OCR khác nhau
+        </div>
+      </div>
+
+      <table style="width: 100%; border-collapse: collapse; font-size: 13px">
+        <thead>
+          <tr style="background: #1a1a2e; color: white">
+            <th style="padding: 12px 16px; text-align: left">Hóa đơn</th>
+            <th style="padding: 12px 16px; text-align: left">Kịch bản</th>
+            <th style="padding: 12px 16px; text-align: left">
+              Cách tạo file để upload
+            </th>
+            <th style="padding: 12px 16px; text-align: left">
+              Kết quả mong đợi
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom: 1px solid #e2e8f0">
+            <td style="padding: 14px 16px">
+              <strong>Hóa đơn 1</strong><br /><span
+                style="color: #10b981; font-size: 11px"
+                >TC-01 Happy Path</span
+              >
+            </td>
+            <td style="padding: 14px 16px">
+              Có PO, confidence cao, vendor + product khớp tốt
+            </td>
+            <td style="padding: 14px 16px">
+              1. In trang 1 ra giấy<br />
+              2. Chụp ảnh rõ nét (JPG/PNG)<br />
+              <em style="color: #64748b">hoặc dùng Ctrl+P → Save as PDF</em>
+            </td>
+            <td style="padding: 14px 16px">
+              <span
+                style="
+                  background: #d1fae5;
+                  color: #065f46;
+                  padding: 3px 8px;
+                  border-radius: 12px;
+                  font-size: 11px;
+                  font-weight: 700;
+                "
+                >🤖 Tạo tự động</span
+              ><br />
+              <span
+                style="
+                  font-size: 11px;
+                  color: #64748b;
+                  margin-top: 4px;
+                  display: block;
+                "
+                >Confidence ~0.90+</span
+              >
+            </td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc">
+            <td style="padding: 14px 16px">
+              <strong>Hóa đơn 2</strong><br /><span
+                style="color: #3b82f6; font-size: 11px"
+                >TC-03 Dịch vụ</span
+              >
+            </td>
+            <td style="padding: 14px 16px">
+              Không có PO, hóa đơn dịch vụ tư vấn
+            </td>
+            <td style="padding: 14px 16px">
+              1. In trang 2 ra giấy<br />
+              2. Chụp ảnh hoặc Save as PDF<br />
+              <em style="color: #64748b">Upload → OCR xong → nhập thủ công</em>
+            </td>
+            <td style="padding: 14px 16px">
+              <span
+                style="
+                  background: #fef3c7;
+                  color: #92400e;
+                  padding: 3px 8px;
+                  border-radius: 12px;
+                  font-size: 11px;
+                  font-weight: 700;
+                "
+                >✍️ Nhập thủ công</span
+              ><br />
+              <span
+                style="
+                  font-size: 11px;
+                  color: #64748b;
+                  margin-top: 4px;
+                  display: block;
+                "
+                >3-Way Matching bỏ qua</span
+              >
+            </td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e2e8f0">
+            <td style="padding: 14px 16px">
+              <strong>Hóa đơn 3</strong><br /><span
+                style="color: #f59e0b; font-size: 11px"
+                >TC-12 Mờ</span
+              >
+            </td>
+            <td style="padding: 14px 16px">
+              Chất lượng kém, chữ mờ, confidence &lt; 0.50
+            </td>
+            <td style="padding: 14px 16px">
+              1. In trang 3 ra giấy<br />
+              2. Chụp ảnh <strong>mờ / nghiêng / xa</strong><br />
+              <em style="color: #64748b">Hoặc dùng ảnh scan kém chất lượng</em>
+            </td>
+            <td style="padding: 14px 16px">
+              <span
+                style="
+                  background: #fde8d8;
+                  color: #9a3412;
+                  padding: 3px 8px;
+                  border-radius: 12px;
+                  font-size: 11px;
+                  font-weight: 700;
+                "
+                >⚠️ Khuyến nghị nhập tay</span
+              ><br />
+              <span
+                style="
+                  font-size: 11px;
+                  color: #64748b;
+                  margin-top: 4px;
+                  display: block;
+                "
+                >Confidence &lt; 0.50</span
+              >
+            </td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc">
+            <td style="padding: 14px 16px">
+              <strong>Hóa đơn 4</strong><br /><span
+                style="color: #ec4899; font-size: 11px"
+                >TC-07 Trùng lặp</span
+              >
+            </td>
+            <td style="padding: 14px 16px">
+              Cùng số HD-2024-0055 + cùng vendor Lavie → duplicate
+            </td>
+            <td style="padding: 14px 16px">
+              1. Save as PDF trang 4<br />
+              2. <strong>Upload sau khi đã tạo HĐ 1</strong><br />
+              <em style="color: #64748b"
+                >Phải tạo HĐ 1 trước mới có duplicate</em
+              >
+            </td>
+            <td style="padding: 14px 16px">
+              <span
+                style="
+                  background: #fce7f3;
+                  color: #9d174d;
+                  padding: 3px 8px;
+                  border-radius: 12px;
+                  font-size: 11px;
+                  font-weight: 700;
+                "
+                >🔴 Cảnh báo trùng</span
+              ><br />
+              <span
+                style="
+                  font-size: 11px;
+                  color: #64748b;
+                  margin-top: 4px;
+                  display: block;
+                "
+                >Phải tick ghi đè mới tạo được</span
+              >
+            </td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e2e8f0">
+            <td style="padding: 14px 16px">
+              <strong>Hóa đơn 5</strong><br /><span
+                style="color: #ef4444; font-size: 11px"
+                >TC-08 Qty Mismatch</span
+              >
+            </td>
+            <td style="padding: 14px 16px">
+              Lavie 500ml: HĐ ghi 15 thùng, GRN chỉ nhập 10 thùng
+            </td>
+            <td style="padding: 14px 16px">
+              1. Save as PDF trang 5<br />
+              2. Upload, chọn PO-2024-0123<br />
+              <em style="color: #64748b">Cần chạy seeder Lavie trước</em>
+            </td>
+            <td style="padding: 14px 16px">
+              <span
+                style="
+                  background: #fee2e2;
+                  color: #991b1b;
+                  padding: 3px 8px;
+                  border-radius: 12px;
+                  font-size: 11px;
+                  font-weight: 700;
+                "
+                >❌ qty_mismatch</span
+              ><br />
+              <span
+                style="
+                  font-size: 11px;
+                  color: #64748b;
+                  margin-top: 4px;
+                  display: block;
+                "
+                >3-Way: SL(15) &gt; remaining(10)</span
+              >
+            </td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc">
+            <td style="padding: 14px 16px">
+              <strong>Hóa đơn 6</strong><br /><span
+                style="color: #f97316; font-size: 11px"
+                >TC-09 Price Mismatch</span
+              >
+            </td>
+            <td style="padding: 14px 16px">
+              Lavie 500ml: giá PO 168k, HĐ ghi 175k (+7k/thùng)
+            </td>
+            <td style="padding: 14px 16px">
+              1. Save as PDF trang 6<br />
+              2. Upload, chọn PO-2024-0123
+            </td>
+            <td style="padding: 14px 16px">
+              <span
+                style="
+                  background: #fde8d8;
+                  color: #9a3412;
+                  padding: 3px 8px;
+                  border-radius: 12px;
+                  font-size: 11px;
+                  font-weight: 700;
+                "
+                >❌ price_mismatch</span
+              ><br />
+              <span
+                style="
+                  font-size: 11px;
+                  color: #64748b;
+                  margin-top: 4px;
+                  display: block;
+                "
+                >3-Way: giá(175k) ≠ PO(168k)</span
+              >
+            </td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e2e8f0">
+            <td style="padding: 14px 16px">
+              <strong>Hóa đơn 7</strong><br /><span
+                style="color: #8b5cf6; font-size: 11px"
+                >TC-05 Vendor Mismatch</span
+              >
+            </td>
+            <td style="padding: 14px 16px">
+              Vendor "ABC Tech" chưa có trong DB Partners
+            </td>
+            <td style="padding: 14px 16px">
+              1. Save as PDF trang 7<br />
+              2. Upload bình thường<br />
+              <em style="color: #64748b">Không cần seeder đặc biệt</em>
+            </td>
+            <td style="padding: 14px 16px">
+              <span
+                style="
+                  background: #ede9fe;
+                  color: #5b21b6;
+                  padding: 3px 8px;
+                  border-radius: 12px;
+                  font-size: 11px;
+                  font-weight: 700;
+                "
+                >⚠️ Chọn vendor tay</span
+              ><br />
+              <span
+                style="
+                  font-size: 11px;
+                  color: #64748b;
+                  margin-top: 4px;
+                  display: block;
+                "
+                >Dropdown chọn vendor thủ công</span
+              >
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div
+        style="
+          margin-top: 32px;
+          background: #f0fdf4;
+          border-radius: 12px;
+          padding: 20px 24px;
+          border-left: 4px solid #10b981;
+        "
+      >
+        <div
+          style="
+            font-size: 14px;
+            font-weight: 700;
+            color: #065f46;
+            margin-bottom: 12px;
+          "
+        >
+          💡 Tips khi demo
+        </div>
+        <ul
+          style="
+            padding-left: 20px;
+            font-size: 13px;
+            color: #334155;
+            line-height: 2;
+          "
+        >
+          <li>
+            Đảm bảo seeder đã có <strong>Partner "Lavie"</strong> và
+            <strong>PO-2024-0123</strong> trong DB trước khi demo TC-01
+          </li>
+          <li>
+            Đặt
+            <code
+              style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px"
+              >USE_MOCK_LLM=false</code
+            >
+            và có OpenAI key thật để OCR chạy thực
+          </li>
+          <li>
+            Nếu không có key: đặt
+            <code
+              style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px"
+              >USE_MOCK_LLM=true</code
+            >
+            để test UI flow
+          </li>
+          <li>
+            Hóa đơn 1 nên chụp <strong>thẳng, đủ sáng, rõ nét</strong> để đạt
+            confidence cao nhất
+          </li>
+          <li>
+            Hóa đơn 3 nên chụp <strong>nghiêng, mờ, thiếu sáng</strong> để
+            simulate TC-12
+          </li>
+        </ul>
+      </div>
+
+      <div
+        style="
+          margin-top: 24px;
+          text-align: center;
+          color: #94a3b8;
+          font-size: 12px;
+          padding-top: 20px;
+          border-top: 1px solid #e2e8f0;
+        "
+      >
+        ERP Mini — AP Invoice OCR Demo · Phase 9 · 2026<br />
+        File: <code>sample-invoices-demo.html</code> · In Ctrl+P để xuất PDF
+        từng trang
+      </div>
+    </div>
+  </body>
+</html>

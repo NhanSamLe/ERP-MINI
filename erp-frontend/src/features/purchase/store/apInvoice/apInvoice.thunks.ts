@@ -1,18 +1,22 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { apInvoiceApi } from "../../api/apInvoice.api";
+import {
+  apInvoiceApi,
+  CreateManualInvoicePayload,
+  GetAllInvoicesParams,
+} from "../../api/apInvoice.api";
 import { ApInvoice, ApPostedSummary } from "./apInvoice.types";
 import { getErrorMessage } from "@/utils/ErrorHelper";
 import { apInvoiceService } from "../services/apInvoice.service";
 import { Partner } from "@/features/partner/store/partner.types";
 
-/* ================= GET ALL ================= */
+/* ================= GET ALL (hỗ trợ filter source) ================= */
 export const getAllApInvoicesThunk = createAsyncThunk<
   ApInvoice[],
-  void,
+  GetAllInvoicesParams | void,
   { rejectValue: string }
->("apInvoice/getAll", async (_, { rejectWithValue }) => {
+>("apInvoice/getAll", async (params, { rejectWithValue }) => {
   try {
-    return await apInvoiceApi.getAll();
+    return await apInvoiceApi.getAll(params ?? undefined);
   } catch (error) {
     return rejectWithValue(getErrorMessage(error));
   }
@@ -31,18 +35,59 @@ export const getApInvoiceByIdThunk = createAsyncThunk<
   }
 });
 
-/* ================= CREATE ================= */
+/* ================= CREATE MANUAL ================= */
+export const createManualApInvoiceThunk = createAsyncThunk<
+  ApInvoice,
+  CreateManualInvoicePayload,
+  { rejectValue: string }
+>("apInvoice/createManual", async (payload, { rejectWithValue }) => {
+  try {
+    const result = await apInvoiceApi.createManual(payload);
+    return result.invoice;
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
+/* ================= CREATE FROM PO (full remaining) ================= */
 export const createApInvoiceFromPoThunk = createAsyncThunk<
   ApInvoice,
   number,
   { rejectValue: string }
 >("apInvoice/createFromPO", async (poId, { rejectWithValue }) => {
   try {
-    return await apInvoiceService.createFromPO(poId);
+    return await apInvoiceApi.createFromPO(poId);
   } catch (error) {
     return rejectWithValue(getErrorMessage(error));
   }
 });
+
+/* ================= CREATE PARTIAL FROM PO ================= */
+export const createPartialApInvoiceFromPoThunk = createAsyncThunk<
+  ApInvoice,
+  {
+    poId: number;
+    lines: Array<{ po_line_id: number; quantity: number }>;
+    metadata?: {
+      invoice_no?: string;
+      invoice_date?: string;
+      due_date?: string;
+      invoice_series?: string;
+      invoice_template?: string;
+      tax_code?: string;
+    };
+  },
+  { rejectValue: string }
+>(
+  "apInvoice/createPartialFromPO",
+  async ({ poId, lines, metadata }, { rejectWithValue }) => {
+    try {
+      return await apInvoiceApi.createPartialFromPO(poId, lines, metadata);
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  },
+);
 
 /* ================= SUBMIT ================= */
 export const submitApInvoiceThunk = createAsyncThunk<
@@ -83,6 +128,20 @@ export const rejectApInvoiceThunk = createAsyncThunk<
   }
 });
 
+/* ================= DELETE ================= */
+export const deleteApInvoiceThunk = createAsyncThunk<
+  number,
+  number,
+  { rejectValue: string }
+>("apInvoice/delete", async (id, { rejectWithValue }) => {
+  try {
+    await apInvoiceApi.deleteInvoice(id);
+    return id;
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
 export const fetchApPostedSummaryThunk = createAsyncThunk<
   ApPostedSummary,
   number,
@@ -104,5 +163,18 @@ export const fetchPostedSuppliersThunk = createAsyncThunk<
     return await apInvoiceService.getPostedSuppliers();
   } catch (e) {
     return rejectWithValue(getErrorMessage(e));
+  }
+});
+
+/* ================= GET AUDIT LOGS ================= */
+export const getApInvoiceAuditLogsThunk = createAsyncThunk<
+  any[],
+  number,
+  { rejectValue: string }
+>("apInvoice/getAuditLogs", async (id, { rejectWithValue }) => {
+  try {
+    return await apInvoiceApi.getAuditLogs(id);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
   }
 });

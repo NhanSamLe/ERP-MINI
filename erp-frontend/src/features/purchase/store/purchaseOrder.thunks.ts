@@ -16,7 +16,7 @@ export const fetchPurchaseOrdersThunk = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(getErrorMessage(error));
     }
-  }
+  },
 );
 
 export const getPurchaseOrdersAvailableForInvoiceThunk = createAsyncThunk<
@@ -40,7 +40,7 @@ export const fetchPurchaseOrderByIdThunk = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(getErrorMessage(error));
     }
-  }
+  },
 );
 
 export const fetchPurchaseOrderByStatus = createAsyncThunk(
@@ -52,7 +52,7 @@ export const fetchPurchaseOrderByStatus = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(getErrorMessage(error));
     }
-  }
+  },
 );
 
 export const createPurchaseOrderThunk = createAsyncThunk(
@@ -64,14 +64,14 @@ export const createPurchaseOrderThunk = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(getErrorMessage(error));
     }
-  }
+  },
 );
 
 export const updatePurchaseOrderThunk = createAsyncThunk(
   "purchaseOrder/update",
   async (
     { id, body }: { id: number; body: PurchaseOrderUpdate },
-    { rejectWithValue }
+    { rejectWithValue },
   ) => {
     try {
       const res = await purchaseOrderService.update(id, body);
@@ -79,7 +79,7 @@ export const updatePurchaseOrderThunk = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(getErrorMessage(error));
     }
-  }
+  },
 );
 
 export const deletePurchaseOrderThunk = createAsyncThunk(
@@ -91,7 +91,7 @@ export const deletePurchaseOrderThunk = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(getErrorMessage(error));
     }
-  }
+  },
 );
 
 export const submitPurchaseOrderThunk = createAsyncThunk(
@@ -103,19 +103,74 @@ export const submitPurchaseOrderThunk = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(getErrorMessage(error));
     }
-  }
+  },
 );
 
 export const approvePurchaseOrderThunk = createAsyncThunk(
   "purchaseOrder/approve",
   async (id: number) => {
     return await purchaseOrderService.approve(id);
-  }
+  },
 );
 
 export const cancelPurchaseOrderThunk = createAsyncThunk(
   "purchaseOrder/cancel",
   async ({ id, reason }: { id: number; reason: string }) => {
     return await purchaseOrderService.cancel(id, reason);
-  }
+  },
 );
+
+// ================= SEARCH =================
+export const searchPurchaseOrdersThunk = createAsyncThunk<
+  { items: PurchaseOrder[]; pagination: any },
+  any,
+  { rejectValue: string }
+>("purchaseOrder/search", async (filters, { rejectWithValue }) => {
+  try {
+    return await purchaseOrderService.search(filters);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
+// ================= BULK APPROVE =================
+export const bulkApprovePurchaseOrdersThunk = createAsyncThunk<
+  any,
+  number[],
+  { rejectValue: string }
+>("purchaseOrder/bulkApprove", async (po_ids, { rejectWithValue }) => {
+  try {
+    return await purchaseOrderService.bulkApprove(po_ids);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
+// ================= BULK CANCEL =================
+export const bulkCancelPurchaseOrdersThunk = createAsyncThunk<
+  any,
+  { po_ids: number[]; reason: string },
+  { rejectValue: string }
+>(
+  "purchaseOrder/bulkCancel",
+  async ({ po_ids, reason }, { rejectWithValue }) => {
+    try {
+      return await purchaseOrderService.bulkCancel(po_ids, reason);
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  },
+);
+
+// ================= AUDIT LOGS =================
+export const fetchPurchaseOrderAuditLogsThunk = createAsyncThunk<
+  any[],
+  number,
+  { rejectValue: string }
+>("purchaseOrder/fetchAuditLogs", async (id, { rejectWithValue }) => {
+  try {
+    return await purchaseOrderService.getAuditLogs(id);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});

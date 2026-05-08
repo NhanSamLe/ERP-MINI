@@ -32,6 +32,12 @@ import apPaymentRoutes from "../modules/purchase/routes/apPayment.route";
 import notificationRoutes from "../core/routes/notification.routes";
 import stockLocationRoutes from "../modules/inventory/routes/stockLocation.routes";
 import stockLotRoutes from "../modules/inventory/routes/stockLot.routes";
+import physicalInventoryRoutes from "../modules/inventory/routes/physicalInventory.routes";
+import chatbotRoutes from "../modules/ai-chatbot/routes";
+import documentRoutes, {
+  matchingRouter,
+} from "../modules/document-intelligence/routes";
+import { narrativeRoutes } from "../modules/ai-narrative/routes";
 const router = express.Router();
 
 router.use("/auth", authRoutes);
@@ -73,5 +79,10 @@ router.use("/notifications", notificationRoutes);
 router.use("/reports", reportRoutes);
 router.use("/locations", stockLocationRoutes);
 router.use("/lots", stockLotRoutes);
+router.use("/physical-inventories", physicalInventoryRoutes);
+router.use("/chatbot", chatbotRoutes);
+router.use("/documents", documentRoutes);
+router.use("/matching", matchingRouter);
+router.use("/ai-narrative", narrativeRoutes);
 
 export default router;

@@ -22,32 +22,73 @@ import { warehouseService } from "./warehouse.service";
 
 /**
  * Convert quantity từ line.uom_id sang product.uom_id (đơn vị lưu kho).
- * Nếu line.uom_id = product.uom_id hoặc không có conversion → factor = 1.
+ * Priority lookup: product-specific → generic → reverse product-specific → reverse generic → fallback.
+ * Nếu line.uom_id = product.uom_id hoặc không có conversion → trả về quantity gốc.
  */
 async function convertToStockUom(
   quantity: number,
   lineUomId: number | null | undefined,
   productUomId: number | null | undefined,
+  productId: number | null | undefined,
 ): Promise<number> {
   if (!lineUomId || !productUomId || lineUomId === productUomId) {
     return quantity;
   }
-  // Tìm conversion: from lineUomId → productUomId
-  const conversion = await UomConversion.findOne({
-    where: { from_uom_id: lineUomId, to_uom_id: productUomId },
-  });
-  if (!conversion) {
-    // Thử chiều ngược lại (1/factor)
-    const reverseConversion = await UomConversion.findOne({
-      where: { from_uom_id: productUomId, to_uom_id: lineUomId },
+
+  // Step 1: Forward product-specific
+  if (productId) {
+    const conversion = await UomConversion.findOne({
+      where: {
+        product_id: productId,
+        from_uom_id: lineUomId,
+        to_uom_id: productUomId,
+      },
     });
-    if (reverseConversion) {
-      return quantity / parseFloat(String(reverseConversion.factor));
+    if (conversion) {
+      return quantity * parseFloat(String(conversion.factor));
     }
-    // Không có conversion → giữ nguyên (same base unit)
-    return quantity;
   }
-  return quantity * parseFloat(String(conversion.factor));
+
+  // Step 2: Forward generic
+  const genericConversion = await UomConversion.findOne({
+    where: {
+      product_id: null,
+      from_uom_id: lineUomId,
+      to_uom_id: productUomId,
+    },
+  });
+  if (genericConversion) {
+    return quantity * parseFloat(String(genericConversion.factor));
+  }
+
+  // Step 3: Reverse product-specific
+  if (productId) {
+    const reverseProductSpecific = await UomConversion.findOne({
+      where: {
+        product_id: productId,
+        from_uom_id: productUomId,
+        to_uom_id: lineUomId,
+      },
+    });
+    if (reverseProductSpecific) {
+      return quantity / parseFloat(String(reverseProductSpecific.factor));
+    }
+  }
+
+  // Step 4: Reverse generic
+  const reverseGeneric = await UomConversion.findOne({
+    where: {
+      product_id: null,
+      from_uom_id: productUomId,
+      to_uom_id: lineUomId,
+    },
+  });
+  if (reverseGeneric) {
+    return quantity / parseFloat(String(reverseGeneric.factor));
+  }
+
+  // Step 5: Fallback — no conversion found
+  return quantity;
 }
 
 import { StockLot } from "../models/stockLot.model";
@@ -207,10 +248,15 @@ export const stockMoveService = {
         line.product_id,
       );
 
+      // Validate theo stock UOM: dùng qty_in_stock_uom của PO line (đã quy đổi)
+      // line.quantity từ stock move cũng phải là stock UOM
+      const poQtyInStockUom = parseFloat(
+        String(poLine.qty_in_stock_uom ?? poLine.quantity ?? 0),
+      );
       await purchaseOrderService.validateRemainingQuantity(
         line.product_id,
         line.quantity,
-        poLine.quantity ?? 0,
+        poQtyInStockUom,
         received,
       );
     }
@@ -240,6 +286,9 @@ export const stockMoveService = {
             lot_no: line.new_lot.lot_no.trim(),
             expiry_date: line.new_lot.expiry_date ?? null,
             manufacture_date: line.new_lot.manufacture_date ?? null,
+            serial_no: line.new_lot.serial_no ?? null,
+            supplier_id: line.new_lot.supplier_id ?? null,
+            notes: line.new_lot.notes ?? null,
           } as any);
           lotId = Number(newLot.id);
         }
@@ -537,10 +586,14 @@ export const stockMoveService = {
         line.product_id,
       );
 
+      // Validate theo stock UOM
+      const poQtyInStockUom = parseFloat(
+        String(poLine.qty_in_stock_uom ?? poLine.quantity ?? 0),
+      );
       await purchaseOrderService.validateRemainingQuantity(
         line.product_id,
         line.quantity,
-        poLine.quantity ?? 0,
+        poQtyInStockUom,
         received,
       );
     }
@@ -1080,25 +1133,57 @@ export const stockMoveService = {
     warehouseId: number,
     productId: number,
     quantityChange: number,
+    locationId?: number | null,
+    lotId?: number | null,
+    unitCost?: number | null,
   ) {
-    const existing = await StockBalance.findOne({
-      where: { warehouse_id: warehouseId, product_id: productId },
-    });
+    const where: any = { warehouse_id: warehouseId, product_id: productId };
+    if (locationId != null) where.location_id = locationId;
+    if (lotId != null) where.lot_id = lotId;
 
+    const existing = await StockBalance.findOne({ where });
     const qtyChange = parseFloat(String(quantityChange));
+    const incomingCost = unitCost != null ? parseFloat(String(unitCost)) : null;
 
     if (!existing) {
+      // Tạo mới — chỉ có ý nghĩa khi nhập kho (qty > 0)
+      const initCost = incomingCost ?? 0;
       return StockBalance.create({
         warehouse_id: warehouseId,
         product_id: productId,
+        location_id: locationId ?? null,
+        lot_id: lotId ?? null,
         quantity: qtyChange,
+        unit_cost: initCost,
+        total_value: qtyChange * initCost,
       });
     }
 
-    const currentQty = parseFloat(existing.quantity as any);
+    const oldQty = parseFloat(String(existing.quantity));
+    const oldCost = parseFloat(String(existing.unit_cost ?? 0));
+    const newQty = oldQty + qtyChange;
 
-    existing.quantity = currentQty + qtyChange;
+    let newCost: number;
+    let newValue: number;
 
+    if (qtyChange > 0) {
+      // Nhập kho → tính Weighted Average Cost
+      if (incomingCost != null && newQty > 0) {
+        newCost = (oldQty * oldCost + qtyChange * incomingCost) / newQty;
+      } else {
+        // Không có unit_cost (transfer, adjustment tăng) → giữ nguyên cost cũ
+        newCost = oldCost;
+      }
+    } else {
+      // Xuất kho / giảm → giữ nguyên unit_cost
+      newCost = oldCost;
+    }
+
+    newValue = newQty * newCost;
+
+    existing.quantity = newQty;
+    existing.unit_cost = newCost;
+    existing.total_value = newValue;
     return existing.save();
   },
 
@@ -1235,7 +1320,6 @@ export const stockMoveService = {
   },
 
   async processReceipt(move: any, lines: any[]) {
-    // Cập nhật stock balance với UOM conversion
     for (const line of lines) {
       const product = await Product.findByPk(line.product_id, {
         attributes: ["uom_id"],
@@ -1244,11 +1328,27 @@ export const stockMoveService = {
         parseFloat(String(line.quantity)),
         line.uom_id,
         product?.uom_id,
+        line.product_id,
       );
+
+      // Lấy unit_price từ PO line để tính WAC
+      let unitCost: number | null = null;
+      if (move.reference_type === "purchase_order" && move.reference_id) {
+        const poLine = await PurchaseOrderLine.findOne({
+          where: { po_id: move.reference_id, product_id: line.product_id },
+        });
+        if (poLine?.unit_price != null) {
+          unitCost = parseFloat(String(poLine.unit_price));
+        }
+      }
+
       await this.updateStockBalance(
         move.warehouse_to_id,
         line.product_id,
         actualQty,
+        line.location_to_id ?? null,
+        line.lot_id ?? null,
+        unitCost,
       );
     }
 
@@ -1288,7 +1388,10 @@ export const stockMoveService = {
     let fullyReceived = true;
 
     for (const poLine of poLines) {
-      const poQty = parseFloat(String(poLine.quantity ?? 0));
+      // So sánh theo stock UOM: dùng qty_in_stock_uom nếu có, fallback về quantity
+      const poQty = parseFloat(
+        String(poLine.qty_in_stock_uom ?? poLine.quantity ?? 0),
+      );
 
       const previousReceived = allLines
         .filter(
@@ -1303,7 +1406,7 @@ export const stockMoveService = {
       const totalReceived = previousReceived + currentReceived;
 
       console.log(
-        `Product ${poLine.product_id}: PO Qty=${poQty}, Previous Received=${previousReceived}, Current Received=${currentReceived}, Total=${totalReceived}`,
+        `Product ${poLine.product_id}: PO Qty(stock)=${poQty}, Previous Received=${previousReceived}, Current Received=${currentReceived}, Total=${totalReceived}`,
       );
       if (totalReceived < poQty || totalReceived > poQty) {
         fullyReceived = false;
@@ -1327,11 +1430,14 @@ export const stockMoveService = {
         parseFloat(String(line.quantity)),
         line.uom_id,
         product?.uom_id,
+        line.product_id,
       );
       await this.updateStockBalance(
         move.warehouse_from_id,
         line.product_id,
         -actualQty,
+        line.location_from_id ?? null,
+        line.lot_id ?? null,
       );
     }
     if (move.reference_type === "sale_order") {
@@ -1354,16 +1460,21 @@ export const stockMoveService = {
         parseFloat(String(line.quantity)),
         line.uom_id,
         product?.uom_id,
+        line.product_id,
       );
       await this.updateStockBalance(
         move.warehouse_from_id,
         line.product_id,
         -actualQty,
+        line.location_from_id ?? null,
+        line.lot_id ?? null,
       );
       await this.updateStockBalance(
         move.warehouse_to_id,
         line.product_id,
         +actualQty,
+        line.location_to_id ?? null,
+        line.lot_id ?? null,
       );
     }
   },
@@ -1381,11 +1492,14 @@ export const stockMoveService = {
           Math.abs(rawQty),
           line.uom_id,
           product?.uom_id,
+          line.product_id,
         ));
       await this.updateStockBalance(
         move.warehouse_from_id,
         line.product_id,
         actualQty,
+        line.location_from_id ?? null,
+        line.lot_id ?? null,
       );
     }
   },

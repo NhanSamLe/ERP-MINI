@@ -7,6 +7,14 @@ export const stockBalanceApi = {
     return res.data;
   },
 
+  getGrouped: async (params?: {
+    warehouse_id?: number;
+    product_id?: number;
+  }) => {
+    const res = await axiosClient.get("/stock-balance/grouped", { params });
+    return res.data.data; // trả về mảng grouped
+  },
+
   getStockBalanceById: async (id: number): Promise<StockBalance> => {
     const res = await axiosClient.get(`/stock-balance/${id}`);
     return res.data;
@@ -19,7 +27,7 @@ export const stockBalanceApi = {
 
   updateStockBalance: async (
     id: number,
-    data: Partial<StockBalance>
+    data: Partial<StockBalance>,
   ): Promise<StockBalance> => {
     const res = await axiosClient.put(`/stock-balance/${id}`, data);
     return res.data;

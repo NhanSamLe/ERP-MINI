@@ -4,11 +4,14 @@ import { PurchaseOrderUpdateDto } from "../dto/purchaseOrderUpdate.dto";
 import { StockMoveLine } from "../../inventory/models/stockMoveLine.model";
 import { StockMove } from "../../inventory/models/stockMove.model";
 import { productService } from "../../product/services/product.service";
+import { UomConversion } from "../../master-data/models/uomConversion.model";
 import { JwtPayload } from "../../../core/types/jwt";
 import {
   ApInvoice,
+  ApInvoiceLine,
   Branch,
   Partner,
+  Product,
   sequelize,
   TaxRate,
   User,
@@ -16,6 +19,83 @@ import {
 import { Role } from "../../../core/types/enum";
 import { literal, Op } from "sequelize";
 import { notificationService } from "../../../core/services/notification.service";
+import { validationService } from "./validationService";
+import { auditService } from "./auditService";
+
+/**
+ * Quy đổi quantity từ purchase UOM sang stock UOM của product.
+ * Priority lookup: product-specific → generic → reverse product-specific → reverse generic → fallback.
+ * Nếu uom_id = product.uom_id hoặc không có conversion → trả về quantity gốc.
+ */
+async function resolveQtyInStockUom(
+  quantity: number,
+  purchaseUomId: number | null | undefined,
+  productStockUomId: number | null | undefined,
+  productId: number | null | undefined,
+): Promise<number> {
+  if (
+    !purchaseUomId ||
+    !productStockUomId ||
+    purchaseUomId === productStockUomId
+  ) {
+    return quantity;
+  }
+
+  // Step 1: Forward product-specific
+  if (productId) {
+    const conversion = await UomConversion.findOne({
+      where: {
+        product_id: productId,
+        from_uom_id: purchaseUomId,
+        to_uom_id: productStockUomId,
+      },
+    });
+    if (conversion) {
+      return quantity * parseFloat(String(conversion.factor));
+    }
+  }
+
+  // Step 2: Forward generic
+  const genericConversion = await UomConversion.findOne({
+    where: {
+      product_id: null,
+      from_uom_id: purchaseUomId,
+      to_uom_id: productStockUomId,
+    },
+  });
+  if (genericConversion) {
+    return quantity * parseFloat(String(genericConversion.factor));
+  }
+
+  // Step 3: Reverse product-specific
+  if (productId) {
+    const reverseProductSpecific = await UomConversion.findOne({
+      where: {
+        product_id: productId,
+        from_uom_id: productStockUomId,
+        to_uom_id: purchaseUomId,
+      },
+    });
+    if (reverseProductSpecific) {
+      return quantity / parseFloat(String(reverseProductSpecific.factor));
+    }
+  }
+
+  // Step 4: Reverse generic
+  const reverseGeneric = await UomConversion.findOne({
+    where: {
+      product_id: null,
+      from_uom_id: productStockUomId,
+      to_uom_id: purchaseUomId,
+    },
+  });
+  if (reverseGeneric) {
+    return quantity / parseFloat(String(reverseGeneric.factor));
+  }
+
+  // Step 5: Fallback — no conversion found
+  return quantity;
+}
 
 export const purchaseOrderService = {
   async getAllPO(user: JwtPayload) {
@@ -77,6 +157,9 @@ export const purchaseOrderService = {
       throw new Error("You cannot create a purchase order for another branch.");
     }
 
+    // Validate input
+    await validationService.validatePO(data);
+
     // 👉 chỉ return poId trong transaction
     const poId = await sequelize.transaction(async (t) => {
       let totalBeforeTax = 0;
@@ -93,7 +176,7 @@ export const purchaseOrderService = {
           status: "draft",
           description: data.description,
         },
-        { transaction: t }
+        { transaction: t },
       );
 
       for (const line of data.lines) {
@@ -103,18 +186,30 @@ export const purchaseOrderService = {
         totalTax += calc.line_tax;
         totalAfterTax += calc.line_total_after_tax;
 
+        // Lấy stock UOM của product để quy đổi (uom_id = stock UOM, không phải purchase_uom_id)
+        const product = await productService.getById(line.product_id);
+        const productStockUomId = product?.uom_id ?? null;
+        const qty_in_stock_uom = await resolveQtyInStockUom(
+          line.quantity,
+          line.uom_id ?? null,
+          productStockUomId,
+          line.product_id,
+        );
+
         await PurchaseOrderLine.create(
           {
             po_id: po.id,
             product_id: line.product_id,
             quantity: line.quantity,
+            uom_id: line.uom_id ?? null,
+            qty_in_stock_uom,
             unit_price: line.unit_price,
             tax_rate_id: line.tax_rate_id,
             line_total: calc.line_total,
             line_tax: calc.line_tax,
             line_total_after_tax: calc.line_total_after_tax,
           },
-          { transaction: t }
+          { transaction: t },
         );
       }
 
@@ -124,14 +219,19 @@ export const purchaseOrderService = {
           total_tax: totalTax,
           total_after_tax: totalAfterTax,
         },
-        { transaction: t }
+        { transaction: t },
       );
 
       return po.id; // ✅ chỉ return id
     });
 
     // 👉 transaction COMMIT xong mới query
-    return this.getPOById(poId);
+    const po = await this.getPOById(poId);
+
+    // Log creation
+    await auditService.logCreate(po, user);
+
+    return po;
   },
 
   async update(id: number, data: PurchaseOrderUpdateDto, user: any) {
@@ -173,7 +273,7 @@ export const purchaseOrderService = {
           order_date: new Date(data.order_date),
           description: data.description,
         },
-        { transaction: t }
+        { transaction: t },
       );
 
       if (data.deletedLineIds?.length) {
@@ -192,31 +292,53 @@ export const purchaseOrderService = {
           totalAfterTax += calc.line_total_after_tax;
 
           if (line.id) {
+            const product = await productService.getById(line.product_id);
+            const productStockUomId = product?.uom_id ?? null;
+            const qty_in_stock_uom = await resolveQtyInStockUom(
+              line.quantity,
+              line.uom_id ?? null,
+              productStockUomId,
+              line.product_id,
+            );
+
             await PurchaseOrderLine.update(
               {
                 product_id: line.product_id,
                 quantity: line.quantity,
+                uom_id: line.uom_id ?? null,
+                qty_in_stock_uom,
                 unit_price: line.unit_price,
                 tax_rate_id: line.tax_rate_id,
                 line_total: calc.line_total,
                 line_tax: calc.line_tax,
                 line_total_after_tax: calc.line_total_after_tax,
               },
-              { where: { id: line.id, po_id: id }, transaction: t }
+              { where: { id: line.id, po_id: id }, transaction: t },
             );
           } else {
+            const product = await productService.getById(line.product_id);
+            const productStockUomId = product?.uom_id ?? null;
+            const qty_in_stock_uom = await resolveQtyInStockUom(
+              line.quantity,
+              line.uom_id ?? null,
+              productStockUomId,
+              line.product_id,
+            );
+
             await PurchaseOrderLine.create(
               {
                 po_id: id,
                 product_id: line.product_id,
                 quantity: line.quantity,
+                uom_id: line.uom_id ?? null,
+                qty_in_stock_uom,
                 unit_price: line.unit_price,
                 tax_rate_id: line.tax_rate_id,
                 line_total: calc.line_total,
                 line_tax: calc.line_tax,
                 line_total_after_tax: calc.line_total_after_tax,
               },
-              { transaction: t }
+              { transaction: t },
             );
           }
         }
@@ -228,7 +350,7 @@ export const purchaseOrderService = {
           total_tax: totalTax,
           total_after_tax: totalAfterTax,
         },
-        { transaction: t }
+        { transaction: t },
       );
     });
 
@@ -251,7 +373,7 @@ export const purchaseOrderService = {
     if (!po) throw new Error("Purchase order not found");
     if (po.status !== "draft") {
       throw new Error(
-        "Cannot delete the purchase order because it has already been approved"
+        "Cannot delete the purchase order because it has already been approved",
       );
     }
     if (po.created_by !== user.id)
@@ -270,19 +392,22 @@ export const purchaseOrderService = {
     }
     if (po.branch_id !== user.branch_id) {
       throw new Error(
-        "You cannot approve a purchase order for another branch."
+        "You cannot approve a purchase order for another branch.",
       );
     }
 
     if (po.status !== "waiting_approval") {
       throw new Error(
-        "Only purchase orders in 'waiting_approval' can be approved."
+        "Only purchase orders in 'waiting_approval' can be approved.",
       );
     }
     po.status = "confirmed";
     po.approved_by = user.id;
     po.approved_at = new Date();
     await po.save();
+
+    // Log approval
+    await auditService.logApprove(po, user);
 
     // Gửi thông báo
     if (app && po.created_by) {
@@ -316,7 +441,7 @@ export const purchaseOrderService = {
 
     if (po.status !== "waiting_approval") {
       throw new Error(
-        "Only purchase orders in 'waiting_approval' can be cancelled."
+        "Only purchase orders in 'waiting_approval' can be cancelled.",
       );
     }
 
@@ -329,6 +454,9 @@ export const purchaseOrderService = {
     po.approved_at = new Date();
     po.reject_reason = reason.trim();
     await po.save();
+
+    // Log cancellation
+    await auditService.logCancel(po, reason, user);
 
     // Gửi thông báo (cancel = reject)
     if (app && po.created_by) {
@@ -406,7 +534,7 @@ export const purchaseOrderService = {
   /** Lấy tổng số lượng đã nhập cho 1 sản phẩm từ các StockMove đã posted */
   async getAlreadyReceivedQty(
     poId: number,
-    productId: number
+    productId: number,
   ): Promise<number> {
     // 1. Lấy tất cả stock moves thuộc PO đang posted
     const postedMoves = await StockMove.findAll({
@@ -440,7 +568,7 @@ export const purchaseOrderService = {
   /** Kiểm tra sản phẩm có trong PO không */
   async validateProductInPO(
     map: Map<number, PurchaseOrderLine>,
-    productId: number
+    productId: number,
   ) {
     const poLine = map.get(productId);
     if (!poLine) {
@@ -453,12 +581,17 @@ export const purchaseOrderService = {
     return poLine;
   },
 
+  /**
+   * Validate số lượng nhập kho không vượt quá số lượng còn lại trong PO.
+   * inputQty và poQty đều phải theo STOCK UOM (đã quy đổi).
+   */
   async validateRemainingQuantity(
     productId: number,
     inputQty: number,
     poQty: number,
-    receivedQty: number
+    receivedQty: number,
   ) {
+    // poQty ở đây là qty_in_stock_uom (đã quy đổi về stock UOM)
     const remaining = poQty - receivedQty;
 
     if (inputQty > remaining) {
@@ -471,18 +604,25 @@ export const purchaseOrderService = {
   },
 
   async getAvailablePurchaseOrders(user: any) {
-    return PurchaseOrder.findAll({
+    // Step 1: Fetch POs
+    const pos = await PurchaseOrder.findAll({
       where: {
         branch_id: user.branch_id,
         status: {
-          [Op.in]: ["confirmed", "completed"],
+          [Op.in]: ["confirmed", "partially_received", "completed"],
         },
-        "$invoice.id$": { [Op.is]: null },
       },
       include: [
         {
+          // Include ALL invoices (no where filter here — filter in JS)
           model: ApInvoice,
-          as: "invoice",
+          as: "invoices",
+          required: false,
+          attributes: ["id", "total_after_tax", "status"],
+        },
+        {
+          model: PurchaseOrderLine,
+          as: "lines",
           required: false,
         },
         {
@@ -503,6 +643,122 @@ export const purchaseOrderService = {
       ],
       order: [["created_at", "DESC"]],
     });
+
+    // Step 2: Calculate invoiced/remaining in JS — exclude cancelled invoices
+    return pos.map((po: any) => {
+      const allInvoices: any[] = po.invoices ?? [];
+      const activeInvoices = allInvoices.filter(
+        (inv: any) => inv.status !== "cancelled",
+      );
+
+      const invoicedAmount = activeInvoices.reduce(
+        (sum: number, inv: any) => sum + Number(inv.total_after_tax ?? 0),
+        0,
+      );
+      const poTotal = Number(po.total_after_tax ?? 0);
+      const remainingAmount = Math.max(0, poTotal - invoicedAmount);
+      const invoiceCount = activeInvoices.length;
+
+      return {
+        ...po.toJSON(),
+        invoiced_amount: invoicedAmount,
+        remaining_amount: remainingAmount,
+        invoice_count: invoiceCount,
+      };
+    });
+  },
+
+  /**
+   * Get invoice summary for a specific PO — used when creating partial invoices.
+   * Returns per-line invoiced quantities so frontend can show remaining qty.
+   */
+  async getPoInvoiceSummary(poId: number, user: any) {
+    const po = await PurchaseOrder.findOne({
+      where: { id: poId, branch_id: user.branch_id },
+      include: [
+        {
+          model: PurchaseOrderLine,
+          as: "lines",
+          required: false,
+          include: [
+            {
+              model: Product,
+              as: "product",
+              attributes: ["id", "name", "image_url"],
+              required: false,
+            },
+          ],
+        },
+        {
+          model: ApInvoice,
+          as: "invoices",
+          required: false,
+          attributes: ["id", "total_after_tax", "status"],
+          include: [
+            {
+              model: ApInvoiceLine,
+              as: "lines",
+              required: false,
+            },
+          ],
+        },
+      ],
+    });
+
+    if (!po) throw { status: 404, message: "Purchase Order not found" };
+
+    const poLines = (po as any).lines ?? [];
+    // Filter out cancelled invoices in JS
+    const invoices = ((po as any).invoices ?? []).filter(
+      (inv: any) => inv.status !== "cancelled",
+    );
+
+    // Sum invoiced qty per po_line_id across all non-cancelled invoices
+    const invoicedQtyByPoLine: Record<number, number> = {};
+    for (const inv of invoices) {
+      for (const invLine of inv.lines ?? []) {
+        if (invLine.po_line_id) {
+          invoicedQtyByPoLine[invLine.po_line_id] =
+            (invoicedQtyByPoLine[invLine.po_line_id] ?? 0) +
+            Number(invLine.quantity ?? 0);
+        }
+      }
+    }
+
+    const linesSummary = poLines.map((line: any) => ({
+      po_line_id: line.id,
+      product_id: line.product_id,
+      product_name: line.product?.name ?? null,
+      product_image: line.product?.image_url ?? null,
+      quantity: Number(line.quantity ?? 0),
+      unit_price: Number(line.unit_price ?? 0),
+      uom_id: line.uom_id,
+      tax_rate_id: line.tax_rate_id,
+      line_total: Number(line.line_total ?? 0),
+      line_tax: Number(line.line_tax ?? 0),
+      line_total_after_tax: Number(line.line_total_after_tax ?? 0),
+      invoiced_qty: invoicedQtyByPoLine[line.id] ?? 0,
+      remaining_qty:
+        Number(line.quantity ?? 0) - (invoicedQtyByPoLine[line.id] ?? 0),
+    }));
+
+    const totalInvoiced = invoices.reduce(
+      (sum: number, inv: any) => sum + Number(inv.total_after_tax ?? 0),
+      0,
+    );
+
+    return {
+      po_id: po.id,
+      po_no: (po as any).po_no,
+      total_after_tax: Number((po as any).total_after_tax ?? 0),
+      invoiced_amount: totalInvoiced,
+      remaining_amount: Math.max(
+        0,
+        Number((po as any).total_after_tax ?? 0) - totalInvoiced,
+      ),
+      invoice_count: invoices.length,
+      lines: linesSummary,
+    };
   },
   async calculateLine(line: any) {
     const taxRate = line.tax_rate_id

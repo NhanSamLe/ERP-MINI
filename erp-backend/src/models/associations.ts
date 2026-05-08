@@ -26,6 +26,8 @@ import { ApInvoice } from "../modules/purchase/models/apInvoice.model";
 import { ApInvoiceLine } from "../modules/purchase/models/apInvoiceLine.model";
 import { ApPayment } from "../modules/purchase/models/apPayment.model";
 import { ApPaymentAllocation } from "../modules/purchase/models/apPaymentAllocation.model";
+import { ApPaymentAuditLog } from "../modules/purchase/models/apPaymentAuditLog.model";
+import { ApInvoiceAuditLog } from "../modules/purchase/models/apInvoiceAuditLog.model";
 import { Warehouse } from "../modules/inventory/models/warehouse.model";
 import { StockMove } from "../modules/inventory/models/stockMove.model";
 import { StockMoveLine } from "../modules/inventory/models/stockMoveLine.model";
@@ -74,7 +76,8 @@ import { SalesReturnLine } from "../modules/sales/models/salesReturnLine.model";
 import { ArCreditNote } from "../modules/sales/models/arCreditNote.model";
 import { ArCreditNoteLine } from "../modules/sales/models/arCreditNoteLine.model";
 import { ArRefund } from "../modules/sales/models/arRefund.model";
-
+import { InvoiceDocument } from "../modules/document-intelligence/models/invoiceDocument.model";
+import { OcrFieldMapping } from "../modules/document-intelligence/models/ocrFieldMapping.model";
 export function applyAssociations() {
   // =====================
   // AUTH
@@ -385,8 +388,8 @@ export function applyAssociations() {
     as: "purchaseOrderLines",
   });
 
-  // PurchaseOrder ↔ Invoice
-  PurchaseOrder.hasOne(ApInvoice, { foreignKey: "po_id", as: "invoice" });
+  // PurchaseOrder ↔ Invoice (one-to-many: a PO can have multiple partial invoices)
+  PurchaseOrder.hasMany(ApInvoice, { foreignKey: "po_id", as: "invoices" });
   ApInvoice.belongsTo(PurchaseOrder, { foreignKey: "po_id", as: "order" });
 
   // PurchaseOrder ↔ Partner (Supplier)
@@ -480,8 +483,69 @@ export function applyAssociations() {
   ApInvoice.belongsTo(User, { as: "creator", foreignKey: "created_by" });
   ApInvoice.belongsTo(User, { as: "approver", foreignKey: "approved_by" });
 
+  // ApInvoiceAuditLog associations
+  ApInvoiceAuditLog.belongsTo(ApInvoice, {
+    foreignKey: "ap_invoice_id",
+    as: "invoice",
+  });
+  ApInvoice.hasMany(ApInvoiceAuditLog, {
+    foreignKey: "ap_invoice_id",
+    as: "auditLogs",
+  });
+  ApInvoiceAuditLog.belongsTo(User, { foreignKey: "created_by", as: "actor" });
+
   ApPayment.belongsTo(User, { as: "creator", foreignKey: "created_by" });
   ApPayment.belongsTo(User, { as: "approver", foreignKey: "approved_by" });
+
+  // ApPaymentAuditLog associations
+  ApPaymentAuditLog.belongsTo(ApPayment, {
+    foreignKey: "payment_id",
+    as: "payment",
+  });
+  ApPayment.hasMany(ApPaymentAuditLog, {
+    foreignKey: "payment_id",
+    as: "auditLogs",
+  });
+  ApPaymentAuditLog.belongsTo(User, { foreignKey: "created_by", as: "actor" });
+
+  // InvoiceDocument associations
+  InvoiceDocument.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
+  Branch.hasMany(InvoiceDocument, {
+    foreignKey: "branch_id",
+    as: "invoiceDocuments",
+  });
+
+  InvoiceDocument.belongsTo(User, { foreignKey: "created_by", as: "creator" });
+  User.hasMany(InvoiceDocument, {
+    foreignKey: "created_by",
+    as: "invoiceDocuments",
+  });
+
+  InvoiceDocument.belongsTo(ApInvoice, {
+    foreignKey: "purchase_invoice_id",
+    as: "apInvoice",
+  });
+  ApInvoice.hasOne(InvoiceDocument, {
+    foreignKey: "purchase_invoice_id",
+    as: "invoiceDocument",
+  });
+
+  ApInvoice.belongsTo(Partner, {
+    foreignKey: "supplier_id",
+    as: "invoiceSupplier",
+  });
+
+  ApInvoiceLine.belongsTo(PurchaseOrderLine, {
+    foreignKey: "po_line_id",
+    as: "poLine",
+  });
+  ApInvoiceLine.belongsTo(StockMoveLine, {
+    foreignKey: "grn_line_id",
+    as: "grnLine",
+  });
+
+  OcrFieldMapping.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
+  OcrFieldMapping.belongsTo(Partner, { foreignKey: "vendor_id", as: "vendor" });
 
   // =====================
   // INVENTORY

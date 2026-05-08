@@ -20,6 +20,8 @@ import { warehouseReducer } from "../features/inventory/store";
 import { stockMoveReducer } from "../features/inventory/store";
 import { stockLocationReducer } from "../features/inventory/store";
 import { stockLotReducer } from "../features/inventory/store";
+import { physicalInventoryReducer } from "../features/inventory/store";
+import { chatReducer } from "../features/ai-chatbot/store/chatSlice";
 import {
   leadReducer,
   opportunityReducer,
@@ -39,6 +41,8 @@ import payrollRunReducer from "../features/hrm/store/payrollRun/payrollRun.slice
 import { employeeReducer } from "../features/hrm/store/employee/employee.slice";
 import apInvoiceRouter from "../features/purchase/store/apInvoice/apInvoice.slice";
 import apPaymentReducer from "@/features/purchase/store/apPayment";
+import documentIntelligenceReducer from "@/features/purchase/store/documentIntelligence";
+import { narrativeReducer } from "@/features/ai-narrative/store/narrativeSlice";
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -59,6 +63,8 @@ const rootReducer = combineReducers({
   stockMove: stockMoveReducer,
   stockLocation: stockLocationReducer,
   stockLot: stockLotReducer,
+  physicalInventory: physicalInventoryReducer,
+  chat: chatReducer,
   lead: leadReducer,
   opportunity: opportunityReducer,
   activity: activityReducer,
@@ -76,6 +82,8 @@ const rootReducer = combineReducers({
   employee: employeeReducer,
   apInvoice: apInvoiceRouter,
   apPayment: apPaymentReducer,
+  documentIntelligence: documentIntelligenceReducer,
+  narrative: narrativeReducer,
 });
 
 export default rootReducer;

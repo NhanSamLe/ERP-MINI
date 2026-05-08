@@ -54,4 +54,25 @@ export const purchaseOrderService = {
     const res = await purchaseOrderApi.cancel(id, reason);
     return res;
   },
+
+  async search(
+    filters: any,
+  ): Promise<{ items: PurchaseOrder[]; pagination: any }> {
+    const res = await purchaseOrderApi.search(filters);
+    return res;
+  },
+
+  async bulkApprove(po_ids: number[]): Promise<any> {
+    const res = await purchaseOrderApi.bulkApprove(po_ids);
+    return res;
+  },
+
+  async bulkCancel(po_ids: number[], reason: string): Promise<any> {
+    const res = await purchaseOrderApi.bulkCancel(po_ids, reason);
+    return res;
+  },
+
+  async getAuditLogs(id: number): Promise<any[]> {
+    return purchaseOrderApi.getAuditLogs(id);
+  },
 };

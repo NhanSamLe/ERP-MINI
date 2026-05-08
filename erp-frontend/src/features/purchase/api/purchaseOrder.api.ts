@@ -5,6 +5,32 @@ import {
   PurchaseOrderUpdate,
 } from "../store/purchaseOrder.types";
 
+export interface PoInvoiceSummaryLine {
+  po_line_id: number;
+  product_id?: number;
+  product_name?: string | null;
+  product_image?: string | null;
+  quantity: number;
+  unit_price: number;
+  uom_id?: number | null;
+  tax_rate_id?: number | null;
+  line_total: number;
+  line_tax: number;
+  line_total_after_tax: number;
+  invoiced_qty: number;
+  remaining_qty: number;
+}
+
+export interface PoInvoiceSummary {
+  po_id: number;
+  po_no: string;
+  total_after_tax: number;
+  invoiced_amount: number;
+  remaining_amount: number;
+  invoice_count: number;
+  lines: PoInvoiceSummaryLine[];
+}
+
 export const purchaseOrderApi = {
   getAll: async (): Promise<PurchaseOrder[]> => {
     const res = await axiosClient.get("/purchase-order");
@@ -16,6 +42,13 @@ export const purchaseOrderApi = {
     return res.data.data;
   },
 
+  getPoInvoiceSummary: async (poId: number): Promise<PoInvoiceSummary> => {
+    const res = await axiosClient.get(
+      `/purchase-order/${poId}/invoice-summary`,
+    );
+    return res.data.data;
+  },
+
   getById: async (id: number): Promise<PurchaseOrder> => {
     const res = await axiosClient.get(`/purchase-order/${id}`);
     return res.data;
@@ -23,7 +56,7 @@ export const purchaseOrderApi = {
 
   getByStatus: async (status: string): Promise<PurchaseOrder[]> => {
     const res = await axiosClient.get(
-      `/purchase-order/by-status?status=${status}`
+      `/purchase-order/by-status?status=${status}`,
     );
     return res.data;
   },
@@ -35,7 +68,7 @@ export const purchaseOrderApi = {
 
   update: async (
     id: number,
-    body: PurchaseOrderUpdate
+    body: PurchaseOrderUpdate,
   ): Promise<PurchaseOrder> => {
     return axiosClient
       .put(`/purchase-order/${id}`, body)
@@ -60,5 +93,37 @@ export const purchaseOrderApi = {
       reason,
     });
     return res.data;
+  },
+
+  search: async (
+    filters: any,
+  ): Promise<{ items: PurchaseOrder[]; pagination: any }> => {
+    const res = await axiosClient.get("/purchase-order/search", {
+      params: filters,
+    });
+    return {
+      items: res.data.data,
+      pagination: res.data.pagination,
+    };
+  },
+
+  bulkApprove: async (po_ids: number[]): Promise<any> => {
+    const res = await axiosClient.post("/purchase-order/bulk-approve", {
+      po_ids,
+    });
+    return res.data;
+  },
+
+  bulkCancel: async (po_ids: number[], reason: string): Promise<any> => {
+    const res = await axiosClient.post("/purchase-order/bulk-cancel", {
+      po_ids,
+      reason,
+    });
+    return res.data;
+  },
+
+  getAuditLogs: async (id: number): Promise<any[]> => {
+    const res = await axiosClient.get(`/purchase-order/${id}/audit-logs`);
+    return res.data.data;
   },
 };

@@ -8,6 +8,9 @@ import WarehousePages from "@/features/inventory/pages/WarehousePages";
 import WarehouseForm from "@/features/inventory/pages/WarehouseForm";
 import StockLocationPage from "@/features/inventory/pages/StockLocationPage";
 import StockLotPage from "@/features/inventory/pages/StockLotPage";
+import PhysicalInventoryListPage from "@/features/inventory/pages/PhysicalInventoryListPage";
+import PhysicalInventoryDetailPage from "@/features/inventory/pages/PhysicalInventoryDetailPage";
+import StockReportPage from "@/features/reports/pages/StockReportPage";
 
 const inventoryRoutes: RouteObject[] = [
   {
@@ -76,6 +79,33 @@ const inventoryRoutes: RouteObject[] = [
     element: (
       <ProtectedRoute allowedRoles={["WHMANAGER", "WHSTAFF"]}>
         <ViewStockMovePage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/inventory/physical-inventories",
+    element: (
+      <ProtectedRoute allowedRoles={["ADMIN", "WHMANAGER", "WHSTAFF"]}>
+        <PhysicalInventoryListPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/inventory/physical-inventories/:id",
+    element: (
+      <ProtectedRoute allowedRoles={["ADMIN", "WHMANAGER", "WHSTAFF"]}>
+        <PhysicalInventoryDetailPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/inventory/reports",
+    element: (
+      <ProtectedRoute allowedRoles={["ADMIN", "WHMANAGER", "WHSTAFF"]}>
+        <StockReportPage />
       </ProtectedRoute>
     ),
   },

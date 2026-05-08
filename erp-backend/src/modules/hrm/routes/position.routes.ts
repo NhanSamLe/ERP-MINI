@@ -4,7 +4,7 @@ import {
   getPosition,
   createPositionHandler,
   updatePositionHandler,
-  deletePositionHandler,
+  togglePositionStatusHandler,
 } from "../controllers/position.controller";
 
 const router = Router();
@@ -13,7 +13,6 @@ router.get("/", listPositions);
 router.get("/:id", getPosition);
 router.post("/", createPositionHandler);
 router.put("/:id", updatePositionHandler);
-router.delete("/:id", deletePositionHandler);
-
+router.patch("/:id/status", togglePositionStatusHandler);
 
 export default router;

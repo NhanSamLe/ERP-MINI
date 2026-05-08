@@ -8,3 +8,10 @@ build/
 .vscode/
 logs/
 *.log
+
+# User uploaded files
+uploads/
+
+# Test files
+src/**/__tests__/
+vitest.config.ts

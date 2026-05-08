@@ -2,6 +2,7 @@ export interface Position {
   id: number;
   branch_id: number;
   name: string;
+  status?: "active" | "inactive";
   created_at?: string;
   updated_at?: string;
 }

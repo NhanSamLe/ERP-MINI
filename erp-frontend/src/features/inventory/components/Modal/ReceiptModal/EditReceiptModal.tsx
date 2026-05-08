@@ -103,6 +103,7 @@ export default function EditReceiptModal({
       sku: line.product?.sku ?? "",
       image: line.product?.image_url ?? "",
       uom: line.product?.uom?.name ?? line.product?.uom?.code ?? "",
+      // Stock move line đã lưu theo stock UOM → dùng product.uom_id
       uom_id: line.uom_id ?? line.product?.uom_id ?? null,
       uomOptions: [
         ...(line.product?.uom ? [line.product.uom] : []),
@@ -111,6 +112,7 @@ export default function EditReceiptModal({
           ? [line.product.purchaseUom]
           : []),
       ],
+      // quantity trong stock move line đã là stock UOM quantity
       quantity: Number(line.quantity) ?? 0,
       location_to_id: line.location_to_id ?? null,
     }));
@@ -175,7 +177,8 @@ export default function EditReceiptModal({
               name: result.name,
               sku: result.sku,
               uom: result.uom?.name ?? result.uom?.code ?? "",
-              uom_id: result.purchase_uom_id ?? result.uom_id ?? null,
+              // Stock move luôn dùng stock UOM (uom_id của product)
+              uom_id: result.uom_id ?? null,
               uomOptions: [
                 ...(result.uom ? [result.uom] : []),
                 ...(result.purchaseUom &&
@@ -184,7 +187,9 @@ export default function EditReceiptModal({
                   : []),
               ],
               image: result.image_url,
-              quantity: line.quantity,
+              // Dùng qty_in_stock_uom (đã quy đổi về stock UOM)
+              // Fallback về line.quantity nếu PO cũ chưa có field này
+              quantity: line.qty_in_stock_uom ?? line.quantity,
             } as LineReceiptItem;
           }),
         );

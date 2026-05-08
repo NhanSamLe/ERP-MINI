@@ -128,5 +128,18 @@ export const allocateApPaymentThunk = createAsyncThunk<
     } catch (error) {
       return rejectWithValue(getErrorMessage(error));
     }
-  }
+  },
 );
+
+/* ===== GET AUDIT LOGS ===== */
+export const getApPaymentAuditLogsThunk = createAsyncThunk<
+  any[],
+  number,
+  { rejectValue: string }
+>("apPayment/getAuditLogs", async (id, { rejectWithValue }) => {
+  try {
+    return await apPaymentService.getAuditLogs(id);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});

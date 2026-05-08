@@ -13,15 +13,18 @@ import {
   cancelPurchaseOrderThunk,
   fetchPurchaseOrderByIdThunk,
   submitPurchaseOrderThunk,
+  fetchPurchaseOrderAuditLogsThunk,
 } from "../store/purchaseOrder.thunks";
 import { PurchaseOrderLine } from "../store";
 import { toast } from "react-toastify";
 import { getErrorMessage } from "@/utils/ErrorHelper";
 import { loadPartnerDetail } from "@/features/partner/store/partner.thunks";
+import { PurchaseOrderStatus } from "../constants";
 import { Partner } from "@/features/partner/store";
 import { Roles } from "@/types/enum";
 import { formatVND } from "@/utils/currency.helper";
 import { formatDateTime } from "@/utils/time.helper";
+import { AuditLogCard } from "../components/Common";
 
 interface LineItem {
   id?: number;
@@ -32,11 +35,14 @@ interface LineItem {
   sale_price?: number;
   sku?: string;
   quantity: number;
+  uom_id?: number | null;
+  discount?: number | null;
   tax_rate_id?: number;
   tax_type: string;
   tax_rate: number;
   tax_amount: number;
   line_total: number;
+  line_total_after_tax?: number;
 }
 
 export default function ViewPurchaseOrderPage() {
@@ -45,7 +51,7 @@ export default function ViewPurchaseOrderPage() {
   const dispatch = useDispatch<AppDispatch>();
 
   const purchaseOrder = useSelector(
-    (state: RootState) => state.purchaseOrder.selectedPO
+    (state: RootState) => state.purchaseOrder.selectedPO,
   );
 
   const currentUser = useSelector((state: RootState) => state.auth.user);
@@ -55,6 +61,25 @@ export default function ViewPurchaseOrderPage() {
   const [confirmReject, setConfirmReject] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+
+  // ✅ Audit log state
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [loadingAuditLogs, setLoadingAuditLogs] = useState(false);
+
+  const refreshAuditLogs = async () => {
+    if (!id) return;
+    try {
+      setLoadingAuditLogs(true);
+      const logs = await dispatch(
+        fetchPurchaseOrderAuditLogsThunk(Number(id)),
+      ).unwrap();
+      setAuditLogs(logs);
+    } catch {
+      // silent
+    } finally {
+      setLoadingAuditLogs(false);
+    }
+  };
 
   const [, setSupplierId] = useState("");
   const [date, setDate] = useState("");
@@ -80,6 +105,12 @@ export default function ViewPurchaseOrderPage() {
     if (id) dispatch(fetchPurchaseOrderByIdThunk(Number(id)));
   }, [dispatch, id]);
 
+  // ✅ Load audit logs khi id thay đổi
+  useEffect(() => {
+    refreshAuditLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
   const finalPO = purchaseOrder;
   useEffect(() => {
     if (finalPO?.branch_id && branches.length > 0) {
@@ -99,7 +130,7 @@ export default function ViewPurchaseOrderPage() {
       if (finalPO?.supplier_id) {
         try {
           const supplier = await dispatch(
-            loadPartnerDetail(finalPO.supplier_id)
+            loadPartnerDetail(finalPO.supplier_id),
           ).unwrap();
           setSupplierInfo(supplier);
         } catch (err) {
@@ -116,11 +147,11 @@ export default function ViewPurchaseOrderPage() {
       const enrichedLines = await Promise.all(
         linesToLoad.map(async (l: PurchaseOrderLine) => {
           const product = await dispatch(
-            fetchProductByIdThunk(Number(l.product_id))
+            fetchProductByIdThunk(Number(l.product_id)),
           ).unwrap();
 
           const tax = await dispatch(
-            fetchTaxRatesByIdThunk(product.tax_rate_id || 0)
+            fetchTaxRatesByIdThunk(product.tax_rate_id || 0),
           ).unwrap();
           const taxAmount =
             (Number(l.unit_price || 0) *
@@ -137,13 +168,16 @@ export default function ViewPurchaseOrderPage() {
             product_image: product.image_url ?? "",
             sale_price: Number(l.unit_price || 0),
             quantity: Number(l.quantity || 0),
+            uom_id: l.uom_id ?? null,
+            discount: Number(l.discount ?? 0),
             tax_rate: tax?.rate || 0,
             tax_rate_id: product.tax_rate_id,
             tax_type: tax?.type || "VAT",
             tax_amount: taxAmount,
             line_total: Number(l.line_total || 0),
+            line_total_after_tax: Number(l.line_total_after_tax || 0),
           };
-        })
+        }),
       );
 
       setLines(enrichedLines);
@@ -151,7 +185,7 @@ export default function ViewPurchaseOrderPage() {
       // tính totals
       const before = enrichedLines.reduce(
         (s, l) => s + (l.sale_price || 0) * l.quantity,
-        0
+        0,
       );
       const tax = enrichedLines.reduce((s, l) => s + l.tax_amount, 0);
       // const after = enrichedLines.reduce((s, l) => s + l.line_total, 0);
@@ -174,21 +208,18 @@ export default function ViewPurchaseOrderPage() {
       console.log(">>> PO status:", finalPO.status);
 
       const result = await dispatch(
-        submitPurchaseOrderThunk(finalPO.id)
+        submitPurchaseOrderThunk(finalPO.id),
       ).unwrap();
 
       console.log(">>> Submit result:", result);
 
       toast.success("Purchase order submitted for approval!");
 
-      const refreshedPO = await dispatch(
-        fetchPurchaseOrderByIdThunk(finalPO.id)
-      ).unwrap();
-      console.log(">>> Refreshed PO:", refreshedPO);
+      await dispatch(fetchPurchaseOrderByIdThunk(finalPO.id)).unwrap();
+      refreshAuditLogs();
       setConfirmSubmit(false);
     } catch (error) {
       console.log(">>> Error caught:", error);
-      console.log(">>>> ERROR TYPE:", typeof error);
       toast.error(getErrorMessage(error));
     } finally {
       setSubmitting(false);
@@ -201,10 +232,9 @@ export default function ViewPurchaseOrderPage() {
       setSubmitting(true);
       await dispatch(approvePurchaseOrderThunk(finalPO.id)).unwrap();
       toast.success("Purchase Order approved!");
+      refreshAuditLogs();
       setConfirmApprove(false);
     } catch (error) {
-      console.log(">>> Error caught:", error);
-      console.log(">>>> ERROR TYPE:", typeof error);
       toast.error(getErrorMessage(error));
     } finally {
       setSubmitting(false);
@@ -220,14 +250,13 @@ export default function ViewPurchaseOrderPage() {
     try {
       setSubmitting(true);
       await dispatch(
-        cancelPurchaseOrderThunk({ id: finalPO.id, reason: rejectReason })
+        cancelPurchaseOrderThunk({ id: finalPO.id, reason: rejectReason }),
       ).unwrap();
       toast.success("Purchase Order cancelled!");
+      refreshAuditLogs();
       setConfirmReject(false);
       setRejectReason("");
     } catch (error) {
-      console.log(">>> Error caught:", error);
-      console.log(">>>> ERROR TYPE:", typeof error);
       toast.error(getErrorMessage(error));
     } finally {
       setSubmitting(false);
@@ -245,7 +274,7 @@ export default function ViewPurchaseOrderPage() {
         {finalPO &&
           currentUser &&
           currentUser.id === finalPO.creator.id &&
-          finalPO.status === "draft" &&
+          finalPO.status === PurchaseOrderStatus.DRAFT &&
           finalPO.branch_id === currentUser.branch.id && (
             <div className="flex gap-3">
               <Button
@@ -265,7 +294,7 @@ export default function ViewPurchaseOrderPage() {
           )}
 
         {currentUser?.role.code === Roles.PURCHASEMANAGER &&
-          finalPO?.status === "waiting_approval" &&
+          finalPO?.status === PurchaseOrderStatus.WAITING_APPROVAL &&
           finalPO?.branch_id === currentUser?.branch.id && (
             <div className="flex gap-3 mt-4">
               {/* APPROVE BUTTON */}
@@ -340,30 +369,36 @@ export default function ViewPurchaseOrderPage() {
               className={`
       inline-flex items-center px-5 py-2.5 rounded-xl text-sm font-semibold
       border shadow-sm
-      ${finalPO?.status === "draft"
-                  ? "bg-gray-50 text-gray-700 border-gray-300"
-                  : ""
-                }
-      ${finalPO?.status === "waiting_approval"
-                  ? "bg-amber-50 text-amber-700 border-amber-300"
-                  : ""
-                }
-      ${finalPO?.status === "confirmed"
-                  ? "bg-blue-50 text-blue-700 border-blue-300"
-                  : ""
-                }
-      ${finalPO?.status === "partially_received"
-                  ? "bg-purple-50 text-purple-700 border-purple-300"
-                  : ""
-                }
-      ${finalPO?.status === "completed"
-                  ? "bg-emerald-50 text-emerald-700 border-emerald-300"
-                  : ""
-                }
-      ${finalPO?.status === "cancelled"
-                  ? "bg-red-50 text-red-700 border-red-300"
-                  : ""
-                }
+      ${
+        finalPO?.status === PurchaseOrderStatus.DRAFT
+          ? "bg-gray-50 text-gray-700 border-gray-300"
+          : ""
+      }
+      ${
+        finalPO?.status === PurchaseOrderStatus.WAITING_APPROVAL
+          ? "bg-amber-50 text-amber-700 border-amber-300"
+          : ""
+      }
+      ${
+        finalPO?.status === PurchaseOrderStatus.CONFIRMED
+          ? "bg-blue-50 text-blue-700 border-blue-300"
+          : ""
+      }
+      ${
+        finalPO?.status === PurchaseOrderStatus.PARTIALLY_RECEIVED
+          ? "bg-purple-50 text-purple-700 border-purple-300"
+          : ""
+      }
+      ${
+        finalPO?.status === PurchaseOrderStatus.COMPLETED
+          ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+          : ""
+      }
+      ${
+        finalPO?.status === PurchaseOrderStatus.CANCELLED
+          ? "bg-red-50 text-red-700 border-red-300"
+          : ""
+      }
     `}
             >
               ● {finalPO?.status?.replace("_", " ") || "N/A"}
@@ -498,10 +533,11 @@ export default function ViewPurchaseOrderPage() {
 
             {/* Approver Card */}
             <div
-              className={`p-6 rounded-xl shadow-md border-2 transition-all duration-300 ${finalPO?.approver
-                ? "bg-white border-green-100 hover:shadow-xl hover:scale-[1.02]"
-                : "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200"
-                }`}
+              className={`p-6 rounded-xl shadow-md border-2 transition-all duration-300 ${
+                finalPO?.approver
+                  ? "bg-white border-green-100 hover:shadow-xl hover:scale-[1.02]"
+                  : "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200"
+              }`}
             >
               {finalPO?.approver ? (
                 <div className="flex items-start gap-4">
@@ -755,19 +791,23 @@ export default function ViewPurchaseOrderPage() {
                 <th className="px-4 py-3 text-left font-medium">Product</th>
                 <th className="px-4 py-3 text-center font-medium">Image</th>
                 <th className="px-4 py-3 text-center font-medium">Price</th>
-                <th className="px-4 py-3 text-center font-medium">Quantity</th>
+                <th className="px-4 py-3 text-center font-medium">Qty</th>
+                <th className="px-4 py-3 text-center font-medium">Discount</th>
                 <th className="px-4 py-3 text-center font-medium">Tax Type</th>
                 <th className="px-4 py-3 text-center font-medium">
                   Tax Rate(%)
                 </th>
                 <th className="px-4 py-3 text-right font-medium">Tax Amount</th>
                 <th className="px-4 py-3 text-right font-medium">Line Total</th>
+                <th className="px-4 py-3 text-right font-medium">
+                  Total (incl. tax)
+                </th>
               </tr>
             </thead>
             <tbody>
               {lines.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-16 text-gray-500">
+                  <td colSpan={11} className="text-center py-16 text-gray-500">
                     Chưa có sản phẩm. Hãy tìm kiếm và thêm ở trên
                   </td>
                 </tr>
@@ -810,6 +850,17 @@ export default function ViewPurchaseOrderPage() {
                       />
                     </td>
 
+                    {/* DISCOUNT */}
+                    <td className="px-4 py-3 text-center">
+                      {line.discount && line.discount > 0 ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-semibold">
+                          -{line.discount}%
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 text-xs">—</span>
+                      )}
+                    </td>
+
                     <td className="px-4 py-3 text-center capitalize">
                       {line.tax_type}
                     </td>
@@ -820,8 +871,16 @@ export default function ViewPurchaseOrderPage() {
                       {formatVND(line.tax_amount)}
                     </td>
 
-                    <td className="px-4 py-3 text-right font-bold text-orange-600">
+                    <td className="px-4 py-3 text-right font-medium text-gray-700">
                       {formatVND(line.line_total)}
+                    </td>
+
+                    {/* LINE TOTAL AFTER TAX */}
+                    <td className="px-4 py-3 text-right font-bold text-orange-600">
+                      {formatVND(
+                        line.line_total_after_tax ||
+                          line.line_total + line.tax_amount,
+                      )}
                     </td>
                   </tr>
                 ))
@@ -862,6 +921,14 @@ export default function ViewPurchaseOrderPage() {
         </h2>
         <Textarea value={description} disabled rows={5} />
       </div>
+
+      {/* AUDIT LOG */}
+      <AuditLogCard
+        title="Change History"
+        logs={auditLogs}
+        loading={loadingAuditLogs}
+        variant="po"
+      />
 
       {/* FOOTER BUTTON */}
       <div className="flex justify-end">

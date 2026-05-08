@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Building2,
   ClipboardList,
+  BrainCircuit,
 } from "lucide-react";
 
 interface SubItem {
@@ -56,6 +57,16 @@ const menuItems: MenuItem[] = [
       { name: "Payments",        path: "/purchase/payments", allowedRoles: ["ACCOUNT", "CHACC"] },
       { name: "Vendors",         path: "/purchase/vendors",  allowedRoles: ["PURCHASE", "PURCHASEMANAGER"] },
       { name: "RFQs",            path: "/purchase/rfqs",     allowedRoles: ["PURCHASE", "PURCHASEMANAGER"] },
+      {
+        name: "OCR Invoice",
+        path: "/purchase/document-intelligence",
+        allowedRoles: ["ACCOUNT", "CHACC"],
+      },
+      {
+        name: "OCR History",
+        path: "/purchase/document-intelligence/history",
+        allowedRoles: ["ACCOUNT", "CHACC"],
+      },
     ],
   },
   {
@@ -71,6 +82,16 @@ const menuItems: MenuItem[] = [
       { name: "Category",    path: "/inventory/categories",  allowedRoles: ["WHMANAGER", "ADMIN", "WHSTAFF"] },
       { name: "Stock",       path: "/inventory/stock",       allowedRoles: ["WHMANAGER", "WHSTAFF"] },
       { name: "Stock Moves", path: "/inventory/stock_move",  allowedRoles: ["WHMANAGER", "WHSTAFF"] },
+      {
+        name: "Physical Inventory",
+        path: "/inventory/physical-inventories",
+        allowedRoles: ["ADMIN", "WHMANAGER", "WHSTAFF"],
+      },
+      {
+        name: "Reports",
+        path: "/inventory/reports",
+        allowedRoles: ["ADMIN", "WHMANAGER", "WHSTAFF"],
+      },
     ],
   },
   {
@@ -149,6 +170,12 @@ const menuItems: MenuItem[] = [
       { name: "Branch Management", path: "/company/branches",        allowedRoles: ["ADMIN", "CEO"] },
       { name: "Create Branch",     path: "/company/branches/create", allowedRoles: ["CEO", "ADMIN"] },
     ],
+  },
+   {
+    name: "AI Narrative",
+    icon: BrainCircuit,
+    path: "/ai-narrative",
+    allowedRoles: ["CEO", "ADMIN", "CHACC", "ACCOUNT", "BRANCH_MANAGER"],
   },
   {
     name: "Admin",

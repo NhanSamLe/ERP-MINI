@@ -8,6 +8,26 @@ export const stockBalanceController = {
     return res.json(data);
   },
 
+  async getGrouped(req: Request, res: Response) {
+    try {
+      const user = (req as any).user;
+      const warehouseId = req.query.warehouse_id
+        ? Number(req.query.warehouse_id)
+        : undefined;
+      const productId = req.query.product_id
+        ? Number(req.query.product_id)
+        : undefined;
+      const data = await stockBalanceService.getGrouped(
+        user,
+        warehouseId,
+        productId,
+      );
+      return res.json({ data });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  },
+
   async getById(req: Request, res: Response) {
     const id = Number(req.params.id);
     const data = await stockBalanceService.getById(id);
@@ -44,5 +64,17 @@ export const stockBalanceController = {
     const productId = Number(req.params.productId);
     const data = await stockBalanceService.findByProduct(productId);
     return res.json(data);
+  },
+
+  async recalculateCosts(req: Request, res: Response) {
+    try {
+      const result = await stockBalanceService.recalculateCosts();
+      return res.json({
+        message: `Recalculated ${result.updated}/${result.total} balances`,
+        ...result,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
   },
 };

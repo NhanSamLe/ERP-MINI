@@ -33,6 +33,7 @@ export interface ProductItem {
   location_to_id?: number | null;
   lot_id?: number | null;
   new_lot?: NewLotData | null;
+  default_supplier_id?: number | null; // supplier từ PO, tự động gán vào new_lot
 }
 
 export interface CreateReceiptForm {
@@ -136,10 +137,11 @@ export default function CreateReceiptModal({
               name: result.name,
               sku: result.sku,
               uom: result.uom?.name ?? result.uom?.code ?? "",
-              uom_id: result.purchase_uom_id ?? result.uom_id ?? null,
+              uom_id: result.uom_id ?? null,
               uomOptions: buildUomOptions(result),
               image: result.image_url,
-              quantity: line.quantity,
+              quantity: line.qty_in_stock_uom ?? line.quantity,
+              default_supplier_id: po.supplier_id ?? null,
             } as ProductItem;
           }),
         );
@@ -384,6 +386,7 @@ export default function CreateReceiptModal({
                             ),
                           )
                         }
+                        defaultSupplierId={p.default_supplier_id}
                         allowCreate
                       />
                     </td>

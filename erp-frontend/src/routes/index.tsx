@@ -10,7 +10,8 @@ import masterDataRoutes from "./master_dataRoutes";
 import productRoutes from "./productRoutes";
 import categoryRoutes from "./categoryRoutes";
 import userRoutes from "./userRoutes";
-import partnerRoutes from "./partnerRoutes"; 
+import partnerRoutes from "./partnerRoutes";
+import aiNarrativeRoutes from "./aiNarrativeRoutes";
 import Layout from "../components/layout/Layout";
 import MainPage from "../pages/MainPage";
 import UnauthorizedPage from "../pages/UnauthorizedPage";
@@ -39,6 +40,7 @@ const appRoutes = [
   ...productRoutes,
   ...userRoutes,
   ...partnerRoutes,
+  ...aiNarrativeRoutes,
 ];
 const routes = [
   ...authRoutes,

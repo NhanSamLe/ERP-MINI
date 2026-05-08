@@ -44,9 +44,14 @@ export const apPaymentApi = {
 
   allocate: (
     id: number,
-    allocations: { invoice_id: number; amount: number }[]
+    allocations: { invoice_id: number; amount: number }[],
   ) =>
     axiosClient
       .post(`/ap/payments/${id}/allocate`, { allocations })
+      .then((res) => res.data.data),
+
+  getAuditLogs: (id: number) =>
+    axiosClient
+      .get(`/ap/payments/${id}/audit-logs`)
       .then((res) => res.data.data),
 };
