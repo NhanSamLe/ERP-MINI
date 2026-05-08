@@ -1,5 +1,6 @@
 
 import { Partner } from "@/features/partner/store/partner.types";
+import { toDateInputValue } from "@/utils/time.helper";
 
 interface Props {
   customers: Partner[];
@@ -41,7 +42,7 @@ export default function SaleOrderGeneralForm({
         <label className="text-sm font-medium block mb-1">Order Date</label>
         <input
           type="date"
-           value={orderDate?.split("T")[0] ?? ""}
+          value={toDateInputValue(orderDate)}
           onChange={(e) => onDateChange(e.target.value)}
           className="w-full border rounded-lg px-3 py-2"
         />

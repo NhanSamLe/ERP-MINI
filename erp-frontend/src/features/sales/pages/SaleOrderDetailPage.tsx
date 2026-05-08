@@ -18,8 +18,8 @@ import {
 } from "lucide-react";
 
 /* ── helpers ───────────────────────────────────────── */
-const fmtDate  = (d?: string | null) => d ? new Date(d).toLocaleDateString("vi-VN", { day:"2-digit", month:"2-digit", year:"numeric" }) : "—";
-const fmtTime  = (d?: string | null) => d ? new Date(d).toLocaleString("vi-VN",   { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" }) : "—";
+const fmtDate = (d?: string | null) => d ? new Date(d).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
+const fmtTime = (d?: string | null) => d ? new Date(d).toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
 
 interface FieldProps { label: string; value?: string | null; }
 const Field = ({ label, value }: FieldProps) => (
@@ -31,9 +31,9 @@ const Field = ({ label, value }: FieldProps) => (
 
 /* ── main component ───────────────────────────────── */
 export default function SaleOrderDetailPage() {
-  const { id }    = useParams();
-  const navigate  = useNavigate();
-  const dispatch  = useAppDispatch();
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
 
   const [activeModal, setActiveModal] = useState<"submit" | "approve" | "reject" | null>(null);
   const [invoiceError, setInvoiceError] = useState<string | null>(null);
@@ -58,15 +58,15 @@ export default function SaleOrderDetailPage() {
   if (!user) return <div className="p-10 text-center text-gray-500">Access Denied</div>;
 
   /* ── derived ── */
-  const subtotal     = order.total_before_tax  ?? 0;
-  const taxAmount    = order.total_tax         ?? 0;
-  const grandTotal   = order.total_after_tax   ?? 0;
-  const isRejected   = order.approval_status   === "rejected";
-  const canEdit      = order.approval_status   === "draft";
-  const canSubmit    = order.approval_status   === "draft";
-  const canApprove   = order.approval_status   === "waiting_approval" && (user.role?.code === "SALESMANAGER" || user.role?.code === "ADMIN");
-  const canReject    = canApprove;
-  const canInvoice   = order.approval_status   === "approved";
+  const subtotal = order.total_before_tax ?? 0;
+  const taxAmount = order.total_tax ?? 0;
+  const grandTotal = order.total_after_tax ?? 0;
+  const isRejected = order.approval_status === "rejected";
+  const canEdit = order.approval_status === "draft";
+  const canSubmit = order.approval_status === "draft";
+  const canApprove = order.approval_status === "waiting_approval" && (user.role?.code === "SALESMANAGER" || user.role?.code === "ADMIN");
+  const canReject = canApprove;
+  const canInvoice = order.approval_status === "approved";
 
   const handleCreateInvoice = async () => {
     setInvoiceError(null);
@@ -81,11 +81,6 @@ export default function SaleOrderDetailPage() {
   return (
     <StandardFormLayout
       title={order.order_no}
-      description={`Created on ${fmtDate(order.created_at)}`}
-      breadcrumb={[
-        { label: "Sale Orders", onClick: () => navigate("/sales/orders") },
-        { label: order.order_no },
-      ]}
       statusBadge={
         <div className="flex items-center gap-2">
           <StatusBadge status={order.approval_status} />
@@ -95,12 +90,12 @@ export default function SaleOrderDetailPage() {
         </div>
       }
       actions={[
-        { label: "Back",       variant: "outline",   onClick: () => navigate("/sales/orders") },
-        ...(canEdit    ? [{ label: "Edit Order",           variant: "outline"   as const, onClick: () => navigate(`/sales/orders/${order.id}/edit`) }] : []),
-        ...(canSubmit  ? [{ label: "Submit for Approval",  variant: "primary"   as const, onClick: () => setActiveModal("submit") }] : []),
-        ...(canApprove ? [{ label: "Approve",              variant: "success"   as const, onClick: () => setActiveModal("approve") }] : []),
-        ...(canReject  ? [{ label: "Reject",               variant: "danger"    as const, onClick: () => setActiveModal("reject") }] : []),
-        ...(canInvoice ? [{ label: "Generate Invoice",     variant: "success"   as const, onClick: handleCreateInvoice }] : []),
+        { label: "Back", variant: "outline", onClick: () => navigate("/sales/orders") },
+        ...(canEdit ? [{ label: "Edit Order", variant: "outline" as const, onClick: () => navigate(`/sales/orders/${order.id}/edit`) }] : []),
+        ...(canSubmit ? [{ label: "Submit for Approval", variant: "primary" as const, onClick: () => setActiveModal("submit") }] : []),
+        ...(canApprove ? [{ label: "Approve", variant: "success" as const, onClick: () => setActiveModal("approve") }] : []),
+        ...(canReject ? [{ label: "Reject", variant: "danger" as const, onClick: () => setActiveModal("reject") }] : []),
+        ...(canInvoice ? [{ label: "Generate Invoice", variant: "success" as const, onClick: handleCreateInvoice }] : []),
       ]}
       sidebarContent={
         <div className="space-y-4">
@@ -234,10 +229,10 @@ export default function SaleOrderDetailPage() {
       {/* ─── 1. ORDER DETAILS ─── */}
       <FormSection title="Order Details" icon={<Building2 className="w-4 h-4" />}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Field label="Order Number"     value={order.order_no} />
-          <Field label="Order Date"       value={fmtDate(order.order_date)} />
-          <Field label="Approval Status"  value={order.approval_status?.replace(/_/g, " ")} />
-          <Field label="Delivery Status"  value={order.status} />
+          <Field label="Order Number" value={order.order_no} />
+          <Field label="Order Date" value={fmtDate(order.order_date)} />
+          <Field label="Approval Status" value={order.approval_status?.replace(/_/g, " ")} />
+          <Field label="Delivery Status" value={order.status} />
         </div>
         {/* Source Quotation link */}
         {(order as any).quotation_id && (
@@ -338,12 +333,12 @@ export default function SaleOrderDetailPage() {
                 </tr>
               ) : (
                 order.lines.map((line, idx) => {
-                  const lineSubtotal   = line.line_total           ?? ((line.unit_price ?? 0) * (line.quantity ?? 0));
-                  const lineTaxAmt     = line.line_tax             ?? 0;
+                  const lineSubtotal = line.line_total ?? ((line.unit_price ?? 0) * (line.quantity ?? 0));
+                  const lineTaxAmt = line.line_tax ?? 0;
                   const lineTotalAfter = line.line_total_after_tax ?? (lineSubtotal + lineTaxAmt);
-                  const taxRate        = line.taxRate?.rate        ?? 0;
-                  const qty            = Number(line.quantity ?? 0);
-                  const displayQty     = Number.isInteger(qty) ? qty : parseFloat(qty.toFixed(3));
+                  const taxRate = line.taxRate?.rate ?? 0;
+                  const qty = Number(line.quantity ?? 0);
+                  const displayQty = Number.isInteger(qty) ? qty : parseFloat(qty.toFixed(3));
 
                   return (
                     <tr key={idx} className="hover:bg-orange-50/30 transition-colors">

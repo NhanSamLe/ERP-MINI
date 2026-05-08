@@ -9,7 +9,13 @@ export interface CreateOpportunityDto {
   expected_value?: number;
   probability?: number;
   stage?: OpportunityStage;
-  closing_date?: string | null; // FE truyền string ISO
+  closing_date?: string | null;
+  pipeline_id?: number | null;
+  pipeline_stage_id?: number | null;
+  next_action?: string | null;
+  next_action_date?: string | null;
+  currency_id?: number | null;
+  exchange_rate?: number;
 }
 export interface UpdateOpportunityDto {
   oppId: number;
@@ -18,6 +24,11 @@ export interface UpdateOpportunityDto {
   probability?: number;
   closing_date?: string | null;
   notes?: string;
+  next_action?: string | null;
+  next_action_date?: string | null;
+  actual_close_date?: string | null;
+  currency_id?: number | null;
+  exchange_rate?: number;
 }
 export interface Opportunity {
   id: number;
@@ -32,6 +43,11 @@ export interface Opportunity {
   pipeline_stage_id?: number | null;
   closing_date: string | null;
   loss_reason?: string | null;
+  next_action?: string | null;
+  next_action_date?: string | null;
+  actual_close_date?: string | null;
+  currency_id?: number | null;
+  exchange_rate?: number;
   created_at: string;
   updated_at: string;
   lead: Lead | null;

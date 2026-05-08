@@ -39,19 +39,25 @@ export async function createOpportunity(data: {
   lead_id?: number;
   customer_id?: number;
   owner_id: number;
+  owner_branch_id?: number;
   name: string;
   expected_value?: number;
   probability?: number;
   stage?: OpportunityStage;
   closing_date?: Date | null;
+  pipeline_id?: number | null;
+  pipeline_stage_id?: number | null;
+  next_action?: string | null;
+  next_action_date?: Date | null;
+  currency_id?: number | null;
+  exchange_rate?: number;
 }) {
-  const branchId = data.lead_id 
-    ? (await Lead.findByPk(data.lead_id))?.branch_id 
-    : null;
+  // Use owner's branch_id instead of lead's branch_id
+  const branchId = data.owner_branch_id ?? null;
 
   const opp = await Opportunity.create({
     ...data,
-    branch_id: branchId ?? null, 
+    branch_id: branchId, 
     stage: data.stage || "prospecting",
     closing_date: data.closing_date || null,
   });
@@ -80,6 +86,11 @@ export async function updateOpportunity(
     probability?: number;
     closing_date?: Date | null;
     notes?: string;
+    next_action?: string | null;
+    next_action_date?: Date | null;
+    actual_close_date?: Date | null;
+    currency_id?: number | null;
+    exchange_rate?: number;
   }
 ) {
   const opp = await Opportunity.findOne({
@@ -96,6 +107,12 @@ export async function updateOpportunity(
     expected_value: payload.expected_value ?? opp.expected_value ?? null,
     probability: payload.probability ?? opp.probability ?? null,
     closing_date: payload.closing_date ?? opp.closing_date ?? null,
+    next_action: payload.next_action !== undefined ? payload.next_action : opp.next_action,
+    next_action_date: payload.next_action_date !== undefined ? payload.next_action_date : opp.next_action_date,
+    actual_close_date: payload.actual_close_date !== undefined ? payload.actual_close_date : opp.actual_close_date,
+    currency_id: payload.currency_id !== undefined ? payload.currency_id : opp.currency_id,
+    exchange_rate: payload.exchange_rate !== undefined ? payload.exchange_rate : opp.exchange_rate,
+    notes: payload.notes !== undefined ? payload.notes : (opp as any).notes,
   });
    await addTimeline({
     related_type: "opportunity",
@@ -118,12 +135,36 @@ export async function changePipelineStage(oppId: number, newStageId: number, use
   if (!canManage(role, userId, opp.owner_id ?? 1))
     throw new Error("Bạn không có quyền chỉnh sửa deal này");
 
+  // Prevent moving from Won stage
+  if (opp.stage === "won") {
+    throw new Error("Không thể chuyển Deal đã Thắng sang giai đoạn khác");
+  }
+
   const stage = await model.PipelineStage.findByPk(newStageId);
   if (!stage) throw new Error("Stage không tồn tại");
 
+  // Determine new stage value based on pipeline stage properties
+  let newStageValue: string;
+  if (stage.is_won) {
+    newStageValue = "won";
+  } else if (stage.is_lost) {
+    newStageValue = "lost";
+  } else {
+    // For active stages, determine based on stage name
+    const stageName = stage.name.toLowerCase();
+    
+    // Map stage name to valid enum values: prospecting or negotiation
+    if (stageName.includes("negotiat") || stageName.includes("thương lượng") || stageName.includes("đàm phán")) {
+      newStageValue = "negotiation";
+    } else {
+      // Default to prospecting for all other active stages
+      newStageValue = "prospecting";
+    }
+  }
+
   await opp.update({
     pipeline_stage_id: newStageId,
-    stage: stage.is_won ? "won" : stage.is_lost ? "lost" : opp.stage
+    stage: newStageValue,
   });
 
   await addTimeline({
@@ -182,7 +223,7 @@ export async function markWon(oppId: number, userId: number,role:string) {
   // Cập nhật stage Won
   await opp.update({
     stage: "won",
-    closing_date: new Date(),
+    actual_close_date: new Date(),
   });
 
   let customer = null;
@@ -241,7 +282,7 @@ export async function markLost(
   await opp.update({
     stage: "lost",
     loss_reason: payload.reason,
-    closing_date: new Date(),
+    actual_close_date: new Date(),
   });
 
   await addTimeline({

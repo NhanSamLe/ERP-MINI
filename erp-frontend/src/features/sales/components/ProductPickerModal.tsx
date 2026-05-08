@@ -249,16 +249,10 @@ export default function ProductPickerModal({
         </div>
 
         {/* ── Footer ── */}
-        <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/60 shrink-0 flex items-center justify-between">
-          <p className="text-xs text-gray-400">
+        <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/60 shrink-0">
+          <p className="text-xs text-gray-400 text-center">
             Click a product to add it to the order line
           </p>
-          <button
-            onClick={onClose}
-            className="h-8 px-4 text-sm font-medium text-gray-600 border border-gray-300 bg-white rounded-md hover:bg-gray-50 transition-colors"
-          >
-            Cancel
-          </button>
         </div>
       </div>
     </div>

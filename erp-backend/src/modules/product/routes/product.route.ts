@@ -13,6 +13,7 @@ router.get(
   authMiddleware([
     Role.ADMIN,
     Role.SALES,
+    Role.SALESMANAGER,
     Role.PURCHASE,
     Role.PURCHASEMANAGER,
     Role.WHSTAFF,
@@ -26,6 +27,7 @@ router.get(
   authMiddleware([
     Role.ADMIN,
     Role.SALES,
+    Role.SALESMANAGER,
     Role.PURCHASE,
     Role.WHSTAFF,
     Role.PURCHASEMANAGER,
@@ -44,6 +46,7 @@ router.get(
   authMiddleware([
     Role.ADMIN,
     Role.SALES,
+    Role.SALESMANAGER,
     Role.PURCHASE,
     Role.WHSTAFF,
     Role.PURCHASEMANAGER,

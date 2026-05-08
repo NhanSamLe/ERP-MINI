@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { unwrapResult } from "@reduxjs/toolkit";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -7,6 +7,7 @@ import { loadPartners } from "@/features/partner/store/partner.thunks";
 import { fetchProductsThunk } from "@/features/products/store/product.thunks";
 import { CreateQuotationDto } from "../dto/quotation.dto";
 import QuotationForm from "../components/QuotationForm";
+import * as opportunityApi from "@/features/crm/api/opportunity.api";
 
 export default function QuotationCreatePage() {
   const dispatch = useAppDispatch();
@@ -17,6 +18,8 @@ export default function QuotationCreatePage() {
   const { items: products }  = useAppSelector((s) => s.product);
   const { loading, error }   = useAppSelector((s) => s.quotation);
 
+  const [defaultCustomerId, setDefaultCustomerId] = useState<number | undefined>();
+
   const opportunityId = params.get("opportunity_id")
     ? Number(params.get("opportunity_id"))
     : undefined;
@@ -24,7 +27,21 @@ export default function QuotationCreatePage() {
   useEffect(() => {
     dispatch(loadPartners({ type: "customer" }));
     dispatch(fetchProductsThunk());
-  }, [dispatch]);
+    
+    // Load opportunity data to pre-fill customer
+    if (opportunityId) {
+      opportunityApi.getOpportunityById(opportunityId)
+        .then((res) => {
+          const opp = res.data.data;
+          if (opp?.customer_id) {
+            setDefaultCustomerId(opp.customer_id);
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to load opportunity:", err);
+        });
+    }
+  }, [dispatch, opportunityId]);
 
   const handleSubmit = async (data: CreateQuotationDto) => {
     try {
@@ -41,6 +58,7 @@ export default function QuotationCreatePage() {
   return (
     <QuotationForm
       mode="create"
+      defaultValue={defaultCustomerId ? { customer_id: defaultCustomerId } : undefined}
       customers={customers}
       products={products}
       loading={loading}

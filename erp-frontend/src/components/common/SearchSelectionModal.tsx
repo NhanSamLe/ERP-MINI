@@ -52,17 +52,9 @@ export function SearchSelectionModal<T>({
       <DialogContent className="max-w-xl flex flex-col p-0 gap-0 overflow-hidden rounded-xl shadow-xl border border-gray-200">
         {/* Header */}
         <DialogHeader className="px-5 pt-5 pb-4 border-b border-gray-100">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <DialogTitle className="text-sm font-semibold text-gray-900">{title}</DialogTitle>
-              {description && <p className="text-xs text-gray-500 mt-0.5">{description}</p>}
-            </div>
-            <button
-              onClick={onClose}
-              className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors shrink-0"
-            >
-              <X className="w-4 h-4" />
-            </button>
+          <div>
+            <DialogTitle className="text-sm font-semibold text-gray-900">{title}</DialogTitle>
+            {description && <p className="text-xs text-gray-500 mt-0.5">{description}</p>}
           </div>
 
           {/* Search */}

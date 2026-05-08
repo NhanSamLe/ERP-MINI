@@ -21,7 +21,7 @@ const fmtTime = (d?: string | null) =>
   d ? new Date(d).toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
 
 export default function QuotationDetailPage() {
-  const { id }   = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
@@ -68,17 +68,17 @@ export default function QuotationDetailPage() {
   if (!q || !user) return null;
 
   /* ── derived ── */
-  const isExpired    = q.status !== "accepted" && q.valid_until && new Date(q.valid_until) < new Date();
-  const isRejected   = q.approval_status === "rejected";
-  const canEdit      = q.approval_status === "draft";
-  const canSubmit    = q.approval_status === "draft";
-  const canApprove   = q.approval_status === "waiting_approval" &&
+  const isExpired = q.status !== "accepted" && q.valid_until && new Date(q.valid_until) < new Date();
+  const isRejected = q.approval_status === "rejected";
+  const canEdit = q.approval_status === "draft";
+  const canSubmit = q.approval_status === "draft";
+  const canApprove = q.approval_status === "waiting_approval" &&
     (user.role?.code === "SALESMANAGER" || user.role?.code === "ADMIN");
-  const canReject    = canApprove;
-  const canAccept    = q.approval_status === "approved" && q.status !== "accepted";
-  const canConvert   = q.status === "accepted";
+  const canReject = canApprove;
+  const canAccept = q.approval_status === "approved" && q.status !== "accepted";
+  const canConvert = q.status === "accepted";
 
-  const discountAmt  = q.discount_amount ?? (q.total_before_tax * ((q.discount_percent ?? 0) / 100));
+  const discountAmt = q.discount_amount ?? (q.total_before_tax * ((q.discount_percent ?? 0) / 100));
 
   /* ── convert to order ── */
   const handleConvert = async () => {
@@ -94,11 +94,6 @@ export default function QuotationDetailPage() {
   return (
     <StandardFormLayout
       title={q.quotation_no}
-      description={`v${q.version} · Created ${fmtDate(q.created_at)}`}
-      breadcrumb={[
-        { label: "Quotations", onClick: () => navigate("/sales/quotations") },
-        { label: q.quotation_no },
-      ]}
       statusBadge={
         <div className="flex items-center gap-2">
           <StatusBadge status={q.approval_status} />
@@ -111,13 +106,13 @@ export default function QuotationDetailPage() {
         </div>
       }
       actions={[
-        { label: "Back",                variant: "outline",  onClick: () => navigate("/sales/quotations") },
-        ...(canEdit    ? [{ label: "Edit",               variant: "outline"  as const, onClick: () => navigate(`/sales/quotations/${q.id}/edit`) }] : []),
-        ...(canSubmit  ? [{ label: "Submit for Approval", variant: "primary"  as const, onClick: () => setModal("submit") }] : []),
-        ...(canApprove ? [{ label: "Approve",             variant: "success"  as const, onClick: () => setModal("approve") }] : []),
-        ...(canReject  ? [{ label: "Reject",              variant: "danger"   as const, onClick: () => setModal("reject") }] : []),
-        ...(canAccept  ? [{ label: "Mark as Accepted",    variant: "success"  as const, onClick: () => setModal("accept") }] : []),
-        ...(canConvert ? [{ label: "Convert to Order",    variant: "primary"  as const, onClick: () => setModal("convert") }] : []),
+        { label: "Back", variant: "outline", onClick: () => navigate("/sales/quotations") },
+        ...(canEdit ? [{ label: "Edit", variant: "outline" as const, onClick: () => navigate(`/sales/quotations/${q.id}/edit`) }] : []),
+        ...(canSubmit ? [{ label: "Submit for Approval", variant: "primary" as const, onClick: () => setModal("submit") }] : []),
+        ...(canApprove ? [{ label: "Approve", variant: "success" as const, onClick: () => setModal("approve") }] : []),
+        ...(canReject ? [{ label: "Reject", variant: "danger" as const, onClick: () => setModal("reject") }] : []),
+        ...(canAccept ? [{ label: "Mark as Accepted", variant: "success" as const, onClick: () => setModal("accept") }] : []),
+        ...(canConvert ? [{ label: "Convert to Order", variant: "primary" as const, onClick: () => setModal("convert") }] : []),
       ]}
       sidebarContent={
         <div className="space-y-4">
@@ -251,12 +246,12 @@ export default function QuotationDetailPage() {
       {/* ── 1. Quotation Details ── */}
       <FormSection title="Quotation Details" icon={<FileText className="w-4 h-4" />}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Field label="Quote Number"     value={q.quotation_no} />
-          <Field label="Version"          value={`v${q.version}`} />
-          <Field label="Quotation Date"   value={fmtDate(q.quotation_date)} />
-          <Field label="Valid Until"      value={fmtDate(q.valid_until)} highlight={isExpired ?? false} />
-          <Field label="Approval Status"  value={q.approval_status?.replace(/_/g, " ")} />
-          <Field label="Document Status"  value={q.status} />
+          <Field label="Quote Number" value={q.quotation_no} />
+          <Field label="Version" value={`v${q.version}`} />
+          <Field label="Quotation Date" value={fmtDate(q.quotation_date)} />
+          <Field label="Valid Until" value={fmtDate(q.valid_until)} highlight={isExpired ?? false} />
+          <Field label="Approval Status" value={q.approval_status?.replace(/_/g, " ")} />
+          <Field label="Document Status" value={q.status} />
           {q.discount_percent ? <Field label="Global Discount" value={`${q.discount_percent}%`} /> : null}
         </div>
       </FormSection>
@@ -324,11 +319,11 @@ export default function QuotationDetailPage() {
                 </tr>
               ) : (
                 q.lines.map((line, idx) => {
-                  const lineSubtotal   = line.line_total          ?? ((line.unit_price ?? 0) * (line.quantity ?? 0));
-                  const lineTax        = line.line_tax             ?? 0;
-                  const lineTotal      = line.line_total_after_tax ?? (lineSubtotal + lineTax);
-                  const discPct        = line.discount_percent     ?? 0;
-                  const taxRate        = line.taxRate?.rate        ?? 0;
+                  const lineSubtotal = line.line_total ?? ((line.unit_price ?? 0) * (line.quantity ?? 0));
+                  const lineTax = line.line_tax ?? 0;
+                  const lineTotal = line.line_total_after_tax ?? (lineSubtotal + lineTax);
+                  const discPct = line.discount_percent ?? 0;
+                  const taxRate = line.taxRate?.rate ?? 0;
 
                   return (
                     <tr key={idx} className="hover:bg-orange-50/30 transition-colors">

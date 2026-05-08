@@ -24,6 +24,9 @@ import {
   leadReducer,
   opportunityReducer,
   activityReducer,
+  leadSourceReducer,
+  pipelineReducer,
+  scoringRuleReducer,
 } from "../features/crm/store";
 import saleOrderReducer from "@/features/sales/store/saleOrder.slice";
 import invoiceReducer from "@/features/sales/store/invoice.slice";
@@ -59,6 +62,9 @@ const rootReducer = combineReducers({
   lead: leadReducer,
   opportunity: opportunityReducer,
   activity: activityReducer,
+  leadSource: leadSourceReducer,
+  pipeline: pipelineReducer,
+  scoringRule: scoringRuleReducer,
   attendance: attendanceReducer,
   payrollPeriod: payrollPeriodReducer,
   saleOrder: saleOrderReducer,

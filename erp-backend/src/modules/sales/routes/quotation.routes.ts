@@ -4,7 +4,7 @@ import * as quotationController from "../controllers/quotation.controller";
 
 const router = Router();
 
-router.use(authMiddleware);
+router.use(authMiddleware([]));
 
 router.get("/", quotationController.getAll);
 router.get("/:id", quotationController.getById);

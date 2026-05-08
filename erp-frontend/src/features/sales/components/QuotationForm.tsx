@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Plus, Trash2, Calendar, User, Search, Package,
@@ -13,6 +13,7 @@ import { SearchSelectionModal } from "@/components/common/SearchSelectionModal";
 import { ActionConfirmModal } from "@/components/common";
 import QuantityControl from "./QuantityControl";
 import { formatVND } from "@/utils/currency.helper";
+import { toDateInputValue } from "@/utils/time.helper";
 import { useSaleOrderCalculation } from "../hook/useSaleOrderCalculation";
 
 interface Props {
@@ -34,10 +35,10 @@ export default function QuotationForm({
   // ── form state ─────────────────────────────────────
   const [customerId, setCustomerId]       = useState<number>(defaultValue?.customer_id ?? 0);
   const [quotationDate, setQuotationDate] = useState(
-    defaultValue?.quotation_date?.split("T")[0] ?? new Date().toISOString().split("T")[0]
+    toDateInputValue(defaultValue?.quotation_date) || new Date().toISOString().split("T")[0]
   );
   const [validUntil, setValidUntil]       = useState(
-    defaultValue?.valid_until?.split("T")[0] ?? ""
+    toDateInputValue(defaultValue?.valid_until)
   );
   const [discountPercent, setDiscountPercent] = useState<number>(defaultValue?.discount_percent ?? 0);
   const [customerNotes, setCustomerNotes] = useState(defaultValue?.customer_notes ?? "");
@@ -51,6 +52,13 @@ export default function QuotationForm({
   const [customerModal, setCustomerModal]   = useState(false);
   const [productModal, setProductModal]     = useState(false);
   const [activeLineIdx, setActiveLineIdx]   = useState<number | null>(null);
+
+  // ── Update state when defaultValue changes (for pre-fill from opportunity) ───
+  useEffect(() => {
+    if (defaultValue?.customer_id && defaultValue.customer_id !== customerId) {
+      setCustomerId(defaultValue.customer_id);
+    }
+  }, [defaultValue?.customer_id]);
 
   const selectedCustomer = customers.find((c) => c.id === customerId);
   const { calcLine } = useSaleOrderCalculation(products);
@@ -120,15 +128,6 @@ export default function QuotationForm({
     <>
       <StandardFormLayout
         title={mode === "create" ? "New Quotation" : `Edit ${defaultValue?.quotation_no ?? "Quotation"}`}
-        description={
-          mode === "create"
-            ? "Create a quotation to send to the customer"
-            : "Modify quotation details below"
-        }
-        breadcrumb={[
-          { label: "Quotations", onClick: () => navigate("/sales/quotations") },
-          { label: mode === "create" ? "New Quotation" : defaultValue?.quotation_no ?? "Edit" },
-        ]}
         actions={[
           { label: "Discard", variant: "outline", onClick: () => setDiscardOpen(true) },
           { label: mode === "create" ? "Save Draft" : "Save Changes", variant: "primary", onClick: handleSubmit, isLoading: loading },

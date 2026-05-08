@@ -14,32 +14,28 @@ interface Action {
 
 interface Props {
   title: string;
-  description?: string;
   actions?: Action[];
   children: ReactNode;
   sidebarContent?: ReactNode;
   statusBadge?: ReactNode;
   loading?: boolean;
-  breadcrumb?: { label: string; onClick?: () => void }[];
 }
 
 const actionStyles: Record<ActionVariant, string> = {
-  primary:   "bg-orange-500 hover:bg-orange-600 text-white shadow-sm",
-  success:   "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm",
-  danger:    "bg-red-600 hover:bg-red-700 text-white shadow-sm",
+  primary: "bg-orange-500 hover:bg-orange-600 text-white shadow-sm",
+  success: "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm",
+  danger: "bg-red-600 hover:bg-red-700 text-white shadow-sm",
   secondary: "bg-gray-700 hover:bg-gray-800 text-white shadow-sm",
-  outline:   "border border-gray-300 bg-white hover:bg-gray-50 text-gray-700",
+  outline: "border border-gray-300 bg-white hover:bg-gray-50 text-gray-700",
 };
 
 export function StandardFormLayout({
   title,
-  description,
   actions = [],
   children,
   sidebarContent,
   statusBadge,
   loading = false,
-  breadcrumb,
 }: Props) {
   if (loading) {
     return (
@@ -57,34 +53,10 @@ export function StandardFormLayout({
       {/* Sticky page header bar */}
       <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-screen-2xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
-          {/* Left: breadcrumb + title */}
-          <div className="min-w-0">
-            {breadcrumb && breadcrumb.length > 0 && (
-              <nav className="flex items-center gap-1 text-xs text-gray-400 mb-0.5">
-                {breadcrumb.map((crumb, i) => (
-                  <span key={i} className="flex items-center gap-1">
-                    {i > 0 && <span>/</span>}
-                    {crumb.onClick ? (
-                      <button
-                        onClick={crumb.onClick}
-                        className="hover:text-orange-500 transition-colors"
-                      >
-                        {crumb.label}
-                      </button>
-                    ) : (
-                      <span className="text-gray-600">{crumb.label}</span>
-                    )}
-                  </span>
-                ))}
-              </nav>
-            )}
-            <div className="flex items-center gap-2 min-w-0">
-              <h1 className="text-base font-semibold text-gray-900 truncate">{title}</h1>
-              {statusBadge}
-            </div>
-            {description && (
-              <p className="text-xs text-gray-500 truncate mt-0.5">{description}</p>
-            )}
+          {/* Left: title */}
+          <div className="min-w-0 flex items-center gap-2">
+            <h1 className="text-base font-semibold text-gray-900 truncate">{title}</h1>
+            {statusBadge}
           </div>
 
           {/* Right: action buttons */}

@@ -99,11 +99,6 @@ export default function SaleOrderForm({
     <>
       <StandardFormLayout
         title={mode === "create" ? "New Sale Order" : `Edit Order #${defaultValue?.id}`}
-        description={mode === "create" ? "Create a new sale order for a customer" : "Modify the sale order details below"}
-        breadcrumb={[
-          { label: "Sale Orders", onClick: onCancel },
-          { label: mode === "create" ? "New Order" : `Edit #${defaultValue?.id}` },
-        ]}
         actions={[
           { label: "Discard", variant: "outline", onClick: onCancel || (() => window.history.back()) },
           {

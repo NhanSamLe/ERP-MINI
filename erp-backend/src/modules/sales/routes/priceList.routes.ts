@@ -4,7 +4,7 @@ import * as priceListController from "../controllers/priceList.controller";
 
 const router = Router();
 
-router.use(authMiddleware);
+router.use(authMiddleware([]));
 
 // Endpoint phục vụ tính giá ngay trên client (khi chọn sản phẩm / sổ lệnh)
 router.get("/evaluate-price", priceListController.getProductPriceForOrder);
