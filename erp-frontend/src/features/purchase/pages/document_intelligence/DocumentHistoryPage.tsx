@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight as ChevronRightIcon,
   FileText,
+  ShieldAlert,
 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
@@ -112,6 +113,15 @@ export default function DocumentHistoryPage() {
           >
             <Plus className="w-5 h-5" />
             Tải lên mới
+          </button>
+          <button
+            onClick={() =>
+              navigate("/purchase/document-intelligence/anomalies")
+            }
+            className="flex items-center gap-2 border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-lg font-medium transition-colors text-sm"
+          >
+            <ShieldAlert className="w-4 h-4 text-orange-500" />
+            Anomaly Dashboard
           </button>
         </div>
 

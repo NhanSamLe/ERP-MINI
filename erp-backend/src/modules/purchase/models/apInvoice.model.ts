@@ -115,7 +115,7 @@ ApInvoice.init(
       allowNull: false,
       defaultValue: "pending",
     },
-    matching_details: { type: DataTypes.JSONB, allowNull: true },
+    matching_details: { type: DataTypes.JSON, allowNull: true },
   },
   {
     sequelize,

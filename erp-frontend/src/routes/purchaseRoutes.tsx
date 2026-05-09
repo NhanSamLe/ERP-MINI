@@ -13,6 +13,7 @@ import ApPaymentPages from "@/features/purchase/pages/ap_payment/ApPaymentPages"
 import ViewApPaymentPage from "@/features/purchase/pages/ap_payment/ViewApPaymentPage";
 import DocumentUploadPage from "@/features/purchase/pages/document_intelligence/DocumentUploadPage";
 import DocumentHistoryPage from "@/features/purchase/pages/document_intelligence/DocumentHistoryPage";
+import AnomalyDashboardPage from "@/features/purchase/pages/document_intelligence/AnomalyDashboardPage";
 
 const purchaseRoutes: RouteObject[] = [
   {
@@ -144,6 +145,21 @@ const purchaseRoutes: RouteObject[] = [
     element: (
       <ProtectedRoute allowedRoles={[Roles.ACCOUNT, Roles.CHACC]}>
         <DocumentHistoryPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "purchase/document-intelligence/anomalies",
+    element: (
+      <ProtectedRoute
+        allowedRoles={[
+          Roles.ACCOUNT,
+          Roles.CHACC,
+          Roles.PURCHASEMANAGER,
+          Roles.CEO,
+        ]}
+      >
+        <AnomalyDashboardPage />
       </ProtectedRoute>
     ),
   },

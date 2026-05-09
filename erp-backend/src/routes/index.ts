@@ -82,6 +82,7 @@ router.use("/lots", stockLotRoutes);
 router.use("/physical-inventories", physicalInventoryRoutes);
 router.use("/chatbot", chatbotRoutes);
 router.use("/documents", documentRoutes);
+router.use("/document-intelligence", documentRoutes);
 router.use("/matching", matchingRouter);
 router.use("/ai-narrative", narrativeRoutes);
 

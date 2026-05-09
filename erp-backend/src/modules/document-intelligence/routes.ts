@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { documentController } from "./controllers/document.controller";
+import { anomalyController } from "./controllers/anomaly.controller";
 import { authMiddleware } from "../../core/middleware/auth";
 import { Role } from "../../core/types/enum";
 import { invoiceUploadMiddleware } from "./middleware/invoiceUpload.middleware";
@@ -25,6 +26,15 @@ const allRoles = authMiddleware([
   Role.CEO,
 ]);
 
+// Finance roles — can view and manage anomaly results and thresholds
+const financeRoles = authMiddleware([
+  Role.ADMIN,
+  Role.ACCOUNT,
+  Role.CHACC,
+  Role.CEO,
+  Role.PURCHASEMANAGER,
+]);
+
 // Document routes
 router.post(
   "/upload",
@@ -44,6 +54,25 @@ router.get(
 router.get("/:id/result", allRoles, documentController.getDocumentResult);
 router.post("/:id/confirm", allRoles, documentController.confirmDocument);
 router.post("/check-duplicate", allRoles, documentController.checkDuplicate);
+
+// ── Anomaly Detection routes ──────────────────────────────────────────────
+// Must be registered BEFORE /:id routes to avoid param conflicts
+router.get(
+  "/anomalies/stats",
+  financeRoles,
+  anomalyController.getBranchAnomalyStats,
+);
+router.get(
+  "/anomalies/config",
+  financeRoles,
+  anomalyController.getThresholdConfig,
+);
+router.put(
+  "/anomalies/config",
+  financeRoles,
+  anomalyController.updateThresholdConfig,
+);
+router.get("/anomalies", financeRoles, anomalyController.getAnomalyResults);
 
 // Matching routes
 matchingRouter.post("/three-way", allRoles, documentController.threeWayMatch);
