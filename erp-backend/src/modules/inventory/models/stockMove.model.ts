@@ -19,6 +19,7 @@ export interface StockMoveAttrs {
   submitted_at?: Date | null;
   approved_at?: Date | null;
   reject_reason?: string | null;
+  branch_id?: number | null;
 }
 
 type StockMoveCreation = Optional<StockMoveAttrs, "id" | "status">;
@@ -46,6 +47,7 @@ export class StockMove
   public submitted_at?: Date | null;
   public approved_at?: Date | null;
   public reject_reason?: string | null;
+  public branch_id?: number | null;
   public lines?: StockMoveLine[];
   public creator?: User;
   public approver?: User;
@@ -88,6 +90,7 @@ StockMove.init(
     submitted_at: { type: DataTypes.DATE },
     approved_at: { type: DataTypes.DATE },
     reject_reason: { type: DataTypes.STRING(255), allowNull: true },
+    branch_id: { type: DataTypes.BIGINT, allowNull: true },
   },
   {
     sequelize,

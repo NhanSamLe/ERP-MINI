@@ -4,6 +4,7 @@ import { Button } from "../../../components/ui/Button";
 import { FormInput } from "../../../components/ui/FormInput";
 import { Alert } from "../../../components/ui/Alert";
 import { AppliesTo, TaxType } from "../../../types/enum";
+import { toDateInputValue } from "@/utils/time.helper";
 
 interface Props {
   data: Tax | null;
@@ -54,8 +55,8 @@ export default function TaxFormModal({
         rate: data.rate,
         applies_to: data.applies_to,
         // is_vat: data.is_vat,  // Đã loại bỏ: sẽ tính lại trong handleSubmit
-        effective_date: data.effective_date ? data.effective_date.split("T")[0] : "",
-        expiry_date: data.expiry_date ? data.expiry_date.split("T")[0] : undefined,  // Fix: undefined thay vì null
+        effective_date: toDateInputValue(data.effective_date),
+        expiry_date: toDateInputValue(data.expiry_date),
         status: data.status,
       });
     }

@@ -28,6 +28,9 @@ import OppDetailPage from "../features/crm/page/OppDetailPage";
 import OpportunityCreatePage from "../features/crm/page/OpportunityCreatePage";
 import OpportunityUpdatePage from "../features/crm/page/OpportunityUpdatePage";
 import CRMDashboardPage from "@/features/crm/page/CRMDashboardPage";
+import LeadSourcePage from "@/features/crm/page/LeadSourcePage";
+import PipelinePage from "@/features/crm/page/PipelinePage";
+import ScoringRulePage from "@/features/crm/page/ScoringRulePage";
 const crmRoutes: RouteObject[] = [
   // {
   //   path: "/crm",
@@ -228,6 +231,31 @@ const crmRoutes: RouteObject[] = [
     element: (
       <ProtectedRoute allowedRoles={["SALES", "SALESMANAGER", "ADMIN"]}>
         <CallUpdatePage/>
+      </ProtectedRoute>
+    ),
+  },
+  // ---- CRM Configuration Pages ----
+  {
+    path: "/crm/settings/lead-sources",
+    element: (
+      <ProtectedRoute allowedRoles={["SALESMANAGER", "ADMIN"]}>
+        <LeadSourcePage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/crm/settings/pipelines",
+    element: (
+      <ProtectedRoute allowedRoles={["SALESMANAGER", "ADMIN"]}>
+        <PipelinePage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/crm/settings/scoring-rules",
+    element: (
+      <ProtectedRoute allowedRoles={["SALESMANAGER", "ADMIN"]}>
+        <ScoringRulePage />
       </ProtectedRoute>
     ),
   },

@@ -17,3 +17,13 @@ export const formatDateTime = (value?: string | null) => {
 
   return `${day}/${month}/${year} ${hourStr}:${minute} ${ampm}`;
 };
+
+/**
+ * Convert ISO date string to yyyy-MM-dd format for HTML date input
+ * @param value - ISO date string (e.g., "2026-05-04T00:00:00.000Z")
+ * @returns Date string in yyyy-MM-dd format (e.g., "2026-05-04")
+ */
+export const toDateInputValue = (value?: string | null): string => {
+  if (!value) return "";
+  return value.split("T")[0];
+};

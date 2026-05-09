@@ -1,57 +1,46 @@
-import { memo } from 'react';
-import { Plus, Minus } from 'lucide-react';
+import { memo } from "react";
+import { Plus, Minus } from "lucide-react";
 
-interface QuantityControlProps {
+interface Props {
   value: number;
   onChange: (value: number) => void;
   min?: number;
+  max?: number;
 }
 
-const QuantityControl = memo(function QuantityControl({ 
-  value, 
-  onChange, 
-  min = 1 
-}: QuantityControlProps) {
-  const handleDecrease = (): void => {
-    const newValue = Math.max(min, value - 1);
-    if (newValue !== value) {
-      onChange(newValue);
-    }
-  };
-
-  const handleIncrease = (): void => {
-    onChange(value + 1);
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    const newValue = parseInt(e.target.value) || min;
-    if (newValue >= min) {
-      onChange(newValue);
-    }
+const QuantityControl = memo(function QuantityControl({ value, onChange, min = 1, max }: Props) {
+  const dec = () => { if (value > min) onChange(value - 1); };
+  const inc = () => { if (!max || value < max) onChange(value + 1); };
+  const set = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = parseInt(e.target.value) || min;
+    onChange(Math.max(min, max ? Math.min(v, max) : v));
   };
 
   return (
-    <div className="flex items-center border border-gray-300 rounded-lg bg-white">
+    <div className="inline-flex items-center border border-gray-300 rounded-md overflow-hidden bg-white h-8">
       <button
         type="button"
-        onClick={handleDecrease}
-        className="p-1.5 hover:bg-orange-50 transition"
+        onClick={dec}
+        disabled={value <= min}
+        className="w-7 h-full flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed border-r border-gray-200 transition-colors"
       >
-        <Minus size={16} className="text-orange-600" />
+        <Minus className="w-3 h-3" />
       </button>
       <input
         type="number"
         min={min}
-        value={value}
-        onChange={handleInputChange}
-        className="w-14 text-center border-0 bg-transparent font-medium text-sm"
+        max={max}
+        value={Number.isInteger(value) ? value : parseFloat(value.toFixed(3))}
+        onChange={set}
+        className="w-12 h-full text-center text-sm font-semibold text-gray-800 bg-white focus:outline-none focus:bg-orange-50 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
       />
       <button
         type="button"
-        onClick={handleIncrease}
-        className="p-1.5 hover:bg-orange-50 transition"
+        onClick={inc}
+        disabled={!!max && value >= max}
+        className="w-7 h-full flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed border-l border-gray-200 transition-colors"
       >
-        <Plus size={16} className="text-orange-600" />
+        <Plus className="w-3 h-3" />
       </button>
     </div>
   );

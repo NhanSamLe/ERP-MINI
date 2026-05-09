@@ -1,17 +1,29 @@
 interface FormInputProps {
   label?: string;
   type?: string;
-  value: string;
+  value: string | number;
   onChange?: (value: string) => void;
   placeholder?: string;
   required?: boolean;
   disabled?: boolean;
-  icon?: React.ReactNode;
   readOnly?: boolean;
+  icon?: React.ReactNode;
+  iconPosition?: "left" | "right";
   error?: string;
+  hint?: string;
   className?: string;
-  textarea?: boolean;  
+  textarea?: boolean;
+  rows?: number;
 }
+
+const baseInput = [
+  "w-full rounded-md border border-gray-300 bg-white text-sm text-gray-900",
+  "placeholder:text-gray-400",
+  "transition-colors duration-150",
+  "focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500",
+  "disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed",
+  "read-only:bg-gray-50 read-only:text-gray-600",
+].join(" ");
 
 export function FormInput({
   label,
@@ -23,59 +35,77 @@ export function FormInput({
   disabled,
   readOnly,
   icon,
+  iconPosition = "right",
   error,
+  hint,
   className,
-  textarea
+  textarea,
+  rows = 4,
 }: FormInputProps) {
+  const hasLeftIcon  = icon && iconPosition === "left";
+  const hasRightIcon = icon && iconPosition === "right";
+
   return (
-    <div>
-       {label && (
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-       )}
+    <div className="space-y-1.5">
+      {label && (
+        <label className="block text-sm font-medium text-gray-700">
+          {label}
+          {required && <span className="text-red-500 ml-0.5">*</span>}
+        </label>
+      )}
 
       <div className="relative">
+        {hasLeftIcon && (
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+            {icon}
+          </span>
+        )}
+
         {textarea ? (
           <textarea
             value={value}
             onChange={(e) => onChange?.(e.target.value)}
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none
-              ${disabled ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}
-              ${error ? 'border-red-500' : 'border-gray-300'}
-              ${className ?? ''}`}
             placeholder={placeholder}
             required={required}
             disabled={disabled}
             readOnly={readOnly}
-            rows={5}
+            rows={rows}
+            className={[
+              baseInput,
+              "px-3 py-2 resize-y min-h-[2.5rem]",
+              error ? "border-red-400 focus:ring-red-400 focus:border-red-400" : "",
+              className ?? "",
+            ].join(" ")}
           />
         ) : (
           <input
             type={type}
             value={value}
             onChange={(e) => onChange?.(e.target.value)}
-            className={`w-full px-4 py-3 ${icon ? 'pr-10' : ''} border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none
-              ${disabled ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}
-              ${error ? 'border-red-500' : 'border-gray-300'}
-              ${className ?? ''}`}
             placeholder={placeholder}
             required={required}
             disabled={disabled}
             readOnly={readOnly}
+            className={[
+              baseInput,
+              "h-9 px-3",
+              hasLeftIcon  ? "pl-9" : "",
+              hasRightIcon ? "pr-9" : "",
+              error ? "border-red-400 focus:ring-red-400 focus:border-red-400" : "",
+              className ?? "",
+            ].join(" ")}
           />
         )}
 
-        {icon && !textarea && (
-          <div className="absolute right-3 top-3.5">
+        {hasRightIcon && !textarea && (
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
             {icon}
-          </div>
+          </span>
         )}
       </div>
 
-      {error && (
-        <p className="text-red-600 text-sm mt-1">{error}</p>
-      )}
+      {error && <p className="text-xs text-red-600 flex items-center gap-1">{error}</p>}
+      {!error && hint && <p className="text-xs text-gray-500">{hint}</p>}
     </div>
   );
 }

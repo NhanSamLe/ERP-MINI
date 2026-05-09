@@ -151,11 +151,11 @@ export function RelatedInfoCard({ relatedType, lead, opportunity, customer }: Pr
           )}
 
           {/* Probability */}
-          {opp.probability && (
+          {opp.probability != null && (
             <div className="flex items-center gap-2">
               <Percent className="w-4 h-4" />
               Probability:{" "}
-              <span className="font-medium">{opp.probability}%</span>
+              <span className="font-medium">{Math.round(opp.probability)}%</span>
             </div>
           )}
 

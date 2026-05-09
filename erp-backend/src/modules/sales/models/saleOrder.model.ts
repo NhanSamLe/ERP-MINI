@@ -17,6 +17,22 @@ export interface SaleOrderAttrs {
   total_before_tax?: number;
   total_tax?: number;
   total_after_tax?: number;
+  
+  // Phase 3 Sales enhancements
+  quotation_id?: number | null;
+  currency_id?: number | null;
+  exchange_rate?: number;
+  payment_term_id?: number | null;
+  discount_percent?: number;
+  discount_amount?: number;
+  delivery_status?: "pending" | "partial" | "delivered";
+  invoice_status?: "not_invoiced" | "partial" | "invoiced";
+  customer_po_number?: string | null;
+  delivery_address?: string | null;
+  expected_delivery_date?: string | null;
+  sales_person_id?: number | null;
+  internal_notes?: string | null;
+  customer_notes?: string | null;
 }
 
 type SaleOrderCreation = Optional<SaleOrderAttrs, "id" | "status">;
@@ -37,6 +53,22 @@ export class SaleOrder extends Model<SaleOrderAttrs, SaleOrderCreation> implemen
   public total_before_tax?: number;
   public total_tax?: number;
   public total_after_tax?: number;
+
+  // Phase 3 Sales enhancements
+  public quotation_id?: number | null;
+  public currency_id?: number | null;
+  public exchange_rate?: number;
+  public payment_term_id?: number | null;
+  public discount_percent?: number;
+  public discount_amount?: number;
+  public delivery_status?: "pending" | "partial" | "delivered";
+  public invoice_status?: "not_invoiced" | "partial" | "invoiced";
+  public customer_po_number?: string | null;
+  public delivery_address?: string | null;
+  public expected_delivery_date?: string | null;
+  public sales_person_id?: number | null;
+  public internal_notes?: string | null;
+  public customer_notes?: string | null;
 }
 
 SaleOrder.init(
@@ -59,6 +91,22 @@ SaleOrder.init(
     total_before_tax: { type: DataTypes.DECIMAL(18,2) },
     total_tax: { type: DataTypes.DECIMAL(18,2) },
     total_after_tax: { type: DataTypes.DECIMAL(18,2) },
+
+    // Phase 3 Sales enhancements
+    quotation_id: { type: DataTypes.BIGINT, allowNull: true },
+    currency_id: { type: DataTypes.BIGINT, allowNull: true },
+    exchange_rate: { type: DataTypes.DECIMAL(18, 6), defaultValue: 1.000000 },
+    payment_term_id: { type: DataTypes.BIGINT, allowNull: true },
+    discount_percent: { type: DataTypes.DECIMAL(5, 2), defaultValue: 0 },
+    discount_amount: { type: DataTypes.DECIMAL(18, 2), defaultValue: 0 },
+    delivery_status: { type: DataTypes.ENUM("pending", "partial", "delivered"), defaultValue: "pending" },
+    invoice_status: { type: DataTypes.ENUM("not_invoiced", "partial", "invoiced"), defaultValue: "not_invoiced" },
+    customer_po_number: { type: DataTypes.STRING(100), allowNull: true },
+    delivery_address: { type: DataTypes.TEXT, allowNull: true },
+    expected_delivery_date: { type: DataTypes.DATEONLY, allowNull: true },
+    sales_person_id: { type: DataTypes.BIGINT, allowNull: true },
+    internal_notes: { type: DataTypes.TEXT, allowNull: true },
+    customer_notes: { type: DataTypes.TEXT, allowNull: true },
   },
   { sequelize, tableName: "sale_orders", timestamps: true, createdAt: "created_at", updatedAt: "updated_at" }
 );

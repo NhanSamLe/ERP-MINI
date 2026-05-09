@@ -69,3 +69,20 @@ export function formatPercent(
 
   return `${formatNumber(num, fractionDigits)}%`;
 }
+
+/**
+ * Format currency with proper symbol
+ * @param value - Amount to format
+ * @param currencySymbol - Currency symbol (e.g., "$", "₫", "€")
+ * @returns Formatted string with symbol
+ */
+export function formatCurrency(
+  value: number | null | undefined,
+  currencySymbol: string = "₫"
+): string {
+  if (value == null) return `0 ${currencySymbol}`;
+  const num = Number(value);
+  if (isNaN(num)) return `0 ${currencySymbol}`;
+  
+  return `${num.toLocaleString("vi-VN")} ${currencySymbol}`;
+}

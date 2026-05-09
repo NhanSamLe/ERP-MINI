@@ -24,6 +24,16 @@ export interface LeadAttrs {
   is_deleted?: boolean;
   deleted_at?: Date | null;
   deleted_by?: number | null;
+  // Phase 2 B2B enhancements
+  branch_id?: number | null;
+  source_id?: number | null;
+  company_name?: string | null;
+  job_title?: string | null;
+  industry?: string | null;
+  company_size?: string | null;
+  annual_revenue?: number | null;
+  lead_score?: number;
+  last_activity_date?: Date | null;
 }
 
 type LeadCreation = Optional<LeadAttrs, "id" | "stage">;
@@ -47,6 +57,16 @@ export class Lead extends Model<LeadAttrs, LeadCreation> implements LeadAttrs {
   public is_deleted?: boolean;
   public deleted_at?: Date | null;
   public deleted_by?: number | null;
+  // Phase 2 B2B
+  public branch_id?: number | null;
+  public source_id?: number | null;
+  public company_name?: string | null;
+  public job_title?: string | null;
+  public industry?: string | null;
+  public company_size?: string | null;
+  public annual_revenue?: number | null;
+  public lead_score?: number;
+  public last_activity_date?: Date | null;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -71,6 +91,35 @@ Lead.init(
     is_deleted: { type: DataTypes.BOOLEAN, defaultValue: false },
     deleted_at: { type: DataTypes.DATE, allowNull: true },
     deleted_by: { type: DataTypes.BIGINT, allowNull: true },
+    // Phase 2 B2B
+    branch_id: { type: DataTypes.BIGINT, allowNull: true },
+    source_id: { type: DataTypes.BIGINT, allowNull: true },
+    company_name: { type: DataTypes.STRING(200), allowNull: true },
+    job_title: { type: DataTypes.STRING(100), allowNull: true },
+    industry: { type: DataTypes.STRING(100), allowNull: true },
+    company_size: { type: DataTypes.STRING(50), allowNull: true },
+    annual_revenue: { type: DataTypes.DECIMAL(18, 2), allowNull: true },
+    lead_score: { type: DataTypes.INTEGER, defaultValue: 0 },
+    last_activity_date: { type: DataTypes.DATE, allowNull: true },
   },
-  { sequelize, tableName: "crm_leads", timestamps: true, createdAt: "created_at", updatedAt: "updated_at" }
+  { 
+    sequelize, 
+    tableName: "crm_leads", 
+    timestamps: true, 
+    createdAt: "created_at", 
+    updatedAt: "updated_at",
+    hooks: {
+      afterUpdate: async (lead: Lead, options) => {
+        if (lead.changed('is_deleted') && lead.is_deleted) {
+          const { Activity } = require("../../../models/index");
+          if (Activity) {
+            await Activity.update(
+              { is_deleted: true, deleted_at: new Date(), deleted_by: lead.deleted_by },
+              { where: { related_type: 'lead', related_id: lead.id } }
+            );
+          }
+        }
+      }
+    }
+  }
 );

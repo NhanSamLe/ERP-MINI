@@ -1,11 +1,6 @@
-// ======================================================================
-// 🔥 LEAD DETAIL PAGE – REDESIGNED UI
-// ======================================================================
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-
-import { useAppDispatch, useAppSelector } from "../../../store/hooks";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   updateLeadBasic,
   updateLeadEvaluation,
@@ -14,41 +9,26 @@ import {
   reopenLead,
   deleteLead,
   fetchAllLeads,
-  fetchLeadById
+  fetchLeadById,
 } from "../store/lead/lead.thunks";
-
 import * as activityService from "../service/activity.service";
-
-import { FormInput } from "../../../components/ui/FormInput";
-import { Button } from "../../../components/ui/buttonn";
-import { Alert } from "../../../components/ui/Alert";
-import { Card, CardHeader, CardContent } from "../../../components/ui/Card";
-import { Separator } from "../../../components/ui/separator";
+import { FormInput } from "@/components/ui/FormInput";
+import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/ui/Alert";
+import { Card, CardHeader, CardContent } from "@/components/ui/Card";
+import { Separator } from "@/components/ui/separator";
+import { ActionConfirmModal } from "@/components/common";
 import { CompactTimeline } from "../components/TimelineCard";
+import InfoItem from "../components/InfoItem";
+import ActivityBoard from "../components/ActivityBoard";
+import StatCards from "../components/StatCards";
 import { Lead, UpdateLeadBasicDto, UpdateLeadEvaluationDto } from "../dto/lead.dto";
 import { Opportunity } from "../dto/opportunity.dto";
 import { Activity, TimelineEvent } from "../dto/activity.dto";
-
 import {
-  ArrowLeft,
-  Edit2,
-  Check,
-  X,
-  Trash2,
-  RefreshCw,
-  TrendingUp,
-  Calendar,
-  User,
-  ChevronRight,
-  Clock,
-  CheckCircle,
-  XCircle,
+  ArrowLeft, Edit2, Check, X, Trash2, RefreshCw,
+  TrendingUp, User, ChevronRight,
 } from "lucide-react";
-
-interface LocalAlert {
-  type: "success" | "error" | "warning" | "info";
-  message: React.ReactNode;
-}
 
 export default function LeadDetailPage() {
   const { id } = useParams();
@@ -56,83 +36,64 @@ export default function LeadDetailPage() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
-  const { currentLead, allLeads } = useAppSelector((s) => s.lead);
+  const leadState = useAppSelector((s) => s.lead);
+  const currentLead = leadState?.currentLead;
+  const allLeads = leadState?.allLeads ?? [];
 
-  // Ưu tiên dùng currentLead nếu id khớp (vì nó có full details như opportunities), nếu không thì tìm trong allLeads
-  const lead: Lead | undefined = (currentLead?.id === leadId)
-    ? currentLead
-    : allLeads.find((l) => l.id === leadId);
+  const lead: Lead | undefined =
+    currentLead?.id === leadId ? currentLead : allLeads.find((l) => l?.id === leadId);
 
-  const [alert, setAlert] = useState<LocalAlert | null>(null);
+  const [alert, setAlert] = useState<{ type: "success" | "error" | "warning" | "info"; message: string } | null>(null);
   const [basicEdit, setBasicEdit] = useState(false);
   const [evalEdit, setEvalEdit] = useState(false);
 
   const [basicForm, setBasicForm] = useState<UpdateLeadBasicDto>({
-    name: "",
-    email: "",
-    phone: "",
-    source: "",
+    name: "", email: "", phone: "", source: "", industry: "", company_size: "",
   });
 
   const [evalForm, setEvalForm] = useState<UpdateLeadEvaluationDto>({
-    leadId,
-    has_budget: undefined,
-    ready_to_buy: undefined,
-    expected_timeline: "",
-    notes: "",
+    leadId, has_budget: undefined, ready_to_buy: undefined, expected_timeline: "", notes: "",
   });
 
   const [activities, setActivities] = useState<Activity[]>([]);
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
 
+  // ── Modals ──
+  const [showDelete, setShowDelete] = useState(false);
+  const [showConvert, setShowConvert] = useState(false);
+  const [showReopen, setShowReopen] = useState(false);
+  const [showLost, setShowLost] = useState(false);
+  const [lostReason, setLostReason] = useState("");
+
   const loadActivities = async () => {
     try {
       const res = await activityService.getActivitiesFor("lead", leadId);
       setActivities(res);
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        console.error(err.message);
-      }
-    }
+    } catch { /* ignore */ }
   };
-  const activityStats = activities.reduce(
-    (acc, a) => {
-      if (a.activity_type === "call") acc.call++;
-      else if (a.activity_type === "email") acc.email++;
-      else if (a.activity_type === "meeting") acc.meeting++;
-      else if (a.activity_type === "task") acc.task++;
-      return acc;
-    },
-    { call: 0, email: 0, meeting: 0, task: 0 }
-  );
+
   const loadTimeline = async () => {
     try {
       const res = await activityService.getTimeline("lead", leadId);
       setTimeline(res);
-    } catch (err: unknown) {
-      if (err instanceof Error) console.error(err.message);
-    }
+    } catch { /* ignore */ }
   };
 
   useEffect(() => {
-    // fetchAllLeads để có danh sách chung (nếu cần back lại list)
     dispatch(fetchAllLeads());
-    // fetchLeadById để lấy chi tiết (bao gồm opportunities)
-    if (leadId) {
-      dispatch(fetchLeadById(leadId));
-    }
+    if (leadId) dispatch(fetchLeadById(leadId));
   }, [dispatch, leadId]);
 
   useEffect(() => {
     if (!lead) return;
-
     setBasicForm({
       name: lead.name,
       email: lead.email ?? "",
       phone: lead.phone ?? "",
       source: lead.source ?? "",
+      industry: lead.industry ?? "",
+      company_size: lead.company_size ?? "",
     });
-
     setEvalForm({
       leadId,
       has_budget: lead.has_budget,
@@ -140,15 +101,14 @@ export default function LeadDetailPage() {
       expected_timeline: lead.expected_timeline ?? "",
       notes: "",
     });
-
     loadActivities();
     loadTimeline();
   }, [lead]);
 
   if (!lead) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-600 text-lg">Lead not found</p>
+      <div className="min-h-screen flex justify-center items-center">
+        <p className="text-gray-600 text-sm">Đang tải...</p>
       </div>
     );
   }
@@ -156,530 +116,411 @@ export default function LeadDetailPage() {
   const handleSaveBasic = async () => {
     try {
       await dispatch(updateLeadBasic({ leadId, data: basicForm })).unwrap();
-      setAlert({ type: "success", message: "Updated successfully" });
+      setAlert({ type: "success", message: "Đã cập nhật thông tin" });
       setBasicEdit(false);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Update failed";
-      setAlert({ type: "error", message: msg });
+    } catch {
+      setAlert({ type: "error", message: "Cập nhật thất bại" });
     }
   };
 
   const handleSaveEval = async () => {
     try {
       await dispatch(updateLeadEvaluation({ leadId, data: evalForm })).unwrap();
-      setAlert({ type: "success", message: "Evaluation saved" });
+      setAlert({ type: "success", message: "Đã lưu đánh giá" });
       setEvalEdit(false);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Update failed";
-      setAlert({ type: "error", message: msg });
-    }
-  };
-
-  const handleMarkLost = async () => {
-    const reason = prompt("Enter reason for marking as lost:");
-    if (!reason) return;
-
-    try {
-      await dispatch(markLeadLost({ leadId, reason })).unwrap();
-      setAlert({ type: "success", message: "Lead marked as Lost" });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Action failed";
-      setAlert({ type: "error", message: msg });
-    }
-  };
-
-  const handleReopen = async () => {
-    if (!confirm("Reopen this lead?")) return;
-
-    try {
-      await dispatch(reopenLead(leadId)).unwrap();
-      setAlert({ type: "success", message: "Lead reopened" });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Action failed";
-      setAlert({ type: "error", message: msg });
+    } catch {
+      setAlert({ type: "error", message: "Lưu đánh giá thất bại" });
     }
   };
 
   const handleConvert = async () => {
-    if (!confirm("Convert this lead to a customer?")) return;
-
     try {
       await dispatch(convertLead(leadId)).unwrap();
-      setAlert({ type: "success", message: "Converted to Customer. Creating Opportunity..." });
-      setTimeout(() => navigate(`/crm/opportunities`), 600);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Convert failed";
-      setAlert({ type: "error", message: msg });
+      setAlert({ type: "success", message: "Đã chuyển đổi thành Customer" });
+      setShowConvert(false);
+      setTimeout(() => navigate("/crm/opportunities"), 600);
+    } catch {
+      setAlert({ type: "error", message: "Chuyển đổi thất bại" });
+    }
+  };
+
+  const handleMarkLost = async () => {
+    if (!lostReason.trim()) return;
+    try {
+      await dispatch(markLeadLost({ leadId, reason: lostReason })).unwrap();
+      setAlert({ type: "success", message: "Đã đánh dấu thua" });
+      setShowLost(false);
+      setLostReason("");
+    } catch {
+      setAlert({ type: "error", message: "Thao tác thất bại" });
+    }
+  };
+
+  const handleReopen = async () => {
+    try {
+      await dispatch(reopenLead(leadId)).unwrap();
+      setAlert({ type: "success", message: "Đã mở lại Lead" });
+      setShowReopen(false);
+    } catch {
+      setAlert({ type: "error", message: "Thao tác thất bại" });
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm("Delete this lead permanently?")) return;
-
     try {
       await dispatch(deleteLead(leadId)).unwrap();
       navigate("/crm/leads");
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Delete failed";
-      setAlert({ type: "error", message: msg });
+    } catch {
+      setAlert({ type: "error", message: "Xóa thất bại" });
     }
   };
 
-  const openActivities = activities.filter(
-    (a) => a.status === "pending" || a.status === "in_progress"
-  );
+  // Activity groups
+  const openActivities = activities.filter((a) => a.status === "pending" || a.status === "in_progress");
+  const closedActivities = activities.filter((a) => a.status === "completed" || a.status === "cancelled");
+  const getActivityUrl = (a: Activity) => `/crm/activities/${a.activity_type}/${a.id}`;
 
-  const closedActivities = activities.filter(
-    (a) => a.status === "completed" || a.status === "cancelled"
-  );
+  const opportunities: Opportunity[] = Array.isArray(lead?.opportunities) ? lead.opportunities : [];
 
-  const getActivityUrl = (a: Activity) =>
-    `/crm/activities/${a.activity_type}/${a.id}`;
-
-  const opportunities: Opportunity[] = Array.isArray(lead.opportunities)
-    ? lead.opportunities
-    : [];
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-
-        {/* HEADER */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-lg transition">
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div>
-              <h1 className="text-xl font-bold text-orange-600 tracking-tight">{lead.name}</h1>
-              <p className="text-sm text-gray-500 mt-1">Lead ID: {leadId}</p>
+  // Early return if lead not loaded yet
+  if (!lead) {
+    return (
+      <div className="page-container">
+        <div className="erp-card">
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <RefreshCw className="w-8 h-8 animate-spin text-orange-500 mx-auto mb-3" />
+              <p className="text-sm text-gray-500">Đang tải thông tin Lead...</p>
             </div>
           </div>
+        </div>
+      </div>
+    );
+  }
 
-          <div className="flex items-center gap-3">
-            {lead.stage === "new" && (
-              <Button variant="default" onClick={handleConvert} className="gap-2">
-                <TrendingUp className="w-4 h-4" /> Convert
-              </Button>
+  return (
+    <div className="page-container">
+      {/* Header */}
+      <div className="erp-card">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+          <div className="flex items-center gap-2.5">
+            <button onClick={() => navigate(-1)} className="p-1.5 hover:bg-gray-100 rounded-md text-gray-400 hover:text-gray-600">
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <span className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
+              <User className="w-4 h-4 text-orange-500" />
+            </span>
+            <div>
+              <h1 className="text-base font-semibold text-gray-900">{lead.name}</h1>
+              <p className="text-xs text-gray-400 mt-0.5">Lead #{leadId}</p>
+            </div>
+            {typeof lead.lead_score === "number" && (
+              <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
+                Điểm: {lead.lead_score}
+              </span>
             )}
+          </div>
 
+          <div className="flex items-center gap-2">
             {lead.stage === "new" && (
-              <Button variant="outline" onClick={handleMarkLost}>
-                Mark Lost
-              </Button>
+              <>
+                <Button variant="primary" size="sm" leftIcon={<TrendingUp className="w-3.5 h-3.5" />}
+                  onClick={() => setShowConvert(true)}>
+                  Chuyển đổi
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setShowLost(true)}>
+                  Đánh dấu thua
+                </Button>
+              </>
             )}
-
             {lead.stage === "lost" && (
-              <Button variant="outline" onClick={handleReopen} className="gap-2">
-                <RefreshCw className="w-4 h-4" /> Reopen
+              <Button variant="outline" size="sm" leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
+                onClick={() => setShowReopen(true)}>
+                Mở lại
               </Button>
             )}
-
-            <Button variant="destructive" onClick={handleDelete} className="gap-2">
-              <Trash2 className="w-4 h-4" /> Delete
+            <Button variant="danger" size="sm" leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+              onClick={() => setShowDelete(true)}>
+              Xóa
             </Button>
           </div>
         </div>
+      </div>
 
-        {alert && (
-          <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />
-        )}
+      {/* Alert */}
+      {alert && <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />}
 
-        {/* MAIN GRID */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-          {/* LEFT COLUMN */}
-          <div className="lg:col-span-2 space-y-6">
-
-            {/* BASIC INFO */}
-            <Card>
-              <CardHeader className="flex justify-between items-center">
-                <h2 className="text-lg font-semibold">Basic Information</h2>
-                <div className="ml-auto">
-                  {!basicEdit ? (
-                    <button
-                      onClick={() => setBasicEdit(true)}
-                      className="p-2 hover:bg-gray-100 rounded-lg transition"
-                    >
-                      <Edit2 className="w-5 h-5 text-gray-600" />
-                    </button>
-                  ) : (
-                    <div className="flex gap-2">
-                      <button onClick={handleSaveBasic} className="p-2 hover:bg-green-100 rounded-lg transition">
-                        <Check className="w-5 h-5 text-green-600" />
-                      </button>
-                      <button onClick={() => setBasicEdit(false)} className="p-2 hover:bg-red-100 rounded-lg transition">
-                        <X className="w-5 h-5 text-red-600" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </CardHeader>
-              <Separator />
-              <CardContent className="pt-5">
-
+      {/* Main 3-column layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
+        {/* Left 2 columns */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Basic Info */}
+          <Card>
+            <CardHeader>
+              <h2 className="text-sm font-semibold text-gray-900">Thông tin cơ bản</h2>
+              <div className="ml-auto">
                 {!basicEdit ? (
-                  <div className="grid grid-cols-2 gap-6">
-                    <InfoItem label="Email" value={lead.email ?? "-"} />
-                    <InfoItem label="Phone" value={lead.phone ?? "-"} />
-                    <InfoItem label="Source" value={lead.source ?? "-"} />
-                  </div>
+                  <button onClick={() => setBasicEdit(true)} className="p-1.5 hover:bg-gray-100 rounded-md transition">
+                    <Edit2 className="w-4 h-4 text-gray-400" />
+                  </button>
                 ) : (
-                  <div className="space-y-4">
-                    <FormInput label="Name" value={basicForm.name ?? ""}
-                      onChange={(v) => setBasicForm({ ...basicForm, name: v })} />
-                    <FormInput label="Email" value={basicForm.email ?? ""}
-                      onChange={(v) => setBasicForm({ ...basicForm, email: v })} />
-                    <FormInput label="Phone" value={basicForm.phone ?? ""}
-                      onChange={(v) => setBasicForm({ ...basicForm, phone: v })} />
-                    <FormInput label="Source" value={basicForm.source ?? ""}
-                      onChange={(v) => setBasicForm({ ...basicForm, source: v })} />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* EVALUATION */}
-            <Card>
-              <CardHeader className="flex justify-between items-center">
-                <h2 className="text-lg font-semibold">Evaluation</h2>
-                <div className="ml-auto">
-                  {!evalEdit ? (
-                    <button onClick={() => setEvalEdit(true)} className="p-2 hover:bg-gray-100 rounded-lg transition">
-                      <Edit2 className="w-5 h-5 text-gray-600" />
+                  <div className="flex gap-1">
+                    <button onClick={handleSaveBasic} className="p-1.5 hover:bg-green-50 rounded-md transition">
+                      <Check className="w-4 h-4 text-green-600" />
                     </button>
-                  ) : (
-                    <div className="flex gap-2">
-                      <button onClick={handleSaveEval} className="p-2 hover:bg-green-100 rounded-lg transition">
-                        <Check className="w-5 h-5 text-green-600" />
-                      </button>
-                      <button onClick={() => setEvalEdit(false)} className="p-2 hover:bg-red-100 rounded-lg transition">
-                        <X className="w-5 h-5 text-red-600" />
-                      </button>
-                    </div>
-                  )}
+                    <button onClick={() => setBasicEdit(false)} className="p-1.5 hover:bg-red-50 rounded-md transition">
+                      <X className="w-4 h-4 text-red-500" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </CardHeader>
+            <Separator />
+            <CardContent className="pt-5">
+              {!basicEdit ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                  <InfoItem label="Email" value={lead.email || "—"} />
+                  <InfoItem label="SĐT" value={lead.phone || "—"} />
+                  <InfoItem label="Nguồn" value={lead.source || "—"} />
+                  <InfoItem label="Ngành" value={lead.industry || "—"} />
+                  <InfoItem label="Quy mô" value={lead.company_size || "—"} />
                 </div>
-              </CardHeader>
-              <Separator />
-              <CardContent className="pt-5">
+              ) : (
+                <div className="space-y-4">
+                  <FormInput label="Tên" value={basicForm.name ?? ""} onChange={(v) => setBasicForm({ ...basicForm, name: v })} />
+                  <FormInput label="Email" value={basicForm.email ?? ""} onChange={(v) => setBasicForm({ ...basicForm, email: v })} />
+                  <FormInput label="SĐT" value={basicForm.phone ?? ""} onChange={(v) => setBasicForm({ ...basicForm, phone: v })} />
+                  <FormInput label="Nguồn" value={basicForm.source ?? ""} onChange={(v) => setBasicForm({ ...basicForm, source: v })} />
+                  <FormInput label="Ngành" value={basicForm.industry ?? ""} onChange={(v) => setBasicForm({ ...basicForm, industry: v })} />
+                  <FormInput label="Quy mô" value={basicForm.company_size ?? ""} onChange={(v) => setBasicForm({ ...basicForm, company_size: v })} />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Evaluation */}
+          <Card>
+            <CardHeader>
+              <h2 className="text-sm font-semibold text-gray-900">Đánh giá</h2>
+              <div className="ml-auto">
                 {!evalEdit ? (
-                  <div className="grid grid-cols-3 gap-6">
-                    <InfoItem label="Budget" value={
-                      lead.has_budget == null ? "-" : lead.has_budget ? "✓ Yes" : "✗ No"
-                    } />
-                    <InfoItem label="Ready to Buy" value={
-                      lead.ready_to_buy == null ? "-" : lead.ready_to_buy ? "✓ Yes" : "✗ No"
-                    } />
-                    <InfoItem label="Timeline" value={lead.expected_timeline ?? "-"} />
-                  </div>
+                  <button onClick={() => setEvalEdit(true)} className="p-1.5 hover:bg-gray-100 rounded-md transition">
+                    <Edit2 className="w-4 h-4 text-gray-400" />
+                  </button>
                 ) : (
-                  <div className="space-y-4">
-                    <SelectField
-                      label="Has Budget"
-                      value={evalForm.has_budget}
-                      onChange={(v) => setEvalForm({ ...evalForm, has_budget: v })}
-                    />
-                    <SelectField
-                      label="Ready to Buy"
-                      value={evalForm.ready_to_buy}
-                      onChange={(v) => setEvalForm({ ...evalForm, ready_to_buy: v })}
-                    />
-                    <FormInput
-                      label="Expected Timeline"
-                      value={evalForm.expected_timeline ?? ""}
-                      onChange={(v) => setEvalForm({ ...evalForm, expected_timeline: v })}
-                    />
+                  <div className="flex gap-1">
+                    <button onClick={handleSaveEval} className="p-1.5 hover:bg-green-50 rounded-md transition">
+                      <Check className="w-4 h-4 text-green-600" />
+                    </button>
+                    <button onClick={() => setEvalEdit(false)} className="p-1.5 hover:bg-red-50 rounded-md transition">
+                      <X className="w-4 h-4 text-red-500" />
+                    </button>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-
-            {/* ACTIVITIES - KANBAN STYLE */}
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold px-1">Activities</h2>
-              <ActivityStatsRow stats={activityStats} />
-              {/* Open Activities Row */}
-              <div className="grid grid-cols-2 gap-4">
-                <ActivityBoard title="Open Activities" activities={openActivities} onClick={(a) => navigate(getActivityUrl(a))} icon={<Clock className="w-4 h-4" />} />
-                <ActivityBoard title="Active Tasks" activities={openActivities.filter(a => a.status === "in_progress")} onClick={(a) => navigate(getActivityUrl(a))} icon={<TrendingUp className="w-4 h-4" />} />
               </div>
+            </CardHeader>
+            <Separator />
+            <CardContent className="pt-5">
+              {!evalEdit ? (
+                <div className="grid grid-cols-3 gap-6">
+                  <InfoItem label="Ngân sách" value={
+                    lead.has_budget == null ? "—" : lead.has_budget ? "Có" : "Không"
+                  } />
+                  <InfoItem label="Sẵn sàng mua" value={
+                    lead.ready_to_buy == null ? "—" : lead.ready_to_buy ? "Có" : "Không"
+                  } />
+                  <InfoItem label="Thời gian dự kiến" value={lead.expected_timeline || "—"} />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">Ngân sách</label>
+                    <select
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
+                      value={evalForm.has_budget === undefined ? "" : evalForm.has_budget ? "true" : "false"}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setEvalForm({ ...evalForm, has_budget: v === "" ? undefined : v === "true" });
+                      }}
+                    >
+                      <option value="">Không xác định</option>
+                      <option value="true">Có</option>
+                      <option value="false">Không</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">Sẵn sàng mua</label>
+                    <select
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
+                      value={evalForm.ready_to_buy === undefined ? "" : evalForm.ready_to_buy ? "true" : "false"}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setEvalForm({ ...evalForm, ready_to_buy: v === "" ? undefined : v === "true" });
+                      }}
+                    >
+                      <option value="">Không xác định</option>
+                      <option value="true">Có</option>
+                      <option value="false">Không</option>
+                    </select>
+                  </div>
+                  <FormInput label="Thời gian dự kiến" value={evalForm.expected_timeline ?? ""}
+                    onChange={(v) => setEvalForm({ ...evalForm, expected_timeline: v })} />
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-              {/* Closed Activities Row */}
-              <div className="grid grid-cols-2 gap-4">
-                <ActivityBoard title="Completed" activities={closedActivities.filter(a => a.status === "completed")} onClick={(a) => navigate(getActivityUrl(a))} icon={<CheckCircle className="w-4 h-4 text-green-600" />} />
-                <ActivityBoard title="Cancelled" activities={closedActivities.filter(a => a.status === "cancelled")} onClick={(a) => navigate(getActivityUrl(a))} icon={<XCircle className="w-4 h-4 text-red-600" />} />
-              </div>
+          {/* Activities */}
+          <div className="space-y-4">
+            <h2 className="text-sm font-semibold text-gray-900 px-1">Hoạt động</h2>
+            <StatCards activities={activities} />
+            <div className="grid grid-cols-2 gap-4">
+              <ActivityBoard title="Open Activities" activities={openActivities} onClick={(a) => navigate(getActivityUrl(a))} />
+              <ActivityBoard title="Active Tasks" activities={openActivities.filter((a) => a.activity_type === "task")} onClick={(a) => navigate(getActivityUrl(a))} />
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <ActivityBoard title="Completed" activities={closedActivities.filter((a) => a.status === "completed")} onClick={(a) => navigate(getActivityUrl(a))} />
+              <ActivityBoard title="Cancelled" activities={closedActivities.filter((a) => a.status === "cancelled")} onClick={(a) => navigate(getActivityUrl(a))} />
+            </div>
+          </div>
 
-            {/* TIMELINE */}
-            <Card>
+          {/* Timeline */}
+          <Card>
+            <CardHeader>
+              <h2 className="text-sm font-semibold text-gray-900">Timeline</h2>
+            </CardHeader>
+            <Separator />
+            <CardContent className="pt-5">
+              <CompactTimeline items={timeline} />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right column */}
+        <div className="space-y-6">
+          {/* Owner */}
+          <Card>
+            <CardHeader>
+              <h2 className="text-sm font-semibold text-gray-900">Người phụ trách</h2>
+            </CardHeader>
+            <Separator />
+            <CardContent className="pt-5">
+              {lead.assignedUser ? (
+                <div className="flex items-center gap-4 p-4 bg-orange-50 rounded-lg">
+                  <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center">
+                    <User className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm">{lead.assignedUser.full_name}</p>
+                    <p className="text-xs text-gray-500">{lead.assignedUser.email}</p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-gray-400 text-sm text-center py-6">Chưa phân công</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Opportunities */}
+          <Card>
+            <CardHeader>
+              <h2 className="text-sm font-semibold text-gray-900">Cơ hội</h2>
+            </CardHeader>
+            <Separator />
+            <CardContent className="pt-4 space-y-3">
+              {opportunities.length === 0 ? (
+                <p className="text-gray-400 text-sm text-center py-4">Chưa có cơ hội nào</p>
+              ) : (
+                opportunities.map((o) => (
+                  <button
+                    key={o.id}
+                    onClick={() => navigate(`/crm/opportunities/${o.id}`)}
+                    className="w-full flex justify-between items-center p-4 border border-gray-200 rounded-lg hover:border-orange-400 hover:bg-orange-50 transition"
+                  >
+                    <div className="text-left">
+                      <p className="font-semibold text-sm text-gray-900">{o.name}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {o.expected_value?.toLocaleString("vi-VN")} VND
+                      </p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  </button>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Lost reason */}
+          {lead.stage === "lost" && lead.lost_reason && (
+            <Card className="border-l-4 border-l-red-400">
               <CardHeader>
-                <h2 className="text-lg font-semibold">Timeline</h2>
+                <h2 className="text-sm font-semibold text-red-700">Lý do thua</h2>
               </CardHeader>
               <Separator />
               <CardContent className="pt-5">
-                <CompactTimeline items={timeline} />
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* RIGHT COLUMN */}
-          <div className="space-y-6">
-
-            {/* OWNER */}
-            <Card>
-              <CardHeader>
-                <h2 className="text-lg font-semibold">Assigned User</h2>
-              </CardHeader>
-              <Separator />
-              <CardContent className="pt-5">
-                {lead.assignedUser ? (
-                  <div className="flex items-center gap-4 p-4 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center">
-                      <User className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-900">{lead.assignedUser.full_name}</p>
-                      <p className="text-sm text-gray-600">{lead.assignedUser.email}</p>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-center py-6">Not assigned</p>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">{lead.lost_reason}</p>
+                {lead.lost_at && (
+                  <p className="text-xs text-gray-400 mt-3">
+                    Ngày thua: {new Date(lead.lost_at).toLocaleDateString("vi-VN")}
+                  </p>
                 )}
               </CardContent>
             </Card>
-
-            {/* OPPORTUNITIES */}
-            <Card>
-              <CardHeader>
-                <h2 className="text-lg font-semibold">Opportunities</h2>
-              </CardHeader>
-              <Separator />
-              <CardContent className="pt-4">
-                {opportunities.length === 0 ? (
-                  <p className="text-gray-500 text-center py-6">No opportunities yet.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {opportunities.map((o) => (
-                      <button
-                        key={o.id}
-                        onClick={() => navigate(`/crm/opportunities/${o.id}`)}
-                        className="w-full flex justify-between items-center p-4 border border-gray-200 rounded-xl hover:border-orange-400 hover:bg-orange-50 transition group"
-                      >
-                        <div className="text-left">
-                          <p className="font-semibold text-gray-900 group-hover:text-orange-600">{o.name}</p>
-                          <p className="text-sm text-gray-600">
-                            {o.expected_value?.toLocaleString("vi-VN")} ₫
-                          </p>
-                        </div>
-                        <ChevronRight className="text-gray-400 group-hover:text-orange-400 transition" />
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* LOST INFO */}
-            {lead.stage === "lost" && lead.lost_reason && (
-              <Card>
-                <CardHeader>
-                  <h2 className="text-red-900 font-semibold">Lost Reason</h2>
-                </CardHeader>
-                <Separator />
-                <CardContent className="pt-5 bg-red-50 rounded-b-xl">
-                  <p className="text-red-700 font-medium">{lead.lost_reason}</p>
-                  {lead.lost_at && (
-                    <p className="text-xs text-red-600 mt-3">
-                      Lost at: {new Date(lead.lost_at).toLocaleString("vi-VN")}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ======================================================================
-// SUB COMPONENTS
-// ======================================================================
-
-function InfoItem({ label, value }: { label: string; value: string | number | React.ReactNode }) {
-  return (
-    <div className="space-y-1">
-      <p className="text-xs font-medium text-gray-500 uppercase">{label}</p>
-      <p className="text-sm font-semibold text-gray-900">{value}</p>
-    </div>
-  );
-}
-
-function SelectField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: boolean | undefined;
-  onChange: (v: boolean | undefined) => void;
-}) {
-  return (
-    <div>
-      <label className="text-sm font-semibold mb-2 block text-gray-700">{label}</label>
-      <select
-        className="border border-gray-300 rounded-lg px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
-        value={value === undefined ? "" : value ? "true" : "false"}
-        onChange={(e) => {
-          if (e.target.value === "") {
-            onChange(undefined);
-          } else {
-            onChange(e.target.value === "true");
-          }
-        }}
-      >
-        <option value="">Unknown</option>
-        <option value="true">Yes</option>
-        <option value="false">No</option>
-      </select>
-    </div>
-  );
-}
-
-function ActivityBoard({
-  title,
-  activities,
-  onClick,
-  icon,
-}: {
-  title: string;
-  activities: Activity[];
-  onClick: (a: Activity) => void;
-  icon: React.ReactNode;
-}) {
-  return (
-    <Card>
-      <CardHeader className="flex items-center gap-2">
-        <div className="flex items-center gap-2 text-gray-700">
-          {icon}
-          <h3 className="font-semibold">{title}</h3>
-        </div>
-        <span className="ml-auto bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm font-medium">
-          {activities.length}
-        </span>
-      </CardHeader>
-      <Separator />
-      <CardContent className="pt-4 space-y-3">
-        {activities.length === 0 ? (
-          <p className="text-gray-500 text-sm text-center py-6">No activities</p>
-        ) : (
-          activities.map((a) => (
-            <ActivityCardMini key={a.id} a={a} onClick={() => onClick(a)} />
-          ))
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function ActivityCardMini({
-  a,
-  onClick,
-}: {
-  a: Activity;
-  onClick: () => void;
-}) {
-  const getActivityIcon = () => {
-    switch (a.activity_type?.toLowerCase()) {
-      case "call":
-        return <span className="text-blue-600"></span>;
-      case "email":
-        return <span className="text-purple-600"></span>;
-      case "meeting":
-        return <span className="text-green-600"></span>;
-      case "task":
-        return <span className="text-orange-600"></span>;
-      default:
-        return <span className="text-gray-600"></span>;
-    }
-  };
-
-  const getActivityTypeLabel = () => {
-    return a.activity_type?.charAt(0).toUpperCase() + (a.activity_type?.slice(1) || "Activity");
-  };
-
-  return (
-    <div
-      onClick={onClick}
-      className="p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-orange-400 hover:bg-orange-50 transition group"
-    >
-      <div className="flex justify-between items-start gap-2">
-        <div className="flex items-start gap-2 flex-1 min-w-0">
-          <div className="text-lg mt-0.5 flex-shrink-0">{getActivityIcon()}</div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <p className="text-xs font-semibold text-gray-500 uppercase">{getActivityTypeLabel()}</p>
-              <span
-                className={`px-1.5 py-0.5 text-xs rounded-full font-medium ${a.status === "completed"
-                  ? "bg-green-100 text-green-700"
-                  : a.status === "cancelled"
-                    ? "bg-red-100 text-red-700"
-                    : a.status === "in_progress"
-                      ? "bg-blue-100 text-blue-700"
-                      : "bg-yellow-100 text-yellow-700"
-                  }`}
-              >
-                {a.status}
-              </span>
-            </div>
-            <p className="font-semibold text-gray-900 group-hover:text-orange-600 truncate text-sm mt-1">
-              {a.subject ?? "(No subject)"}
-            </p>
-            {a.notes && (
-              <p className="text-xs text-gray-500 mt-1 line-clamp-1">{a.notes}</p>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
-      {a.due_at && (
-        <div className="flex items-center gap-1 text-xs text-gray-500 mt-2 ml-6">
-          <Calendar className="w-3 h-3" />
-          {new Date(a.due_at).toLocaleDateString("vi-VN")}
-        </div>
-      )}
-    </div>
-  );
-}
+      {/* ── Modals ── */}
+      <ActionConfirmModal
+        isOpen={showDelete}
+        onClose={() => setShowDelete(false)}
+        title="Xóa Lead"
+        description={`Bạn có chắc chắn muốn xóa "${lead.name}"? Hành động này không thể hoàn tác.`}
+        confirmText="Xóa"
+        variant="danger"
+        onConfirm={handleDelete}
+      />
 
+      <ActionConfirmModal
+        isOpen={showConvert}
+        onClose={() => setShowConvert(false)}
+        title="Chuyển đổi Lead"
+        description={`Chuyển đổi "${lead.name}" thành Customer và tạo Opportunity?`}
+        confirmText="Chuyển đổi"
+        variant="primary"
+        onConfirm={handleConvert}
+      />
 
-function ActivityStatsRow({ stats }: { stats: { call: number; email: number; meeting: number; task: number } }) {
-  return (
-    <div className="grid grid-cols-4 gap-4 px-1 py-2">
-      <StatsItem label="Calls" value={stats.call} color="text-blue-600" />
-      <StatsItem label="Emails" value={stats.email} color="text-purple-600" />
-      <StatsItem label="Meetings" value={stats.meeting} color="text-green-600" />
-      <StatsItem label="Tasks" value={stats.task} color="text-orange-600" />
-    </div>
-  );
-}
+      <ActionConfirmModal
+        isOpen={showReopen}
+        onClose={() => setShowReopen(false)}
+        title="Mở lại Lead"
+        description={`Mở lại lead "${lead.name}" để tiếp tục theo dõi?`}
+        confirmText="Mở lại"
+        variant="primary"
+        onConfirm={handleReopen}
+      />
 
-function StatsItem({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: number;
-  color: string;
-}) {
-  return (
-    <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2 shadow-sm">
-      <span className={`font-bold ${color}`}>{value}</span>
-      <span className="text-sm text-gray-600">{label}</span>
+      <ActionConfirmModal
+        isOpen={showLost}
+        onClose={() => { setShowLost(false); setLostReason(""); }}
+        title="Đánh dấu thua"
+        description={
+          <div className="space-y-2">
+            <p className="text-sm text-gray-600">Nhập lý do thua cho lead "{lead.name}":</p>
+            <textarea
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none resize-none"
+              rows={3}
+              value={lostReason}
+              onChange={(e) => setLostReason(e.target.value)}
+              placeholder="Nhập lý do..."
+            />
+          </div>
+        }
+        confirmText="Xác nhận"
+        variant="danger"
+        onConfirm={handleMarkLost}
+      />
     </div>
   );
 }

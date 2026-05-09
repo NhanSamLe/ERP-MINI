@@ -1,0 +1,38 @@
+"use strict";
+module.exports = {
+  async up(queryInterface, Sequelize) {
+    await queryInterface.createTable("quotations", {
+      id: { type: Sequelize.BIGINT, autoIncrement: true, primaryKey: true },
+      branch_id: { type: Sequelize.BIGINT, allowNull: false, references: { model: "branches", key: "id" } },
+      quotation_no: { type: Sequelize.STRING(50), allowNull: false, unique: true },
+      customer_id: { type: Sequelize.BIGINT, allowNull: false, references: { model: "partners", key: "id" } },
+      opportunity_id: { type: Sequelize.BIGINT, allowNull: true, references: { model: "crm_opportunities", key: "id" } },
+      currency_id: { type: Sequelize.BIGINT, references: { model: "currencies", key: "id" } },
+      exchange_rate: { type: Sequelize.DECIMAL(18, 6), defaultValue: 1.000000 },
+      payment_term_id: { type: Sequelize.BIGINT, references: { model: "payment_terms", key: "id" } },
+      quotation_date: { type: Sequelize.DATEONLY, allowNull: false },
+      valid_until: { type: Sequelize.DATEONLY },
+      status: { type: Sequelize.ENUM("draft","sent","accepted","rejected","expired","cancelled"), defaultValue: "draft" },
+      approval_status: { type: Sequelize.ENUM("draft","waiting_approval","approved","rejected"), defaultValue: "draft" },
+      version: { type: Sequelize.INTEGER, defaultValue: 1 },
+      parent_id: { type: Sequelize.BIGINT, allowNull: true },
+      total_before_tax: { type: Sequelize.DECIMAL(18, 2), defaultValue: 0 },
+      total_tax: { type: Sequelize.DECIMAL(18, 2), defaultValue: 0 },
+      total_after_tax: { type: Sequelize.DECIMAL(18, 2), defaultValue: 0 },
+      discount_percent: { type: Sequelize.DECIMAL(5, 2), defaultValue: 0 },
+      discount_amount: { type: Sequelize.DECIMAL(18, 2), defaultValue: 0 },
+      customer_notes: { type: Sequelize.TEXT },
+      internal_notes: { type: Sequelize.TEXT },
+      sales_person_id: { type: Sequelize.BIGINT, references: { model: "users", key: "id" } },
+      created_by: { type: Sequelize.BIGINT, references: { model: "users", key: "id" } },
+      approved_by: { type: Sequelize.BIGINT, references: { model: "users", key: "id" } },
+      submitted_at: { type: Sequelize.DATE },
+      approved_at: { type: Sequelize.DATE },
+      reject_reason: { type: Sequelize.TEXT },
+      sent_at: { type: Sequelize.DATE },
+      created_at: { type: Sequelize.DATE, defaultValue: Sequelize.literal("CURRENT_TIMESTAMP") },
+      updated_at: { type: Sequelize.DATE, defaultValue: Sequelize.literal("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP") },
+    });
+  },
+  async down(qi) { await qi.dropTable("quotations"); },
+};

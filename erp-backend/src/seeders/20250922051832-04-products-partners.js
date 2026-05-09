@@ -10,7 +10,7 @@ module.exports = {
       { name: "Electronics", parent_id: null, created_at: now, updated_at: now },
       { name: "Laptops", parent_id: null, created_at: now, updated_at: now },
       { name: "Smartphones", parent_id: null, created_at: now, updated_at: now },
-    ]);
+    ], { ignoreDuplicates: true });
 
     const [categories] = await queryInterface.sequelize.query(
       `SELECT id, name FROM product_categories;`
@@ -25,13 +25,19 @@ module.exports = {
       return taxRates.find((t) => t.code === code).id;
     }
 
+    const [uoms] = await queryInterface.sequelize.query(`SELECT id, code FROM uoms;`);
+    function getUomId(code) {
+      const u = uoms.find((t) => t.code === code);
+      return u ? u.id : null;
+    }
+
     await queryInterface.bulkInsert("products", [
       {
         category_id: getCategoryId("Laptops"),
         sku: "LAP001",
         name: "Dell Inspiron 15",
         barcode: "1234567890",
-        uom: "PCS",
+        uom_id: getUomId("PCS"),
         origin: "China",
         cost_price: 500.0,
         sale_price: 650.0,
@@ -45,7 +51,7 @@ module.exports = {
         sku: "PHN001",
         name: "iPhone 15",
         barcode: "2345678901",
-        uom: "PCS",
+        uom_id: getUomId("PCS"),
         origin: "Vietnam",
         cost_price: 900.0,
         sale_price: 1200.0,
@@ -59,7 +65,7 @@ module.exports = {
         sku: "TV001",
         name: "Samsung Smart TV 55 inch",
         barcode: "3456789012",
-        uom: "PCS",
+        uom_id: getUomId("PCS"),
         origin: "Korea",
         cost_price: 400.0,
         sale_price: 600.0,
@@ -68,7 +74,7 @@ module.exports = {
         created_at: now,
         updated_at: now,
       },
-    ]);
+    ], { ignoreDuplicates: true });
 
     // 3. Partners (Customers, Suppliers, Internal)
     await queryInterface.bulkInsert("partners", [
@@ -126,7 +132,7 @@ module.exports = {
         created_at: now,
         updated_at: now,
       },
-    ]);
+    ], { ignoreDuplicates: true });
   },
 
   async down(queryInterface) {

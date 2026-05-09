@@ -65,14 +65,21 @@ export const createOpportunity = async (req: Request, res: Response) => {
     const user = (req as any).user;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
     const owner_id = user.id;
-    const { related_type, related_id, name, expected_value, probability, stage, closing_date } = req.body;
+    const { related_type, related_id, name, expected_value, probability, stage, closing_date, pipeline_id, pipeline_stage_id, next_action, next_action_date, currency_id, exchange_rate } = req.body;
     const opp: any = {
       owner_id,
+      owner_branch_id: user.branch_id,
       name,
       expected_value,
       probability,
       stage,
       closing_date,
+      pipeline_id: pipeline_id ?? null,
+      pipeline_stage_id: pipeline_stage_id ?? null,
+      next_action: next_action ?? null,
+      next_action_date: next_action_date ?? null,
+      currency_id: currency_id ?? null,
+      exchange_rate: exchange_rate ?? 1,
     };
 
     if (related_type === "lead") opp.lead_id = related_id;
@@ -126,6 +133,24 @@ export const moveToNegotiation = async (req: Request, res: Response) => {
       message: "Chuyển sang Negotiation thành công",
       data,
     });
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message });
+  }
+};
+
+/* ============================================================
+   5.5 CHANGE PIPELINE STAGE 
+============================================================ */
+export const changePipelineStage = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const oppId = Number(req.params.oppId);
+    const { newStageId } = req.body;
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const data = await opportunityService.changePipelineStage(oppId, newStageId, user.id, user.role);
+
+    return res.json({ message: "Đổi Pipeline Stage thành công", data });
   } catch (err: any) {
     return res.status(400).json({ message: err.message });
   }

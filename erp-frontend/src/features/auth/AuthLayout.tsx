@@ -15,54 +15,68 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
   useEffect(() => {
     const interval = setInterval(() => {
       setIndex((prev) => (prev + 1) % banners.length);
-    }, 4000);
+    }, 4500);
     return () => clearInterval(interval);
   }, []);
 
   return (
     <div className="min-h-screen flex">
-      {/* Left side - Form Content */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gray-50">
-        <div className="w-full max-w-md">
+      {/* Left — form panel */}
+      <div className="w-full lg:w-[420px] xl:w-[480px] flex flex-col justify-center p-8 bg-white border-r border-gray-100">
+        <div className="w-full max-w-sm mx-auto">
           {/* Logo */}
-          <div className="mb-8">
-            <div className="flex items-center gap-2 mb-8">
-              <div className="w-10 h-10 bg-blue-900 rounded-lg flex items-center justify-center">
-                <div className="w-6 h-6 border-2 border-orange-400 rounded-full"></div>
+          <div className="flex items-center gap-2.5 mb-8">
+            <div className="w-9 h-9 bg-orange-500 rounded-lg flex items-center justify-center shadow-sm">
+              <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-white" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 7h18M3 12h18M3 17h10" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-base font-bold text-gray-900 leading-none">
+                ERP <span className="text-orange-500">UTE</span>
               </div>
-              <div>
-                <span className="text-sm text-orange-400 font-medium">ERP</span>
-                <div className="text-xl font-bold text-blue-900">System</div>
-              </div>
+              <div className="text-[10px] text-gray-400 font-medium leading-none mt-0.5">Enterprise Resource Planning</div>
             </div>
           </div>
 
-          {/* Form Content */}
+          {/* Form content */}
           {children}
 
-          {/* Copyright */}
-          <p className="text-center text-sm text-gray-500 mt-8">
-            Copyright © 2025 ERP-System
+          {/* Footer */}
+          <p className="text-center text-xs text-gray-400 mt-8">
+            © 2025 ERP UTE System. All rights reserved.
           </p>
         </div>
       </div>
 
-      {/* Right side - Image Banner */}
-      <div className="hidden lg:block lg:w-1/2 h-screen relative overflow-hidden rounded-l-3xl">
-        <img
-          src={banners[index]}
-          alt="ERP SYSTEM"
-          key={index}
-          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out"
-        />
-        <div className="absolute inset-0 bg-gradient-to-br from-black/50 via-black/30 to-transparent"></div>
-        <div className="absolute bottom-10 left-10 bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-6 shadow-2xl max-w-md">
-          <h2 className="text-white text-3xl font-bold drop-shadow-lg">
-            ERP UTE System
-          </h2>
-          <p className="text-gray-200 text-sm mt-2">
-            Giải pháp quản lý doanh nghiệp hiện đại – tinh gọn và thông minh
-          </p>
+      {/* Right — image banner */}
+      <div className="hidden lg:block flex-1 h-screen relative overflow-hidden">
+        {banners.map((b, i) => (
+          <img
+            key={i}
+            src={b}
+            alt=""
+            className={[
+              "absolute inset-0 w-full h-full object-cover transition-opacity duration-1000",
+              i === index ? "opacity-100" : "opacity-0",
+            ].join(" ")}
+          />
+        ))}
+        <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/30 to-transparent" />
+        <div className="absolute bottom-8 left-8 right-8">
+          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-5 max-w-md shadow-xl">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-6 h-6 bg-orange-500 rounded flex items-center justify-center">
+                <svg viewBox="0 0 24 24" fill="none" className="w-3.5 h-3.5 text-white" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 7h18M3 12h18M3 17h10" />
+                </svg>
+              </div>
+              <span className="text-white font-bold text-sm">ERP UTE System</span>
+            </div>
+            <p className="text-gray-200 text-sm leading-relaxed">
+              Giải pháp quản lý doanh nghiệp toàn diện — tinh gọn, hiệu quả và thông minh.
+            </p>
+          </div>
         </div>
       </div>
     </div>

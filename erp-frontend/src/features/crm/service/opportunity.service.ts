@@ -31,6 +31,11 @@ export async function moveToNegotiation(oppId: number) {
   const res = await api.moveToNegotiation(oppId);
   return res.data.data;
 }
+
+export async function changePipelineStage(oppId: number, newStageId: number) {
+  const res = await api.changePipelineStage(oppId, newStageId);
+  return res.data.data;
+}
 //  Đánh dấu thắng
 export async function markWon(oppId: number) {
   const res = await api.markWon(oppId);

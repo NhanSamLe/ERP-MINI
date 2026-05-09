@@ -1,27 +1,52 @@
-import { useEffect, useState, useRef } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { AppDispatch, RootState } from "../../../store/store";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchAllLeads, fetchTodayLeads, deleteLead } from "../store/lead/lead.thunks";
 import { importLeads } from "../api/lead.api";
-import { DataTable } from "../../../components/ui/DataTable";
-import { Alert } from "../../../components/ui/Alert";
-import { Column } from "../../../types/common";
+import { DataTable } from "@/components/ui/DataTable";
+import { ActionConfirmModal } from "@/components/common";
+import { Alert } from "@/components/ui/Alert";
+import { Button } from "@/components/ui/Button";
+import { Column } from "@/types/common";
 import { Lead } from "../dto/lead.dto";
-import { RefreshCw, Plus, Phone, Mail, User, Upload, Download } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { exportExcelReport } from "../../../utils/excel/exportExcelReport";
+import { RefreshCw, Plus, Phone, Mail, User, Upload, Download, Search, Users } from "lucide-react";
+import { exportExcelReport } from "@/utils/excel/exportExcelReport";
+
+const STAGE_TABS = [
+  { label: "Tất cả",     value: "" },
+  { label: "Mới",        value: "new" },
+  { label: "Qualified",  value: "qualified" },
+  { label: "Thua",       value: "lost" },
+];
+
+const getStageBadge = (stage: string) => {
+  const map: Record<string, string> = {
+    new:       "bg-blue-100 text-blue-800",
+    qualified: "bg-green-100 text-green-800",
+    lost:      "bg-red-100 text-red-800",
+  };
+  return map[stage] || "bg-gray-100 text-gray-800";
+};
+
+const formatStage = (stage: string) =>
+  stage.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+// Column width constants for consistent sizing
+const COLUMN_MIN_WIDTHS = {
+  LEAD_NAME: 'min-w-[200px] md:min-w-[280px]',
+} as const;
 
 export default function LeadDashboard() {
-  const dispatch = useDispatch<AppDispatch>();
+  const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
-  const { allLeads, todayLeads, loading, error } = useSelector(
-    (state: RootState) => state.lead
-  );
-  const user = useSelector((s: RootState) => s.auth.user);
+  const { allLeads, loading, error } = useAppSelector((s) => s.lead);
+  const user = useAppSelector((s) => s.auth.user);
 
-  const [selectedView, setSelectedView] = useState<"all" | "today">("all");
-  const [alert, setAlert] = useState<{ type: 'success' | 'error' | 'info' | 'warning'; message: string } | null>(null);
+  const [alert, setAlert] = useState<{ type: "success" | "error" | "warning" | "info"; message: string } | null>(null);
+  const [stageFilter, setStageFilter] = useState("");
+  const [search, setSearch] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -29,25 +54,47 @@ export default function LeadDashboard() {
     dispatch(fetchTodayLeads());
   }, [dispatch]);
 
-  const displayLeads = selectedView === "all" ? allLeads : todayLeads;
+  const filtered = useMemo(() => {
+    let list = allLeads;
+    if (stageFilter) list = list.filter((l) => l.stage === stageFilter);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(
+        (l) =>
+          l.name.toLowerCase().includes(q) ||
+          l.email?.toLowerCase().includes(q) ||
+          l.phone?.toLowerCase().includes(q) ||
+          l.source?.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [allLeads, stageFilter, search]);
 
-  const getStageColor = (stage: string) => {
-    const colors: Record<string, string> = {
-      new: "bg-blue-100 text-blue-800",
-      qualified: "bg-green-100 text-green-800",
-      lost: "bg-red-100 text-red-800"
-    };
-    return colors[stage] || "bg-gray-100 text-gray-800";
-  };
+  const counts = useMemo(
+    () => ({
+      all:       allLeads.length,
+      new:       allLeads.filter((l) => l.stage === "new").length,
+      qualified: allLeads.filter((l) => l.stage === "qualified").length,
+      lost:      allLeads.filter((l) => l.stage === "lost").length,
+    }),
+    [allLeads]
+  );
 
-  const formatStage = (stage: string) => {
-    return stage.split('_').map(word =>
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(' ');
-  };
+  const handleImport = () => fileInputRef.current?.click();
 
-  const handleImportClick = () => {
-    fileInputRef.current?.click();
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      await importLeads(file);
+      setAlert({ type: "success", message: "Import Leads thành công!" });
+      dispatch(fetchAllLeads());
+      dispatch(fetchTodayLeads());
+    } catch (err: any) {
+      setAlert({ type: "error", message: err.message || "Lỗi khi import leads" });
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   const handleExport = async () => {
@@ -60,339 +107,267 @@ export default function LeadDashboard() {
           { header: "Email", key: "email", width: 25 },
           { header: "SĐT", key: "phone", width: 15 },
           { header: "Nguồn", key: "source", width: 15 },
-          { header: "Giai đoạn", key: "stage", width: 15, formatter: (val: any) => String(val).toUpperCase() },
-          { header: "Người phụ trách", key: "assignedUser", width: 25, formatter: (val: any) => val?.full_name || "-" },
-          {
-            header: "Ngày tạo", key: "created_at", width: 15,
-            formatter: (val: any) => val ? new Date(val).toLocaleDateString('vi-VN') : ""
-          }
+          { header: "Giai đoạn", key: "stage", width: 15, formatter: (v: any) => String(v).toUpperCase() },
+          { header: "Người phụ trách", key: "assignedUser", width: 25, formatter: (v: any) => v?.full_name || "-" },
+          { header: "Ngày tạo", key: "created_at", width: 15, formatter: (v: any) => (v ? new Date(v).toLocaleDateString("vi-VN") : "") },
         ],
-        data: displayLeads,
-        fileName: `Bao_Cao_Leads_${new Date().getTime()}.xlsx`,
-        footer: {
-          creator: user?.full_name || "Admin"
-        }
+        data: filtered,
+        fileName: `Bao_Cao_Leads_${Date.now()}.xlsx`,
+        footer: { creator: user?.full_name || "Admin" },
       });
-      setAlert({ type: 'success', message: 'Xuất báo cáo thành công' });
-      setTimeout(() => setAlert(null), 3000);
-    } catch (err) {
-      console.error(err);
-      setAlert({ type: 'error', message: 'Lỗi xuất báo cáo' });
-      setTimeout(() => setAlert(null), 3000);
+      setAlert({ type: "success", message: "Xuất báo cáo thành công" });
+    } catch {
+      setAlert({ type: "error", message: "Lỗi xuất báo cáo" });
     }
   };
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      await importLeads(file);
-      setAlert({ type: 'success', message: 'Import Leads thành công!' });
-
-      // Refresh list
-      dispatch(fetchAllLeads());
-      dispatch(fetchTodayLeads());
-
-      setTimeout(() => setAlert(null), 3000);
-    } catch (err: any) {
-      setAlert({ type: 'error', message: err.message || 'Lỗi khi import leads' });
-      setTimeout(() => setAlert(null), 3000);
+      await dispatch(deleteLead(deleteTarget.id)).unwrap();
+      setAlert({ type: "success", message: `Đã xóa Lead "${deleteTarget.name}"` });
+    } catch {
+      setAlert({ type: "error", message: "Không thể xóa Lead" });
     } finally {
-      // Reset input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+      setDeleteTarget(null);
     }
   };
 
   const columns: Column<Lead>[] = [
     {
       key: "name",
-      label: "Lead Name",
+      label: "Tên Lead",
       sortable: true,
       render: (row) => (
-        <div className="flex items-center">
-          <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center mr-3">
+        <div className={`flex items-center gap-3 ${COLUMN_MIN_WIDTHS.LEAD_NAME}`}>
+          <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center shrink-0">
             <User className="w-4 h-4 text-orange-600" />
           </div>
-          <div>
-            <div className="font-medium text-gray-900">{row.name}</div>
+          <div className="flex-1 min-w-0">
+            <div className="font-medium text-gray-900 truncate" title={row.name}>
+              {row.name}
+            </div>
             {row.source && (
-              <div className="text-xs text-gray-500">{row.source}</div>
+              <div className="text-xs text-gray-400 truncate" title={row.source}>
+                {row.source}
+              </div>
             )}
           </div>
         </div>
-      )
+      ),
     },
     {
       key: "email",
       label: "Email",
       sortable: true,
-      render: (row) => row.email ? (
-        <div className="flex items-center text-sm">
-          <Mail className="w-4 h-4 mr-2 text-gray-400" />
-          <span className="text-gray-900">{row.email}</span>
-        </div>
-      ) : (
-        <span className="text-gray-400">-</span>
-      )
+      render: (row) =>
+        row.email ? (
+          <div className="flex items-center text-sm gap-1.5">
+            <Mail className="w-3.5 h-3.5 text-gray-400" />
+            <span className="text-gray-700">{row.email}</span>
+          </div>
+        ) : <span className="text-gray-400">—</span>,
     },
     {
       key: "phone",
-      label: "Phone",
+      label: "SĐT",
       sortable: true,
-      render: (row) => row.phone ? (
-        <div className="flex items-center text-sm">
-          <Phone className="w-4 h-4 mr-2 text-gray-400" />
-          <span className="text-gray-900">{row.phone}</span>
-        </div>
-      ) : (
-        <span className="text-gray-400">-</span>
-      )
+      render: (row) =>
+        row.phone ? (
+          <div className="flex items-center text-sm gap-1.5">
+            <Phone className="w-3.5 h-3.5 text-gray-400" />
+            <span className="text-gray-700">{row.phone}</span>
+          </div>
+        ) : <span className="text-gray-400">—</span>,
     },
     {
       key: "stage",
-      label: "Stage",
+      label: "Giai đoạn",
       sortable: true,
       render: (row) => (
-        <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStageColor(row.stage)}`}>
+        <span className={`px-2.5 py-0.5 inline-flex text-xs font-medium rounded-full ${getStageBadge(row.stage)}`}>
           {formatStage(row.stage)}
         </span>
-      )
+      ),
     },
     {
       key: "has_budget",
-      label: "Budget",
+      label: "Ngân sách",
       sortable: true,
-      render: (row) => {
-        if (row.has_budget === null || row.has_budget === undefined) {
-          return <span className="text-gray-400">-</span>;
-        }
-        return (
-          <span className={`px-2 py-1 text-xs rounded-full ${row.has_budget ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-            {row.has_budget ? 'Yes' : 'No'}
-          </span>
-        );
-      }
+      render: (row) =>
+        row.has_budget == null
+          ? <span className="text-gray-400">—</span>
+          : (
+            <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${row.has_budget ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+              {row.has_budget ? "Có" : "Không"}
+            </span>
+          ),
     },
     {
       key: "ready_to_buy",
-      label: "Ready to Buy",
+      label: "Sẵn sàng mua",
       sortable: true,
-      render: (row) => {
-        if (row.ready_to_buy === null || row.ready_to_buy === undefined) {
-          return <span className="text-gray-400">-</span>;
-        }
-        return (
-          <span className={`px-2 py-1 text-xs rounded-full ${row.ready_to_buy ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-            {row.ready_to_buy ? 'Yes' : 'No'}
-          </span>
-        );
-      }
+      render: (row) =>
+        row.ready_to_buy == null
+          ? <span className="text-gray-400">—</span>
+          : (
+            <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${row.ready_to_buy ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+              {row.ready_to_buy ? "Có" : "Không"}
+            </span>
+          ),
     },
     {
       key: "expected_timeline",
-      label: "Timeline",
+      label: "Thời gian dự kiến",
       sortable: true,
-      render: (row) => row.expected_timeline ? (
-        <span className="text-sm text-gray-900">
-          {row.expected_timeline.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-        </span>
-      ) : (
-        <span className="text-gray-400">-</span>
-      )
+      render: (row) =>
+        row.expected_timeline ? (
+          <span className="text-sm text-gray-700">
+            {row.expected_timeline.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+          </span>
+        ) : <span className="text-gray-400">—</span>,
     },
     {
       key: "assigned_to",
-      label: "Owner",
+      label: "Người phụ trách",
       sortable: true,
-      render: (row) => row.assignedUser ? (
-        <div className="text-sm">
-          <div className="font-medium text-gray-900">{row.assignedUser.full_name}</div>
-          <div className="text-xs text-gray-500">{row.assignedUser.email}</div>
-        </div>
-      ) : (
-        <span className="text-gray-400">Unassigned</span>
-      )
-    }
+      render: (row) =>
+        row.assignedUser ? (
+          <div className="text-sm">
+            <div className="font-medium text-gray-900">{row.assignedUser.full_name}</div>
+            <div className="text-xs text-gray-400">{row.assignedUser.email}</div>
+          </div>
+        ) : <span className="text-gray-400">Chưa phân công</span>,
+    },
   ];
 
-  const handleRefresh = async () => {
-    try {
-      await dispatch(fetchAllLeads()).unwrap();
-      await dispatch(fetchTodayLeads()).unwrap();
-      setAlert({ type: 'success', message: 'Leads refreshed successfully!' });
-      setTimeout(() => setAlert(null), 3000);
-    } catch (error) {
-      setAlert({
-        type: 'error',
-        message: (error as string) || 'Failed to refresh leads'
-      });
-      setTimeout(() => setAlert(null), 3000);
-    }
-  };
-
-  const handleDelete = async (lead: Lead) => {
-    if (window.confirm(`Are you sure you want to delete lead "${lead.name}"?`)) {
-      try {
-        await dispatch(deleteLead(lead.id)).unwrap();
-        setAlert({ type: 'success', message: `Lead "${lead.name}" deleted successfully!` });
-        setTimeout(() => setAlert(null), 3000);
-      } catch (error) {
-        setAlert({ type: 'error', message: (error as string) || 'Failed to delete lead' });
-        setTimeout(() => setAlert(null), 3000);
-      }
-    }
-  };
-
-  const handleCreateLead = () => {
-    navigate("/crm/lead/create");
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto p-6">
-        {/* Alert */}
-        {alert && (
-          <div className="mb-4">
-            <Alert
-              type={alert.type}
-              message={alert.message}
-              onClose={() => setAlert(null)}
-            />
-          </div>
-        )}
+    <div className="page-container">
+      {/* Alert */}
+      {alert && (
+        <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />
+      )}
 
-        <div className="bg-white rounded-lg shadow-sm">
-          {/* Header */}
-          <div className="border-b border-gray-200 px-6 py-4">
-            <div className="flex justify-between items-center">
-              <div>
-                <h1 className="text-2xl font-semibold text-gray-900">Leads</h1>
-                <p className="text-sm text-gray-500 mt-1">
-                  Manage and track your sales leads
-                </p>
-              </div>
+      {/* Error */}
+      {error && (
+        <div className="px-4 py-3 bg-red-50 border border-red-100 rounded-lg text-sm text-red-600 mb-4">
+          {error}
+        </div>
+      )}
 
-              <div className="flex items-center gap-3">
-                {/* View Toggle */}
-                <div className="flex bg-gray-100 rounded-lg p-1">
-                  <button
-                    onClick={() => setSelectedView("all")}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${selectedView === "all"
-                      ? "bg-white text-gray-900 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900"
-                      }`}
-                  >
-                    All Leads ({allLeads.length})
-                  </button>
-                  <button
-                    onClick={() => setSelectedView("today")}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${selectedView === "today"
-                      ? "bg-white text-gray-900 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900"
-                      }`}
-                  >
-                    Today ({todayLeads.length})
-                  </button>
-                </div>
-
-                {/* Import Button */}
-                <input
-                  type="file"
-                  hidden
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  accept=".xlsx, .xls"
-                />
-                <button
-                  onClick={handleImportClick}
-                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 border border-gray-300 rounded-lg transition-colors"
-                  title="Import Excel"
-                  disabled={loading}
-                >
-                  <Upload className="w-5 h-5" />
-                </button>
-
-                {/* Export Button */}
-                <button
-                  onClick={handleExport}
-                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 border border-gray-300 rounded-lg transition-colors"
-                  title="Export Excel"
-                >
-                  <Download className="w-5 h-5" />
-                </button>
-
-                <button
-                  onClick={handleRefresh}
-                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 border border-gray-300 rounded-lg transition-colors"
-                  title="Refresh"
-                  disabled={loading}
-                >
-                  <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-                </button>
-
-                <button
-                  onClick={handleCreateLead}
-                  className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
-                >
-                  <Plus className="w-5 h-5" />
-                  <span>Create Lead</span>
-                </button>
-              </div>
+      <div className="erp-card overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+          <div className="flex items-center gap-2.5">
+            <span className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
+              <Users className="w-4 h-4 text-orange-500" />
+            </span>
+            <div>
+              <h1 className="text-base font-semibold text-gray-900">Danh sách Lead</h1>
+              <p className="text-xs text-gray-400 mt-0.5">Quản lý và theo dõi khách hàng tiềm năng</p>
             </div>
+            <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-600">
+              {filtered.length}
+            </span>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-6 py-4 bg-gray-50 border-b border-gray-200">
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <div className="text-sm text-gray-500">New Leads</div>
-              <div className="text-2xl font-semibold text-blue-600 mt-1">
-                {allLeads.filter(l => l.stage === 'new').length}
-              </div>
-            </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <div className="text-sm text-gray-500">Qualified</div>
-              <div className="text-2xl font-semibold text-green-600 mt-1">
-                {allLeads.filter(l => l.stage === 'qualified').length}
-              </div>
-            </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <div className="text-sm text-gray-500">Lost</div>
-              <div className="text-2xl font-semibold text-red-600 mt-1">
-                {allLeads.filter(l => l.stage === 'lost').length}
-              </div>
-            </div>
+          <div className="flex items-center gap-2">
+            {/* Refresh */}
+            <Button variant="outline" size="sm" leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
+              onClick={() => { dispatch(fetchAllLeads()); dispatch(fetchTodayLeads()); }}>
+              Làm mới
+            </Button>
+
+            {/* Import */}
+            <input type="file" hidden ref={fileInputRef} onChange={handleFileChange} accept=".xlsx, .xls" />
+            <Button variant="outline" size="sm" leftIcon={<Upload className="w-3.5 h-3.5" />} onClick={handleImport}>
+              Nhập Excel
+            </Button>
+
+            {/* Export */}
+            <Button variant="outline" size="sm" leftIcon={<Download className="w-3.5 h-3.5" />} onClick={handleExport}>
+              Xuất Excel
+            </Button>
+
+            {/* Create */}
+            <Button variant="primary" size="sm" leftIcon={<Plus className="w-3.5 h-3.5" />}
+              onClick={() => navigate("/crm/lead/create")}>
+              Tạo Lead
+            </Button>
           </div>
+        </div>
 
-          {/* Error Message */}
-          {error && (
-            <div className="px-6 py-4">
-              <Alert type="error" message={error} />
+        {/* Stats cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-5 py-4 border-b border-gray-100 bg-gray-50/50">
+          {[
+            { label: "Tất cả",    count: counts.all,       color: "bg-white border-gray-200",        text: "text-gray-700" },
+            { label: "Mới",       count: counts.new,       color: "bg-white border-blue-100",        text: "text-blue-700" },
+            { label: "Qualified", count: counts.qualified, color: "bg-white border-emerald-100",     text: "text-emerald-700" },
+            { label: "Thua",      count: counts.lost,      color: "bg-white border-red-100",         text: "text-red-700" },
+          ].map((c) => (
+            <div key={c.label} className={`${c.color} border rounded-lg px-4 py-3`}>
+              <p className="text-xs text-gray-500">{c.label}</p>
+              <p className={`text-base font-semibold mt-0.5 ${c.text}`}>{c.count}</p>
             </div>
-          )}
+          ))}
+        </div>
 
-          {/* Table */}
-          <div className="p-6">
-            <DataTable
-              columns={columns}
-              data={displayLeads}
-              loading={loading}
-              searchable={true}
-              searchKeys={["name", "email", "phone", "source"]}
-              showSelection={false}
-              showActions={false}
-              // onView={handleView}
-              // onEdit={handleEdit}
-              //   onDelete={user?.role.code === "SALESMANAGER" ? handleDelete : undefined}
-              onDelete={handleDelete}
-              onRowClick={(lead) => navigate(`/crm/leads/${lead.id}`)}
-              itemsPerPage={10}
+        {/* Stage filter tabs + search */}
+        <div className="px-5 pt-3 border-b border-gray-100 flex items-center justify-between gap-4">
+          <div className="flex gap-0.5">
+            {STAGE_TABS.map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => setStageFilter(tab.value)}
+                className={[
+                  "px-3 py-1.5 text-xs font-medium rounded-t-md transition-colors border-b-2",
+                  stageFilter === tab.value
+                    ? "border-orange-500 text-orange-600 bg-orange-50/60"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50",
+                ].join(" ")}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          <div className="relative min-w-[200px] max-w-xs pb-3">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Tìm kiếm..."
+              className="w-full h-8 pl-8 pr-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 placeholder:text-gray-400"
             />
           </div>
         </div>
+
+        {/* Table */}
+        <div className="p-5">
+          <DataTable
+            columns={columns}
+            data={filtered}
+            loading={loading}
+            searchable={false}
+            showActions={true}
+            onView={(lead) => navigate(`/crm/leads/${lead.id}`)}
+            onDelete={(lead) => setDeleteTarget(lead)}
+            canDelete={() => true}
+            onRowClick={(lead) => navigate(`/crm/leads/${lead.id}`)}
+            itemsPerPage={10}
+          />
+        </div>
       </div>
+
+      {/* Delete confirmation */}
+      <ActionConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        title="Xóa Lead"
+        description={deleteTarget ? `Bạn có chắc chắn muốn xóa lead "${deleteTarget.name}"? Hành động này không thể hoàn tác.` : ""}
+        confirmText="Xóa"
+        variant="danger"
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

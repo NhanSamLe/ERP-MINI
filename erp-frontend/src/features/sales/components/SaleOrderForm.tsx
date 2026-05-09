@@ -1,24 +1,29 @@
-import { useState } from 'react';
-import { Plus, Trash2, Calendar, User, ShoppingCart, Search } from 'lucide-react';
-import { SaleOrderLineDto, CreateSaleOrderDto, UpdateSaleOrderDto, CreateSaleOrderLineDto } from '../dto/saleOrder.dto';
-import { Product } from '@/features/products/store/product.types';
-import { Partner } from '@/features/partner/store/partner.types';
-import QuantityControl from './QuantityControl';
-import { formatVND } from '@/utils/currency.helper';
-import { useSaleOrderCalculation } from '../hook/useSaleOrderCalculation';
-import PageHeader from '@/components/layout/PageHeader';
-import { SearchSelectionModal } from '@/components/common/SearchSelectionModal';
+import { useState } from "react";
+import {
+  Plus, Trash2, Calendar, User, ShoppingCart,
+  Search, Building2, Phone, Mail, MapPin, CreditCard,
+  Package, Inbox, AlertCircle, Edit3,
+} from "lucide-react";
+import { CreateSaleOrderDto, UpdateSaleOrderDto } from "../dto/saleOrder.dto";
+import { Product } from "@/features/products/store/product.types";
+import { Partner } from "@/features/partner/store/partner.types";
+import QuantityControl from "./QuantityControl";
+import { useSaleOrderForm } from "../hook/useSaleOrderForm";
+import { StandardFormLayout, FormSection } from "@/components/layout";
+import { SearchSelectionModal } from "@/components/common/SearchSelectionModal";
+import ProductPickerModal from "./ProductPickerModal";
+import { formatVND } from "@/utils/currency.helper";
 
 interface SaleOrderFormDto {
   id?: number;
   customer_id: number;
   order_date: string;
-  lines: SaleOrderLineDto[];
+  lines: any[];
   deletedLineIds?: number[];
 }
 
 interface Props {
-  mode: 'create' | 'edit';
+  mode: "create" | "edit";
   defaultValue?: SaleOrderFormDto;
   onSubmit: (data: CreateSaleOrderDto | UpdateSaleOrderDto) => Promise<void>;
   onCancel?: () => void;
@@ -27,10 +32,8 @@ interface Props {
   loading?: boolean;
 }
 
-type LineFieldValue = number | string | undefined;
-
 export default function SaleOrderForm({
-  mode = 'create',
+  mode = "create",
   defaultValue,
   onSubmit,
   onCancel,
@@ -38,473 +41,459 @@ export default function SaleOrderForm({
   products,
   loading = false,
 }: Props) {
-  // ================= STATE =================
-  const [customerId, setCustomerId] = useState<number>(
-    defaultValue?.customer_id ?? 0
-  );
-  const [orderDate, setOrderDate] = useState<string>(
-    defaultValue?.order_date ? defaultValue.order_date.split('T')[0] : new Date().toISOString().split('T')[0]
-  );
-  const [lines, setLines] = useState<SaleOrderLineDto[]>(
-    defaultValue?.lines ?? []
-  );
-  // ✅ Track deleted line IDs
-  const [deletedLineIds, setDeletedLineIds] = useState<number[]>(
-    defaultValue?.deletedLineIds ?? []
-  );
+  const {
+    customerId, setCustomerId,
+    orderDate, setOrderDate,
+    lines, removeLine, addLine,
+    selectProductForLine, updateLine,
+    totals, calcLine,
+    selectedProductIds, deletedLineIds,
+  } = useSaleOrderForm(defaultValue as any, products);
 
-  // Modal States
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [activeLineIndex, setActiveLineIndex] = useState<number | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
-  const selectedCustomer = customers.find(c => c.id === customerId);
-  const { calcLine, calcTotals } = useSaleOrderCalculation(products);
-  const totals = calcTotals(lines);
-
-  // ✅ Get list of already selected product IDs
-  const selectedProductIds = lines
-    .map(line => line.product_id)
-    .filter(id => id !== undefined && id !== null);
-
-  // ✅ Get available products (not yet selected) by filtering the search results logic instead,
-  // but for the modal, we pass ALL products and let the user search.
-  // Wait, if we want to prevent double selection efficiently, we can filter `products` before passing to modal,
-  // OR we can pass `selectedProductIds` to disable them in the modal.
-  // The generic modal doesn't support "disabled" items yet, so I'll pre-filter relevant products for the modal
-  // IF the requirement "available products" implies we shouldn't select same product twice.
-  // The original code did `availableProducts` filtering. I should keep that.
+  const selectedCustomer = customers.find((c) => c.id === customerId);
   const availableProducts = products.filter(
-    p => !selectedProductIds.includes(p.id) || (activeLineIndex !== null && lines[activeLineIndex].product_id === p.id)
+    (p) => !selectedProductIds.includes(p.id) || (activeLineIndex !== null && lines[activeLineIndex].product_id === p.id)
   );
-  // Note: The logic above `availableProducts` excludes selected ones but includes the one CURRENTLY selected in the active line (to allow keeping it selected).
 
-  // ================= HANDLERS =================
-  // ✔ Add line (index-based)
-  const handleAddLine = (): void => {
-    setLines(prev => [
-      ...prev,
-      {
-        id: undefined, // để BE tự generate id
-        product_id: undefined,
-        quantity: 1,
-        unit_price: 0,
-        tax_rate_id: undefined,
-      },
-    ]);
-  };
-
-  // ✔ Remove line theo index
-  const handleRemoveLine = (index: number): void => {
-    if (lines.length > 1) {
-      const lineToDelete = lines[index];
-
-      // ✅ If line has an ID (existing line), track it for deletion
-      if (lineToDelete.id) {
-        setDeletedLineIds(prev => [...prev, lineToDelete.id!]);
-      }
-
-      // Remove from current lines
-      setLines(prev => prev.filter((_, i) => i !== index));
-    }
-  };
-
-  // ✔ Update line theo index
-  const handleUpdateLine = (
-    index: number,
-    field: keyof SaleOrderLineDto,
-    value: LineFieldValue
-  ): void => {
-    setLines(prev => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
-      return updated;
-    });
-  };
-
-  // ✔ Select Product Handler
   const handleOpenProductModal = (index: number) => {
     setActiveLineIndex(index);
     setIsProductModalOpen(true);
   };
 
-  const handleSelectProduct = (product: Product) => {
-    if (activeLineIndex === null) return;
-
-    setLines(prev => {
-      const updated = [...prev];
-      updated[activeLineIndex] = {
-        ...updated[activeLineIndex],
-        product_id: product.id, // Must set product_id
-        unit_price: product.sale_price ?? 0,
-        tax_rate_id: product.tax_rate_id ?? undefined,
-      };
-      return updated;
-    });
-    // No need to manually close or reset here if we use local state properly, but for safety:
-    // Actually the modal closes via onSelect prop in the modal component if implemented there,
-    // but looking at usage: `onSelect={(item) => { ...; setIsProductModalOpen(false); }}` is typically safer.
-    // In my SearchSelectionModal implementation:
-    // const handleSelect = (item: T) => { onSelect(item); onClose(); setSearchTerm(''); };
-    // So it automatically calls onClose. I don't need to duplicate it, but I need to reset activeLineIndex.
-  };
-
-  // ================= SUBMIT =================
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>): void => {
-    e.preventDefault();
-    if (customerId === 0 || lines.length === 0) {
-      alert('Please select customer and add at least one line item');
+  const handleSubmit = () => {
+    if (!customerId || customerId === 0) {
+      setValidationError("Please select a customer.");
       return;
     }
+    if (lines.length === 0) {
+      setValidationError("Please add at least one product line.");
+      return;
+    }
+    if (lines.some((l) => !l.product_id)) {
+      setValidationError("All line items must have a product selected.");
+      return;
+    }
+    setValidationError(null);
 
-    const payload: CreateSaleOrderDto | UpdateSaleOrderDto = {
+    const payload: any = {
       customer_id: customerId,
       order_date: orderDate,
-      lines: lines.map(l => ({
+      lines: lines.map((l) => ({
         id: l.id,
         product_id: l.product_id ?? 0,
         quantity: l.quantity ?? 1,
         unit_price: l.unit_price ?? 0,
-        tax_rate_id: l.tax_rate_id,
-      })) as (CreateSaleOrderLineDto[] | SaleOrderLineDto[]),
-      // ✅ Include deleted line IDs
-      deletedLineIds: deletedLineIds,
+        tax_rate_id: l.tax_rate_id ?? null,
+      })),
+      deletedLineIds,
     };
     onSubmit(payload);
   };
 
-  // ================= RENDER =================
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      {/* HEADER */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <PageHeader
-          title={mode === 'create' ? 'Create Sale Order' : 'Edit Sale Order'}
-          description={mode === 'create' ? 'Create a new sales order for a customer' : `Edit sales order #${defaultValue?.id || ''}`}
-        />
-      </div>
-
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* MAIN AREA */}
-        <div className="lg:col-span-3 space-y-6">
-
-          {/* ORDER INFO CARD */}
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2 border-b pb-2">
-              <User size={20} className="text-orange-600" />
-              Customer & Date
-            </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* CUSTOMER */}
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  Customer <span className="text-red-500">*</span>
-                </label>
-                {mode === 'edit' ? (
-                  <div className="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-700 font-medium cursor-not-allowed">
-                    {selectedCustomer?.name || 'N/A'}
+    <>
+      <StandardFormLayout
+        title={mode === "create" ? "New Sale Order" : `Edit Order #${defaultValue?.id}`}
+        actions={[
+          { label: "Discard", variant: "outline", onClick: onCancel || (() => window.history.back()) },
+          {
+            label: mode === "create" ? "Save Draft" : "Save Changes",
+            variant: "primary",
+            onClick: handleSubmit,
+            isLoading: loading,
+          },
+        ]}
+        sidebarContent={
+          <div className="space-y-4">
+            {/* Financial Summary */}
+            <FormSection title="Order Summary" icon={<CreditCard className="w-4 h-4" />}>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500">Lines</span>
+                  <span className="font-semibold text-gray-800">{lines.filter((l) => l.product_id).length} item(s)</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500">Subtotal</span>
+                  <span className="font-semibold text-gray-800">{formatVND(totals.subtotal)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500">Tax</span>
+                  <span className="font-semibold text-gray-800">{formatVND(totals.tax)}</span>
+                </div>
+                <div className="pt-3 mt-1 border-t border-gray-200">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-semibold text-gray-900">Total (incl. tax)</span>
+                    <span className="text-base font-bold text-orange-600">{formatVND(totals.total)}</span>
                   </div>
-                ) : (
+                </div>
+              </div>
+            </FormSection>
+
+            {/* Validation hint */}
+            {validationError && (
+              <div className="flex items-start gap-2 px-3 py-2.5 bg-red-50 border border-red-100 rounded-lg">
+                <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+                <p className="text-xs text-red-600">{validationError}</p>
+              </div>
+            )}
+
+            {/* Customer quick info */}
+            {selectedCustomer && (
+              <FormSection title="Customer" icon={<User className="w-4 h-4" />}>
+                <div className="space-y-2 text-sm">
+                  <p className="font-semibold text-gray-900">{selectedCustomer.name}</p>
+                  {selectedCustomer.phone && (
+                    <div className="flex items-center gap-1.5 text-gray-500">
+                      <Phone className="w-3 h-3 shrink-0" />
+                      <span>{selectedCustomer.phone}</span>
+                    </div>
+                  )}
+                  {selectedCustomer.email && (
+                    <div className="flex items-center gap-1.5 text-gray-500">
+                      <Mail className="w-3 h-3 shrink-0" />
+                      <span className="truncate">{selectedCustomer.email}</span>
+                    </div>
+                  )}
+                  {selectedCustomer.tax_code && (
+                    <div className="flex items-center gap-1.5 text-gray-500">
+                      <CreditCard className="w-3 h-3 shrink-0" />
+                      <span>Tax: {selectedCustomer.tax_code}</span>
+                    </div>
+                  )}
+                </div>
+              </FormSection>
+            )}
+          </div>
+        }
+      >
+        {/* ─── SECTION 1: Order Info ─── */}
+        <FormSection title="Order Information" icon={<Building2 className="w-4 h-4" />}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Customer selector */}
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-gray-700">
+                Customer <span className="text-red-500">*</span>
+              </label>
+              {mode === "edit" ? (
+                <div className="flex items-center gap-2.5 h-9 px-3 bg-gray-50 border border-gray-200 rounded-md">
+                  <User className="w-4 h-4 text-gray-400 shrink-0" />
+                  <span className="text-sm font-medium text-gray-700 truncate">
+                    {selectedCustomer?.name ?? "—"}
+                  </span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsCustomerModalOpen(true)}
+                  className={[
+                    "w-full h-9 px-3 flex items-center justify-between gap-2 rounded-md border text-sm text-left",
+                    "transition-colors duration-150",
+                    "focus:outline-none focus:ring-2 focus:ring-orange-500",
+                    selectedCustomer
+                      ? "border-gray-300 bg-white text-gray-800 hover:border-orange-400"
+                      : "border-gray-300 bg-white text-gray-400 hover:border-gray-400",
+                  ].join(" ")}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <User className="w-4 h-4 text-gray-400 shrink-0" />
+                    <span className="truncate">
+                      {selectedCustomer ? selectedCustomer.name : "Search and select customer..."}
+                    </span>
+                  </div>
+                  <Search className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                </button>
+              )}
+            </div>
+
+            {/* Order date */}
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-gray-700">
+                Order Date <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <input
+                  type="date"
+                  value={orderDate}
+                  onChange={(e) => setOrderDate(e.target.value)}
+                  className="w-full h-9 pl-9 pr-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-800"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Customer details card — shows when customer selected */}
+          {selectedCustomer && (
+            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-orange-50/60 border border-orange-100 rounded-lg">
+              <div>
+                <p className="text-xs text-gray-500 mb-0.5">Phone</p>
+                <p className="text-sm font-medium text-gray-800">{selectedCustomer.phone || "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-0.5">Email</p>
+                <p className="text-sm font-medium text-gray-800 truncate">{selectedCustomer.email || "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-0.5">Tax Code</p>
+                <p className="text-sm font-medium text-gray-800">{selectedCustomer.tax_code || "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-0.5">Contact Person</p>
+                <p className="text-sm font-medium text-gray-800">{selectedCustomer.contact_person || "—"}</p>
+              </div>
+              {selectedCustomer.address && (
+                <div className="col-span-2 md:col-span-4">
+                  <p className="text-xs text-gray-500 mb-0.5">Address</p>
+                  <p className="text-sm text-gray-700 flex items-start gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-gray-400 mt-0.5 shrink-0" />
+                    {selectedCustomer.address}
+                  </p>
+                </div>
+              )}
+              {mode === "create" && (
+                <div className="col-span-2 md:col-span-4 flex justify-end">
                   <button
                     type="button"
                     onClick={() => setIsCustomerModalOpen(true)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-left flex justify-between items-center hover:border-orange-500 hover:ring-1 hover:ring-orange-500 transition focus:outline-none"
+                    className="inline-flex items-center gap-1 text-xs text-orange-600 hover:text-orange-700"
                   >
-                    <span className={selectedCustomer ? 'text-gray-900' : 'text-gray-400'}>
-                      {selectedCustomer ? selectedCustomer.name : '-- Select customer --'}
-                    </span>
-                    <Search size={16} className="text-gray-400" />
+                    <Edit3 className="w-3 h-3" /> Change customer
                   </button>
-                )}
-              </div>
-
-              {/* ORDER DATE */}
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  Order Date <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="date"
-                    value={orderDate}
-                    onChange={(e) => setOrderDate(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition"
-                  />
-                  <Calendar className="absolute left-3 top-2.5 text-gray-400" size={18} />
                 </div>
-              </div>
+              )}
             </div>
+          )}
+        </FormSection>
 
-            {/* CUSTOMER DETAILS PREVIEW (Enhanced) */}
-            {selectedCustomer && (
-              <div className="mt-4 p-4 bg-orange-50 rounded-lg border border-orange-100 text-sm">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-8">
-                  <p><span className="font-semibold text-gray-600">Company:</span> {selectedCustomer.name}</p>
-                  <p><span className="font-semibold text-gray-600">Tax Code:</span> {selectedCustomer.tax_code || '-'}</p>
-                  <p><span className="font-semibold text-gray-600">Contact:</span> {selectedCustomer.contact_person || '-'}</p>
-                  <p><span className="font-semibold text-gray-600">Phone:</span> {selectedCustomer.phone || '-'}</p>
-                  <p className="md:col-span-2"><span className="font-semibold text-gray-600">Address:</span> {selectedCustomer.address || '-'}</p>
-                </div>
-              </div>
-            )}
-          </div>
+        {/* ─── SECTION 2: Line Items ─── */}
+        <FormSection
+          title="Order Lines"
+          icon={<ShoppingCart className="w-4 h-4" />}
+          description={`${lines.filter((l) => l.product_id).length} product(s) added`}
+          noPadding
+          action={
+            <button
+              type="button"
+              onClick={addLine}
+              className="inline-flex items-center gap-1.5 h-7 px-3 text-xs font-medium text-white bg-orange-500 rounded-md hover:bg-orange-600 transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add Line
+            </button>
+          }
+        >
+          {/* Table — 7 cols: # | Product (name+SKU+UoM) | Qty | Unit Price | Tax | Amount | × */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm table-fixed">
+              <colgroup>
+                <col style={{ width: "36px" }} />    {/* # */}
+                <col />                               {/* Product — flex */}
+                <col style={{ width: "112px" }} />   {/* Qty */}
+                <col style={{ width: "192px" }} />   {/* Unit Price */}
+                <col style={{ width: "80px" }} />    {/* Tax % */}
+                <col style={{ width: "148px" }} />   {/* Amount */}
+                <col style={{ width: "40px" }} />    {/* Remove */}
+              </colgroup>
+              <thead>
+                <tr className="border-b border-gray-200 bg-gray-50/80">
+                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">#</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Product</th>
+                  <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Qty</th>
+                  <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Unit Price</th>
+                  <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Tax</th>
+                  <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
+                  <th className="px-3 py-2.5"></th>
+                </tr>
+              </thead>
 
-          {/* LINE ITEMS CARD */}
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-              <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                <ShoppingCart size={20} className="text-orange-600" />
-                Line Items
-              </h2>
-              <button
-                type="button"
-                onClick={handleAddLine}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-orange-50 hover:text-orange-700 hover:border-orange-200 transition shadow-sm font-medium"
-              >
-                <Plus size={18} />
-                Add Item
-              </button>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-100 text-gray-600 uppercase text-xs font-semibold">
+              <tbody className="divide-y divide-gray-100">
+                {lines.length === 0 ? (
                   <tr>
-                    <th className="px-4 py-3 text-left w-12">#</th>
-                    <th className="px-4 py-3 text-left w-16">Image</th>
-                    <th className="px-4 py-3 text-left">Product</th>
-                    <th className="px-4 py-3 text-left w-24">Unit</th>
-                    <th className="px-4 py-3 text-center w-32">Qty</th>
-                    <th className="px-4 py-3 text-right w-32">Price</th>
-                    <th className="px-4 py-3 text-right w-24">Tax</th>
-                    <th className="px-4 py-3 text-right w-32">Total</th>
-                    <th className="px-4 py-3 text-center w-12"></th>
+                    <td colSpan={7} className="py-14 text-center">
+                      <div className="flex flex-col items-center gap-2 text-gray-400">
+                        <Inbox className="w-8 h-8" />
+                        <p className="text-sm">No products added. Click "Add Line" to start.</p>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {lines.length === 0 ? (
-                    <tr>
-                      <td colSpan={9} className="py-12 text-center text-gray-400 italic">
-                        No items added yet. Please add a product to start.
-                      </td>
-                    </tr>
-                  ) : (
-                    lines.map((line, index) => {
-                      const product = products.find(p => p.id === line.product_id);
-                      const calc = calcLine(line);
+                ) : (
+                  lines.map((line, index) => {
+                    const product = products.find((p) => p.id === line.product_id);
+                    const calc    = calcLine(line);
 
-                      return (
-                        <tr key={index} className="hover:bg-gray-50 transition">
-                          {/* INDEX */}
-                          <td className="px-4 py-4 text-gray-500 font-mono text-center">{index + 1}</td>
+                    return (
+                      <tr key={index} className="group hover:bg-orange-50/30 transition-colors">
+                        {/* # */}
+                        <td className="px-3 py-3.5 text-xs text-gray-400 font-medium">{index + 1}</td>
 
-                          {/* IMAGE */}
-                          <td className="px-4 py-4">
-                            {product?.image_url ? (
-                              <img
-                                src={product.image_url}
-                                alt={product.name}
-                                className="w-10 h-10 rounded object-cover border border-gray-200"
-                              />
-                            ) : (
-                              <div className="w-10 h-10 rounded bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400 text-xs">
-                                Img
-                              </div>
-                            )}
-                          </td>
+                        {/* Product — name + SKU + UoM badge inline */}
+                        <td className="px-4 py-3.5">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenProductModal(index)}
+                            className={[
+                              "flex items-center gap-2.5 text-left w-full group/btn",
+                              "rounded-md px-2 py-1.5 -ml-2 transition-colors",
+                              product ? "hover:bg-orange-50" : "hover:bg-gray-50",
+                            ].join(" ")}
+                          >
+                            <div className="w-9 h-9 rounded bg-gray-100 border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center">
+                              {product?.image_url ? (
+                                <img src={product.image_url} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <Package className="w-4 h-4 text-gray-300" />
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              {product ? (
+                                <>
+                                  <p className="text-sm font-medium text-gray-800 truncate group-hover/btn:text-orange-600 transition-colors">
+                                    {product.name}
+                                  </p>
+                                  <div className="flex items-center gap-1.5 mt-0.5">
+                                    <span className="text-xs text-gray-400">SKU: {product.sku}</span>
+                                    {product.uom?.code && (
+                                      <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-500">
+                                        {product.uom.code}
+                                      </span>
+                                    )}
+                                  </div>
+                                </>
+                              ) : (
+                                <span className="text-sm text-gray-400 italic flex items-center gap-1">
+                                  <Search className="w-3.5 h-3.5" />
+                                  Click to select product...
+                                </span>
+                              )}
+                            </div>
+                          </button>
+                        </td>
 
-                          {/* PRODUCT SELECT (MODAL TRIGGER) */}
-                          <td className="px-4 py-4 min-w-[200px]">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenProductModal(index)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-left bg-white hover:border-orange-500 hover:ring-1 hover:ring-orange-500 transition flex items-center justify-between group"
-                            >
-                              <div className="truncate pr-2">
-                                {product ? (
-                                  <span className="text-gray-900 font-medium">{product.name}</span>
-                                ) : (
-                                  <span className="text-gray-400 italic">Select Product...</span>
-                                )}
-                                {product && <p className="text-xs text-gray-500 mt-0.5">SKU: {product.sku}</p>}
-                              </div>
-                              <Search size={14} className="text-gray-400 group-hover:text-orange-500 shrink-0" />
-                            </button>
-                          </td>
-
-                          {/* UNIT */}
-                          <td className="px-4 py-4 text-gray-600">{product?.uom || '-'}</td>
-
-                          {/* QUANTITY */}
-                          <td className="px-4 py-4">
+                        {/* Qty */}
+                        <td className="px-4 py-3.5">
+                          <div className="flex justify-center">
                             <QuantityControl
                               value={line.quantity ?? 1}
-                              onChange={(val) => handleUpdateLine(index, 'quantity', val)}
+                              onChange={(v) => updateLine(index, "quantity", v)}
+                              min={1}
                             />
-                          </td>
+                          </div>
+                        </td>
 
-                          {/* PRICE */}
-                          <td className="px-4 py-4 text-right font-medium text-gray-700">
-                            {formatVND(line.unit_price)}
-                          </td>
+                        {/* Unit Price — wide column with ₫ suffix */}
+                        <td className="px-4 py-3.5">
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min={0}
+                              step={1000}
+                              value={line.unit_price ?? 0}
+                              onChange={(e) => updateLine(index, "unit_price", parseFloat(e.target.value) || 0)}
+                              className="w-full h-8 pl-3 pr-6 text-right text-sm font-medium border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none select-none">₫</span>
+                          </div>
+                          {product?.sale_price && product.sale_price !== line.unit_price && (
+                            <p className="text-[10px] text-gray-400 text-right mt-0.5">
+                              List: {formatVND(product.sale_price)}
+                            </p>
+                          )}
+                        </td>
 
-                          {/* TAX */}
-                          <td className="px-4 py-4 text-right text-xs text-gray-500">
-                            {product?.taxRate ? (
-                              <div className="flex flex-col items-end">
-                                <span>{product.taxRate.name}</span>
-                                <span className="text-gray-400">({product.taxRate.rate}%)</span>
-                              </div>
-                            ) : '-'}
-                          </td>
+                        {/* Tax % */}
+                        <td className="px-4 py-3.5 text-center">
+                          {product?.taxRate ? (
+                            <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-600">
+                              {product.taxRate.rate}%
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400">—</span>
+                          )}
+                        </td>
 
-                          {/* TOTAL */}
-                          <td className="px-4 py-4 text-right font-bold text-gray-900">
-                            {formatVND(calc.total)}
-                          </td>
+                        {/* Amount */}
+                        <td className="px-4 py-3.5 text-right">
+                          <p className="text-sm font-semibold text-gray-900">{formatVND(calc.total)}</p>
+                          {calc.taxAmount > 0 && (
+                            <p className="text-[10px] text-gray-400 mt-0.5">Tax: {formatVND(calc.taxAmount)}</p>
+                          )}
+                        </td>
 
-                          {/* REMOVE */}
-                          <td className="px-4 py-4 text-center">
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveLine(index)}
-                              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                        {/* Remove */}
+                        <td className="px-3 py-3.5 text-center">
+                          <button
+                            type="button"
+                            onClick={() => removeLine(index)}
+                            className="p-1.5 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
-        </div>
+        </FormSection>
+      </StandardFormLayout>
 
-        {/* SIDEBAR SUMMARY */}
-        <div className="lg:col-span-1">
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm sticky top-6 overflow-hidden">
-            <div className="p-4 border-b bg-gray-50 font-semibold text-gray-700">
-              Summary
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div className="flex justify-between items-center text-gray-600">
-                <span>Subtotal</span>
-                <span>{formatVND(totals.subtotal)}</span>
-              </div>
-              <div className="flex justify-between items-center text-gray-600">
-                <span>Tax</span>
-                <span>{formatVND(totals.tax)}</span>
-              </div>
-
-              <div className="pt-4 border-t border-gray-100 mt-2">
-                <div className="flex justify-between items-end">
-                  <span className="font-bold text-gray-800 text-lg">Total</span>
-                  <span className="font-bold text-orange-600 text-2xl">{formatVND(totals.total)}</span>
-                </div>
-                <p className="text-xs text-gray-400 text-right mt-1">VAT Included</p>
-              </div>
-
-              <div className="pt-6 space-y-3">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3 bg-orange-600 text-white rounded-lg font-bold hover:bg-orange-700 shadow-lg shadow-orange-100 transition disabled:bg-gray-400"
-                >
-                  {loading ? 'Processing...' : (mode === 'create' ? 'Create Order' : 'Save Changes')}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={onCancel || (() => window.history.back())}
-                  className="w-full py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </form>
-
-      {/* CUSTOMER SELECTION MODAL */}
+      {/* ─── Customer Search Modal ─── */}
       <SearchSelectionModal
         isOpen={isCustomerModalOpen}
         onClose={() => setIsCustomerModalOpen(false)}
         title="Select Customer"
+        description="Search by name, phone, email or tax code"
         items={customers}
-        searchKeys={['name', 'phone', 'email', 'tax_code']}
-        onSelect={(customer) => setCustomerId(customer.id)}
-        selectedItem={selectedCustomer}
+        searchKeys={["name", "phone", "email", "tax_code"]}
+        onSelect={(c) => setCustomerId(c.id)}
         isSelected={(c) => c.id === customerId}
-        renderItem={(customer, isActive) => (
-          <div className="p-3">
-            <div className="flex justify-between">
-              <span className={`font-medium ${isActive ? 'text-orange-700' : 'text-gray-900'}`}>{customer.name}</span>
-              {customer.phone && <span className="text-gray-500 text-sm">{customer.phone}</span>}
+        renderItem={(c, isActive) => (
+          <div className="flex items-center gap-3">
+            <div className={[
+              "w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shrink-0",
+              isActive ? "bg-orange-500 text-white" : "bg-gray-100 text-gray-600",
+            ].join(" ")}>
+              {c.name.charAt(0).toUpperCase()}
             </div>
-            <div className="text-sm text-gray-500 mt-1 flex gap-3">
-              {customer.tax_code && <span>Tax: {customer.tax_code}</span>}
-              {customer.address && <span className="truncate max-w-[300px]">{customer.address}</span>}
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-800 truncate">{c.name}</p>
+              <div className="flex items-center gap-3 mt-0.5">
+                {c.phone && (
+                  <span className="text-xs text-gray-500 flex items-center gap-1">
+                    <Phone className="w-3 h-3" />{c.phone}
+                  </span>
+                )}
+                {c.tax_code && (
+                  <span className="text-xs text-gray-500 flex items-center gap-1">
+                    <CreditCard className="w-3 h-3" />MST: {c.tax_code}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         )}
       />
 
-      {/* PRODUCT SELECTION MODAL */}
-      <SearchSelectionModal
+      {/* ─── Product Picker Modal ─── */}
+      <ProductPickerModal
         isOpen={isProductModalOpen}
-        onClose={() => setIsProductModalOpen(false)}
-        title="Select Product"
-        items={availableProducts}
-        searchKeys={['name', 'sku', 'description']}
-        onSelect={handleSelectProduct}
-        renderItem={(product) => (
-          <div className="flex items-center gap-4 p-3">
-            {product.image_url ? (
-              <img src={product.image_url} alt="" className="w-12 h-12 rounded bg-gray-100 border object-cover" />
-            ) : (
-              <div className="w-12 h-12 rounded bg-gray-100 border flex items-center justify-center text-xs text-gray-400">
-                Img
-              </div>
-            )}
-            <div className="flex-1">
-              <div className="flex justify-between">
-                <span className="font-medium text-gray-900">{product.name}</span>
-                <span className="font-bold text-orange-600">{formatVND(product.sale_price)}</span>
-              </div>
-              <div className="text-sm text-gray-500 flex gap-3 mt-1">
-                <span className="bg-gray-100 px-1.5 rounded text-xs border">SKU: {product.sku}</span>
-              </div>
-            </div>
-          </div>
-        )}
+        onClose={() => {
+          setIsProductModalOpen(false);
+          setActiveLineIndex(null);
+        }}
+        products={availableProducts}
+        selectedProductIds={selectedProductIds}
+        onSelect={(p) => {
+          if (activeLineIndex !== null) selectProductForLine(activeLineIndex, p);
+        }}
       />
-    </div>
+    </>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -10,6 +10,7 @@ import {
   Branch,
   SaleOrder,
   SaleOrderLine,
+  PaymentTerm,
   sequelize
 } from "../../../models";
 import { ArInvoiceStatus, ApprovalStatus } from "../../../core/types/enum";
@@ -236,15 +237,31 @@ export const arInvoiceService = {
       approval = ApprovalStatus.APPROVED,
         status = ArInvoiceStatus.POSTED
     }
+    // 4.5 Tính Due Date dựa trên Payment Term
+    let dueDate = new Date();
+    const termId = (order as any).payment_term_id;
+    if (termId) {
+      const term = await PaymentTerm.findByPk(termId);
+      if (term && term.days) {
+        dueDate.setDate(dueDate.getDate() + Number(term.days));
+      }
+    }
+
     // 4. Tạo Invoice Header
     const invoice = await ArInvoice.create({
       branch_id: user.branch_id,
       order_id: order.id,
+      customer_id: order.customer_id || null,
       invoice_no,
       invoice_date: new Date(),   // auto today
+      due_date: dueDate.toISOString().substring(0, 10),
       created_by: user.id,
       approval_status: approval,
       status: status,
+      // Phase 4 enhancements — copy from order
+      payment_term_id: termId || null,
+      currency_id: (order as any).currency_id || null,
+      exchange_rate: (order as any).exchange_rate || 1,
     });
 
     // 5. Copy lines từ Sale Order sang Invoice Line
@@ -282,6 +299,10 @@ export const arInvoiceService = {
       total_before_tax: totals.total_before_tax,
       total_tax: totals.total_tax,
       total_after_tax: totals.total_after_tax,
+    });
+
+    await order.update({
+      invoice_status: "invoiced"
     });
 
     return this.getById(invoice.id, user);
@@ -608,9 +629,13 @@ export const arInvoiceService = {
       throw new Error("Missing GL Accounts 131 / 511 / 3331");
     }
 
-    const totalBeforeTax = Number(invoice.total_before_tax || 0);
-    const totalTax = Number(invoice.total_tax || 0);
-    const totalAfterTax = Number(invoice.total_after_tax || 0);
+    const rate = Number(invoice.exchange_rate || 1);
+    const totalBeforeTax = Number(invoice.total_before_tax || 0) * rate;
+    const totalTax = Number(invoice.total_tax || 0) * rate;
+    const totalAfterTax = Number(invoice.total_after_tax || 0) * rate;
+
+    // MISA / ERP Standards: Partner ID must be attached to Account 131 for aging reports!
+    const partnerId = invoice.customer_id;
 
     // Tạo GL Entry
     const entry = await GlEntry.create(
@@ -631,6 +656,7 @@ export const arInvoiceService = {
       {
         entry_id: entry.id,
         account_id: arAcc.id,
+        partner_id: partnerId as any,
         debit: totalAfterTax,
         credit: 0,
       },

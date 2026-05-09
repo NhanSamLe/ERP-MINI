@@ -1,19 +1,17 @@
 import Header from "./Header";
 import Sidebar from "./Sidebar";
-import Footer from "./Footer";
 import { Outlet } from "react-router-dom";
 import FloatingChatButton from "../../features/ai-chatbot/components/FloatingChatButton";
 
 export default function Layout() {
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50/80 overflow-hidden">
       <Sidebar />
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header />
-        <main className="flex-1 p-6 overflow-y-auto bg-gray-50">
+        <main className="flex-1 overflow-y-auto">
           <Outlet />
         </main>
-        <Footer />
       </div>
       <FloatingChatButton />
     </div>

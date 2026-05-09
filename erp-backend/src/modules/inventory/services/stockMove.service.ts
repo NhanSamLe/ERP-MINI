@@ -1,4 +1,4 @@
-﻿import {
+import {
   StockMoveAdjustmentDTO,
   StockMoveCreateDTO,
   StockMoveTransferDTO,
@@ -1442,7 +1442,7 @@ export const stockMoveService = {
     }
     if (move.reference_type === "sale_order") {
       await SaleOrder.update(
-        { status: "shipped" },
+        { status: "shipped", delivery_status: "delivered" },
         { where: { id: move.reference_id } },
       );
     }

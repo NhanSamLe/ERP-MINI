@@ -8,7 +8,8 @@ import {
   markLost,
   reassignOpportunity,
   fetchOpportunityDetail,
-  deleteOpportunity
+  deleteOpportunity,
+  changePipelineStage
 } from "./opportunity.thunks";
 import { OpportunityState } from "./opportunity.type";
 
@@ -76,8 +77,13 @@ export const opportunitySlice = createSlice({
     // ========== MOVE TO NEGOTIATION ==========
     builder.addCase(moveToNegotiation.fulfilled, (state, action) => {
       const updated = action.payload;
-        state.allOpportunities = state.allOpportunities.                map((o) => o.id === updated.id ? updated : o);
+        state.allOpportunities = state.allOpportunities.map((o) => o.id === updated.id ? updated : o);
         // state.myOpportunities = state.myOpportunities.map((o) => o.id === updated.id ? updated : o);
+    });
+    // ========== CHANGE PIPELINE STAGE ==========
+    builder.addCase(changePipelineStage.fulfilled, (state, action) => {
+      const updated = action.payload;
+      state.allOpportunities = state.allOpportunities.map((o) => o.id === updated.id ? updated : o);
     });
     // ========== MARK WON ==========
     builder.addCase(markWon.fulfilled, (state, action) => {
