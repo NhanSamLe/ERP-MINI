@@ -14,6 +14,7 @@ export interface InvoiceDocumentAttrs {
   ocr_result?: Record<string, any> | null;
   ocr_confidence?: number | null;
   processing_time_ms?: number | null;
+  anomaly_result?: Record<string, any> | null;
   created_by: number;
   created_at?: Date;
   updated_at?: Date;
@@ -27,6 +28,7 @@ type InvoiceDocumentCreation = Optional<
   | "ocr_result"
   | "ocr_confidence"
   | "processing_time_ms"
+  | "anomaly_result"
 >;
 
 export class InvoiceDocument
@@ -45,6 +47,7 @@ export class InvoiceDocument
   public ocr_result?: Record<string, any> | null;
   public ocr_confidence?: number | null;
   public processing_time_ms?: number | null;
+  public anomaly_result?: Record<string, any> | null;
   public created_by!: number;
   public created_at?: Date;
   public updated_at?: Date;
@@ -71,9 +74,10 @@ InvoiceDocument.init(
       allowNull: false,
     },
     ocr_raw_text: { type: DataTypes.TEXT, allowNull: true },
-    ocr_result: { type: DataTypes.JSONB, allowNull: true },
+    ocr_result: { type: DataTypes.JSON, allowNull: true },
     ocr_confidence: { type: DataTypes.DECIMAL(5, 4), allowNull: true },
     processing_time_ms: { type: DataTypes.INTEGER, allowNull: true },
+    anomaly_result: { type: DataTypes.JSON, allowNull: true },
     created_by: { type: DataTypes.BIGINT, allowNull: false },
   },
   {

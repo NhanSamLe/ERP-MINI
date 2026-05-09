@@ -15,6 +15,16 @@ import {
   apInvoiceService,
   CreateAPInvoiceLineInput,
 } from "../../purchase/services/apInvoice.service";
+import { AnomalyDetectorService } from "./anomaly/anomalyDetector.service";
+import { AnomalyRepository } from "./anomaly/anomaly.repository";
+import { MathConsistencyChecker } from "./anomaly/mathConsistency.checker";
+import { StatisticalAnalyzer } from "./anomaly/statistical.analyzer";
+import { FraudPatternDetector } from "./anomaly/fraudPattern.detector";
+import { BehavioralAnomalyDetector } from "./anomaly/behavioral.detector";
+import { IsolationForestAnalyzer } from "./anomaly/isolationForest.analyzer";
+import { RiskScoreCalculator } from "./anomaly/riskScore.calculator";
+import { ThresholdConfigService } from "./anomaly/thresholdConfig.service";
+import { OcrInvoiceData } from "../types/ocr.types";
 
 export interface ConfirmPayload {
   // Fields from frontend (simplified)
@@ -70,6 +80,27 @@ export interface Pagination {
 }
 
 export class DocumentService {
+  private readonly anomalyDetector: AnomalyDetectorService;
+  private readonly anomalyRepository: AnomalyRepository;
+
+  constructor(
+    anomalyDetector?: AnomalyDetectorService,
+    anomalyRepository?: AnomalyRepository,
+  ) {
+    // Default to fully-wired instances; allow injection for testing
+    this.anomalyDetector =
+      anomalyDetector ??
+      new AnomalyDetectorService(
+        new MathConsistencyChecker(),
+        new StatisticalAnalyzer(),
+        new FraudPatternDetector(),
+        new BehavioralAnomalyDetector(),
+        new IsolationForestAnalyzer(),
+        new RiskScoreCalculator(),
+        new ThresholdConfigService(),
+      );
+    this.anomalyRepository = anomalyRepository ?? new AnomalyRepository();
+  }
   async uploadDocument(
     file: Express.Multer.File,
     branchId: number,
@@ -136,6 +167,47 @@ export class DocumentService {
           | "openai_vision"
           | "google_doc_ai",
       });
+
+      // ── Anomaly Detection (Requirement 8.1–8.5) ──────────────────────────
+      // Run after OCR is done. Fail-safe: errors are logged but do not
+      // interrupt the pipeline or change ocr_status.
+      try {
+        const anomalyResult = await this.anomalyDetector.analyze(
+          parsedResult as unknown as OcrInvoiceData,
+          doc.id,
+          doc.branch_id,
+          new Date(),
+        );
+
+        // Persist anomaly result to dedicated table (Req 9.1)
+        await this.anomalyRepository.save(doc.id, anomalyResult);
+
+        // Denormalize onto the document for fast retrieval (Req 8.2)
+        const updatePayload: Record<string, any> = {
+          anomaly_result: anomalyResult as unknown as Record<string, any>,
+        };
+
+        // Propagate high-risk warning into OCR result warnings (Req 8.5)
+        if (anomalyResult.risk_level === "high_risk") {
+          const warnings: string[] = Array.isArray(parsedResult.warnings)
+            ? [...parsedResult.warnings]
+            : [];
+          if (!warnings.includes("high_risk_anomaly")) {
+            warnings.push("high_risk_anomaly");
+          }
+          updatePayload.ocr_result = {
+            ...(parsedResult as unknown as Record<string, any>),
+            warnings,
+          };
+        }
+
+        await doc.update(updatePayload);
+      } catch (anomalyErr: any) {
+        logger.error(
+          `processOcr: anomaly detection failed for document ${documentId}: ${anomalyErr.message}`,
+        );
+        // Do NOT change ocr_status — pipeline continues normally
+      }
     } catch (err: any) {
       logger.error(
         `processOcr error for document ${documentId}: ${err.message}`,
@@ -286,6 +358,7 @@ export class DocumentService {
       },
       product_matches: productMatches,
       duplicateWarning,
+      anomaly_result: doc.anomaly_result ?? null,
       warnings: ocrResult.warnings ?? [],
     };
   }
@@ -418,6 +491,21 @@ export class DocumentService {
 
     // Cập nhật InvoiceDocument để liên kết với AP Invoice vừa tạo
     await doc.update({ purchase_invoice_id: newInvoiceId });
+
+    // ── Anomaly Override Recording (Requirement 9.5) ──────────────────────
+    // If the document had anomaly warnings and the user confirmed anyway,
+    // record the override for audit purposes.
+    try {
+      const anomalyData = doc.anomaly_result as Record<string, any> | null;
+      if (anomalyData && anomalyData.risk_level !== "low_risk") {
+        await this.anomalyRepository.recordOverride(documentId, userId);
+      }
+    } catch (overrideErr: any) {
+      // Non-critical — log and continue
+      logger.error(
+        `confirmDocument: failed to record anomaly override for document ${documentId}: ${overrideErr.message}`,
+      );
+    }
 
     return { purchase_invoice_id: newInvoiceId };
   }
