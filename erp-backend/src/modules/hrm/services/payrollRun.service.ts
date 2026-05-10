@@ -358,7 +358,18 @@ export async function calculatePayrollRun(runId: number, user: any) {
       const lateDeduction = lateDays * PAYROLL_RULE.LATE_FINE_PER_DAY;
       const allowance = presentDays * PAYROLL_RULE.MEAL_ALLOWANCE_PER_DAY;
 
-      let net = basePay + allowance - absentDeduction - lateDeduction;
+      const gross = basePay + allowance;
+
+const totalDeductionBeforeTax =
+  absentDeduction + lateDeduction;
+
+const pit = await calculatePIT(
+  emp.contract_type,
+  gross,
+  emp.dependent || 0
+);
+
+let net = gross - totalDeductionBeforeTax - pit;
 
       // làm tròn tiền nếu muốn
       net = Math.round(net);
@@ -371,25 +382,52 @@ export async function calculatePayrollRun(runId: number, user: any) {
       });
 
       if (existed) {
-        await existed.update({ amount: net }, { transaction: t });
+        await existed.update({
+  amount: net,
+  present_days: presentDays,
+  absent_days: absentDays,
+  leave_days: leaveDays,
+  late_days: lateDays,
+  base_salary: emp.base_salary,
+  daily_rate: dailyRate,
+  gross_amount: gross,
+  total_earning: gross,
+  total_deduction: totalDeductionBeforeTax + pit,
+  pit_amount: pit,
+  net_amount: net,
+}, { transaction: t });
       } else {
-        await model.PayrollRunLine.create(
-          { run_id: run.id, employee_id: emp.id, amount: net },
-          { transaction: t }
-        );
+        await model.PayrollRunLine.create({
+  run_id: run.id,
+  employee_id: emp.id,
+  amount: net,
+  present_days: presentDays,
+  absent_days: absentDays,
+  leave_days: leaveDays,
+  late_days: lateDays,
+  base_salary: emp.base_salary,
+  daily_rate: dailyRate,
+  gross_amount: gross,
+  total_earning: gross,
+  total_deduction: totalDeductionBeforeTax + pit,
+  pit_amount: pit,
+  net_amount: net,
+}, { transaction: t });
       }
 
       results.push({
-        employee_id: emp.id,
-        employee_name: emp.full_name,
-        base_salary: Number(emp.base_salary || 0),
-        presentDays,
-        leaveDays,
-        absentDays,
-        lateDays,
-        dailyRate: Math.round(dailyRate),
-        net,
-      });
+  employee_id: emp.id,
+  employee_name: emp.full_name,
+  base_salary: Number(emp.base_salary || 0),
+  presentDays,
+  leaveDays,
+  absentDays,
+  lateDays,
+  dailyRate: Math.round(dailyRate),
+  gross: Math.round(gross),
+  pit: Math.round(pit),
+  net,
+});
     }
 
     await t.commit();
@@ -450,7 +488,19 @@ export async function getPayrollEvidence(runId: number, employeeId: number) {
   const lateDeductionRaw = lateDays * PAYROLL_RULE.LATE_FINE_PER_DAY;
   const allowanceRaw = presentDays * PAYROLL_RULE.MEAL_ALLOWANCE_PER_DAY;
 
-  let netRaw = basePayRaw + allowanceRaw - absentDeductionRaw - lateDeductionRaw;
+  const grossRaw = basePayRaw + allowanceRaw;
+
+const pitRaw = await calculatePIT(
+  (employee as any).contract_type,
+  grossRaw,
+  (employee as any).dependent || 0
+);
+
+let netRaw =
+  grossRaw -
+  absentDeductionRaw -
+  lateDeductionRaw -
+  pitRaw;
 
   // làm tròn theo kiểu bạn đang dùng ở calculatePayrollRun
   const dailyRate = Math.round(dailyRateRaw);
@@ -489,18 +539,58 @@ export async function getPayrollEvidence(runId: number, employeeId: number) {
       code: (employee as any).code,
       full_name: (employee as any).full_name,
       base_salary: baseSalary,
+      contract_type: (employee as any).contract_type,
+dependent: (employee as any).dependent || 0,
     },
+    
     attendance,
     summary,
-    breakdown: {
-      dailyRate,
-      basePay,
-      allowance,
-      absentDeduction,
-      lateDeduction,
-      net,
-      storedAmount,
-      diff,
-    },
+   breakdown: {
+  dailyRate,
+  basePay,
+  allowance,
+  absentDeduction,
+  lateDeduction,
+  gross: Math.round(grossRaw),
+  pit: Math.round(pitRaw),
+  net,
+  storedAmount,
+  diff,
+},
   };
+}
+async function calculatePIT(
+  contractType: string,
+  gross: number,
+  dependents: number = 0
+) {
+  if (gross <= 0) return 0;
+
+  // trial + seasonal
+  if (["trial", "seasonal"].includes(contractType)) {
+    return gross >= 2000000 ? gross * 0.1 : 0;
+  }
+
+  // official
+  const personalDeduction = 11000000;
+  const dependentDeduction = dependents * 4400000;
+
+  const taxableIncome = Math.max(
+    gross - personalDeduction - dependentDeduction,
+    0
+  );
+
+  if (taxableIncome <= 0) return 0;
+
+  const pitRate = await model.TaxRate.findOne({
+    where: {
+      type: "PIT",
+      status: "active",
+    },
+    order: [["rate", "ASC"]],
+  });
+
+  const rate = pitRate ? Number((pitRate as any).rate) : 10;
+
+  return taxableIncome * (rate / 100);
 }
