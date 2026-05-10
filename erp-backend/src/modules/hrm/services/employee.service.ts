@@ -10,7 +10,7 @@ export interface EmployeeFilter {
   branch_id?: number;
   department_id?: number;
   position_id?: number;
-  status?: "active" | "inactive";
+  status?: "active" | "inactive" | "resigned";
 }
 
 interface UserJwt {
@@ -94,7 +94,7 @@ export interface EmployeePayload {
   base_salary: number;
   bank_account?: string;
   bank_name?: string;
-  status?: "active" | "inactive";
+  status?: "active" | "inactive" | "resigned";
 }
 
 // ============ CREATE ============
@@ -211,6 +211,41 @@ export async function deleteEmployee(id: number, user: UserJwt) {
   }
 
   await emp.destroy();
+}
+
+// ============ RESIGN (Offboarding) ============
+
+export async function resignEmployee(
+  id: number,
+  payload: { resign_date: string; resign_reason?: string },
+  user: UserJwt
+) {
+  const emp = await Employee.findByPk(id);
+  if (!emp) throw new Error("Employee not found");
+
+  if (user.role === "HR_STAFF" && user.branchId) {
+    if (emp.branch_id !== Number(user.branchId)) throw new Error("Forbidden");
+  }
+
+  if (emp.status === "resigned") throw new Error("Nhân viên này đã nghỉ việc rồi");
+
+  // 1. Set employee status = resigned
+  const updateData: any = {
+    status: "resigned",
+    resign_date: new Date(payload.resign_date),
+  };
+  if (payload.resign_reason) updateData.resign_reason = payload.resign_reason;
+
+  await emp.update(updateData);
+
+  // 2. Disable login — tìm user liên kết qua employee_id và set is_active = false
+  const { User } = await import("../../../models/index");
+  const linkedUser = await User.findOne({ where: { employee_id: id } });
+  if (linkedUser) {
+    await linkedUser.update({ is_active: false });
+  }
+
+  return emp;
 }
 
 // ============ OWN PROFILE ============
