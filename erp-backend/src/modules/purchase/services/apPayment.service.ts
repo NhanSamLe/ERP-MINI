@@ -15,7 +15,7 @@ export const apPaymentService = {
   // ─── READ ──────────────────────────────────────────────────────────────────
 
   async getAll(query: any, user: any) {
-    const { status, approval_status } = query;
+    const { status, approval_status, allocation_status, supplier_id } = query;
 
     const where: any = { branch_id: user.branch_id };
 
@@ -25,6 +25,8 @@ export const apPaymentService = {
 
     if (status) where.status = status;
     if (approval_status) where.approval_status = approval_status;
+    if (allocation_status) where.allocation_status = allocation_status;
+    if (supplier_id) where.supplier_id = Number(supplier_id);
 
     return ApPayment.findAll({
       where,
@@ -130,6 +132,11 @@ export const apPaymentService = {
       method: payload.method,
       status: "draft",
       approval_status: "draft",
+      allocation_status: "unallocated",
+      currency_id: payload.currency_id ?? null,
+      exchange_rate: payload.exchange_rate ?? 1.0,
+      bank_account_id: payload.bank_account_id ?? null,
+      transaction_reference: payload.transaction_reference ?? null,
       created_by: user.id,
       approved_by: null,
       submitted_at: null,
@@ -566,19 +573,30 @@ export const apPaymentService = {
           { transaction: t },
         );
 
-        // Update invoice status
+        // Update invoice paid_amount and status
         const unpaidAfter = invoice.unpaid_amount - item.amount;
         let newInvoiceStatus: string;
 
-        if (unpaidAfter === 0) {
+        if (unpaidAfter <= 0) {
           newInvoiceStatus = "paid";
         } else {
           newInvoiceStatus = "partially_paid";
         }
 
+        // Recalculate paid_amount from allocations (source of truth)
+        const [paidResult]: any = await sequelize.query(
+          `SELECT COALESCE(SUM(applied_amount), 0) AS total_paid
+           FROM ap_payment_allocations WHERE ap_invoice_id = ?`,
+          { replacements: [item.invoice_id], transaction: t, type: "SELECT" },
+        );
+        const newPaidAmount = Number(paidResult?.total_paid ?? 0) + item.amount;
+
         await sequelize.query(
-          `UPDATE ap_invoices SET status = ? WHERE id = ?`,
-          { replacements: [newInvoiceStatus, item.invoice_id], transaction: t },
+          `UPDATE ap_invoices SET status = ?, paid_amount = ?, last_payment_date = CURDATE() WHERE id = ?`,
+          {
+            replacements: [newInvoiceStatus, newPaidAmount, item.invoice_id],
+            transaction: t,
+          },
         );
 
         allocatedInvoices.push({
@@ -590,12 +608,15 @@ export const apPaymentService = {
 
       // Update payment status if fully allocated
       const remaining = availableAmount - totalAllocate;
-      const newPaymentStatus = remaining === 0 ? "completed" : "posted";
+      const newPaymentStatus = remaining <= 0 ? "completed" : "posted";
+      const newAllocationStatus =
+        remaining <= 0 ? "fully_allocated" : "partially_allocated";
 
-      if (remaining === 0) {
+      if (remaining <= 0) {
         payment.status = "completed";
-        await payment.save({ transaction: t });
       }
+      (payment as any).allocation_status = newAllocationStatus;
+      await payment.save({ transaction: t });
 
       // Audit log for allocation
       await ApPaymentAuditLog.create(

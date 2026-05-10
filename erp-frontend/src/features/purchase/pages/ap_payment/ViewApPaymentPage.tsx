@@ -530,6 +530,79 @@ export default function ViewApPaymentPage() {
         />
       )}
 
+      {/* ================= ALLOCATION STATUS PANEL ================= */}
+      {(payment as any).allocation_status && (
+        <div className="bg-white rounded-2xl border-2 border-gray-100 p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-gray-900">
+              Allocation Status
+            </h2>
+            <span
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
+                (payment as any).allocation_status === "fully_allocated"
+                  ? "bg-green-100 text-green-700"
+                  : (payment as any).allocation_status === "partially_allocated"
+                    ? "bg-amber-100 text-amber-700"
+                    : "bg-red-100 text-red-600"
+              }`}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  (payment as any).allocation_status === "fully_allocated"
+                    ? "bg-green-500"
+                    : (payment as any).allocation_status ===
+                        "partially_allocated"
+                      ? "bg-amber-500"
+                      : "bg-red-500"
+                }`}
+              />
+              {((payment as any).allocation_status as string).replace(
+                /_/g,
+                " ",
+              )}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div className="bg-blue-50 rounded-xl p-4">
+              <p className="text-xs text-blue-600 font-medium mb-1">
+                Payment Amount
+              </p>
+              <p className="text-lg font-bold text-blue-700">
+                {Number(payment.amount ?? 0).toLocaleString("vi-VN")} VND
+              </p>
+            </div>
+            {(payment as any).transaction_reference && (
+              <div className="bg-gray-50 rounded-xl p-4">
+                <p className="text-xs text-gray-500 font-medium mb-1">
+                  Transaction Reference
+                </p>
+                <p className="font-semibold text-gray-800">
+                  {(payment as any).transaction_reference}
+                </p>
+              </div>
+            )}
+            {(payment as any).bank_account_id && (
+              <div className="bg-gray-50 rounded-xl p-4">
+                <p className="text-xs text-gray-500 font-medium mb-1">
+                  Bank Account
+                </p>
+                <p className="font-semibold text-gray-800">
+                  #{(payment as any).bank_account_id}
+                </p>
+              </div>
+            )}
+          </div>
+          {(payment as any).allocation_status === "unallocated" && (
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-xs text-red-700 font-medium">
+                ⚠️ This payment has not been allocated to any invoice yet.
+                Please allocate it to reduce supplier payables.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ================= AUDIT LOG ================= */}
       <AuditLogCard
         title="Activity Log"

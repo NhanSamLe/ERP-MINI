@@ -79,36 +79,8 @@ export const apInvoiceService = {
   // ─── READ ──────────────────────────────────────────────────────────────────
 
   async getAll(query: any, user: any) {
-    const { status, approval_status, source } = query;
-
-    const where: any = { branch_id: user.branch_id };
-
-    if (user.role === "ACCOUNT") {
-      where.created_by = user.id;
-    }
-
-    if (status) where.status = status;
-    if (approval_status) where.approval_status = approval_status;
-    // Lọc theo nguồn gốc tạo: manual | ai_ocr
-    if (source) where.source = source;
-
-    return ApInvoice.findAll({
-      where,
-      include: [
-        { model: Branch, as: "branch" },
-        {
-          model: User,
-          as: "creator",
-          attributes: ["id", "full_name", "email", "phone", "avatar_url"],
-        },
-        {
-          model: User,
-          as: "approver",
-          attributes: ["id", "full_name", "email", "phone", "avatar_url"],
-        },
-      ],
-      order: [["created_at", "DESC"]],
-    });
+    // Delegate to enhanced filter method — backward compatible
+    return this.getAllWithFilters(query, user);
   },
 
   async getById(id: number, user: any) {
@@ -238,19 +210,32 @@ export const apInvoiceService = {
     // ── 3. Create AP Invoice + Lines (atomic transaction) ──────────────────
     let newInvoiceId!: number;
 
+    // Auto-calculate due_date from payment_term_id if not provided
+    let resolvedDueDate = input.due_date;
+    if (!resolvedDueDate && (input as any).payment_term_id) {
+      resolvedDueDate = await this.calculateDueDate(
+        input.invoice_date,
+        (input as any).payment_term_id,
+      );
+    }
+
     await sequelize.transaction(async (t: Transaction) => {
       const invoice = await ApInvoice.create(
         {
           source: input.source,
           invoice_no: input.invoice_no,
           invoice_date: input.invoice_date,
-          due_date: input.due_date,
+          due_date: resolvedDueDate,
           supplier_id: input.supplier_id,
           po_id: input.po_id ?? undefined,
           branch_id: input.branch_id,
           created_by: input.created_by,
           approval_status: "draft",
           status: "draft",
+          paid_amount: 0,
+          payment_term_id: (input as any).payment_term_id ?? null,
+          currency_id: (input as any).currency_id ?? null,
+          exchange_rate: (input as any).exchange_rate ?? 1.0,
           invoice_document_id: input.invoice_document_id ?? null,
           ocr_confidence: input.ocr_confidence ?? null,
           invoice_series: input.invoice_series ?? null,
@@ -968,5 +953,160 @@ export const apInvoiceService = {
     });
 
     return Array.from(map.values());
+  },
+
+  // ─── ENHANCED FILTERS ──────────────────────────────────────────────────────
+
+  /**
+   * getAll với filter mở rộng:
+   *   ?due_soon=7          — due_date trong N ngày tới, status != paid
+   *   ?overdue=true        — due_date < today AND status NOT IN (paid, cancelled)
+   *   ?paid_status=...     — filter theo status (partially_paid | paid | posted)
+   *   ?supplier_id=...     — filter theo NCC
+   *   ?date_from / date_to — filter theo invoice_date
+   */
+  async getAllWithFilters(query: any, user: any) {
+    const where: any = { branch_id: user.branch_id };
+
+    if (user.role === "ACCOUNT") where.created_by = user.id;
+
+    // Existing filters
+    if (query.status) where.status = query.status;
+    if (query.approval_status) where.approval_status = query.approval_status;
+    if (query.source) where.source = query.source;
+    if (query.supplier_id) where.supplier_id = Number(query.supplier_id);
+
+    // Date range on invoice_date
+    if (query.date_from || query.date_to) {
+      where.invoice_date = {};
+      if (query.date_from)
+        where.invoice_date[Op.gte] = new Date(query.date_from);
+      if (query.date_to) where.invoice_date[Op.lte] = new Date(query.date_to);
+    }
+
+    // due_soon: due_date trong N ngày tới, chưa paid
+    if (query.due_soon) {
+      const days = parseInt(String(query.due_soon), 10) || 7;
+      const today = new Date();
+      const future = new Date();
+      future.setDate(future.getDate() + days);
+      where.due_date = { [Op.between]: [today, future] };
+      where.status = { [Op.notIn]: ["paid", "cancelled"] };
+    }
+
+    // overdue: due_date < today, chưa paid
+    if (query.overdue === "true") {
+      where.due_date = { [Op.lt]: new Date() };
+      where.status = { [Op.notIn]: ["paid", "cancelled"] };
+    }
+
+    // paid_status alias
+    if (query.paid_status) where.status = query.paid_status;
+
+    return ApInvoice.findAll({
+      where,
+      include: [
+        { model: Branch, as: "branch" },
+        {
+          model: User,
+          as: "creator",
+          attributes: ["id", "full_name", "email", "phone", "avatar_url"],
+        },
+        {
+          model: User,
+          as: "approver",
+          attributes: ["id", "full_name", "email", "phone", "avatar_url"],
+        },
+      ],
+      order: [
+        ["due_date", "ASC"],
+        ["created_at", "DESC"],
+      ],
+    });
+  },
+
+  // ─── PAYMENT HISTORY ───────────────────────────────────────────────────────
+
+  /**
+   * Lấy lịch sử thanh toán của 1 AP Invoice.
+   * Trả về danh sách ap_payment_allocations kèm thông tin payment.
+   */
+  async getPaymentHistory(invoiceId: number, user: any) {
+    const invoice = await ApInvoice.findOne({
+      where: { id: invoiceId, branch_id: user.branch_id },
+    });
+    if (!invoice) throw { status: 404, message: "AP Invoice not found" };
+
+    const rows: any[] = await sequelize.query(
+      `SELECT
+         apa.id            AS allocation_id,
+         apa.applied_amount,
+         apa.allocation_date,
+         apa.notes         AS allocation_notes,
+         ap.id             AS payment_id,
+         ap.payment_no,
+         ap.payment_date,
+         ap.method,
+         ap.amount         AS payment_amount,
+         ap.transaction_reference,
+         u.id              AS created_by_id,
+         u.full_name       AS created_by_name
+       FROM ap_payment_allocations apa
+       JOIN ap_payments ap ON ap.id = apa.payment_id
+       LEFT JOIN users u ON u.id = apa.created_by
+       WHERE apa.ap_invoice_id = :invoiceId
+       ORDER BY apa.created_at ASC`,
+      {
+        replacements: { invoiceId },
+        type: "SELECT",
+      },
+    );
+
+    const totalPaid = rows.reduce((s, r) => s + Number(r.applied_amount), 0);
+    const remaining = Math.max(
+      0,
+      Number(invoice.total_after_tax ?? 0) - totalPaid,
+    );
+
+    return {
+      invoice_id: invoiceId,
+      invoice_no: invoice.invoice_no,
+      total_after_tax: Number(invoice.total_after_tax ?? 0),
+      paid_amount: Number(invoice.paid_amount ?? 0),
+      remaining_amount: remaining,
+      status: invoice.status,
+      due_date: invoice.due_date,
+      last_payment_date: invoice.last_payment_date,
+      allocations: rows,
+    };
+  },
+
+  // ─── DUE DATE CALCULATION ──────────────────────────────────────────────────
+
+  /**
+   * Tính due_date từ invoice_date + payment_term.days.
+   * Dùng khi tạo AP Invoice với payment_term_id.
+   */
+  async calculateDueDate(
+    invoiceDate: Date,
+    paymentTermId: number,
+  ): Promise<Date> {
+    const { PaymentTerm } =
+      await import("../../master-data/models/paymentTerm.model").catch(() => ({
+        PaymentTerm: null,
+      }));
+
+    if (!PaymentTerm) {
+      // Fallback: Net 30
+      const d = new Date(invoiceDate);
+      d.setDate(d.getDate() + 30);
+      return d;
+    }
+
+    const term = await (PaymentTerm as any).findByPk(paymentTermId);
+    const days = term ? Number(term.days ?? 30) : 30;
+    const d = new Date(invoiceDate);
+    d.setDate(d.getDate() + days);
+    return d;
   },
 };

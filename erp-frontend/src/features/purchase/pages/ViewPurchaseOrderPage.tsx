@@ -922,6 +922,114 @@ export default function ViewPurchaseOrderPage() {
         <Textarea value={description} disabled rows={5} />
       </div>
 
+      {/* TRACKING PANEL — receipt_status + invoice_status + new fields */}
+      {finalPO && (
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h2 className="text-lg font-semibold text-gray-700 mb-4">Tracking</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <p className="text-xs text-gray-500 mb-2 font-medium uppercase tracking-wider">
+                Receipt Status
+              </p>
+              <div className="flex items-center gap-3">
+                <div className="flex-1 bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                  <div
+                    className={`h-2.5 rounded-full transition-all ${
+                      (finalPO as any).receipt_status === "fully_received"
+                        ? "bg-green-500 w-full"
+                        : (finalPO as any).receipt_status === "partial"
+                          ? "bg-orange-400 w-1/2"
+                          : "bg-gray-300 w-0"
+                    }`}
+                  />
+                </div>
+                <span
+                  className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                    (finalPO as any).receipt_status === "fully_received"
+                      ? "bg-green-100 text-green-700"
+                      : (finalPO as any).receipt_status === "partial"
+                        ? "bg-orange-100 text-orange-700"
+                        : "bg-gray-100 text-gray-500"
+                  }`}
+                >
+                  {((finalPO as any).receipt_status ?? "pending").replace(
+                    /_/g,
+                    " ",
+                  )}
+                </span>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-2 font-medium uppercase tracking-wider">
+                Invoice Status
+              </p>
+              <div className="flex items-center gap-3">
+                <div className="flex-1 bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                  <div
+                    className={`h-2.5 rounded-full transition-all ${
+                      (finalPO as any).invoice_status === "invoiced"
+                        ? "bg-green-500 w-full"
+                        : (finalPO as any).invoice_status === "partial"
+                          ? "bg-blue-400 w-1/2"
+                          : "bg-gray-300 w-0"
+                    }`}
+                  />
+                </div>
+                <span
+                  className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                    (finalPO as any).invoice_status === "invoiced"
+                      ? "bg-green-100 text-green-700"
+                      : (finalPO as any).invoice_status === "partial"
+                        ? "bg-blue-100 text-blue-700"
+                        : "bg-gray-100 text-gray-500"
+                  }`}
+                >
+                  {((finalPO as any).invoice_status ?? "not invoiced").replace(
+                    /_/g,
+                    " ",
+                  )}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-gray-100 text-sm">
+            {(finalPO as any).expected_delivery_date && (
+              <div>
+                <p className="text-xs text-gray-400 mb-0.5">
+                  Expected Delivery
+                </p>
+                <p className="font-medium text-gray-800">
+                  {new Date(
+                    (finalPO as any).expected_delivery_date,
+                  ).toLocaleDateString("vi-VN")}
+                </p>
+              </div>
+            )}
+            {(finalPO as any).supplier_ref_no && (
+              <div>
+                <p className="text-xs text-gray-400 mb-0.5">Supplier Ref No</p>
+                <p className="font-medium text-gray-800">
+                  {(finalPO as any).supplier_ref_no}
+                </p>
+              </div>
+            )}
+            {(finalPO as any).rfq_id && (
+              <div>
+                <p className="text-xs text-gray-400 mb-0.5">From RFQ</p>
+                <button
+                  onClick={() =>
+                    navigate(`/purchase/rfqs/${(finalPO as any).rfq_id}`)
+                  }
+                  className="font-medium text-orange-600 hover:underline"
+                >
+                  View RFQ →
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* AUDIT LOG */}
       <AuditLogCard
         title="Change History"

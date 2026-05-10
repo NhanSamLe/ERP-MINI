@@ -33,6 +33,13 @@ router.get("/:id", accountRoles, apInvoiceController.getById);
 // GET /api/ap/invoices/:id/audit-logs
 router.get("/:id/audit-logs", accountRoles, apInvoiceController.getAuditLogs);
 
+// GET /api/ap/invoices/:id/payments — lịch sử thanh toán
+router.get(
+  "/:id/payments",
+  accountRoles,
+  apInvoiceController.getPaymentHistory,
+);
+
 // ─── CREATE ────────────────────────────────────────────────────────────────
 // POST /api/ap/invoices  — tạo thủ công (manual), không cần PO
 router.post("/", accountOnly, apInvoiceController.createManual);

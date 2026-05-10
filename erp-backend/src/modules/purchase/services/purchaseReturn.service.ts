@@ -1,0 +1,654 @@
+import { sequelize } from "../../../config/db";
+import { PurchaseReturnAuthorization } from "../models/purchaseReturnAuthorization.model";
+import { PurchaseReturn } from "../models/purchaseReturn.model";
+import { PurchaseReturnLine } from "../models/purchaseReturnLine.model";
+import { ApDebitNote } from "../models/apDebitNote.model";
+import { ApDebitNoteLine } from "../models/apDebitNoteLine.model";
+import { VendorRefund } from "../models/vendorRefund.model";
+import { ApInvoice } from "../models/apInvoice.model";
+import { GlEntry } from "../../finance/models/glEntry.model";
+import { GlEntryLine } from "../../finance/models/glEntryLine.model";
+import { GlJournal } from "../../finance/models/glJournal.model";
+import { Partner } from "../../../models";
+import { User } from "../../auth/models/user.model";
+import { Branch } from "../../company/models/branch.model";
+import { Product } from "../../product/models/product.model";
+import { Op } from "sequelize";
+import { purchaseNotificationService } from "./purchaseNotification.service";
+
+function generateNo(prefix: string): string {
+  return `${prefix}-${Date.now()}`;
+}
+
+const PRA_INCLUDE = [
+  { model: Branch, as: "branch" },
+  { model: Partner, as: "supplier", attributes: ["id", "name", "email"] },
+  { model: User, as: "creator", attributes: ["id", "full_name", "avatar_url"] },
+  {
+    model: User,
+    as: "approver",
+    attributes: ["id", "full_name", "avatar_url"],
+  },
+];
+
+const RETURN_INCLUDE = [
+  { model: Branch, as: "branch" },
+  { model: Partner, as: "supplier", attributes: ["id", "name", "email"] },
+  { model: User, as: "creator", attributes: ["id", "full_name", "avatar_url"] },
+  {
+    model: PurchaseReturnLine,
+    as: "lines",
+    include: [{ model: Product, as: "product", attributes: ["id", "name"] }],
+  },
+];
+
+// ─── PRA Service ──────────────────────────────────────────────────────────────
+
+export const praService = {
+  async getAll(query: any, user: any) {
+    const where: any = { branch_id: user.branch_id };
+    if (query.status) where.status = query.status;
+    if (query.supplier_id) where.supplier_id = Number(query.supplier_id);
+    if (query.return_type) where.return_type = query.return_type;
+
+    return PurchaseReturnAuthorization.findAll({
+      where,
+      include: [
+        { model: Partner, as: "supplier", attributes: ["id", "name"] },
+        { model: User, as: "creator", attributes: ["id", "full_name"] },
+      ],
+      order: [["created_at", "DESC"]],
+    });
+  },
+
+  async getById(id: number, user: any) {
+    const pra = await PurchaseReturnAuthorization.findOne({
+      where: { id, branch_id: user.branch_id },
+      include: PRA_INCLUDE,
+    });
+    if (!pra) throw { status: 404, message: "PRA not found" };
+    return pra;
+  },
+
+  async create(payload: any, user: any) {
+    if (!payload.purchase_order_id)
+      throw { status: 400, message: "purchase_order_id is required" };
+    if (!payload.supplier_id)
+      throw { status: 400, message: "supplier_id is required" };
+    if (!payload.reason?.trim())
+      throw { status: 400, message: "reason is required" };
+
+    const pra = await PurchaseReturnAuthorization.create({
+      branch_id: user.branch_id,
+      pra_no: generateNo("PRA"),
+      purchase_order_id: payload.purchase_order_id,
+      ap_invoice_id: payload.ap_invoice_id ?? null,
+      supplier_id: payload.supplier_id,
+      reason: payload.reason,
+      return_type: payload.return_type ?? "debit_note",
+      status: "draft",
+      approval_status: "draft",
+      total_return_amount: payload.total_return_amount ?? 0,
+      created_by: user.id,
+      notes: payload.notes ?? null,
+    });
+
+    return this.getById(pra.id, user);
+  },
+
+  async submit(id: number, user: any) {
+    const pra = await PurchaseReturnAuthorization.findOne({
+      where: { id, branch_id: user.branch_id },
+    });
+    if (!pra) throw { status: 404, message: "PRA not found" };
+    if (pra.status !== "draft")
+      throw { status: 400, message: "Only draft PRA can be submitted" };
+
+    await pra.update({
+      status: "submitted",
+      approval_status: "waiting_approval",
+      submitted_at: new Date(),
+    });
+    return this.getById(id, user);
+  },
+
+  async approve(id: number, user: any) {
+    const pra = await PurchaseReturnAuthorization.findOne({
+      where: { id, branch_id: user.branch_id },
+    });
+    if (!pra) throw { status: 404, message: "PRA not found" };
+    if (pra.approval_status !== "waiting_approval") {
+      throw { status: 400, message: "PRA is not waiting for approval" };
+    }
+    await pra.update({
+      status: "approved",
+      approval_status: "approved",
+      approved_by: user.id,
+      approved_at: new Date(),
+    });
+
+    // Trigger 5 — thông báo người tạo PRA tạo Purchase Return
+    purchaseNotificationService
+      .onPraApproved({
+        praId: pra.id,
+        praNo: pra.pra_no,
+        branchId: pra.branch_id,
+        createdById: pra.created_by,
+        io: null,
+      })
+      .catch(() => {
+        /* fail-safe */
+      });
+
+    return this.getById(id, user);
+  },
+
+  async reject(id: number, reason: string, user: any) {
+    const pra = await PurchaseReturnAuthorization.findOne({
+      where: { id, branch_id: user.branch_id },
+    });
+    if (!pra) throw { status: 404, message: "PRA not found" };
+    if (pra.approval_status !== "waiting_approval") {
+      throw { status: 400, message: "PRA is not waiting for approval" };
+    }
+    await pra.update({
+      status: "rejected",
+      approval_status: "rejected",
+      approved_by: user.id,
+      approved_at: new Date(),
+      reject_reason: reason,
+    });
+    return this.getById(id, user);
+  },
+};
+
+// ─── Purchase Return Service ──────────────────────────────────────────────────
+
+export const purchaseReturnService = {
+  async getAll(query: any, user: any) {
+    const where: any = { branch_id: user.branch_id };
+    if (query.status) where.status = query.status;
+    if (query.supplier_id) where.supplier_id = Number(query.supplier_id);
+
+    return PurchaseReturn.findAll({
+      where,
+      include: [
+        { model: Partner, as: "supplier", attributes: ["id", "name"] },
+        { model: User, as: "creator", attributes: ["id", "full_name"] },
+      ],
+      order: [["created_at", "DESC"]],
+    });
+  },
+
+  async getById(id: number, user: any) {
+    const ret = await PurchaseReturn.findOne({
+      where: { id, branch_id: user.branch_id },
+      include: RETURN_INCLUDE,
+    });
+    if (!ret) throw { status: 404, message: "Purchase Return not found" };
+    return ret;
+  },
+
+  async create(payload: any, user: any) {
+    if (!payload.supplier_id)
+      throw { status: 400, message: "supplier_id is required" };
+    if (!payload.return_date)
+      throw { status: 400, message: "return_date is required" };
+    if (!Array.isArray(payload.lines) || payload.lines.length === 0) {
+      throw { status: 400, message: "lines must have at least 1 item" };
+    }
+
+    const retId = await sequelize.transaction(async (t) => {
+      const ret = await PurchaseReturn.create(
+        {
+          branch_id: user.branch_id,
+          return_no: generateNo("RET"),
+          pra_id: payload.pra_id ?? null,
+          purchase_order_id: payload.purchase_order_id ?? null,
+          supplier_id: payload.supplier_id,
+          return_date: payload.return_date,
+          warehouse_id: payload.warehouse_id ?? null,
+          status: "draft",
+          approval_status: "draft",
+          total_return_amount: 0,
+          created_by: user.id,
+          notes: payload.notes ?? null,
+        },
+        { transaction: t },
+      );
+
+      let total = 0;
+      for (const line of payload.lines) {
+        const qty = Number(line.quantity_returned);
+        const price = Number(line.unit_price);
+        const lineTotal = qty * price;
+        total += lineTotal;
+
+        await PurchaseReturnLine.create(
+          {
+            return_id: ret.id,
+            product_id: line.product_id,
+            po_line_id: line.po_line_id ?? null,
+            quantity_returned: qty,
+            quantity_confirmed: 0,
+            quantity_rejected: 0,
+            unit_price: price,
+            line_total: lineTotal,
+            reason: line.reason ?? null,
+            condition: line.condition ?? "good",
+          },
+          { transaction: t },
+        );
+      }
+
+      await ret.update({ total_return_amount: total }, { transaction: t });
+      return ret.id;
+    });
+
+    return this.getById(retId, user);
+  },
+
+  async ship(id: number, user: any) {
+    const ret = await PurchaseReturn.findOne({
+      where: { id, branch_id: user.branch_id },
+    });
+    if (!ret) throw { status: 404, message: "Purchase Return not found" };
+    if (ret.status !== "draft" && ret.status !== "confirmed") {
+      throw { status: 400, message: "Only approved return can be shipped" };
+    }
+    await ret.update({ status: "shipped" });
+    return this.getById(id, user);
+  },
+
+  async confirm(
+    id: number,
+    lines: { line_id: number; qty_confirmed: number; qty_rejected: number }[],
+    user: any,
+  ) {
+    const ret = await PurchaseReturn.findOne({
+      where: { id, branch_id: user.branch_id },
+    });
+    if (!ret) throw { status: 404, message: "Purchase Return not found" };
+    if (ret.status !== "shipped")
+      throw { status: 400, message: "Only shipped return can be confirmed" };
+
+    await sequelize.transaction(async (t) => {
+      for (const item of lines) {
+        await PurchaseReturnLine.update(
+          {
+            quantity_confirmed: item.qty_confirmed,
+            quantity_rejected: item.qty_rejected,
+          },
+          { where: { id: item.line_id, return_id: id }, transaction: t },
+        );
+      }
+      await ret.update({ status: "confirmed" }, { transaction: t });
+    });
+
+    // Trigger 6 — thông báo kế toán tạo Debit Note
+    purchaseNotificationService
+      .onReturnConfirmed({
+        returnId: ret.id,
+        returnNo: ret.return_no,
+        branchId: ret.branch_id,
+        io: null,
+      })
+      .catch(() => {
+        /* fail-safe */
+      });
+
+    return this.getById(id, user);
+  },
+
+  async complete(id: number, user: any) {
+    const ret = await PurchaseReturn.findOne({
+      where: { id, branch_id: user.branch_id },
+    });
+    if (!ret) throw { status: 404, message: "Purchase Return not found" };
+    if (ret.status !== "confirmed")
+      throw { status: 400, message: "Only confirmed return can be completed" };
+    await ret.update({ status: "completed" });
+    return this.getById(id, user);
+  },
+};
+
+// ─── AP Debit Note Service ────────────────────────────────────────────────────
+
+export const apDebitNoteService = {
+  async getAll(query: any, user: any) {
+    const where: any = { branch_id: user.branch_id };
+    if (query.status) where.status = query.status;
+    if (query.supplier_id) where.supplier_id = Number(query.supplier_id);
+
+    return ApDebitNote.findAll({
+      where,
+      include: [{ model: Partner, as: "supplier", attributes: ["id", "name"] }],
+      order: [["created_at", "DESC"]],
+    });
+  },
+
+  async getById(id: number, user: any) {
+    const dn = await ApDebitNote.findOne({
+      where: { id, branch_id: user.branch_id },
+      include: [
+        { model: Partner, as: "supplier", attributes: ["id", "name", "email"] },
+        { model: User, as: "creator", attributes: ["id", "full_name"] },
+        {
+          model: ApDebitNoteLine,
+          as: "lines",
+          include: [
+            { model: Product, as: "product", attributes: ["id", "name"] },
+          ],
+        },
+      ],
+    });
+    if (!dn) throw { status: 404, message: "AP Debit Note not found" };
+    return dn;
+  },
+
+  async createFromReturn(returnId: number, user: any) {
+    const ret = await PurchaseReturn.findOne({
+      where: { id: returnId, branch_id: user.branch_id },
+      include: [{ model: PurchaseReturnLine, as: "lines" }],
+    });
+    if (!ret) throw { status: 404, message: "Purchase Return not found" };
+    if (ret.status !== "confirmed" && ret.status !== "completed") {
+      throw {
+        status: 400,
+        message: "Return must be confirmed before creating Debit Note",
+      };
+    }
+
+    // Get original AP Invoice from PRA
+    let originalApInvoiceId: number | null = null;
+    if (ret.pra_id) {
+      const pra = await PurchaseReturnAuthorization.findByPk(ret.pra_id);
+      originalApInvoiceId = pra?.ap_invoice_id ?? null;
+    }
+
+    const dnId = await sequelize.transaction(async (t) => {
+      const dn = await ApDebitNote.create(
+        {
+          branch_id: ret.branch_id,
+          debit_note_no: generateNo("DN"),
+          purchase_return_id: ret.id,
+          original_ap_invoice_id: originalApInvoiceId,
+          supplier_id: ret.supplier_id,
+          debit_note_date: new Date().toISOString().split("T")[0]!,
+          status: "draft",
+          approval_status: "draft",
+          total_before_tax: 0,
+          total_tax: 0,
+          total_after_tax: 0,
+          created_by: user.id,
+        },
+        { transaction: t },
+      );
+
+      const lines = (ret as any).lines as PurchaseReturnLine[];
+      let totalBeforeTax = 0;
+
+      for (const line of lines) {
+        const qty = Number(line.quantity_confirmed);
+        if (qty <= 0) continue;
+
+        const lineTotal = qty * Number(line.unit_price);
+        totalBeforeTax += lineTotal;
+
+        await ApDebitNoteLine.create(
+          {
+            debit_note_id: dn.id,
+            product_id: line.product_id,
+            return_line_id: line.id,
+            quantity: qty,
+            unit_price: line.unit_price,
+            line_total: lineTotal,
+            line_tax: 0,
+            line_total_after_tax: lineTotal,
+          },
+          { transaction: t },
+        );
+      }
+
+      await dn.update(
+        { total_before_tax: totalBeforeTax, total_after_tax: totalBeforeTax },
+        { transaction: t },
+      );
+
+      return dn.id;
+    });
+
+    return this.getById(dnId, user);
+  },
+
+  async post(id: number, user: any) {
+    const dn = await ApDebitNote.findOne({
+      where: { id, branch_id: user.branch_id },
+    });
+    if (!dn) throw { status: 404, message: "AP Debit Note not found" };
+    if (dn.status !== "draft")
+      throw { status: 400, message: "Only draft Debit Note can be posted" };
+
+    await sequelize.transaction(async (t) => {
+      // Create GL Entry: Nợ AP (331) / Có Hàng trả NCC (156)
+      const journal = await GlJournal.findOne({
+        where: { code: "PURCHASE" },
+        transaction: t,
+      });
+      if (!journal) throw new Error("PURCHASE journal not found");
+
+      const entry = await GlEntry.create(
+        {
+          journal_id: journal.id,
+          entry_no: `GL-DN-${dn.id}`,
+          entry_date: new Date(dn.debit_note_date),
+          reference_type: "ap_debit_note",
+          reference_id: dn.id,
+          memo: `AP Debit Note ${dn.debit_note_no}`,
+          status: "posted",
+          branch_id: dn.branch_id,
+        },
+        { transaction: t },
+      );
+
+      const amount = Number(dn.total_after_tax);
+      await GlEntryLine.bulkCreate(
+        [
+          {
+            entry_id: entry.id,
+            account_id: 3,
+            partner_id: dn.supplier_id,
+            debit: amount,
+            credit: 0,
+          }, // 331 AP
+          {
+            entry_id: entry.id,
+            account_id: 4,
+            partner_id: dn.supplier_id,
+            debit: 0,
+            credit: amount,
+          }, // 156 Inventory return
+        ],
+        { transaction: t },
+      );
+
+      await dn.update(
+        { status: "posted", gl_entry_id: entry.id },
+        { transaction: t },
+      );
+
+      // Reduce paid_amount on original invoice if linked
+      if (dn.original_ap_invoice_id) {
+        await sequelize.query(
+          `UPDATE ap_invoices
+           SET paid_amount = GREATEST(0, paid_amount + ?),
+               status = CASE
+                 WHEN GREATEST(0, paid_amount + ?) >= total_after_tax THEN 'paid'
+                 WHEN GREATEST(0, paid_amount + ?) > 0 THEN 'partially_paid'
+                 ELSE 'posted'
+               END
+           WHERE id = ?`,
+          {
+            replacements: [amount, amount, amount, dn.original_ap_invoice_id],
+            transaction: t,
+          },
+        );
+      }
+    });
+
+    // Trigger 7 — thông báo kế toán + buyer sau khi post debit note
+    purchaseNotificationService
+      .onDebitNotePosted({
+        debitNoteId: dn.id,
+        debitNoteNo: dn.debit_note_no,
+        totalAfterTax: Number(dn.total_after_tax),
+        branchId: dn.branch_id,
+        buyerId: null, // buyer_id không có trên debit note, có thể lookup từ PRA nếu cần
+        io: null,
+      })
+      .catch(() => {
+        /* fail-safe */
+      });
+
+    return this.getById(id, user);
+  },
+
+  async cancel(id: number, user: any) {
+    const dn = await ApDebitNote.findOne({
+      where: { id, branch_id: user.branch_id },
+    });
+    if (!dn) throw { status: 404, message: "AP Debit Note not found" };
+    if (!["draft", "posted"].includes(dn.status)) {
+      throw {
+        status: 400,
+        message: "Only draft or posted Debit Note can be cancelled",
+      };
+    }
+    await dn.update({ status: "cancelled" });
+    return this.getById(id, user);
+  },
+};
+
+// ─── Vendor Refund Service ────────────────────────────────────────────────────
+
+export const vendorRefundService = {
+  async getAll(query: any, user: any) {
+    const where: any = { branch_id: user.branch_id };
+    if (query.status) where.status = query.status;
+    if (query.supplier_id) where.supplier_id = Number(query.supplier_id);
+
+    return VendorRefund.findAll({
+      where,
+      include: [{ model: Partner, as: "supplier", attributes: ["id", "name"] }],
+      order: [["created_at", "DESC"]],
+    });
+  },
+
+  async getById(id: number, user: any) {
+    const refund = await VendorRefund.findOne({
+      where: { id, branch_id: user.branch_id },
+      include: [
+        { model: Partner, as: "supplier", attributes: ["id", "name", "email"] },
+        { model: User, as: "creator", attributes: ["id", "full_name"] },
+        {
+          model: ApDebitNote,
+          as: "debitNote",
+          attributes: ["id", "debit_note_no", "total_after_tax"],
+        },
+      ],
+    });
+    if (!refund) throw { status: 404, message: "Vendor Refund not found" };
+    return refund;
+  },
+
+  async create(payload: any, user: any) {
+    if (!payload.supplier_id)
+      throw { status: 400, message: "supplier_id is required" };
+    if (!payload.refund_date)
+      throw { status: 400, message: "refund_date is required" };
+    if (!payload.amount || Number(payload.amount) <= 0) {
+      throw { status: 400, message: "amount must be greater than zero" };
+    }
+
+    const refund = await VendorRefund.create({
+      branch_id: user.branch_id,
+      refund_no: generateNo("VR"),
+      debit_note_id: payload.debit_note_id ?? null,
+      supplier_id: payload.supplier_id,
+      refund_date: payload.refund_date,
+      amount: payload.amount,
+      method: payload.method ?? "bank",
+      bank_account_id: payload.bank_account_id ?? null,
+      transaction_reference: payload.transaction_reference ?? null,
+      currency_id: payload.currency_id ?? null,
+      exchange_rate: payload.exchange_rate ?? 1.0,
+      status: "draft",
+      approval_status: "draft",
+      created_by: user.id,
+      notes: payload.notes ?? null,
+    });
+
+    return this.getById(refund.id, user);
+  },
+
+  async post(id: number, user: any) {
+    const refund = await VendorRefund.findOne({
+      where: { id, branch_id: user.branch_id },
+    });
+    if (!refund) throw { status: 404, message: "Vendor Refund not found" };
+    if (refund.status !== "draft")
+      throw { status: 400, message: "Only draft refund can be posted" };
+
+    await sequelize.transaction(async (t) => {
+      const methodCode = refund.method === "cash" ? "CASH" : "BANK";
+      const journal = await GlJournal.findOne({
+        where: { code: methodCode },
+        transaction: t,
+      });
+      if (!journal) throw new Error(`${methodCode} journal not found`);
+
+      const entry = await GlEntry.create(
+        {
+          journal_id: journal.id,
+          entry_no: `GL-VR-${refund.id}`,
+          entry_date: new Date(refund.refund_date),
+          reference_type: "vendor_refund",
+          reference_id: refund.id,
+          memo: `Vendor Refund ${refund.refund_no}`,
+          status: "posted",
+          branch_id: refund.branch_id,
+        },
+        { transaction: t },
+      );
+
+      const amount = Number(refund.amount);
+      const cashAccountId = refund.method === "cash" ? 1 : 2; // 111 cash / 112 bank
+      await GlEntryLine.bulkCreate(
+        [
+          {
+            entry_id: entry.id,
+            account_id: cashAccountId,
+            partner_id: refund.supplier_id,
+            debit: amount,
+            credit: 0,
+          },
+          {
+            entry_id: entry.id,
+            account_id: 3,
+            partner_id: refund.supplier_id,
+            debit: 0,
+            credit: amount,
+          }, // 331 AP
+        ],
+        { transaction: t },
+      );
+
+      await refund.update(
+        { status: "posted", gl_entry_id: entry.id },
+        { transaction: t },
+      );
+    });
+
+    return this.getById(id, user);
+  },
+};

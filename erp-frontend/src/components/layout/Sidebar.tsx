@@ -39,24 +39,85 @@ const menuItems: MenuItem[] = [
     path: "/sales",
     allowedRoles: ["SALESMANAGER", "SALES", "CHACC", "ACCOUNT", "WHSTAFF"],
     subItems: [
-      { name: "Quotations", path: "/sales/quotations",      allowedRoles: ["SALES", "SALESMANAGER", "ADMIN"] },
-      { name: "Orders",     path: "/sales/orders",          allowedRoles: ["SALES", "SALESMANAGER", "CEO", "WHSTAFF", "ACCOUNT"] },
-      { name: "Invoices",   path: "/invoices",              allowedRoles: ["ACCOUNT", "CHACC", "CEO"] },
-      { name: "Receipts",   path: "/receipts",              allowedRoles: ["ACCOUNT", "CHACC"] },
-      { name: "Customers",  path: "/partners?type=customer",allowedRoles: ["SALES", "SALESMANAGER"] },
+      {
+        name: "Quotations",
+        path: "/sales/quotations",
+        allowedRoles: ["SALES", "SALESMANAGER", "ADMIN"],
+      },
+      {
+        name: "Orders",
+        path: "/sales/orders",
+        allowedRoles: ["SALES", "SALESMANAGER", "CEO", "WHSTAFF", "ACCOUNT"],
+      },
+      {
+        name: "Invoices",
+        path: "/invoices",
+        allowedRoles: ["ACCOUNT", "CHACC", "CEO"],
+      },
+      {
+        name: "Receipts",
+        path: "/receipts",
+        allowedRoles: ["ACCOUNT", "CHACC"],
+      },
+      {
+        name: "Customers",
+        path: "/partners?type=customer",
+        allowedRoles: ["SALES", "SALESMANAGER"],
+      },
     ],
   },
   {
     name: "Purchase",
     icon: ShoppingBag,
     path: "/purchase",
-    allowedRoles: ["PURCHASE", "PURCHASEMANAGER", "WHSTAFF", "ACCOUNT", "CHACC"],
+    allowedRoles: [
+      "PURCHASE",
+      "PURCHASEMANAGER",
+      "WHSTAFF",
+      "ACCOUNT",
+      "CHACC",
+    ],
     subItems: [
-      { name: "Purchase Orders", path: "/purchase/orders",   allowedRoles: ["PURCHASE", "PURCHASEMANAGER", "ACCOUNT", "WHSTAFF"] },
-      { name: "Invoices",        path: "/purchase/invoices", allowedRoles: ["ACCOUNT", "CHACC"] },
-      { name: "Payments",        path: "/purchase/payments", allowedRoles: ["ACCOUNT", "CHACC"] },
-      { name: "Vendors",         path: "/purchase/vendors",  allowedRoles: ["PURCHASE", "PURCHASEMANAGER"] },
-      { name: "RFQs",            path: "/purchase/rfqs",     allowedRoles: ["PURCHASE", "PURCHASEMANAGER"] },
+      {
+        name: "Purchase Orders",
+        path: "/purchase/orders",
+        allowedRoles: ["PURCHASE", "PURCHASEMANAGER", "ACCOUNT", "WHSTAFF"],
+      },
+      {
+        name: "Invoices",
+        path: "/purchase/invoices",
+        allowedRoles: ["ACCOUNT", "CHACC"],
+      },
+      {
+        name: "Payments",
+        path: "/purchase/payments",
+        allowedRoles: ["ACCOUNT", "CHACC"],
+      },
+      {
+        name: "Vendors",
+        path: "/purchase/vendors",
+        allowedRoles: ["PURCHASE", "PURCHASEMANAGER"],
+      },
+      {
+        name: "RFQs",
+        path: "/purchase/rfqs",
+        allowedRoles: ["PURCHASE", "PURCHASEMANAGER"],
+      },
+      {
+        name: "Return Auth.",
+        path: "/purchase/return-authorizations",
+        allowedRoles: ["PURCHASE", "PURCHASEMANAGER", "ACCOUNT", "CHACC"],
+      },
+      {
+        name: "Debit Notes",
+        path: "/purchase/debit-notes",
+        allowedRoles: ["ACCOUNT", "CHACC"],
+      },
+      {
+        name: "Vendor Refunds",
+        path: "/purchase/vendor-refunds",
+        allowedRoles: ["ACCOUNT", "CHACC"],
+      },
       {
         name: "OCR Invoice",
         path: "/purchase/document-intelligence",
@@ -75,13 +136,41 @@ const menuItems: MenuItem[] = [
     path: "/inventory",
     allowedRoles: ["WHMANAGER", "WHSTAFF", "ADMIN"],
     subItems: [
-      { name: "Products",    path: "/inventory/products",    allowedRoles: ["WHMANAGER", "WHSTAFF", "ADMIN"] },
-      { name: "Warehouses",  path: "/inventory/warehouses",  allowedRoles: ["ADMIN"] },
-      { name: "Locations",   path: "/inventory/locations",   allowedRoles: ["ADMIN", "WHMANAGER", "WHSTAFF"] },
-      { name: "Lots",        path: "/inventory/lots",        allowedRoles: ["ADMIN", "WHMANAGER", "WHSTAFF", "PURCHASE"] },
-      { name: "Category",    path: "/inventory/categories",  allowedRoles: ["WHMANAGER", "ADMIN", "WHSTAFF"] },
-      { name: "Stock",       path: "/inventory/stock",       allowedRoles: ["WHMANAGER", "WHSTAFF"] },
-      { name: "Stock Moves", path: "/inventory/stock_move",  allowedRoles: ["WHMANAGER", "WHSTAFF"] },
+      {
+        name: "Products",
+        path: "/inventory/products",
+        allowedRoles: ["WHMANAGER", "WHSTAFF", "ADMIN"],
+      },
+      {
+        name: "Warehouses",
+        path: "/inventory/warehouses",
+        allowedRoles: ["ADMIN"],
+      },
+      {
+        name: "Locations",
+        path: "/inventory/locations",
+        allowedRoles: ["ADMIN", "WHMANAGER", "WHSTAFF"],
+      },
+      {
+        name: "Lots",
+        path: "/inventory/lots",
+        allowedRoles: ["ADMIN", "WHMANAGER", "WHSTAFF", "PURCHASE"],
+      },
+      {
+        name: "Category",
+        path: "/inventory/categories",
+        allowedRoles: ["WHMANAGER", "ADMIN", "WHSTAFF"],
+      },
+      {
+        name: "Stock",
+        path: "/inventory/stock",
+        allowedRoles: ["WHMANAGER", "WHSTAFF"],
+      },
+      {
+        name: "Stock Moves",
+        path: "/inventory/stock_move",
+        allowedRoles: ["WHMANAGER", "WHSTAFF"],
+      },
       {
         name: "Physical Inventory",
         path: "/inventory/physical-inventories",
@@ -100,15 +189,51 @@ const menuItems: MenuItem[] = [
     path: "/crm",
     allowedRoles: ["SALES", "SALESMANAGER", "ADMIN"],
     subItems: [
-      { name: "Leads",              path: "/crm/leads",                   allowedRoles: ["SALES", "SALESMANAGER", "ADMIN"] },
-      { name: "Opportunities",      path: "/crm/opportunities",           allowedRoles: ["SALES", "SALESMANAGER", "ADMIN"] },
-      { name: "Tasks",              path: "/crm/activities/tasks",        allowedRoles: ["SALES", "SALESMANAGER"] },
-      { name: "Calls",              path: "/crm/activities/calls",        allowedRoles: ["SALES", "SALESMANAGER"] },
-      { name: "Emails",             path: "/crm/activities/emails",       allowedRoles: ["SALES", "SALESMANAGER"] },
-      { name: "Meetings",           path: "/crm/activities/meetings",     allowedRoles: ["SALES", "SALESMANAGER"] },
-      { name: "Lead Sources",       path: "/crm/settings/lead-sources",   allowedRoles: ["SALESMANAGER", "ADMIN"] },
-      { name: "Pipelines",          path: "/crm/settings/pipelines",      allowedRoles: ["SALESMANAGER", "ADMIN"] },
-      { name: "Scoring Rules",      path: "/crm/settings/scoring-rules",  allowedRoles: ["SALESMANAGER", "ADMIN"] },
+      {
+        name: "Leads",
+        path: "/crm/leads",
+        allowedRoles: ["SALES", "SALESMANAGER", "ADMIN"],
+      },
+      {
+        name: "Opportunities",
+        path: "/crm/opportunities",
+        allowedRoles: ["SALES", "SALESMANAGER", "ADMIN"],
+      },
+      {
+        name: "Tasks",
+        path: "/crm/activities/tasks",
+        allowedRoles: ["SALES", "SALESMANAGER"],
+      },
+      {
+        name: "Calls",
+        path: "/crm/activities/calls",
+        allowedRoles: ["SALES", "SALESMANAGER"],
+      },
+      {
+        name: "Emails",
+        path: "/crm/activities/emails",
+        allowedRoles: ["SALES", "SALESMANAGER"],
+      },
+      {
+        name: "Meetings",
+        path: "/crm/activities/meetings",
+        allowedRoles: ["SALES", "SALESMANAGER"],
+      },
+      {
+        name: "Lead Sources",
+        path: "/crm/settings/lead-sources",
+        allowedRoles: ["SALESMANAGER", "ADMIN"],
+      },
+      {
+        name: "Pipelines",
+        path: "/crm/settings/pipelines",
+        allowedRoles: ["SALESMANAGER", "ADMIN"],
+      },
+      {
+        name: "Scoring Rules",
+        path: "/crm/settings/scoring-rules",
+        allowedRoles: ["SALESMANAGER", "ADMIN"],
+      },
     ],
   },
   {
@@ -117,25 +242,72 @@ const menuItems: MenuItem[] = [
     path: "/finance",
     allowedRoles: ["ACCOUNT", "CHACC", "CEO"],
     subItems: [
-      { name: "Chart of Accounts", path: "/finance/accounts", allowedRoles: ["ACCOUNT", "CHACC"] },
-      { name: "Journal Entries",   path: "/finance/journals", allowedRoles: ["ACCOUNT", "CHACC"] },
-      { name: "Reports",           path: "/finance/reports",  allowedRoles: ["ACCOUNT", "CEO"] },
+      {
+        name: "Chart of Accounts",
+        path: "/finance/accounts",
+        allowedRoles: ["ACCOUNT", "CHACC"],
+      },
+      {
+        name: "Journal Entries",
+        path: "/finance/journals",
+        allowedRoles: ["ACCOUNT", "CHACC"],
+      },
+      {
+        name: "Reports",
+        path: "/finance/reports",
+        allowedRoles: ["ACCOUNT", "CEO"],
+      },
     ],
   },
   {
     name: "HR & Payroll",
     icon: UserCheck,
     path: "/hrm",
-    allowedRoles: ["HRMANAGER", "HR_STAFF", "CEO", "BRANCH_MANAGER", "ACCOUNT", "CHACC"],
+    allowedRoles: [
+      "HRMANAGER",
+      "HR_STAFF",
+      "CEO",
+      "BRANCH_MANAGER",
+      "ACCOUNT",
+      "CHACC",
+    ],
     subItems: [
-      { name: "Department",    path: "/hrm/department",    allowedRoles: ["HRMANAGER", "HR_STAFF"] },
-      { name: "Position",      path: "/hrm/position",      allowedRoles: ["HRMANAGER", "HR_STAFF"] },
-      { name: "Chart",         path: "",                   allowedRoles: ["CEO", "BRANCH_MANAGER"] },
-      { name: "Employees",     path: "/hrm/employees",     allowedRoles: ["HRMANAGER", "HR_STAFF"] },
-      { name: "Attendance",    path: "/hrm/attendance",    allowedRoles: ["HRMANAGER", "HR_STAFF"] },
-      { name: "Payroll Period",path: "/hrm/payroll",       allowedRoles: ["HRMANAGER", "HR_STAFF"] },
-      { name: "Payroll Items", path: "/hrm/payroll-items", allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC"] },
-      { name: "Payroll Run",   path: "/hrm/payroll-runs",  allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC"] },
+      {
+        name: "Department",
+        path: "/hrm/department",
+        allowedRoles: ["HRMANAGER", "HR_STAFF"],
+      },
+      {
+        name: "Position",
+        path: "/hrm/position",
+        allowedRoles: ["HRMANAGER", "HR_STAFF"],
+      },
+      { name: "Chart", path: "", allowedRoles: ["CEO", "BRANCH_MANAGER"] },
+      {
+        name: "Employees",
+        path: "/hrm/employees",
+        allowedRoles: ["HRMANAGER", "HR_STAFF"],
+      },
+      {
+        name: "Attendance",
+        path: "/hrm/attendance",
+        allowedRoles: ["HRMANAGER", "HR_STAFF"],
+      },
+      {
+        name: "Payroll Period",
+        path: "/hrm/payroll",
+        allowedRoles: ["HRMANAGER", "HR_STAFF"],
+      },
+      {
+        name: "Payroll Items",
+        path: "/hrm/payroll-items",
+        allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC"],
+      },
+      {
+        name: "Payroll Run",
+        path: "/hrm/payroll-runs",
+        allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC"],
+      },
     ],
   },
   {
@@ -144,10 +316,26 @@ const menuItems: MenuItem[] = [
     path: "/reports",
     allowedRoles: ["CEO", "BRANCH_MANAGER"],
     subItems: [
-      { name: "Sales Report",     path: "/reports/sales",      allowedRoles: ["CEO", "BRANCH_MANAGER"] },
-      { name: "Purchase Report",  path: "/reports/purchase",   allowedRoles: ["CEO", "BRANCH_MANAGER"] },
-      { name: "Inventory Report", path: "/reports/inventory",  allowedRoles: ["CEO", "BRANCH_MANAGER"] },
-      { name: "Financial Report", path: "/reports/financial",  allowedRoles: ["CEO", "BRANCH_MANAGER"] },
+      {
+        name: "Sales Report",
+        path: "/reports/sales",
+        allowedRoles: ["CEO", "BRANCH_MANAGER"],
+      },
+      {
+        name: "Purchase Report",
+        path: "/reports/purchase",
+        allowedRoles: ["CEO", "BRANCH_MANAGER"],
+      },
+      {
+        name: "Inventory Report",
+        path: "/reports/inventory",
+        allowedRoles: ["CEO", "BRANCH_MANAGER"],
+      },
+      {
+        name: "Financial Report",
+        path: "/reports/financial",
+        allowedRoles: ["CEO", "BRANCH_MANAGER"],
+      },
     ],
   },
   {
@@ -156,9 +344,17 @@ const menuItems: MenuItem[] = [
     path: "/partners",
     allowedRoles: ["PURCHASE", "ADMIN", "PURCHASEMANAGER"],
     subItems: [
-      { name: "All Partners", path: "/partners",              allowedRoles: ["ADMIN"] },
-      { name: "Customers",    path: "/partners?type=customer",allowedRoles: ["ADMIN"] },
-      { name: "Suppliers",    path: "/partners?type=supplier",allowedRoles: ["PURCHASE", "ADMIN", "PURCHASEMANAGER"] },
+      { name: "All Partners", path: "/partners", allowedRoles: ["ADMIN"] },
+      {
+        name: "Customers",
+        path: "/partners?type=customer",
+        allowedRoles: ["ADMIN"],
+      },
+      {
+        name: "Suppliers",
+        path: "/partners?type=supplier",
+        allowedRoles: ["PURCHASE", "ADMIN", "PURCHASEMANAGER"],
+      },
     ],
   },
   {
@@ -167,11 +363,19 @@ const menuItems: MenuItem[] = [
     path: "/company/branches",
     allowedRoles: ["CEO", "ADMIN"],
     subItems: [
-      { name: "Branch Management", path: "/company/branches",        allowedRoles: ["ADMIN", "CEO"] },
-      { name: "Create Branch",     path: "/company/branches/create", allowedRoles: ["CEO", "ADMIN"] },
+      {
+        name: "Branch Management",
+        path: "/company/branches",
+        allowedRoles: ["ADMIN", "CEO"],
+      },
+      {
+        name: "Create Branch",
+        path: "/company/branches/create",
+        allowedRoles: ["CEO", "ADMIN"],
+      },
     ],
   },
-   {
+  {
     name: "AI Narrative",
     icon: BrainCircuit,
     path: "/ai-narrative",
@@ -182,33 +386,50 @@ const menuItems: MenuItem[] = [
     icon: UserCog,
     allowedRoles: ["ADMIN"],
     subItems: [
-      { name: "Users",            path: "/admin/users",                allowedRoles: ["ADMIN"] },
-      { name: "Currencies",       path: "/master-data/currencies",     allowedRoles: ["ADMIN"] },
-      { name: "Exchange Rates",   path: "/master-data/exchange-rates", allowedRoles: ["ADMIN"] },
-      { name: "UOM",              path: "/master-data/uoms",           allowedRoles: ["ADMIN"] },
-      { name: "UOM Conversions",  path: "/master-data/uom-conversions",allowedRoles: ["ADMIN"] },
-      { name: "Taxes",            path: "/master-data/taxes",          allowedRoles: ["ADMIN"] },
+      { name: "Users", path: "/admin/users", allowedRoles: ["ADMIN"] },
+      {
+        name: "Currencies",
+        path: "/master-data/currencies",
+        allowedRoles: ["ADMIN"],
+      },
+      {
+        name: "Exchange Rates",
+        path: "/master-data/exchange-rates",
+        allowedRoles: ["ADMIN"],
+      },
+      { name: "UOM", path: "/master-data/uoms", allowedRoles: ["ADMIN"] },
+      {
+        name: "UOM Conversions",
+        path: "/master-data/uom-conversions",
+        allowedRoles: ["ADMIN"],
+      },
+      { name: "Taxes", path: "/master-data/taxes", allowedRoles: ["ADMIN"] },
     ],
   },
 ];
 
 export default function Sidebar() {
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
-  const location  = useLocation();
-  const { user }  = useSelector((s: RootState) => s.auth);
-  const branches  = useSelector((s: RootState) => s.branch.branches || []);
+  const location = useLocation();
+  const { user } = useSelector((s: RootState) => s.auth);
+  const branches = useSelector((s: RootState) => s.branch.branches || []);
   const defaultBranchId = branches[0]?.id;
 
-  const canAccess = (roles?: string[]) => !roles || roles.includes(user?.role.code ?? "");
+  const canAccess = (roles?: string[]) =>
+    !roles || roles.includes(user?.role.code ?? "");
 
   const toggleExpand = (name: string) =>
     setExpandedItems((prev) =>
-      prev.includes(name) ? prev.filter((i) => i !== name) : [...prev, name]
+      prev.includes(name) ? prev.filter((i) => i !== name) : [...prev, name],
     );
 
   const isModuleActive = (item: MenuItem) => {
     if (item.path && location.pathname.startsWith(item.path)) return true;
-    return item.subItems?.some((sub) => sub.path && location.pathname.startsWith(sub.path)) ?? false;
+    return (
+      item.subItems?.some(
+        (sub) => sub.path && location.pathname.startsWith(sub.path),
+      ) ?? false
+    );
   };
 
   const isSubItemActive = (path: string) => path && location.pathname === path;
@@ -227,15 +448,19 @@ export default function Sidebar() {
         {menuItems
           .filter((item) => canAccess(item.allowedRoles))
           .map((item) => {
-            const filteredSubs = item.subItems?.filter((sub) => canAccess(sub.allowedRoles));
+            const filteredSubs = item.subItems?.filter((sub) =>
+              canAccess(sub.allowedRoles),
+            );
             const moduleActive = isModuleActive(item);
-            const expanded     = expandedItems.includes(item.name);
+            const expanded = expandedItems.includes(item.name);
 
             return (
               <div key={item.name}>
                 {/* Module row */}
                 <div
-                  onClick={() => filteredSubs?.length && toggleExpand(item.name)}
+                  onClick={() =>
+                    filteredSubs?.length && toggleExpand(item.name)
+                  }
                   className={[
                     "flex items-center justify-between px-3 py-2 rounded-md cursor-pointer",
                     "text-sm font-medium transition-colors duration-100 select-none",
@@ -245,13 +470,20 @@ export default function Sidebar() {
                   ].join(" ")}
                 >
                   {item.path ? (
-                    <Link to={item.path} className="flex items-center gap-2.5 flex-1 min-w-0">
-                      <item.icon className={`w-4 h-4 shrink-0 ${moduleActive ? "text-orange-500" : "text-gray-400"}`} />
+                    <Link
+                      to={item.path}
+                      className="flex items-center gap-2.5 flex-1 min-w-0"
+                    >
+                      <item.icon
+                        className={`w-4 h-4 shrink-0 ${moduleActive ? "text-orange-500" : "text-gray-400"}`}
+                      />
                       <span className="truncate">{item.name}</span>
                     </Link>
                   ) : (
                     <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                      <item.icon className={`w-4 h-4 shrink-0 ${moduleActive ? "text-orange-500" : "text-gray-400"}`} />
+                      <item.icon
+                        className={`w-4 h-4 shrink-0 ${moduleActive ? "text-orange-500" : "text-gray-400"}`}
+                      />
                       <span className="truncate">{item.name}</span>
                     </div>
                   )}

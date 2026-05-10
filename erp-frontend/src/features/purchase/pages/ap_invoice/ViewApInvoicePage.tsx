@@ -684,6 +684,71 @@ export default function ViewApInvoicePage() {
             highlight
           />
         </div>
+
+        {/* Payment tracking — paid_amount / remaining */}
+        {(invoice as any).paid_amount !== undefined && (
+          <div className="mt-6 pt-5 border-t border-gray-200">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold text-gray-700">
+                Payment Progress
+              </span>
+              <span className="text-xs text-gray-500">
+                {Number((invoice as any).paid_amount ?? 0).toLocaleString(
+                  "vi-VN",
+                )}{" "}
+                / {Number(invoice.total_after_tax ?? 0).toLocaleString("vi-VN")}{" "}
+                VND
+              </span>
+            </div>
+            <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+              <div
+                className="h-3 rounded-full bg-orange-500 transition-all"
+                style={{
+                  width: `${Math.min(100, (Number((invoice as any).paid_amount ?? 0) / Math.max(1, Number(invoice.total_after_tax ?? 1))) * 100)}%`,
+                }}
+              />
+            </div>
+            <div className="flex justify-between mt-2 text-xs">
+              <span className="text-emerald-600 font-medium">
+                Paid:{" "}
+                {Number((invoice as any).paid_amount ?? 0).toLocaleString(
+                  "vi-VN",
+                )}{" "}
+                VND
+              </span>
+              <span className="text-red-500 font-medium">
+                Remaining:{" "}
+                {Math.max(
+                  0,
+                  Number(invoice.total_after_tax ?? 0) -
+                    Number((invoice as any).paid_amount ?? 0),
+                ).toLocaleString("vi-VN")}{" "}
+                VND
+              </span>
+            </div>
+            {(invoice as any).last_payment_date && (
+              <p className="text-xs text-gray-400 mt-1">
+                Last payment:{" "}
+                {new Date(
+                  (invoice as any).last_payment_date,
+                ).toLocaleDateString("vi-VN")}
+              </p>
+            )}
+            {(invoice as any).due_date && (
+              <p
+                className={`text-xs mt-1 font-medium ${new Date((invoice as any).due_date) < new Date() && invoice.status !== "paid" ? "text-red-500" : "text-gray-400"}`}
+              >
+                Due:{" "}
+                {new Date((invoice as any).due_date).toLocaleDateString(
+                  "vi-VN",
+                )}
+                {new Date((invoice as any).due_date) < new Date() &&
+                  invoice.status !== "paid" &&
+                  " ⚠️ Overdue"}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ================= OCR & MATCHING INFO ================= */}

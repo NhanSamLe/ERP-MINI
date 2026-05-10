@@ -1,5 +1,6 @@
 import { RouteObject } from "react-router-dom";
 import ProtectedRoute from "../components/ProtectedRoute";
+import { Navigate } from "react-router-dom";
 import PurchaseDashboard from "../features/purchase/PurchaseDashboard";
 import PurchaseOrderPage from "../features/purchase/pages/PurchaseOrderPages";
 import CreatePuchaseOrderPage from "../features/purchase/pages/CreatePurchaseOrderPage";
@@ -14,6 +15,13 @@ import ViewApPaymentPage from "@/features/purchase/pages/ap_payment/ViewApPaymen
 import DocumentUploadPage from "@/features/purchase/pages/document_intelligence/DocumentUploadPage";
 import DocumentHistoryPage from "@/features/purchase/pages/document_intelligence/DocumentHistoryPage";
 import AnomalyDashboardPage from "@/features/purchase/pages/document_intelligence/AnomalyDashboardPage";
+// New pages
+import RfqListPage from "@/features/purchase/pages/rfq/RfqListPage";
+import RfqDetailPage from "@/features/purchase/pages/rfq/RfqDetailPage";
+import PraListPage from "@/features/purchase/pages/purchaseReturn/PraListPage";
+import PraDetailPage from "@/features/purchase/pages/purchaseReturn/PraDetailPage";
+import DebitNoteListPage from "@/features/purchase/pages/purchaseReturn/DebitNoteListPage";
+import VendorRefundListPage from "@/features/purchase/pages/purchaseReturn/VendorRefundListPage";
 
 const purchaseRoutes: RouteObject[] = [
   {
@@ -160,6 +168,79 @@ const purchaseRoutes: RouteObject[] = [
         ]}
       >
         <AnomalyDashboardPage />
+      </ProtectedRoute>
+    ),
+  },
+  // ─── Vendor redirect ──────────────────────────────────────────────────────
+  {
+    path: "purchase/vendors",
+    element: <Navigate to="/partners?type=supplier" replace />,
+  },
+  // ─── RFQ ──────────────────────────────────────────────────────────────────
+  {
+    path: "purchase/rfqs",
+    element: (
+      <ProtectedRoute
+        allowedRoles={[Roles.PURCHASE, Roles.PURCHASEMANAGER, Roles.ACCOUNT]}
+      >
+        <RfqListPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "purchase/rfqs/:id",
+    element: (
+      <ProtectedRoute
+        allowedRoles={[Roles.PURCHASE, Roles.PURCHASEMANAGER, Roles.ACCOUNT]}
+      >
+        <RfqDetailPage />
+      </ProtectedRoute>
+    ),
+  },
+  // ─── Purchase Returns ──────────────────────────────────────────────────────
+  {
+    path: "purchase/return-authorizations",
+    element: (
+      <ProtectedRoute
+        allowedRoles={[
+          Roles.PURCHASE,
+          Roles.PURCHASEMANAGER,
+          Roles.ACCOUNT,
+          Roles.CHACC,
+        ]}
+      >
+        <PraListPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "purchase/return-authorizations/:id",
+    element: (
+      <ProtectedRoute
+        allowedRoles={[
+          Roles.PURCHASE,
+          Roles.PURCHASEMANAGER,
+          Roles.ACCOUNT,
+          Roles.CHACC,
+        ]}
+      >
+        <PraDetailPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "purchase/debit-notes",
+    element: (
+      <ProtectedRoute allowedRoles={[Roles.ACCOUNT, Roles.CHACC]}>
+        <DebitNoteListPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "purchase/vendor-refunds",
+    element: (
+      <ProtectedRoute allowedRoles={[Roles.ACCOUNT, Roles.CHACC]}>
+        <VendorRefundListPage />
       </ProtectedRoute>
     ),
   },

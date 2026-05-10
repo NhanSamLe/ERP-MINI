@@ -119,6 +119,65 @@ export const purchaseOrderService = {
     });
   },
 
+  /**
+   * getAllPOWithFilters — hỗ trợ filter mở rộng:
+   *   ?receipt_status=pending|partial|fully_received
+   *   ?invoice_status=not_invoiced|partial|invoiced
+   *   ?buyer_id=123
+   *   ?overdue_delivery=true  (expected_delivery_date < today, receipt_status != fully_received)
+   *   ?status=draft,confirmed,...
+   *   ?supplier_id=5
+   *   ?date_from / date_to
+   */
+  async getAllPOWithFilters(query: any, user: any) {
+    const where: any = { branch_id: user.branch_id };
+
+    if (user.role === Role.PURCHASE) where.created_by = user.id;
+
+    if (query.status) {
+      where.status = Array.isArray(query.status)
+        ? { [Op.in]: query.status }
+        : query.status.includes(",")
+          ? { [Op.in]: query.status.split(",") }
+          : query.status;
+    }
+    if (query.supplier_id) where.supplier_id = Number(query.supplier_id);
+    if (query.buyer_id) where.buyer_id = Number(query.buyer_id);
+    if (query.receipt_status) where.receipt_status = query.receipt_status;
+    if (query.invoice_status) where.invoice_status = query.invoice_status;
+
+    if (query.date_from || query.date_to) {
+      where.order_date = {};
+      if (query.date_from) where.order_date[Op.gte] = new Date(query.date_from);
+      if (query.date_to) where.order_date[Op.lte] = new Date(query.date_to);
+    }
+
+    // overdue_delivery: expected_delivery_date < today AND not fully received
+    if (query.overdue_delivery === "true") {
+      where.expected_delivery_date = { [Op.lt]: new Date() };
+      where.receipt_status = { [Op.notIn]: ["fully_received"] };
+      where.status = { [Op.notIn]: ["cancelled", "draft"] };
+    }
+
+    return PurchaseOrder.findAll({
+      where,
+      include: [
+        { model: PurchaseOrderLine, as: "lines" },
+        {
+          model: User,
+          as: "creator",
+          attributes: ["id", "username", "full_name"],
+        },
+        {
+          model: User,
+          as: "buyer",
+          attributes: ["id", "full_name"],
+        },
+      ],
+      order: [["created_at", "DESC"]],
+    });
+  },
+
   async getByStatus(statusList: string[], user: any) {
     return PurchaseOrder.findAll({
       include: [{ model: PurchaseOrderLine, as: "lines" }],
@@ -776,5 +835,112 @@ export const purchaseOrderService = {
       line_tax: lineTax,
       line_total_after_tax: lineTotalAfterTax,
     };
+  },
+
+  // ─── RECEIPT / INVOICE STATUS TRACKING ────────────────────────────────────
+
+  /**
+   * Cập nhật receipt_status của PO dựa trên qty_received của tất cả lines.
+   * Gọi sau khi GRN (stock move) được confirm và qty_received đã được cập nhật.
+   */
+  async updateReceiptStatus(poId: number): Promise<void> {
+    const lines = await PurchaseOrderLine.findAll({ where: { po_id: poId } });
+    if (!lines.length) return;
+
+    const allReceived = lines.every(
+      (l) => Number(l.qty_received ?? 0) >= Number(l.quantity ?? 0),
+    );
+    const anyReceived = lines.some((l) => Number(l.qty_received ?? 0) > 0);
+
+    const receiptStatus = allReceived
+      ? "fully_received"
+      : anyReceived
+        ? "partial"
+        : "pending";
+
+    await PurchaseOrder.update({ receipt_status: receiptStatus } as any, {
+      where: { id: poId },
+    });
+  },
+
+  /**
+   * Cập nhật invoice_status của PO dựa trên qty_invoiced của tất cả lines.
+   * Gọi sau khi AP Invoice line được link với PO line (po_line_id).
+   */
+  async updateInvoiceStatus(poId: number): Promise<void> {
+    const lines = await PurchaseOrderLine.findAll({ where: { po_id: poId } });
+    if (!lines.length) return;
+
+    const allInvoiced = lines.every(
+      (l) => Number(l.qty_invoiced ?? 0) >= Number(l.quantity ?? 0),
+    );
+    const anyInvoiced = lines.some((l) => Number(l.qty_invoiced ?? 0) > 0);
+
+    const invoiceStatus = allInvoiced
+      ? "invoiced"
+      : anyInvoiced
+        ? "partial"
+        : "not_invoiced";
+
+    await PurchaseOrder.update({ invoice_status: invoiceStatus } as any, {
+      where: { id: poId },
+    });
+  },
+
+  /**
+   * Hook gọi khi GRN (stock move type=receipt) được confirm.
+   * Cập nhật qty_received trên PO lines liên quan, sau đó cập nhật receipt_status.
+   *
+   * @param stockMoveId - ID của stock move vừa được confirm
+   */
+  async onGrnConfirmed(stockMoveId: number): Promise<void> {
+    // Lấy stock move để biết po_id
+    const move = await StockMove.findByPk(stockMoveId, {
+      include: [{ model: StockMoveLine, as: "lines" }],
+    });
+    if (!move || move.reference_type !== "purchase_order" || !move.reference_id)
+      return;
+
+    const poId = move.reference_id;
+    const moveLines: StockMoveLine[] = (move as any).lines ?? [];
+
+    // Cập nhật qty_received cho từng PO line dựa trên product_id
+    for (const moveLine of moveLines) {
+      // Tìm PO line khớp product_id
+      const poLine = await PurchaseOrderLine.findOne({
+        where: { po_id: poId, product_id: moveLine.product_id },
+      });
+      if (!poLine) continue;
+
+      const currentReceived = Number(poLine.qty_received ?? 0);
+      const addedQty = Number(moveLine.quantity ?? 0);
+
+      await poLine.update({ qty_received: currentReceived + addedQty } as any);
+    }
+
+    await this.updateReceiptStatus(poId);
+  },
+
+  /**
+   * Hook gọi khi AP Invoice line được link với PO line.
+   * Cập nhật qty_invoiced trên PO line, sau đó cập nhật invoice_status.
+   *
+   * @param poLineId - ID của PO line
+   * @param qty      - Số lượng vừa được lập hóa đơn
+   * @param delta    - +qty khi tạo invoice, -qty khi hủy invoice
+   */
+  async onApInvoiceLineLinked(
+    poLineId: number,
+    qty: number,
+    delta: 1 | -1 = 1,
+  ): Promise<void> {
+    const poLine = await PurchaseOrderLine.findByPk(poLineId);
+    if (!poLine) return;
+
+    const currentInvoiced = Number(poLine.qty_invoiced ?? 0);
+    const newInvoiced = Math.max(0, currentInvoiced + qty * delta);
+
+    await poLine.update({ qty_invoiced: newInvoiced } as any);
+    await this.updateInvoiceStatus(poLine.po_id);
   },
 };
