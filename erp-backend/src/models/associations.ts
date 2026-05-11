@@ -78,6 +78,9 @@ import { ArCreditNoteLine } from "../modules/sales/models/arCreditNoteLine.model
 import { ArRefund } from "../modules/sales/models/arRefund.model";
 import { InvoiceDocument } from "../modules/document-intelligence/models/invoiceDocument.model";
 import { OcrFieldMapping } from "../modules/document-intelligence/models/ocrFieldMapping.model";
+import { LeaveType } from "../modules/hrm/models/leaveType.model";
+import { LeaveAllocation } from "../modules/hrm/models/leaveAllocation.model";
+import { LeaveRequest } from "../modules/hrm/models/leaveRequest.model";
 export function applyAssociations() {
   // =====================
   // AUTH
@@ -1081,4 +1084,39 @@ Activity.belongsTo(Partner, {
   foreignKey: "related_id",
   as: "customer",
   constraints: false,
+});
+Employee.hasMany(LeaveAllocation, {
+  foreignKey: "employee_id",
+  as: "leaveAllocations",
+});
+LeaveAllocation.belongsTo(Employee, {
+  foreignKey: "employee_id",
+  as: "employee",
+});
+
+LeaveType.hasMany(LeaveAllocation, {
+  foreignKey: "leave_type_id",
+  as: "allocations",
+});
+LeaveAllocation.belongsTo(LeaveType, {
+  foreignKey: "leave_type_id",
+  as: "leaveType",
+});
+
+Employee.hasMany(LeaveRequest, {
+  foreignKey: "employee_id",
+  as: "leaveRequests",
+});
+LeaveRequest.belongsTo(Employee, {
+  foreignKey: "employee_id",
+  as: "employee",
+});
+
+LeaveType.hasMany(LeaveRequest, {
+  foreignKey: "leave_type_id",
+  as: "requests",
+});
+LeaveRequest.belongsTo(LeaveType, {
+  foreignKey: "leave_type_id",
+  as: "leaveType",
 });

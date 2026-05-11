@@ -133,9 +133,11 @@ const menuItems: MenuItem[] = [
       { name: "Chart",         path: "",                   allowedRoles: ["CEO", "BRANCH_MANAGER"] },
       { name: "Employees",     path: "/hrm/employees",     allowedRoles: ["HRMANAGER", "HR_STAFF"] },
       { name: "Attendance",    path: "/hrm/attendance",    allowedRoles: ["HRMANAGER", "HR_STAFF"] },
+      { name: "Leave Management", path: "/hrm/leave", allowedRoles: ["HRMANAGER", "HR_STAFF"] },
       { name: "Payroll Period",path: "/hrm/payroll",       allowedRoles: ["HRMANAGER", "HR_STAFF"] },
       { name: "Payroll Items", path: "/hrm/payroll-items", allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC"] },
       { name: "Payroll Run",   path: "/hrm/payroll-runs",  allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC"] },
+      
     ],
   },
   {

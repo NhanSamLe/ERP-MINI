@@ -9,6 +9,7 @@ import UserFormPage from "../features/hrm/page/UserFormPage";
 import PayrollPeriodPage from "../features/hrm/page/PayrollPeriodPage";
 import PayrollItemPage from "../features/hrm/page/PayrollItemPage"; 
 import PayrollRunPage from "../features/hrm/page/PayrollRunPage";
+import LeavePage from "../features/hrm/page/LeavePage";
 
 const hrmRoutes: RouteObject[] = [
   {
@@ -55,6 +56,10 @@ const hrmRoutes: RouteObject[] = [
   // ví dụ sau này:
   // { path: "/hrm/position", element: <PositionPage /> },
   // { path: "/hrm/employees", element: <EmployeePage /> },
+  {
+  path: "/hrm/leave",
+  element: <LeavePage />,
+},
 ];
 
 export default hrmRoutes;
