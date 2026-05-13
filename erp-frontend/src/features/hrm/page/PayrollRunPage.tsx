@@ -1256,6 +1256,12 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                               </span>
                             </div>
                             <div className="flex justify-between">
+  <span className="text-gray-600">Tổng thu nhập (Gross)</span>
+  <span className="font-semibold text-emerald-700">
+    {money(evidence.breakdown.gross)} VNĐ
+  </span>
+</div>
+                            <div className="flex justify-between">
                               <span className="text-gray-600">Trừ vắng</span>
                               <span className="font-semibold text-red-600">
                                 -{money(evidence.breakdown.absentDeduction)} VNĐ
@@ -1267,13 +1273,33 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                                 -{money(evidence.breakdown.lateDeduction)} VNĐ
                               </span>
                             </div>
+                            <div className="flex justify-between">
+  <span className="text-gray-600">Thuế TNCN (PIT)</span>
+  <span className="font-semibold text-red-600">
+    -{money(evidence.breakdown.pit)} VNĐ
+  </span>
+</div>
                           </div>
 
                           <div className="border border-gray-200 rounded-xl p-4 bg-gradient-to-br from-gray-50 to-white">
                             <p className="text-xs font-semibold text-gray-600 mb-2">
                               Kết quả
                             </p>
+                          <div className="mt-3 pt-3 border-t border-gray-200 space-y-2 text-sm">
+  <div className="flex justify-between">
+    <span className="text-gray-600">Loại hợp đồng</span>
+    <span className="font-semibold capitalize">
+      {evidence.employee.contract_type}
+    </span>
+  </div>
 
+  <div className="flex justify-between">
+    <span className="text-gray-600">Người phụ thuộc</span>
+    <span className="font-semibold">
+      {evidence.employee.dependent || 0}
+    </span>
+  </div>
+</div>
                             <div className="flex justify-between items-end">
                               <span className="text-sm text-gray-600">
                                 NET (tính lại)
@@ -1315,12 +1341,12 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                               <div className="mt-3 p-3 rounded-lg border border-gray-200 bg-white flex items-start gap-2">
                                 <Info className="w-4 h-4 text-gray-500 mt-0.5" />
                                 <p className="text-xs text-gray-600 leading-5">
-                                  <b>NET (tính lại)</b> là số tiền hệ thống tính
-                                  theo chấm công. <b>Amount đang lưu</b> là số
-                                  tiền đang được lưu ở bảng lương
-                                  (payroll_run_lines). Nếu có <b>chênh lệch</b>,
-                                  HR có thể chỉnh lại dòng lương cho đúng trước
-                                  khi kế toán post.
+                                  NET (tính lại) là số tiền hệ thống tính dựa trên:
+• Chấm công
+• Phụ cấp
+• Khấu trừ vắng/trễ
+• Thuế TNCN theo loại hợp đồng
+• Giảm trừ người phụ thuộc
                                 </p>
                               </div>
                             </div>

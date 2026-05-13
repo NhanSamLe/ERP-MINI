@@ -16,5 +16,7 @@ export const employeeApi = {
 
   remove: (id: number) =>
     axiosClient.delete(`/hrm/employees/${id}`),
+  resign: (id: number, data: { resign_date: string; resign_reason?: string }) =>
+    axiosClient.post(`/hrm/employees/${id}/resign`, data),
 };
 

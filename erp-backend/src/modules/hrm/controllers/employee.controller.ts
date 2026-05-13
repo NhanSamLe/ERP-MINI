@@ -88,6 +88,23 @@ export async function deleteEmployee(req: Request, res: Response) {
   }
 }
 
+export async function resignEmployee(req: Request, res: Response) {
+  try {
+    const userJwt = (req as any).user;
+    const id = Number(req.params.id);
+    if (Number.isNaN(id)) return res.status(400).json({ message: "Invalid id" });
+
+    const { resign_date, resign_reason } = req.body;
+    if (!resign_date) return res.status(400).json({ message: "resign_date is required" });
+
+    const emp = await employeeService.resignEmployee(id, { resign_date, resign_reason }, userJwt);
+    return res.json(emp);
+  } catch (err: any) {
+    const status = err.message === "Forbidden" ? 403 : 400;
+    return res.status(status).json({ message: err.message });
+  }
+}
+
 export async function getOwnProfile(req: Request, res: Response) {
   try {
     const userJwt = (req as any).user;

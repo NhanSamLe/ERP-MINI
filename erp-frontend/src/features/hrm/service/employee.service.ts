@@ -29,3 +29,10 @@ export async function updateEmployee(id: number, data: EmployeeFormPayload) {
 export async function deleteEmployee(id: number) {
   await employeeApi.remove(id);
 }
+export async function resignEmployee(
+  id: number,
+  data: { resign_date: string; resign_reason?: string }
+) {
+  const res = await employeeApi.resign(id, data);
+  return res.data;
+}

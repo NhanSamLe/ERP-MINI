@@ -12,7 +12,9 @@ export interface AttendanceDTO {
 export interface PayrollEvidenceDTO {
   run: { id: number; run_no: string; status: "draft" | "posted" };
   period: { id: number; start_date: string; end_date: string };
-  employee: { id: number; full_name: string; base_salary: number };
+  employee: { id: number; full_name: string;  base_salary: number;
+  contract_type: string;
+  dependent: number; };
 
   attendance: AttendanceDTO[];
 
@@ -24,13 +26,15 @@ export interface PayrollEvidenceDTO {
   };
 
   breakdown: {
-    dailyRate: number;
-    basePay: number;
-    allowance: number;
-    absentDeduction: number;
-    lateDeduction: number;
-    net: number;
-    storedAmount: number | null;
-    diff: number | null;
-  };
+  dailyRate: number;
+  basePay: number;
+  allowance: number;
+  gross: number;
+  absentDeduction: number;
+  lateDeduction: number;
+  pit: number;
+  net: number;
+  storedAmount: number | null;
+  diff: number | null;
+}
 }
