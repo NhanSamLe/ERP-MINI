@@ -8,6 +8,7 @@ import { Partner } from "../../../models";
 import { User } from "../../auth/models/user.model";
 import { Branch } from "../../company/models/branch.model";
 import { Product } from "../../product/models/product.model";
+import { UomConversion } from "../../master-data/models/uomConversion.model";
 import { Role } from "../../../core/types/enum";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -18,6 +19,71 @@ function generateRfqNo(): string {
 
 function generatePoNo(): string {
   return `PO-${Date.now()}`;
+}
+
+/**
+ * Quy đổi quantity từ purchase UOM sang stock UOM.
+ * Dùng khi convert RFQ → PO để tính qty_in_stock_uom cho PO lines.
+ */
+async function resolveQtyInStockUom(
+  quantity: number,
+  purchaseUomId: number | null | undefined,
+  productStockUomId: number | null | undefined,
+  productId: number | null | undefined,
+): Promise<number> {
+  if (
+    !purchaseUomId ||
+    !productStockUomId ||
+    purchaseUomId === productStockUomId
+  ) {
+    return quantity;
+  }
+
+  // Forward product-specific
+  if (productId) {
+    const c = await UomConversion.findOne({
+      where: {
+        product_id: productId,
+        from_uom_id: purchaseUomId,
+        to_uom_id: productStockUomId,
+      },
+    });
+    if (c) return quantity * parseFloat(String(c.factor));
+  }
+
+  // Forward generic
+  const gf = await UomConversion.findOne({
+    where: {
+      product_id: null,
+      from_uom_id: purchaseUomId,
+      to_uom_id: productStockUomId,
+    },
+  });
+  if (gf) return quantity * parseFloat(String(gf.factor));
+
+  // Reverse product-specific
+  if (productId) {
+    const rp = await UomConversion.findOne({
+      where: {
+        product_id: productId,
+        from_uom_id: productStockUomId,
+        to_uom_id: purchaseUomId,
+      },
+    });
+    if (rp) return quantity / parseFloat(String(rp.factor));
+  }
+
+  // Reverse generic
+  const rg = await UomConversion.findOne({
+    where: {
+      product_id: null,
+      from_uom_id: productStockUomId,
+      to_uom_id: purchaseUomId,
+    },
+  });
+  if (rg) return quantity / parseFloat(String(rg.factor));
+
+  return quantity; // fallback
 }
 
 const INCLUDE_FULL = [
@@ -374,6 +440,18 @@ export const rfqService = {
 
       const lines = (rfq as any).lines as PurchaseRfqLine[];
       for (const line of lines) {
+        // Lấy stock UOM của product để tính qty_in_stock_uom
+        const product = await Product.findByPk(line.product_id, {
+          attributes: ["id", "uom_id"],
+        });
+        const productStockUomId = product?.uom_id ?? null;
+        const qty_in_stock_uom = await resolveQtyInStockUom(
+          Number(line.quantity),
+          line.uom_id ?? null,
+          productStockUomId,
+          line.product_id,
+        );
+
         await PurchaseOrderLine.create(
           {
             po_id: po.id,
@@ -381,6 +459,7 @@ export const rfqService = {
             description: line.description,
             quantity: line.quantity,
             uom_id: line.uom_id,
+            qty_in_stock_uom,
             unit_price: line.unit_price,
             discount_percent: line.discount_percent,
             discount_amount: line.discount_amount,

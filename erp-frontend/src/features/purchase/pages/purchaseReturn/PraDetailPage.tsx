@@ -15,6 +15,7 @@ import {
   submitPraThunk,
   approvePraThunk,
   rejectPraThunk,
+  clearSelectedPra,
 } from "../../store/purchaseReturn";
 import { StatusBadge } from "../../../../components/common";
 import { ActionConfirmModal } from "../../../../components/common";
@@ -82,6 +83,9 @@ export default function PraDetailPage() {
   useEffect(() => {
     const numId = Number(id);
     if (id && !isNaN(numId)) dispatch(fetchPraByIdThunk(numId));
+    return () => {
+      dispatch(clearSelectedPra());
+    };
   }, [id, dispatch]);
 
   const handleAction = async (action: typeof modal, reason?: string) => {
@@ -120,6 +124,14 @@ export default function PraDetailPage() {
     ];
     if (pra.status === "draft" && role === Roles.PURCHASE) {
       base.push({
+        label: "Edit",
+        variant: "outline" as const,
+        onClick: () =>
+          navigate(`/purchase/return-authorizations/${pra.id}/edit`),
+      });
+    }
+    if (pra.status === "draft" && role === Roles.PURCHASE) {
+      base.push({
         label: "Submit",
         variant: "primary" as const,
         onClick: () => setModal("submit"),
@@ -150,10 +162,25 @@ export default function PraDetailPage() {
     return base;
   };
 
-  if (loading || !pra) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-6 h-6 border-2 border-orange-200 border-t-orange-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!pra) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-500">
+        <CornerUpLeft className="w-10 h-10 text-gray-300" />
+        <p className="text-sm font-medium">Return Authorization not found</p>
+        <button
+          onClick={() => navigate("/purchase/return-authorizations")}
+          className="text-sm text-orange-600 hover:underline"
+        >
+          Back to list
+        </button>
       </div>
     );
   }

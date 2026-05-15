@@ -35,9 +35,11 @@ interface LineItem {
   product_id: string | number;
   product_name: string;
   product_image: string;
-  sale_price?: number;
+  sale_price?: number; // Price in stock UOM (for calculation)
+  price_in_purchase_uom?: number; // Price user entered (in purchase UOM)
   sku?: string;
   quantity: number;
+  quantity_in_stock_uom?: number; // Quantity converted to stock UOM
   uom_id?: number | null;
   uom_name?: string;
   stock_uom_id?: number | null;
@@ -143,10 +145,51 @@ export default function CreatePurchaseOrderPage() {
     return Number(supplierPrice ?? product.cost_price ?? 0);
   };
 
+  // ── Helper: convert price từ purchase UOM sang stock UOM ──────────────────
+  const convertPriceToStockUom = (
+    priceInPurchaseUom: number,
+    purchaseUomId: number | null | undefined,
+    stockUomId: number | null | undefined,
+    productId: number,
+  ): number => {
+    if (!purchaseUomId || !stockUomId || purchaseUomId === stockUomId) {
+      return priceInPurchaseUom;
+    }
+
+    // Find conversion factor
+    const conversion = conversions.find(
+      (c: any) =>
+        c.from_uom_id === purchaseUomId &&
+        c.to_uom_id === stockUomId &&
+        (c.product_id === productId || c.product_id === null),
+    );
+
+    if (conversion) {
+      // Price per stock UOM = Price per purchase UOM / conversion factor
+      return priceInPurchaseUom / Number(conversion.factor);
+    }
+
+    // Try reverse conversion
+    const reverseConversion = conversions.find(
+      (c: any) =>
+        c.from_uom_id === stockUomId &&
+        c.to_uom_id === purchaseUomId &&
+        (c.product_id === productId || c.product_id === null),
+    );
+
+    if (reverseConversion) {
+      // Price per stock UOM = Price per purchase UOM * conversion factor
+      return priceInPurchaseUom * Number(reverseConversion.factor);
+    }
+
+    return priceInPurchaseUom;
+  };
+
   // ── Helper: recalculate totals từ danh sách lines ─────────────────────────
   const recalcTotals = (updatedLines: LineItem[]) => {
     const beforeTax = updatedLines.reduce(
-      (sum, l) => sum + (l.sale_price || 0) * l.quantity,
+      (sum, l) =>
+        sum + (l.sale_price || 0) * (l.quantity_in_stock_uom || l.quantity),
       0,
     );
     const tax = updatedLines.reduce((sum, l) => sum + l.tax_amount, 0);
@@ -166,13 +209,25 @@ export default function CreatePurchaseOrderPage() {
       const cached = productCache[Number(line.product_id)];
       if (!cached) return line;
 
-      const price = resolvePrice(cached, newSupplierId);
-      const taxAmount = line.quantity * price * (line.tax_rate / 100);
-      const lineTotal = line.quantity * price + taxAmount;
+      // Get new price in purchase UOM
+      const newPriceInPurchaseUom = resolvePrice(cached, newSupplierId);
+
+      // Convert to stock UOM
+      const newPriceInStockUom = convertPriceToStockUom(
+        newPriceInPurchaseUom,
+        line.uom_id,
+        line.stock_uom_id,
+        Number(line.product_id),
+      );
+
+      const qtyForCalc = line.quantity_in_stock_uom || line.quantity;
+      const taxAmount = qtyForCalc * newPriceInStockUom * (line.tax_rate / 100);
+      const lineTotal = qtyForCalc * newPriceInStockUom + taxAmount;
 
       return {
         ...line,
-        sale_price: price,
+        price_in_purchase_uom: newPriceInPurchaseUom,
+        sale_price: newPriceInStockUom,
         tax_amount: taxAmount,
         line_total: lineTotal,
       };
@@ -196,11 +251,34 @@ export default function CreatePurchaseOrderPage() {
     const rate = Number(tax?.rate || 0);
     const qty = 1;
 
-    // supplierId lấy từ state hiện tại — không bị stale vì resolvePrice
-    // nhận trực tiếp supplierId thay vì đọc qua closure cũ
-    const price = resolvePrice(product, supplierId);
-    const taxAmount = qty * price * (rate / 100);
-    const lineTotal = qty * price + taxAmount;
+    // Get price in purchase UOM (from supplier or cost_price)
+    const priceInPurchaseUom = resolvePrice(product, supplierId);
+
+    // Calculate quantity in stock UOM
+    const purchaseUomId = product.purchase_uom_id ?? product.uom_id ?? null;
+    const stockUomId = product.uom_id ?? null;
+    let qtyInStockUom = qty;
+
+    if (purchaseUomId && stockUomId && purchaseUomId !== stockUomId) {
+      qtyInStockUom = previewQtyInStockUom(
+        qty,
+        purchaseUomId,
+        stockUomId,
+        conversions,
+        Number(product.id),
+      );
+    }
+
+    // Convert price to stock UOM for calculation
+    const priceInStockUom = convertPriceToStockUom(
+      priceInPurchaseUom,
+      purchaseUomId,
+      stockUomId,
+      Number(product.id),
+    );
+
+    const taxAmount = qtyInStockUom * priceInStockUom * (rate / 100);
+    const lineTotal = qtyInStockUom * priceInStockUom + taxAmount;
 
     const newLine: LineItem = {
       id: Date.now(),
@@ -208,11 +286,13 @@ export default function CreatePurchaseOrderPage() {
       product_name: product.name,
       product_image: product.image_url || "",
       sku: product.sku,
-      sale_price: price,
+      sale_price: priceInStockUom, // Price in stock UOM (for calculation)
+      price_in_purchase_uom: priceInPurchaseUom, // Price user sees (in purchase UOM)
       quantity: qty,
-      uom_id: product.purchase_uom_id ?? product.uom_id ?? null,
+      quantity_in_stock_uom: qtyInStockUom,
+      uom_id: purchaseUomId,
       uom_name: product.purchaseUom?.name ?? product.uom?.name ?? "",
-      stock_uom_id: product.uom_id ?? null,
+      stock_uom_id: stockUomId,
       tax_rate_id: product.tax_rate_id,
       tax_type: tax?.type ?? "VAT",
       tax_rate: rate,
@@ -231,18 +311,61 @@ export default function CreatePurchaseOrderPage() {
     setShowDropdown(false);
   };
 
-  const updateLine = (id: number, field: keyof LineItem, value: number) => {
-    if (field === "quantity" && value <= 0) {
+  const updateLine = (
+    id: number,
+    field: keyof LineItem,
+    value: number | null,
+  ) => {
+    if (field === "quantity" && value && value <= 0) {
       removeLine(id);
       return;
     }
     const updatedLines = lines.map((line) => {
       if (line.id !== id) return line;
       const updated = { ...line, [field]: value };
+
+      // If UOM changed, recalculate quantity_in_stock_uom and price conversion
+      if (field === "uom_id") {
+        const newUomId = value as number | null;
+        const qtyInStockUom =
+          newUomId && line.stock_uom_id && newUomId !== line.stock_uom_id
+            ? previewQtyInStockUom(
+                line.quantity,
+                newUomId,
+                line.stock_uom_id,
+                conversions,
+                Number(line.product_id),
+              )
+            : line.quantity;
+        updated.quantity_in_stock_uom = qtyInStockUom;
+
+        // Also recalculate price conversion when UOM changes
+        const newPriceInStockUom = convertPriceToStockUom(
+          updated.price_in_purchase_uom || updated.sale_price || 0,
+          newUomId,
+          line.stock_uom_id,
+          Number(line.product_id),
+        );
+        updated.sale_price = newPriceInStockUom;
+      }
+
+      // If price_in_purchase_uom changed, convert to stock UOM
+      if (field === "price_in_purchase_uom") {
+        const newPriceInStockUom = convertPriceToStockUom(
+          value || 0,
+          updated.uom_id,
+          updated.stock_uom_id,
+          Number(updated.product_id),
+        );
+        updated.sale_price = newPriceInStockUom;
+      }
+
+      // Recalculate tax and line total
+      const qtyForCalc = updated.quantity_in_stock_uom || updated.quantity;
       const taxAmount =
-        (updated.sale_price || 0) * updated.quantity * (updated.tax_rate / 100);
-      const lineTotal =
-        (updated.sale_price || 0) * updated.quantity + taxAmount;
+        (updated.sale_price || 0) * qtyForCalc * (updated.tax_rate / 100);
+      const lineTotal = (updated.sale_price || 0) * qtyForCalc + taxAmount;
+
       return { ...updated, tax_amount: taxAmount, line_total: lineTotal };
     });
     setLines(updatedLines);
@@ -283,6 +406,7 @@ export default function CreatePurchaseOrderPage() {
         lines: lines.map((l) => ({
           product_id: Number(l.product_id),
           quantity: Number(l.quantity),
+          qty_in_stock_uom: Number(l.quantity_in_stock_uom || l.quantity),
           uom_id: l.uom_id ?? undefined,
           unit_price: Number(l.sale_price ?? 0),
           tax_rate_id: Number(l.tax_rate_id),
@@ -415,9 +539,14 @@ export default function CreatePurchaseOrderPage() {
                 <th className="px-4 py-3 text-left w-10"></th>
                 <th className="px-4 py-3 text-left font-medium">Product</th>
                 <th className="px-4 py-3 text-center font-medium">Image</th>
-                <th className="px-4 py-3 text-center font-medium">Price</th>
+                <th className="px-4 py-3 text-center font-medium">
+                  Unit Price
+                </th>
                 <th className="px-4 py-3 text-center font-medium">Quantity</th>
                 <th className="px-4 py-3 text-center font-medium">UOM</th>
+                <th className="px-4 py-3 text-center font-medium">
+                  Qty in Stock UOM
+                </th>
                 <th className="px-4 py-3 text-center font-medium">Tax Type</th>
                 <th className="px-4 py-3 text-center font-medium">
                   Tax Rate(%)
@@ -429,7 +558,7 @@ export default function CreatePurchaseOrderPage() {
             <tbody>
               {lines.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="text-center py-16 text-gray-500">
+                  <td colSpan={11} className="text-center py-16 text-gray-500">
                     Chưa có sản phẩm. Hãy tìm kiếm và thêm ở trên
                   </td>
                 </tr>
@@ -460,7 +589,16 @@ export default function CreatePurchaseOrderPage() {
                       />
                     </td>
                     <td className="px-4 py-3 text-center">
-                      {line.sale_price?.toFixed(2)}
+                      <Input
+                        type="number"
+                        className="w-24 mx-auto"
+                        value={line.price_in_purchase_uom?.toFixed(2) || "0"}
+                        onChange={(v) => {
+                          const price = Math.max(Number(v) || 0, 0);
+                          updateLine(line.id, "price_in_purchase_uom", price);
+                        }}
+                        step="0.01"
+                      />
                     </td>
                     <td className="px-4 py-3 text-center">
                       <Input
@@ -481,13 +619,6 @@ export default function CreatePurchaseOrderPage() {
                           line.stock_uom_id,
                           Number(line.product_id),
                         );
-                        const qtyPreview = previewQtyInStockUom(
-                          line.quantity,
-                          line.uom_id,
-                          line.stock_uom_id,
-                          conversions,
-                          Number(line.product_id),
-                        );
                         const stockUomName =
                           uoms.find((u: Uom) => u.id === line.stock_uom_id)
                             ?.name ?? "";
@@ -500,13 +631,7 @@ export default function CreatePurchaseOrderPage() {
                                 const val = e.target.value
                                   ? Number(e.target.value)
                                   : null;
-                                setLines((prev) =>
-                                  prev.map((l) =>
-                                    l.id === line.id
-                                      ? { ...l, uom_id: val }
-                                      : l,
-                                  ),
-                                );
+                                updateLine(line.id, "uom_id", val);
                               }}
                             >
                               <option value="">-- UOM --</option>
@@ -516,16 +641,12 @@ export default function CreatePurchaseOrderPage() {
                                 </option>
                               ))}
                             </select>
-                            {line.uom_id &&
-                              line.stock_uom_id &&
-                              line.uom_id !== line.stock_uom_id && (
-                                <span className="text-xs text-gray-400">
-                                  ≈ {qtyPreview.toFixed(2)} {stockUomName}
-                                </span>
-                              )}
                           </div>
                         );
                       })()}
+                    </td>
+                    <td className="px-4 py-3 text-center text-sm font-medium">
+                      {(line.quantity_in_stock_uom || line.quantity).toFixed(2)}
                     </td>
                     <td className="px-4 py-3 text-center capitalize">
                       {line.tax_type}

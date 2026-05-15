@@ -44,15 +44,23 @@ const purchaseReturnSlice = createSlice({
   reducers: {
     clearSelectedPra(s) {
       s.selectedPra = null;
+      s.loading = false;
+      s.error = null;
     },
     clearSelectedReturn(s) {
       s.selectedReturn = null;
+      s.loading = false;
+      s.error = null;
     },
     clearSelectedDebitNote(s) {
       s.selectedDebitNote = null;
+      s.loading = false;
+      s.error = null;
     },
     clearSelectedVendorRefund(s) {
       s.selectedVendorRefund = null;
+      s.loading = false;
+      s.error = null;
     },
   },
   extraReducers: (b) => {

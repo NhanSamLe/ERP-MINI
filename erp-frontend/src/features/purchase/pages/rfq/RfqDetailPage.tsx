@@ -18,6 +18,7 @@ import {
   rejectRfqThunk,
   convertRfqToPoThunk,
   createRfqVersionThunk,
+  clearSelected,
 } from "../../store/rfq";
 import { StatusBadge } from "../../../../components/common";
 import { ActionConfirmModal } from "../../../../components/common";
@@ -44,7 +45,13 @@ export default function RfqDetailPage() {
 
   useEffect(() => {
     const numId = Number(id);
-    if (id && !isNaN(numId)) dispatch(fetchRfqByIdThunk(numId));
+    if (id && !isNaN(numId)) {
+      dispatch(fetchRfqByIdThunk(numId));
+    }
+    // Clear selected khi unmount để tránh data cũ hiện khi navigate sang RFQ khác
+    return () => {
+      dispatch(clearSelected());
+    };
   }, [id, dispatch]);
 
   const handleAction = async (action: typeof modal) => {
@@ -95,6 +102,13 @@ export default function RfqDetailPage() {
         onClick: () => navigate("/purchase/rfqs"),
       },
     ];
+    if (["draft", "received"].includes(rfq.status) && role === Roles.PURCHASE) {
+      base.push({
+        label: "Edit",
+        variant: "outline" as const,
+        onClick: () => navigate(`/purchase/rfqs/${rfq.id}/edit`),
+      });
+    }
     if (rfq.status === "draft" && role === Roles.PURCHASE) {
       base.push({
         label: "Send RFQ",
@@ -131,10 +145,25 @@ export default function RfqDetailPage() {
     return base;
   };
 
-  if (loading || !rfq) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-6 h-6 border-2 border-orange-200 border-t-orange-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!rfq) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-500">
+        <FileText className="w-10 h-10 text-gray-300" />
+        <p className="text-sm font-medium">RFQ not found</p>
+        <button
+          onClick={() => navigate("/purchase/rfqs")}
+          className="text-sm text-orange-600 hover:underline"
+        >
+          Back to RFQ list
+        </button>
       </div>
     );
   }

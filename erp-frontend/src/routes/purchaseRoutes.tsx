@@ -18,10 +18,20 @@ import AnomalyDashboardPage from "@/features/purchase/pages/document_intelligenc
 // New pages
 import RfqListPage from "@/features/purchase/pages/rfq/RfqListPage";
 import RfqDetailPage from "@/features/purchase/pages/rfq/RfqDetailPage";
+import RfqCreatePage from "@/features/purchase/pages/rfq/RfqCreatePage";
+import RfqEditPage from "@/features/purchase/pages/rfq/RfqEditPage";
 import PraListPage from "@/features/purchase/pages/purchaseReturn/PraListPage";
 import PraDetailPage from "@/features/purchase/pages/purchaseReturn/PraDetailPage";
+import PraCreatePage from "@/features/purchase/pages/purchaseReturn/PraCreatePage";
+import PraEditPage from "@/features/purchase/pages/purchaseReturn/PraEditPage";
 import DebitNoteListPage from "@/features/purchase/pages/purchaseReturn/DebitNoteListPage";
+import DebitNoteDetailPage from "@/features/purchase/pages/purchaseReturn/DebitNoteDetailPage";
 import VendorRefundListPage from "@/features/purchase/pages/purchaseReturn/VendorRefundListPage";
+import VendorRefundDetailPage from "@/features/purchase/pages/purchaseReturn/VendorRefundDetailPage";
+import VendorRefundCreatePage from "@/features/purchase/pages/purchaseReturn/VendorRefundCreatePage";
+import PurchaseReturnCreatePage from "@/features/purchase/pages/purchaseReturn/PurchaseReturnCreatePage";
+import PurchaseReturnDetailPage from "@/features/purchase/pages/purchaseReturn/PurchaseReturnDetailPage";
+import PurchaseReturnEditPage from "@/features/purchase/pages/purchaseReturn/PurchaseReturnEditPage";
 
 const purchaseRoutes: RouteObject[] = [
   {
@@ -187,6 +197,23 @@ const purchaseRoutes: RouteObject[] = [
       </ProtectedRoute>
     ),
   },
+  // IMPORTANT: "create" and "edit" routes MUST be before ":id" to avoid being matched as id="create"
+  {
+    path: "purchase/rfqs/create",
+    element: (
+      <ProtectedRoute allowedRoles={[Roles.PURCHASE]}>
+        <RfqCreatePage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "purchase/rfqs/:id/edit",
+    element: (
+      <ProtectedRoute allowedRoles={[Roles.PURCHASE]}>
+        <RfqEditPage />
+      </ProtectedRoute>
+    ),
+  },
   {
     path: "purchase/rfqs/:id",
     element: (
@@ -213,6 +240,23 @@ const purchaseRoutes: RouteObject[] = [
       </ProtectedRoute>
     ),
   },
+  // IMPORTANT: "create" and "edit" MUST be before ":id"
+  {
+    path: "purchase/return-authorizations/create",
+    element: (
+      <ProtectedRoute allowedRoles={[Roles.PURCHASE, Roles.PURCHASEMANAGER]}>
+        <PraCreatePage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "purchase/return-authorizations/:id/edit",
+    element: (
+      <ProtectedRoute allowedRoles={[Roles.PURCHASE, Roles.PURCHASEMANAGER]}>
+        <PraEditPage />
+      </ProtectedRoute>
+    ),
+  },
   {
     path: "purchase/return-authorizations/:id",
     element: (
@@ -228,6 +272,38 @@ const purchaseRoutes: RouteObject[] = [
       </ProtectedRoute>
     ),
   },
+  // ─── Purchase Returns (physical) ──────────────────────────────────────────
+  {
+    path: "purchase/returns/create",
+    element: (
+      <ProtectedRoute allowedRoles={[Roles.PURCHASE, Roles.PURCHASEMANAGER]}>
+        <PurchaseReturnCreatePage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "purchase/returns/:id/edit",
+    element: (
+      <ProtectedRoute allowedRoles={[Roles.PURCHASE, Roles.PURCHASEMANAGER]}>
+        <PurchaseReturnEditPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "purchase/returns/:id",
+    element: (
+      <ProtectedRoute
+        allowedRoles={[
+          Roles.PURCHASE,
+          Roles.PURCHASEMANAGER,
+          Roles.ACCOUNT,
+          Roles.CHACC,
+        ]}
+      >
+        <PurchaseReturnDetailPage />
+      </ProtectedRoute>
+    ),
+  },
   {
     path: "purchase/debit-notes",
     element: (
@@ -236,11 +312,37 @@ const purchaseRoutes: RouteObject[] = [
       </ProtectedRoute>
     ),
   },
+  // IMPORTANT: "create" MUST be before ":id"
+  {
+    path: "purchase/debit-notes/:id",
+    element: (
+      <ProtectedRoute allowedRoles={[Roles.ACCOUNT, Roles.CHACC]}>
+        <DebitNoteDetailPage />
+      </ProtectedRoute>
+    ),
+  },
   {
     path: "purchase/vendor-refunds",
     element: (
       <ProtectedRoute allowedRoles={[Roles.ACCOUNT, Roles.CHACC]}>
         <VendorRefundListPage />
+      </ProtectedRoute>
+    ),
+  },
+  // IMPORTANT: "create" MUST be before ":id"
+  {
+    path: "purchase/vendor-refunds/create",
+    element: (
+      <ProtectedRoute allowedRoles={[Roles.ACCOUNT, Roles.CHACC]}>
+        <VendorRefundCreatePage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "purchase/vendor-refunds/:id",
+    element: (
+      <ProtectedRoute allowedRoles={[Roles.ACCOUNT, Roles.CHACC]}>
+        <VendorRefundDetailPage />
       </ProtectedRoute>
     ),
   },

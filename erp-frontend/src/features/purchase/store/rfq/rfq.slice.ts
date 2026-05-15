@@ -30,6 +30,8 @@ const rfqSlice = createSlice({
   reducers: {
     clearSelected(state) {
       state.selected = null;
+      state.loading = false;
+      state.error = null;
     },
     clearCompare(state) {
       state.compareResult = null;
