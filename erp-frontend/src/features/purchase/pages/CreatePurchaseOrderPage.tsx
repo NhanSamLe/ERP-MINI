@@ -27,6 +27,7 @@ import { loadPartners } from "@/features/partner/store/partner.thunks";
 import {
   getValidUomsForProduct,
   previewQtyInStockUom,
+  convertPrice,
 } from "../utils/uomHelper";
 import { Uom } from "@/features/master-data/dto/uom.dto";
 
@@ -71,6 +72,8 @@ export default function CreatePurchaseOrderPage() {
   const [lines, setLines] = useState<LineItem[]>([]);
   // ← Cache product objects để recalculate giá khi đổi NCC
   const [productCache, setProductCache] = useState<Record<number, Product>>({});
+  // ← Local string state cho price inputs (tránh cursor reset khi gõ số lớn)
+  const [priceInputs, setPriceInputs] = useState<Record<number, string>>({});
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -145,44 +148,48 @@ export default function CreatePurchaseOrderPage() {
     return Number(supplierPrice ?? product.cost_price ?? 0);
   };
 
+  // ── Helper: convert price từ stock UOM sang purchase UOM (để hiển thị) ──────
+  // Dùng convertPrice từ uomHelper (xử lý đúng product_id=0 và null)
+  const convertPriceFromStockUom = (
+    priceInStockUom: number,
+    purchaseUomId: number | null | undefined,
+    stockUomId: number | null | undefined,
+    productId: number,
+  ): number => {
+    // stock → purchase: factor = stockUom per purchaseUom
+    // price per purchaseUom = price per stockUom * factor
+    // = convertPrice(price, stockUom, purchaseUom) * factor²? No —
+    // findFactor(stock→purchase) = 1/24 (nếu box→pcs=24)
+    // price/box = price/pcs * 24 = price/pcs / (1/24)
+    // Dùng convertPrice(price, purchaseUom→stockUom) ngược lại:
+    // convertPrice(price, stockUom, purchaseUom) = price / findFactor(stock→purchase)
+    // findFactor(pcs→box) = 1/24 → price / (1/24) = price * 24 ✓
+    return convertPrice(
+      priceInStockUom,
+      stockUomId,
+      purchaseUomId,
+      conversions,
+      productId,
+    );
+  };
+
   // ── Helper: convert price từ purchase UOM sang stock UOM ──────────────────
+  // Dùng convertPrice từ uomHelper (xử lý đúng product_id=0 và null)
   const convertPriceToStockUom = (
     priceInPurchaseUom: number,
     purchaseUomId: number | null | undefined,
     stockUomId: number | null | undefined,
     productId: number,
   ): number => {
-    if (!purchaseUomId || !stockUomId || purchaseUomId === stockUomId) {
-      return priceInPurchaseUom;
-    }
-
-    // Find conversion factor
-    const conversion = conversions.find(
-      (c: any) =>
-        c.from_uom_id === purchaseUomId &&
-        c.to_uom_id === stockUomId &&
-        (c.product_id === productId || c.product_id === null),
+    // purchase → stock: findFactor(box→pcs)=24
+    // price/pcs = price/box / 24
+    return convertPrice(
+      priceInPurchaseUom,
+      purchaseUomId,
+      stockUomId,
+      conversions,
+      productId,
     );
-
-    if (conversion) {
-      // Price per stock UOM = Price per purchase UOM / conversion factor
-      return priceInPurchaseUom / Number(conversion.factor);
-    }
-
-    // Try reverse conversion
-    const reverseConversion = conversions.find(
-      (c: any) =>
-        c.from_uom_id === stockUomId &&
-        c.to_uom_id === purchaseUomId &&
-        (c.product_id === productId || c.product_id === null),
-    );
-
-    if (reverseConversion) {
-      // Price per stock UOM = Price per purchase UOM * conversion factor
-      return priceInPurchaseUom * Number(reverseConversion.factor);
-    }
-
-    return priceInPurchaseUom;
   };
 
   // ── Helper: recalculate totals từ danh sách lines ─────────────────────────
@@ -235,6 +242,12 @@ export default function CreatePurchaseOrderPage() {
 
     setLines(updatedLines);
     recalcTotals(updatedLines);
+    // Sync price input strings khi đổi NCC
+    const newPriceInputs: Record<number, string> = {};
+    updatedLines.forEach((l) => {
+      newPriceInputs[l.id] = String(l.price_in_purchase_uom ?? 0);
+    });
+    setPriceInputs(newPriceInputs);
   };
 
   // ── Chọn product: dùng supplierId hiện tại (đã fix stale closure) ─────────
@@ -306,6 +319,11 @@ export default function CreatePurchaseOrderPage() {
     const updatedLines = [...lines, newLine];
     setLines(updatedLines);
     recalcTotals(updatedLines);
+    // Init price input string cho line mới
+    setPriceInputs((prev) => ({
+      ...prev,
+      [newLine.id]: String(priceInPurchaseUom),
+    }));
 
     setSearchTerm("");
     setShowDropdown(false);
@@ -339,14 +357,22 @@ export default function CreatePurchaseOrderPage() {
             : line.quantity;
         updated.quantity_in_stock_uom = qtyInStockUom;
 
-        // Also recalculate price conversion when UOM changes
-        const newPriceInStockUom = convertPriceToStockUom(
-          updated.price_in_purchase_uom || updated.sale_price || 0,
+        // Update uom_name
+        const selectedUom = uoms.find((u: Uom) => u.id === newUomId);
+        updated.uom_name = selectedUom?.name ?? "";
+
+        // sale_price (per stock UOM) không đổi — chỉ cần recalc price_in_purchase_uom
+        // để hiển thị đúng giá per new UOM cho user
+        // Ví dụ: sale_price = 291.67/pcs, đổi sang Box (1 box=24pcs)
+        //        → price_in_purchase_uom = 291.67 * 24 = 7000/box ✓
+        const newPriceInPurchaseUom = convertPriceFromStockUom(
+          line.sale_price || 0,
           newUomId,
           line.stock_uom_id,
           Number(line.product_id),
         );
-        updated.sale_price = newPriceInStockUom;
+        updated.price_in_purchase_uom = newPriceInPurchaseUom;
+        // sale_price stays the same (it's always per stock UOM)
       }
 
       // If price_in_purchase_uom changed, convert to stock UOM
@@ -360,6 +386,24 @@ export default function CreatePurchaseOrderPage() {
         updated.sale_price = newPriceInStockUom;
       }
 
+      // If quantity changed, recalculate quantity_in_stock_uom
+      if (field === "quantity") {
+        const newQty = value || 1;
+        const qtyInStockUom =
+          updated.uom_id &&
+          updated.stock_uom_id &&
+          updated.uom_id !== updated.stock_uom_id
+            ? previewQtyInStockUom(
+                newQty,
+                updated.uom_id,
+                updated.stock_uom_id,
+                conversions,
+                Number(updated.product_id),
+              )
+            : newQty;
+        updated.quantity_in_stock_uom = qtyInStockUom;
+      }
+
       // Recalculate tax and line total
       const qtyForCalc = updated.quantity_in_stock_uom || updated.quantity;
       const taxAmount =
@@ -370,6 +414,17 @@ export default function CreatePurchaseOrderPage() {
     });
     setLines(updatedLines);
     recalcTotals(updatedLines);
+
+    // Sync priceInputs khi UOM thay đổi (để input hiển thị đúng giá per new UOM)
+    if (field === "uom_id") {
+      const changedLine = updatedLines.find((l) => l.id === id);
+      if (changedLine) {
+        setPriceInputs((prev) => ({
+          ...prev,
+          [id]: String(changedLine.price_in_purchase_uom ?? 0),
+        }));
+      }
+    }
   };
 
   const removeLine = (id: number) => {
@@ -377,6 +432,11 @@ export default function CreatePurchaseOrderPage() {
       const updated = prev.filter((l) => l.id !== id);
       recalcTotals(updated);
       return updated;
+    });
+    setPriceInputs((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
     });
   };
 
@@ -408,14 +468,13 @@ export default function CreatePurchaseOrderPage() {
           quantity: Number(l.quantity),
           qty_in_stock_uom: Number(l.quantity_in_stock_uom || l.quantity),
           uom_id: l.uom_id ?? undefined,
-          unit_price: Number(l.sale_price ?? 0),
+          unit_price: Number(l.price_in_purchase_uom ?? l.sale_price ?? 0), // giá per purchase UOM (168000/box)
           tax_rate_id: Number(l.tax_rate_id),
           line_total: Number(l.line_total),
           line_tax: l.tax_amount ?? 0,
           line_total_after_tax: l.line_total,
         })),
       };
-
       await dispatch(createPurchaseOrderThunk(requestBody)).unwrap();
       toast.success("Purchase Order created!");
       navigate("/purchase/orders");
@@ -589,26 +648,64 @@ export default function CreatePurchaseOrderPage() {
                       />
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <Input
-                        type="number"
-                        className="w-24 mx-auto"
-                        value={line.price_in_purchase_uom?.toFixed(2) || "0"}
-                        onChange={(v) => {
-                          const price = Math.max(Number(v) || 0, 0);
-                          updateLine(line.id, "price_in_purchase_uom", price);
-                        }}
-                        step="0.01"
-                      />
+                      <div className="flex flex-col items-center gap-1">
+                        <input
+                          type="number"
+                          className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-400 focus:outline-none w-36 text-right"
+                          value={
+                            priceInputs[line.id] ??
+                            String(line.price_in_purchase_uom ?? 0)
+                          }
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            // Update local string state (không format, giữ nguyên để gõ thoải mái)
+                            setPriceInputs((prev) => ({
+                              ...prev,
+                              [line.id]: raw,
+                            }));
+                            // Chỉ update line khi có giá trị hợp lệ
+                            const price = parseFloat(raw);
+                            if (!isNaN(price) && price >= 0) {
+                              updateLine(
+                                line.id,
+                                "price_in_purchase_uom",
+                                price,
+                              );
+                            }
+                          }}
+                          onBlur={(e) => {
+                            // Khi blur: normalize về số hợp lệ
+                            const price = Math.max(
+                              parseFloat(e.target.value) || 0,
+                              0,
+                            );
+                            setPriceInputs((prev) => ({
+                              ...prev,
+                              [line.id]: String(price),
+                            }));
+                            updateLine(line.id, "price_in_purchase_uom", price);
+                          }}
+                          min="0"
+                          step="any"
+                        />
+                        {line.uom_name && (
+                          <span className="text-xs text-gray-400">
+                            per {line.uom_name}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <Input
+                      <input
                         type="number"
-                        className="w-20 mx-auto"
-                        value={line.quantity.toString()}
-                        onChange={(v) => {
-                          const qty = Math.max(Number(v) || 1, 1);
+                        className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-400 focus:outline-none w-20 text-center"
+                        value={line.quantity}
+                        onChange={(e) => {
+                          const qty = Math.max(Number(e.target.value) || 1, 1);
                           updateLine(line.id, "quantity", qty);
                         }}
+                        min="1"
+                        step="1"
                       />
                     </td>
                     <td className="px-4 py-3 text-center">

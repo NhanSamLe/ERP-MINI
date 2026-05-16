@@ -34,7 +34,9 @@ import { loadPartners } from "@/features/partner/store/partner.thunks";
 import {
   getValidUomsForProduct,
   previewQtyInStockUom,
+  convertPrice,
 } from "../utils/uomHelper";
+import { Uom } from "@/features/master-data/dto/uom.dto";
 import { PurchaseOrderStatus } from "../constants/purchaseStatus.enum";
 
 interface LineItem {
@@ -43,10 +45,13 @@ interface LineItem {
   product_id: string | number;
   product_name: string;
   product_image: string;
-  sale_price?: number;
+  sale_price?: number; // Price per stock UOM (for calculation)
+  price_in_purchase_uom?: number; // Price per purchase UOM (what user sees & saves)
   sku?: string;
   quantity: number;
+  quantity_in_stock_uom?: number;
   uom_id?: number | null;
+  uom_name?: string;
   stock_uom_id?: number | null;
   tax_rate_id?: number;
   tax_type: string;
@@ -64,7 +69,6 @@ export default function EditPurchaseOrderPage() {
   const purchaseOrder = useSelector(
     (state: RootState) => state.purchaseOrder.selectedPO,
   );
-
   const partners = useSelector((state: RootState) => state.partners);
   const uoms = useSelector(
     (state: RootState) => (state as any).uom?.Uoms ?? [],
@@ -80,16 +84,14 @@ export default function EditPurchaseOrderPage() {
   const [totalBeforeTax, setTotalBeforeTax] = useState(0);
   const [totalAfterTax, setTotalAfterTax] = useState(0);
   const [description, setDescription] = useState("");
-
   const [searchTerm, setSearchTerm] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
-
   const [branch, setBranch] = useState<Branch | null>(null);
-
   const [lines, setLines] = useState<LineItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [priceInputs, setPriceInputs] = useState<Record<number, string>>({});
 
   useEffect(() => {
     if (id) dispatch(fetchPurchaseOrderByIdThunk(Number(id)));
@@ -101,17 +103,11 @@ export default function EditPurchaseOrderPage() {
   const selectedSupplierName =
     partners.items.find((w) => w.id === Number(supplierId))?.name || "";
 
-  console.log("check supplier: ", selectedSupplierName);
-
   useEffect(() => {
     if (!purchaseOrder) return;
-
     fetchBranch(purchaseOrder.branch_id!)
       .then((res) => setBranch(res))
-      .catch((err) => {
-        console.error(err);
-        setBranch(null);
-      });
+      .catch(() => setBranch(null));
   }, [purchaseOrder]);
 
   useEffect(() => {
@@ -130,15 +126,12 @@ export default function EditPurchaseOrderPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       const keyword = searchTerm.trim();
-
       if (!keyword || keyword.length < 2) {
         setProducts([]);
         setShowDropdown(false);
         return;
       }
-
       setSearchLoading(true);
-
       dispatch(searchProductsThunk(keyword))
         .unwrap()
         .then((data) => {
@@ -148,35 +141,61 @@ export default function EditPurchaseOrderPage() {
         .catch(() => setProducts([]))
         .finally(() => setSearchLoading(false));
     }, 300);
-
     return () => clearTimeout(timer);
   }, [searchTerm, dispatch]);
 
+  // ── Helper: recalc totals ─────────────────────────────────────────────────
+  const recalcTotals = (updatedLines: LineItem[]) => {
+    const before = updatedLines.reduce(
+      (s, l) =>
+        s + (l.sale_price || 0) * (l.quantity_in_stock_uom || l.quantity),
+      0,
+    );
+    const tax = updatedLines.reduce((s, l) => s + l.tax_amount, 0);
+    const after = updatedLines.reduce((s, l) => s + l.line_total, 0);
+    setTotalBeforeTax(before);
+    setTotalOrderTax(tax);
+    setTotalAfterTax(after);
+  };
+
+  // ── Add new product ───────────────────────────────────────────────────────
   const handleSelectProduct = async (product: Product) => {
     if (lines.some((l) => l.product_id === product.id)) {
       alert("Sản phẩm đã có trong danh sách!");
       return;
     }
-
     const tax = await dispatch(
       fetchTaxRatesByIdThunk(product.tax_rate_id || 0),
     ).unwrap();
-
-    console.log("Selected Product Tax:", tax);
-
     const rate = Number(tax?.rate || 0);
     const qty = 1;
 
-    // Ưu tiên: giá từ supplier info của NCC đang chọn → cost_price → 0
     const allSupplierInfos =
       (product as any).supplierInfos ?? product.supplierInfo ?? [];
     const supplierPrice = allSupplierInfos.find(
       (s: any) => s.supplier_id === Number(supplierId),
     )?.price;
-    const price = Number(supplierPrice ?? product.cost_price ?? 0);
+    const priceInPurchaseUom = Number(supplierPrice ?? product.cost_price ?? 0);
 
-    const taxAmount = qty * price * (rate / 100);
-    const lineTotal = qty * price + taxAmount;
+    const purchaseUomId = product.purchase_uom_id ?? product.uom_id ?? null;
+    const stockUomId = product.uom_id ?? null;
+
+    const priceInStockUom = convertPrice(
+      priceInPurchaseUom,
+      purchaseUomId,
+      stockUomId,
+      conversions,
+      Number(product.id),
+    );
+    const qtyInStockUom = previewQtyInStockUom(
+      qty,
+      purchaseUomId,
+      stockUomId,
+      conversions,
+      Number(product.id),
+    );
+    const taxAmount = priceInStockUom * qtyInStockUom * (rate / 100);
+    const lineTotal = priceInStockUom * qtyInStockUom + taxAmount;
 
     const newLine: LineItem = {
       id: undefined,
@@ -185,10 +204,13 @@ export default function EditPurchaseOrderPage() {
       product_name: product.name,
       product_image: product.image_url || "",
       sku: product.sku,
-      sale_price: price,
+      sale_price: priceInStockUom,
+      price_in_purchase_uom: priceInPurchaseUom,
       quantity: qty,
-      uom_id: product.purchase_uom_id ?? product.uom_id ?? null,
-      stock_uom_id: product.uom_id ?? null,
+      quantity_in_stock_uom: qtyInStockUom,
+      uom_id: purchaseUomId,
+      uom_name: product.purchaseUom?.name ?? product.uom?.name ?? "",
+      stock_uom_id: stockUomId,
       tax_rate_id: product.tax_rate_id,
       tax_type: tax?.type ?? "VAT",
       tax_rate: rate,
@@ -198,28 +220,16 @@ export default function EditPurchaseOrderPage() {
 
     const updatedLines = [...lines, newLine];
     setLines(updatedLines);
-
-    const totalBeforeTax = updatedLines.reduce(
-      (sum, l) => sum + (l.sale_price || 0) * l.quantity,
-      0,
-    );
-    const totalTax = updatedLines.reduce(
-      (sum, l) => Number(sum) + Number(l.tax_amount || 0),
-      0,
-    );
-    const totalAfterTax = updatedLines.reduce(
-      (sum, l) => sum + l.line_total,
-      0,
-    );
-
-    setTotalBeforeTax(totalBeforeTax);
-    setTotalOrderTax(totalTax);
-    setTotalAfterTax(totalAfterTax);
-
+    recalcTotals(updatedLines);
+    setPriceInputs((prev) => ({
+      ...prev,
+      [newLine.temp_id!]: String(priceInPurchaseUom),
+    }));
     setSearchTerm("");
     setShowDropdown(false);
   };
 
+  // ── Load existing PO lines ────────────────────────────────────────────────
   const finalPO = purchaseOrder;
   useEffect(() => {
     const linesToLoad = finalPO?.lines ?? [];
@@ -233,15 +243,49 @@ export default function EditPurchaseOrderPage() {
       }
       setReference(finalPO?.po_no || "");
       setDescription(finalPO?.description || "");
+
       const enrichedLines = await Promise.all(
         linesToLoad.map(async (l: PurchaseOrderLine) => {
           const product = await dispatch(
             fetchProductByIdThunk(Number(l.product_id)),
           ).unwrap();
-
           const tax = await dispatch(
             fetchTaxRatesByIdThunk(product.tax_rate_id || 0),
           ).unwrap();
+
+          const purchaseUomId =
+            (l as any).uom_id ??
+            product.purchase_uom_id ??
+            product.uom_id ??
+            null;
+          const stockUomId = product.uom_id ?? null;
+
+          // unit_price in DB = price per purchase UOM (e.g. 168000/box)
+          const priceInPurchaseUom = Number(l.unit_price || 0);
+          // Convert to stock UOM for calculation (e.g. 168000/24 = 7000/pcs)
+          const priceInStockUom = convertPrice(
+            priceInPurchaseUom,
+            purchaseUomId,
+            stockUomId,
+            conversions,
+            Number(l.product_id),
+          );
+
+          const qty = Number(l.quantity || 0);
+          const qtyInStockUom =
+            Number((l as any).qty_in_stock_uom) ||
+            previewQtyInStockUom(
+              qty,
+              purchaseUomId,
+              stockUomId,
+              conversions,
+              Number(l.product_id),
+            );
+
+          const taxRate = Number(tax?.rate || 0);
+          const taxAmount = priceInStockUom * qtyInStockUom * (taxRate / 100);
+          const lineTotal = priceInStockUom * qtyInStockUom + taxAmount;
+
           return {
             id: l.id ?? undefined,
             temp_id: l.id ?? Date.now(),
@@ -249,44 +293,37 @@ export default function EditPurchaseOrderPage() {
             product_name: product.name,
             sku: product.sku,
             product_image: product.image_url ?? "",
-            sale_price: Number(l.unit_price || 0),
-            quantity: Number(l.quantity || 0),
-            uom_id:
-              (l as any).uom_id ??
-              product.purchase_uom_id ??
-              product.uom_id ??
-              null,
-            stock_uom_id: product.uom_id ?? null,
-            tax_rate: tax?.rate || 0,
+            sale_price: priceInStockUom,
+            price_in_purchase_uom: priceInPurchaseUom,
+            quantity: qty,
+            quantity_in_stock_uom: qtyInStockUom,
+            uom_id: purchaseUomId,
+            uom_name: product.purchaseUom?.name ?? product.uom?.name ?? "",
+            stock_uom_id: stockUomId,
+            tax_rate: taxRate,
             tax_rate_id: product.tax_rate_id,
             tax_type: tax?.type || "VAT",
-            tax_amount: Number(l.line_tax || 0),
-            line_total: Number(l.line_total_after_tax || 0),
+            tax_amount: taxAmount,
+            line_total: lineTotal,
           };
         }),
       );
 
       setLines(enrichedLines);
 
-      // tính totals
-      const before = enrichedLines.reduce(
-        (s, l) => s + (l.sale_price || 0) * l.quantity,
-        0,
-      );
-      const tax = enrichedLines.reduce(
-        (sum, line) => sum + Number(line.tax_amount || 0),
-        0,
-      );
-      const after = finalPO?.total_after_tax ?? 0;
-
-      setTotalBeforeTax(before);
-      setTotalOrderTax(tax);
-      setTotalAfterTax(after);
+      const newPriceInputs: Record<number, string> = {};
+      enrichedLines.forEach((l) => {
+        if (l.temp_id !== undefined)
+          newPriceInputs[l.temp_id] = String(l.price_in_purchase_uom ?? 0);
+      });
+      setPriceInputs(newPriceInputs);
+      recalcTotals(enrichedLines);
     };
 
     loadLines();
   }, [finalPO, dispatch]);
 
+  // ── Update line ───────────────────────────────────────────────────────────
   const updateLine = (
     temp_id: number,
     field: keyof LineItem,
@@ -296,69 +333,69 @@ export default function EditPurchaseOrderPage() {
       removeLine(temp_id);
       return;
     }
+
     const updatedLines = lines.map((line) => {
       if (line.temp_id !== temp_id) return line;
       const updated = { ...line, [field]: value };
 
-      const taxAmount =
-        (updated.sale_price || 0) * updated.quantity * (updated.tax_rate / 100);
-      const lineTotal =
-        (updated.sale_price || 0) * updated.quantity + taxAmount;
+      if (field === "quantity") {
+        const newQty = value || 1;
+        updated.quantity_in_stock_uom =
+          updated.uom_id &&
+          updated.stock_uom_id &&
+          updated.uom_id !== updated.stock_uom_id
+            ? previewQtyInStockUom(
+                newQty,
+                updated.uom_id,
+                updated.stock_uom_id,
+                conversions,
+                Number(updated.product_id),
+              )
+            : newQty;
+      }
 
-      return {
-        ...updated,
-        tax_amount: taxAmount,
-        line_total: lineTotal,
-      };
+      if (field === "price_in_purchase_uom") {
+        updated.sale_price = convertPrice(
+          value,
+          updated.uom_id,
+          updated.stock_uom_id,
+          conversions,
+          Number(updated.product_id),
+        );
+      }
+
+      const qtyForCalc = updated.quantity_in_stock_uom || updated.quantity;
+      const taxAmount =
+        (updated.sale_price || 0) * qtyForCalc * (updated.tax_rate / 100);
+      const lineTotal = (updated.sale_price || 0) * qtyForCalc + taxAmount;
+      return { ...updated, tax_amount: taxAmount, line_total: lineTotal };
     });
 
     setLines(updatedLines);
-
-    const totalBeforeTax = updatedLines.reduce(
-      (sum, l) => sum + (l.sale_price || 0) * l.quantity,
-      0,
-    );
-    const totalTax = updatedLines.reduce((sum, l) => sum + l.tax_amount, 0);
-    const totalAfterTax = updatedLines.reduce(
-      (sum, l) => sum + l.line_total,
-      0,
-    );
-
-    setTotalBeforeTax(totalBeforeTax);
-    setTotalOrderTax(totalTax);
-    setTotalAfterTax(totalAfterTax);
+    recalcTotals(updatedLines);
   };
 
-  const removeLine = async (temp_id: number) => {
+  const removeLine = (temp_id: number) => {
     setLines((prev) => {
       const updated = prev.filter((l) => l.temp_id !== temp_id);
-
-      const totalBeforeTax = updated.reduce(
-        (sum, l) => sum + (l.sale_price || 0) * l.quantity,
-        0,
-      );
-
-      const totalTax = updated.reduce((sum, l) => sum + l.tax_amount, 0);
-
-      const totalAfterTax = updated.reduce((sum, l) => sum + l.line_total, 0);
-
-      setTotalBeforeTax(totalBeforeTax);
-      setTotalOrderTax(totalTax);
-      setTotalAfterTax(totalAfterTax);
-
+      recalcTotals(updated);
       return updated;
+    });
+    setPriceInputs((prev) => {
+      const next = { ...prev };
+      delete next[temp_id];
+      return next;
     });
   };
 
+  // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (isSubmitting) return;
-
     setIsSubmitting(true);
     try {
       const checkStatusOrder = await dispatch(
         fetchPurchaseOrderByIdThunk(Number(id)),
       ).unwrap();
-
       if (checkStatusOrder.status !== PurchaseOrderStatus.DRAFT) {
         toast.error("This Purchase Order is no longer editable.");
         navigate("/purchase/orders");
@@ -366,7 +403,6 @@ export default function EditPurchaseOrderPage() {
       }
 
       const today = new Date().toISOString().split("T")[0];
-
       if (date > today) {
         toast.error("Date cannot be in the future!");
         return;
@@ -376,15 +412,12 @@ export default function EditPurchaseOrderPage() {
       if (!date) return toast.error("Order date is required");
       if (lines.length === 0)
         return toast.error("At least 1 product is required");
-
       const invalidLine = lines.find((l) => !l.quantity || l.quantity <= 0);
       if (invalidLine) return toast.error("Quantity must be greater than 0");
 
       const existingLineIds =
         finalPO?.lines?.map((l) => l.id).filter(Boolean) ?? [];
-
       const currentLineIds = lines.map((l) => l.id).filter(Boolean);
-
       const deletedLineIds = existingLineIds.filter(
         (id): id is number => id !== undefined && !currentLineIds.includes(id),
       );
@@ -393,8 +426,9 @@ export default function EditPurchaseOrderPage() {
         id: l.id,
         product_id: Number(l.product_id),
         quantity: Number(l.quantity),
+        qty_in_stock_uom: Number(l.quantity_in_stock_uom || l.quantity),
         uom_id: l.uom_id ?? undefined,
-        unit_price: Number(l.sale_price ?? 0),
+        unit_price: Number(l.price_in_purchase_uom ?? l.sale_price ?? 0),
         tax_rate_id: l.tax_rate_id ? Number(l.tax_rate_id) : undefined,
         line_total: Number(l.line_total),
         line_tax: l.tax_amount,
@@ -406,12 +440,9 @@ export default function EditPurchaseOrderPage() {
         po_no: reference,
         supplier_id: Number(supplierId),
         order_date: date,
-        total_before_tax: lines.reduce(
-          (sum, l) => sum + (l.sale_price ?? 0) * l.quantity,
-          0,
-        ),
-        total_tax: lines.reduce((sum, l) => sum + l.tax_amount, 0),
-        total_after_tax: lines.reduce((sum, l) => sum + l.line_total, 0),
+        total_before_tax: totalBeforeTax,
+        total_tax: totalOrderTax,
+        total_after_tax: totalAfterTax,
         description,
         lines: updatedLines,
         deletedLineIds: deletedLineIds.length ? deletedLineIds : undefined,
@@ -420,7 +451,6 @@ export default function EditPurchaseOrderPage() {
       await dispatch(
         updatePurchaseOrderThunk({ id: Number(id), body: requestBody }),
       ).unwrap();
-
       toast.success("Purchase Order updated!");
       navigate("/purchase/orders");
     } catch (error) {
@@ -471,7 +501,6 @@ export default function EditPurchaseOrderPage() {
             <Calendar className="absolute right-3 top-3 h-4 w-4 text-gray-400 pointer-events-none" />
           </div>
         </div>
-
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Reference <span className="text-red-500">*</span>
@@ -484,6 +513,7 @@ export default function EditPurchaseOrderPage() {
         </div>
       </div>
 
+      {/* Product search */}
       <div className="bg-white rounded-lg shadow p-6">
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Product <span className="text-red-500">*</span>
@@ -500,8 +530,6 @@ export default function EditPurchaseOrderPage() {
               className="pr-10"
             />
             <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400 pointer-events-none" />
-
-            {/* Dropdown */}
             {showDropdown && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-md shadow-lg z-50 max-h-64 overflow-auto">
                 {searchLoading ? (
@@ -531,7 +559,6 @@ export default function EditPurchaseOrderPage() {
               </div>
             )}
           </div>
-
           <Button className="bg-orange-500 hover:bg-orange-600">
             <Plus className="h-4 w-4 mr-1" /> Add
           </Button>
@@ -547,9 +574,14 @@ export default function EditPurchaseOrderPage() {
                 <th className="px-4 py-3 text-left w-10"></th>
                 <th className="px-4 py-3 text-left font-medium">Product</th>
                 <th className="px-4 py-3 text-center font-medium">Image</th>
-                <th className="px-4 py-3 text-center font-medium">Price</th>
+                <th className="px-4 py-3 text-center font-medium">
+                  Unit Price
+                </th>
                 <th className="px-4 py-3 text-center font-medium">Quantity</th>
                 <th className="px-4 py-3 text-center font-medium">UOM</th>
+                <th className="px-4 py-3 text-center font-medium">
+                  Qty in Stock UOM
+                </th>
                 <th className="px-4 py-3 text-center font-medium">Tax Type</th>
                 <th className="px-4 py-3 text-center font-medium">
                   Tax Rate(%)
@@ -561,13 +593,13 @@ export default function EditPurchaseOrderPage() {
             <tbody>
               {lines.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="text-center py-16 text-gray-500">
+                  <td colSpan={11} className="text-center py-16 text-gray-500">
                     Chưa có sản phẩm. Hãy tìm kiếm và thêm ở trên
                   </td>
                 </tr>
               ) : (
                 lines.map((line) => (
-                  <tr key={line.id} className="border-t hover:bg-gray-50">
+                  <tr key={line.temp_id} className="border-t hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <button
                         className="text-red-500 hover:text-red-700"
@@ -578,16 +610,13 @@ export default function EditPurchaseOrderPage() {
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </td>
-
                     <td className="px-4 py-3">
-                      <div>
-                        <div className="font-medium">{line.product_name}</div>
-                        {line.sku && (
-                          <div className="text-xs text-gray-500">
-                            SKU: {line.sku}
-                          </div>
-                        )}
-                      </div>
+                      <div className="font-medium">{line.product_name}</div>
+                      {line.sku && (
+                        <div className="text-xs text-gray-500">
+                          SKU: {line.sku}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <img
@@ -596,38 +625,86 @@ export default function EditPurchaseOrderPage() {
                         className="h-12 w-12 object-cover rounded-md mx-auto border"
                       />
                     </td>
-                    <td className="px-4 py-3 text-center capitalize">
-                      {line.sale_price?.toFixed(2)}
-                    </td>
+                    {/* Unit Price — editable, per purchase UOM */}
                     <td className="px-4 py-3 text-center">
-                      <Input
+                      <div className="flex flex-col items-center gap-1">
+                        <input
+                          type="number"
+                          className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-400 focus:outline-none w-36 text-right"
+                          value={
+                            line.temp_id !== undefined
+                              ? (priceInputs[line.temp_id] ??
+                                String(line.price_in_purchase_uom ?? 0))
+                              : String(line.price_in_purchase_uom ?? 0)
+                          }
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            if (line.temp_id !== undefined) {
+                              setPriceInputs((prev) => ({
+                                ...prev,
+                                [line.temp_id!]: raw,
+                              }));
+                              const price = parseFloat(raw);
+                              if (!isNaN(price) && price >= 0) {
+                                updateLine(
+                                  line.temp_id,
+                                  "price_in_purchase_uom",
+                                  price,
+                                );
+                              }
+                            }
+                          }}
+                          onBlur={(e) => {
+                            const price = Math.max(
+                              parseFloat(e.target.value) || 0,
+                              0,
+                            );
+                            if (line.temp_id !== undefined) {
+                              setPriceInputs((prev) => ({
+                                ...prev,
+                                [line.temp_id!]: String(price),
+                              }));
+                              updateLine(
+                                line.temp_id,
+                                "price_in_purchase_uom",
+                                price,
+                              );
+                            }
+                          }}
+                          min="0"
+                          step="any"
+                        />
+                        {line.uom_name && (
+                          <span className="text-xs text-gray-400">
+                            per {line.uom_name}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    {/* Quantity */}
+                    <td className="px-4 py-3 text-center">
+                      <input
                         type="number"
-                        className="w-20 mx-auto"
-                        value={line.quantity.toString()}
-                        onChange={(v) => {
-                          const qty = Math.max(Number(v) || 1, 1);
+                        className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-400 focus:outline-none w-20 text-center"
+                        value={line.quantity}
+                        onChange={(e) => {
+                          const qty = Math.max(Number(e.target.value) || 1, 1);
                           if (line.temp_id !== undefined)
                             updateLine(line.temp_id, "quantity", qty);
                         }}
+                        min="1"
+                        step="1"
                       />
                     </td>
-
+                    {/* UOM selector */}
                     <td className="px-4 py-3 text-center">
                       {(() => {
                         const validUoms = getValidUomsForProduct(
                           uoms,
                           conversions,
                           line.stock_uom_id,
+                          Number(line.product_id),
                         );
-                        const qtyPreview = previewQtyInStockUom(
-                          line.quantity,
-                          line.uom_id,
-                          line.stock_uom_id,
-                          conversions,
-                        );
-                        const stockUomName =
-                          uoms.find((u) => u.id === line.stock_uom_id)?.name ??
-                          "";
                         return (
                           <div className="flex flex-col items-center gap-1">
                             <select
@@ -637,13 +714,59 @@ export default function EditPurchaseOrderPage() {
                                 const val = e.target.value
                                   ? Number(e.target.value)
                                   : null;
+                                if (line.temp_id === undefined) return;
+                                const selectedUom = uoms.find(
+                                  (u: Uom) => u.id === val,
+                                );
+                                const newPriceInPurchaseUom = convertPrice(
+                                  line.sale_price || 0,
+                                  line.stock_uom_id,
+                                  val,
+                                  conversions,
+                                  Number(line.product_id),
+                                );
+                                const newQtyInStockUom =
+                                  val &&
+                                  line.stock_uom_id &&
+                                  val !== line.stock_uom_id
+                                    ? previewQtyInStockUom(
+                                        line.quantity,
+                                        val,
+                                        line.stock_uom_id,
+                                        conversions,
+                                        Number(line.product_id),
+                                      )
+                                    : line.quantity;
+                                const taxAmount =
+                                  (line.sale_price || 0) *
+                                  newQtyInStockUom *
+                                  (line.tax_rate / 100);
+                                const lineTotal =
+                                  (line.sale_price || 0) * newQtyInStockUom +
+                                  taxAmount;
                                 setLines((prev) =>
                                   prev.map((l) =>
                                     l.temp_id === line.temp_id
-                                      ? { ...l, uom_id: val }
+                                      ? {
+                                          ...l,
+                                          uom_id: val,
+                                          uom_name: selectedUom?.name ?? "",
+                                          price_in_purchase_uom:
+                                            newPriceInPurchaseUom,
+                                          quantity_in_stock_uom:
+                                            newQtyInStockUom,
+                                          tax_amount: taxAmount,
+                                          line_total: lineTotal,
+                                        }
                                       : l,
                                   ),
                                 );
+                                setPriceInputs((prev) => ({
+                                  ...prev,
+                                  [line.temp_id!]: String(
+                                    newPriceInPurchaseUom,
+                                  ),
+                                }));
                               }}
                             >
                               <option value="">-- UOM --</option>
@@ -653,30 +776,22 @@ export default function EditPurchaseOrderPage() {
                                 </option>
                               ))}
                             </select>
-                            {line.uom_id &&
-                              line.stock_uom_id &&
-                              line.uom_id !== line.stock_uom_id && (
-                                <span className="text-xs text-gray-400">
-                                  ≈ {qtyPreview.toFixed(2)} {stockUomName}
-                                </span>
-                              )}
                           </div>
                         );
                       })()}
                     </td>
-
+                    <td className="px-4 py-3 text-center text-sm font-medium">
+                      {(line.quantity_in_stock_uom || line.quantity).toFixed(2)}
+                    </td>
                     <td className="px-4 py-3 text-center capitalize">
                       {line.tax_type}
                     </td>
-
                     <td className="px-4 py-3 text-center">{line.tax_rate}%</td>
-
                     <td className="px-4 py-3 text-right font-medium">
-                      {line.tax_amount}
+                      {line.tax_amount.toFixed(2)}
                     </td>
-
                     <td className="px-4 py-3 text-right font-bold text-orange-600">
-                      {line.line_total}
+                      {line.line_total.toFixed(2)}
                     </td>
                   </tr>
                 ))
@@ -705,21 +820,13 @@ export default function EditPurchaseOrderPage() {
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Total Before Tax *
           </label>
-          <Input
-            value={totalBeforeTax.toString()}
-            onChange={(v) => setTotalBeforeTax(Number(v) || 0)}
-            disabled
-          />
+          <Input value={totalBeforeTax.toString()} disabled />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Total After Tax *
           </label>
-          <Input
-            value={totalAfterTax.toString()}
-            onChange={(v) => setTotalAfterTax(Number(v) || 0)}
-            disabled
-          />
+          <Input value={totalAfterTax.toString()} disabled />
         </div>
       </div>
 
