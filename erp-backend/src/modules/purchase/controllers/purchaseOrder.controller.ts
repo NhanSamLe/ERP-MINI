@@ -8,7 +8,11 @@ export const purchaseOrderController = {
   async getAllPO(req: Request, res: Response) {
     try {
       const user = (req as any).user;
-      const data = await purchaseOrderService.getAllPO(user);
+      // Use enhanced filter method — supports receipt_status, invoice_status, buyer_id, overdue_delivery
+      const hasFilters = Object.keys(req.query).length > 0;
+      const data = hasFilters
+        ? await purchaseOrderService.getAllPOWithFilters(req.query, user)
+        : await purchaseOrderService.getAllPO(user);
       res.json(data);
     } catch (e: any) {
       res.status(500).json({ message: e.message });

@@ -1,28 +1,21 @@
 import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { useNavigate, Link } from "react-router-dom";
-import {
-  fetchFilteredReceipts,
-} from "../store/receipt.slice";
+import { fetchFilteredReceipts } from "../store/receipt.slice";
 import { ReceiptFilterDto, ArReceiptDto } from "../dto/receipt.dto";
 import { formatVND } from "@/utils/currency.helper";
 import PageHeader from "@/components/layout/PageHeader";
 import { Plus, Eye, Download } from "lucide-react";
-import StatusBadge from "../components/ar.components.ts/StatusBadge";
+import { StatusBadge } from "@/components/common";
 import { exportExcelReport } from "@/utils/excel/exportExcelReport";
 
 export default function ReceiptListPage() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
-  const {
-    items,
-    loading,
-    total,
-    page,
-    total_pages,
-    error,
-  } = useAppSelector((state) => state.receipt);
+  const { items, loading, total, page, total_pages, error } = useAppSelector(
+    (state) => state.receipt,
+  );
 
   const { user } = useAppSelector((state) => state.auth);
 
@@ -68,18 +61,50 @@ export default function ReceiptListPage() {
         title: "DANH SÁCH PHIẾU THU (RECEIPTS)",
         columns: [
           { header: "Số phiếu", key: "receipt_no", width: 15 },
-          { header: "Ngày phiếu", key: "receipt_date", width: 15, formatter: (val) => val ? new Date(String(val)).toLocaleDateString('vi-VN') : "" },
-          { header: "Khách hàng", key: "customer", width: 30, formatter: (val: any) => val?.name || "-" },
-          { header: "Số tiền", key: "amount", width: 20, format: "currency", align: "right" },
-          { header: "Phương thức", key: "method", width: 15, formatter: (val) => String(val).toUpperCase() },
-          { header: "Trạng thái", key: "status", width: 15, formatter: (val) => String(val).toUpperCase() },
-          { header: "Duyệt", key: "approval_status", width: 15, formatter: (val) => String(val).toUpperCase() },
+          {
+            header: "Ngày phiếu",
+            key: "receipt_date",
+            width: 15,
+            formatter: (val) =>
+              val ? new Date(String(val)).toLocaleDateString("vi-VN") : "",
+          },
+          {
+            header: "Khách hàng",
+            key: "customer",
+            width: 30,
+            formatter: (val: any) => val?.name || "-",
+          },
+          {
+            header: "Số tiền",
+            key: "amount",
+            width: 20,
+            format: "currency",
+            align: "right",
+          },
+          {
+            header: "Phương thức",
+            key: "method",
+            width: 15,
+            formatter: (val) => String(val).toUpperCase(),
+          },
+          {
+            header: "Trạng thái",
+            key: "status",
+            width: 15,
+            formatter: (val) => String(val).toUpperCase(),
+          },
+          {
+            header: "Duyệt",
+            key: "approval_status",
+            width: 15,
+            formatter: (val) => String(val).toUpperCase(),
+          },
         ],
         data: items,
         fileName: `Bao_Cao_Phieu_Thu_${new Date().getTime()}.xlsx`,
         footer: {
-          creator: user?.full_name || "Admin"
-        }
+          creator: user?.full_name || "Admin",
+        },
       });
     } catch (err) {
       console.error(err);
@@ -153,7 +178,11 @@ export default function ReceiptListPage() {
               <select
                 value={filters.approval_status}
                 onChange={(e) => {
-                  const updated = { ...filters, approval_status: e.target.value as any, page: 1 };
+                  const updated = {
+                    ...filters,
+                    approval_status: e.target.value as any,
+                    page: 1,
+                  };
                   setFilters(updated);
                   dispatch(fetchFilteredReceipts(updated));
                 }}
@@ -214,7 +243,9 @@ export default function ReceiptListPage() {
                     className="hover:bg-orange-50 transition"
                   >
                     <td className="px-6 py-4 font-medium text-orange-600">
-                      <button onClick={() => navigate(`/receipts/${receipt.id}`)}>
+                      <button
+                        onClick={() => navigate(`/receipts/${receipt.id}`)}
+                      >
                         {receipt.receipt_no}
                       </button>
                     </td>
@@ -235,10 +266,13 @@ export default function ReceiptListPage() {
                       {receipt.method}
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <StatusBadge status={receipt.status} type="status" />
+                      <StatusBadge status={receipt.status} variant="status" />
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <StatusBadge status={receipt.approval_status} type="approval" />
+                      <StatusBadge
+                        status={receipt.approval_status}
+                        variant="approval"
+                      />
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex justify-center gap-2">

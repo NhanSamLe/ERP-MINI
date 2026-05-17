@@ -65,6 +65,7 @@ export interface PurchaseOrderLine {
   line_total_after_tax: number;
 
   product?: ProductLite;
+  uom?: { id: number; name: string; symbol?: string };
 }
 export interface ProductLite {
   id: number;

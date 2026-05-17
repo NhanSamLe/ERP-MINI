@@ -93,6 +93,17 @@ import { ChatMessage } from "../modules/ai-chatbot/models/message.model";
 // Document Intelligence
 import { InvoiceDocument } from "../modules/document-intelligence/models/invoiceDocument.model";
 import { OcrFieldMapping } from "../modules/document-intelligence/models/ocrFieldMapping.model";
+// Phase 5: Purchase Enhancement
+import { PurchaseRfq } from "../modules/purchase/models/purchaseRfq.model";
+import { PurchaseRfqLine } from "../modules/purchase/models/purchaseRfqLine.model";
+import { PurchaseReturnAuthorization } from "../modules/purchase/models/purchaseReturnAuthorization.model";
+import { PurchaseReturn } from "../modules/purchase/models/purchaseReturn.model";
+import { PurchaseReturnLine } from "../modules/purchase/models/purchaseReturnLine.model";
+import { ApDebitNote } from "../modules/purchase/models/apDebitNote.model";
+import { ApDebitNoteLine } from "../modules/purchase/models/apDebitNoteLine.model";
+import { VendorRefund } from "../modules/purchase/models/vendorRefund.model";
+import { PurchasePriceList } from "../modules/purchase/models/purchasePriceList.model";
+import { PurchasePriceListItem } from "../modules/purchase/models/purchasePriceListItem.model";
 // Associations
 import { applyAssociations } from "./associations";
 
@@ -183,4 +194,15 @@ export {
   ChatMessage,
   InvoiceDocument,
   OcrFieldMapping,
+  // Phase 5: Purchase Enhancement
+  PurchaseRfq,
+  PurchaseRfqLine,
+  PurchaseReturnAuthorization,
+  PurchaseReturn,
+  PurchaseReturnLine,
+  ApDebitNote,
+  ApDebitNoteLine,
+  VendorRefund,
+  PurchasePriceList,
+  PurchasePriceListItem,
 };

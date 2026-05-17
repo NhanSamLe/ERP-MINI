@@ -310,6 +310,25 @@ export const apInvoiceController = {
     }
   },
 
+  // ─── PAYMENT HISTORY ───────────────────────────────────────────────────────
+
+  /**
+   * GET /api/ap/invoices/:id/payments
+   * Lịch sử thanh toán của 1 AP Invoice — danh sách allocations + tổng đã trả + còn nợ.
+   */
+  async getPaymentHistory(req: Request, res: Response) {
+    const user = (req as any).user;
+    try {
+      const data = await apInvoiceService.getPaymentHistory(
+        Number(req.params.id),
+        user,
+      );
+      res.json({ success: true, data });
+    } catch (error: any) {
+      handleError(res, error);
+    }
+  },
+
   // ─── REPORTS ───────────────────────────────────────────────────────────────
 
   async getPostedSummaryBySupplier(req: Request, res: Response) {

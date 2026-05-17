@@ -157,7 +157,7 @@ function HighRiskTab() {
   return (
     <div className="space-y-0">
       {/* Filter bar */}
-      <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
+      <div className="px-5 py-3 border-b border-orange-100 bg-orange-50/30">
         <div className="flex items-center gap-3 flex-wrap">
           <select
             value={pendingFilters.risk_level ?? ""}
@@ -222,7 +222,7 @@ function HighRiskTab() {
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 bg-gray-50/80">
+              <tr className="border-b border-orange-100 bg-orange-50/60">
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Filename
                 </th>
@@ -250,7 +250,7 @@ function HighRiskTab() {
               {data.data.map((item: AnomalyListItem) => (
                 <tr
                   key={item.id}
-                  className="hover:bg-orange-50/40 transition-colors duration-100"
+                  className="hover:bg-orange-50/50 transition-colors duration-100"
                 >
                   <td className="px-4 py-3 text-sm text-gray-800 max-w-xs truncate">
                     {item.document?.original_filename ??
@@ -415,7 +415,7 @@ function StatisticsTab() {
         <>
           {/* Risk level cards */}
           <div className="grid grid-cols-3 gap-4">
-            <div className="erp-card px-5 py-4 space-y-1">
+            <div className="erp-card px-5 py-4 space-y-1 border-l-4 border-l-orange-400">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 High Risk
               </p>
@@ -424,7 +424,7 @@ function StatisticsTab() {
               </p>
               <p className="text-xs text-gray-400">invoices</p>
             </div>
-            <div className="erp-card px-5 py-4 space-y-1">
+            <div className="erp-card px-5 py-4 space-y-1 border-l-4 border-l-orange-400">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Medium Risk
               </p>
@@ -433,7 +433,7 @@ function StatisticsTab() {
               </p>
               <p className="text-xs text-gray-400">invoices</p>
             </div>
-            <div className="erp-card px-5 py-4 space-y-1">
+            <div className="erp-card px-5 py-4 space-y-1 border-l-4 border-l-orange-400">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Low Risk
               </p>
@@ -454,7 +454,7 @@ function StatisticsTab() {
               </div>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50/80">
+                  <tr className="border-b border-orange-100 bg-orange-50/60">
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       Flag Type
                     </th>
@@ -470,7 +470,7 @@ function StatisticsTab() {
                   {stats.topFlagTypes.map((f) => (
                     <tr
                       key={f.type}
-                      className="hover:bg-orange-50/40 transition-colors duration-100"
+                      className="hover:bg-orange-50/50 transition-colors duration-100"
                     >
                       <td className="px-4 py-3 text-sm text-gray-800">
                         {formatFlagType(f.type)}
@@ -505,7 +505,7 @@ function StatisticsTab() {
               </div>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50/80">
+                  <tr className="border-b border-orange-100 bg-orange-50/60">
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       Week
                     </th>
@@ -521,7 +521,7 @@ function StatisticsTab() {
                   {stats.weeklyTrend.map((w) => (
                     <tr
                       key={w.week}
-                      className="hover:bg-orange-50/40 transition-colors duration-100"
+                      className="hover:bg-orange-50/50 transition-colors duration-100"
                     >
                       <td className="px-4 py-3 text-sm text-gray-800">
                         {w.week}
@@ -711,7 +711,7 @@ export default function AnomalyDashboardPage() {
     <div className="page-container">
       <div className="erp-card overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50/50 to-white">
           <div className="flex items-center gap-2.5">
             <span className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
               <Shield className="w-4 h-4 text-orange-500" />
@@ -728,7 +728,7 @@ export default function AnomalyDashboardPage() {
         </div>
 
         {/* Tab bar */}
-        <div className="flex items-center gap-0 border-b border-gray-200 px-5 bg-gray-50/50">
+        <div className="flex items-center gap-0 border-b border-gray-200 px-5 bg-orange-50/30">
           {tabs.map((tab) => (
             <button
               key={tab.id}
