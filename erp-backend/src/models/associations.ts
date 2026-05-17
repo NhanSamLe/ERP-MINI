@@ -411,6 +411,16 @@ export function applyAssociations() {
     as: "purchaseOrderLines",
   });
 
+  // PurchaseOrderLine ↔ UOM
+  PurchaseOrderLine.belongsTo(Uom, {
+    foreignKey: "uom_id",
+    as: "uom",
+  });
+  Uom.hasMany(PurchaseOrderLine, {
+    foreignKey: "uom_id",
+    as: "purchaseOrderLines",
+  });
+
   // PurchaseOrder ↔ Invoice (one-to-many: a PO can have multiple partial invoices)
   PurchaseOrder.hasMany(ApInvoice, { foreignKey: "po_id", as: "invoices" });
   ApInvoice.belongsTo(PurchaseOrder, { foreignKey: "po_id", as: "order" });
@@ -1278,6 +1288,14 @@ export function applyAssociations() {
   PurchaseReturnLine.belongsTo(PurchaseOrderLine, {
     foreignKey: "po_line_id",
     as: "poLine",
+  });
+  PurchaseReturnLine.belongsTo(Uom, {
+    foreignKey: "uom_id",
+    as: "uom",
+  });
+  Uom.hasMany(PurchaseReturnLine, {
+    foreignKey: "uom_id",
+    as: "purchaseReturnLines",
   });
 
   // ApDebitNote ↔ Lines

@@ -13,6 +13,9 @@ import {
   convertRfqToPoThunk,
   createRfqVersionThunk,
   compareRfqsThunk,
+  submitRfqThunk,
+  approveRfqThunk,
+  rejectRfqApprovalThunk,
 } from "./rfq.thunks";
 
 const initialState: RfqState = {
@@ -95,6 +98,9 @@ const rfqSlice = createSlice({
       acceptRfqThunk,
       rejectRfqThunk,
       createRfqVersionThunk,
+      submitRfqThunk,
+      approveRfqThunk,
+      rejectRfqApprovalThunk,
     ].forEach((thunk) => {
       b.addCase(thunk.pending, (s) => {
         s.actionLoading = true;

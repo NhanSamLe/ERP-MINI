@@ -217,7 +217,7 @@ export default function ViewApInvoicePage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-8">
+    <div className="max-w-7xl mx-auto space-y-6 pb-8 bg-gray-50 -m-6 p-6 min-h-screen">
       {/* ================= HEADER ================= */}
       <div className="bg-gradient-to-r from-white via-orange-50/30 to-white rounded-2xl border-2 border-orange-100 p-6 shadow-lg">
         <div className="flex items-start justify-between">
@@ -532,7 +532,7 @@ export default function ViewApInvoicePage() {
 
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b-2 border-gray-100">
+              <thead className="bg-orange-50/60 border-b-2 border-orange-100">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                     Product
@@ -559,7 +559,7 @@ export default function ViewApInvoicePage() {
                 {invoice.lines?.map((line, idx) => (
                   <tr
                     key={line.id}
-                    className="hover:bg-orange-50/30 transition-colors"
+                    className="hover:bg-orange-50/50 transition-colors"
                   >
                     {/* PRODUCT */}
                     <td className="px-6 py-4">

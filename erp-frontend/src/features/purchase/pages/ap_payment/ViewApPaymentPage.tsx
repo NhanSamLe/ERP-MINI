@@ -160,7 +160,7 @@ export default function ViewApPaymentPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-10">
+    <div className="max-w-6xl mx-auto space-y-6 pb-10 bg-gray-50 -m-6 p-6 min-h-screen">
       {/* ================= HEADER ================= */}
       <div className="bg-gradient-to-r from-white via-blue-50/30 to-white rounded-2xl border-2 border-blue-100 p-6 shadow-lg">
         <div className="flex items-start justify-between">

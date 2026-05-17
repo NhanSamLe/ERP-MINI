@@ -11,6 +11,7 @@ import {
 import { loadPartners } from "@/features/partner/store/partner.thunks";
 import { fetchPurchaseOrderByIdThunk } from "../../store/purchaseOrder.thunks";
 import { fetchPurchaseOrdersThunk } from "../../store/purchaseOrder.thunks";
+import { purchaseReturnApi } from "../../api/purchaseReturn.api";
 import { StandardFormLayout } from "../../../../components/layout/StandardFormLayout";
 import { FormSection } from "../../../../components/layout/FormSection";
 import { PurchaseOrderLine } from "../../store";
@@ -21,6 +22,9 @@ interface ReturnLine {
   product_name: string;
   po_line_id: number | null;
   quantity_returned: number;
+  uom_id: number | null;
+  uom_name: string;
+  qty_in_stock_uom: number;
   unit_price: number;
   line_total: number;
   reason: string;
@@ -78,6 +82,9 @@ export default function PurchaseReturnEditPage() {
               product_name: line.product?.name ?? `Product ${line.product_id}`,
               po_line_id: line.po_line_id,
               quantity_returned: Number(line.quantity_returned),
+              uom_id: line.uom_id ?? null,
+              uom_name: line.uom?.name ?? "—",
+              qty_in_stock_uom: Number(line.qty_in_stock_uom ?? 0),
               unit_price: Number(line.unit_price),
               line_total:
                 Number(line.quantity_returned) * Number(line.unit_price),
@@ -123,6 +130,9 @@ export default function PurchaseReturnEditPage() {
         product_name: `Product #${poLine.product_id}`,
         po_line_id: poLine.id ?? null,
         quantity_returned: 1,
+        uom_id: poLine.uom_id ?? null,
+        uom_name: poLine.uom?.name ?? "—",
+        qty_in_stock_uom: Number(poLine.qty_in_stock_uom ?? 0),
         unit_price: Number(poLine.unit_price ?? 0),
         line_total: Number(poLine.unit_price ?? 0),
         reason: "",
@@ -175,28 +185,21 @@ export default function PurchaseReturnEditPage() {
     setSubmitting(true);
     try {
       // Call update endpoint
-      const response = await fetch(`/api/purchase/returns/${ret.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          supplier_id: supplierId as number,
-          purchase_order_id: purchaseOrderId || null,
-          return_date: returnDate,
-          notes: notes.trim() || null,
-          lines: lines.map((l) => ({
-            product_id: l.product_id,
-            po_line_id: l.po_line_id,
-            quantity_returned: l.quantity_returned,
-            unit_price: l.unit_price,
-            reason: l.reason || null,
-            condition: l.condition,
-          })),
-        }),
+      await purchaseReturnApi.update(ret.id, {
+        supplier_id: supplierId as number,
+        purchase_order_id: purchaseOrderId || null,
+        return_date: returnDate,
+        notes: notes.trim() || null,
+        lines: lines.map((l) => ({
+          product_id: l.product_id,
+          po_line_id: l.po_line_id,
+          quantity_returned: l.quantity_returned,
+          uom_id: l.uom_id,
+          unit_price: l.unit_price,
+          reason: l.reason || null,
+          condition: l.condition,
+        })),
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to update Purchase Return");
-      }
 
       toast.success("Purchase Return updated");
       navigate(`/purchase/returns/${ret.id}`);
@@ -398,11 +401,12 @@ export default function PurchaseReturnEditPage() {
 
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-200 bg-gray-50/80">
+            <tr className="border-b border-orange-100 bg-orange-50/60">
               {[
                 "#",
                 "Product",
                 "Qty Returned",
+                "UOM",
                 "Unit Price",
                 "Condition",
                 "Reason",
@@ -451,6 +455,9 @@ export default function PurchaseReturnEditPage() {
                       }
                       className="w-20 h-7 px-2 text-sm text-right border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-orange-500"
                     />
+                  </td>
+                  <td className="px-4 py-2 text-xs text-gray-600">
+                    {line.uom_name}
                   </td>
                   <td className="px-4 py-2">
                     <input

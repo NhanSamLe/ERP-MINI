@@ -23,6 +23,7 @@ export const praRouter = Router();
 praRouter.get("/", purchaseRoles, praController.getAll);
 praRouter.get("/:id", purchaseRoles, praController.getById);
 praRouter.post("/", purchaseOnly, praController.create);
+praRouter.put("/:id", purchaseOnly, praController.update);
 praRouter.post("/:id/submit", purchaseOnly, praController.submit);
 praRouter.post("/:id/approve", managerOnly, praController.approve);
 praRouter.post("/:id/reject", managerOnly, praController.reject);
@@ -36,6 +37,7 @@ purchaseReturnRouter.get(
   purchaseReturnController.getById,
 );
 purchaseReturnRouter.post("/", purchaseOnly, purchaseReturnController.create);
+purchaseReturnRouter.put("/:id", purchaseOnly, purchaseReturnController.update);
 purchaseReturnRouter.post(
   "/:id/ship",
   purchaseOnly,

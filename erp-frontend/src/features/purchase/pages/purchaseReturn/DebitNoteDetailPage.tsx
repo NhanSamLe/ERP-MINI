@@ -172,7 +172,7 @@ export default function DebitNoteDetailPage() {
           >
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50/80">
+                <tr className="border-b border-orange-100 bg-orange-50/60">
                   {["#", "Product", "Qty", "Unit Price", "Line Total"].map(
                     (h) => (
                       <th

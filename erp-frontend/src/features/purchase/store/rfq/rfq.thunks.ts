@@ -137,3 +137,39 @@ export const compareRfqsThunk = createAsyncThunk(
     }
   },
 );
+
+export const submitRfqThunk = createAsyncThunk(
+  "rfq/submit",
+  async (id: number, { rejectWithValue }) => {
+    try {
+      return await rfqApi.submit(id);
+    } catch (e) {
+      return rejectWithValue(getErrorMessage(e));
+    }
+  },
+);
+
+export const approveRfqThunk = createAsyncThunk(
+  "rfq/approve",
+  async (id: number, { rejectWithValue }) => {
+    try {
+      return await rfqApi.approve(id);
+    } catch (e) {
+      return rejectWithValue(getErrorMessage(e));
+    }
+  },
+);
+
+export const rejectRfqApprovalThunk = createAsyncThunk(
+  "rfq/rejectApproval",
+  async (
+    { id, reason }: { id: number; reason: string },
+    { rejectWithValue },
+  ) => {
+    try {
+      return await rfqApi.rejectApproval(id, reason);
+    } catch (e) {
+      return rejectWithValue(getErrorMessage(e));
+    }
+  },
+);

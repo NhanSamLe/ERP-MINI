@@ -10,6 +10,7 @@ import {
 } from "../../store/purchaseReturn";
 import { loadPartners } from "@/features/partner/store/partner.thunks";
 import { fetchPurchaseOrdersThunk } from "../../store/purchaseOrder.thunks";
+import { praApi } from "../../api/purchaseReturn.api";
 import { StandardFormLayout } from "../../../../components/layout/StandardFormLayout";
 import { FormSection } from "../../../../components/layout/FormSection";
 
@@ -103,26 +104,15 @@ export default function PraEditPage() {
 
     setSubmitting(true);
     try {
-      // Call update endpoint (need to check if it exists)
-      const response = await fetch(
-        `/api/purchase/return-authorizations/${pra.id}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            supplier_id: supplierId as number,
-            purchase_order_id: purchaseOrderId as number,
-            return_type: returnType,
-            reason: reason.trim(),
-            total_return_amount: Number(totalReturnAmount),
-            notes: notes.trim() || null,
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to update PRA");
-      }
+      // Call update endpoint
+      await praApi.update(pra.id, {
+        supplier_id: supplierId as number,
+        purchase_order_id: purchaseOrderId as number,
+        return_type: returnType,
+        reason: reason.trim(),
+        total_return_amount: Number(totalReturnAmount),
+        notes: notes.trim() || null,
+      });
 
       toast.success("PRA updated");
       navigate(`/purchase/return-authorizations/${pra.id}`);

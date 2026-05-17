@@ -1,5 +1,7 @@
 interface Props {
   status: string;
+  /** "status" uses the default colorMap; "approval" uses approvalColorMap */
+  variant?: "status" | "approval";
   className?: string;
 }
 
@@ -118,11 +120,45 @@ const labelMap: Record<string, string> = {
   fully_allocated: "Fully Allocated",
 };
 
-export function StatusBadge({ status, className = "" }: Props) {
+/** Approval-specific overrides (waiting_approval → amber, approved → emerald, rejected → red) */
+const approvalColorMap: Record<string, string> = {
+  draft: "bg-gray-100 text-gray-600",
+  waiting_approval: "bg-amber-50 text-amber-700",
+  approved: "bg-emerald-50 text-emerald-700",
+  rejected: "bg-red-50 text-red-600",
+};
+
+const approvalDotColor: Record<string, string> = {
+  draft: "bg-gray-400",
+  waiting_approval: "bg-amber-500",
+  approved: "bg-emerald-500",
+  rejected: "bg-red-500",
+};
+
+const approvalLabelMap: Record<string, string> = {
+  draft: "Draft",
+  waiting_approval: "Waiting Approval",
+  approved: "Approved",
+  rejected: "Rejected",
+};
+
+export function StatusBadge({
+  status,
+  variant = "status",
+  className = "",
+}: Props) {
   const key = status ? status.toLowerCase() : "unknown";
-  const badgeClass = colorMap[key] ?? "bg-gray-100 text-gray-500";
-  const dot = dotColor[key] ?? "bg-gray-400";
-  const label = labelMap[key] ?? status?.replace(/_/g, " ") ?? "Unknown";
+
+  const isApproval = variant === "approval";
+  const badgeClass = isApproval
+    ? (approvalColorMap[key] ?? "bg-gray-100 text-gray-500")
+    : (colorMap[key] ?? "bg-gray-100 text-gray-500");
+  const dot = isApproval
+    ? (approvalDotColor[key] ?? "bg-gray-400")
+    : (dotColor[key] ?? "bg-gray-400");
+  const label = isApproval
+    ? (approvalLabelMap[key] ?? status?.replace(/_/g, " ") ?? "Unknown")
+    : (labelMap[key] ?? status?.replace(/_/g, " ") ?? "Unknown");
 
   return (
     <span
@@ -137,3 +173,6 @@ export function StatusBadge({ status, className = "" }: Props) {
     </span>
   );
 }
+
+// Re-export color maps for consumers that need raw access
+export { colorMap as STATUS_COLORS, approvalColorMap as APPROVAL_COLORS };

@@ -5,7 +5,6 @@ import { PurchaseReturnLine } from "../models/purchaseReturnLine.model";
 import { ApDebitNote } from "../models/apDebitNote.model";
 import { ApDebitNoteLine } from "../models/apDebitNoteLine.model";
 import { VendorRefund } from "../models/vendorRefund.model";
-import { ApInvoice } from "../models/apInvoice.model";
 import { GlEntry } from "../../finance/models/glEntry.model";
 import { GlEntryLine } from "../../finance/models/glEntryLine.model";
 import { GlJournal } from "../../finance/models/glJournal.model";
@@ -13,7 +12,8 @@ import { Partner } from "../../../models";
 import { User } from "../../auth/models/user.model";
 import { Branch } from "../../company/models/branch.model";
 import { Product } from "../../product/models/product.model";
-import { Op } from "sequelize";
+import { UomConversion } from "../../master-data/models/uomConversion.model";
+import { Uom } from "../../master-data/models/uom.model";
 import { purchaseNotificationService } from "./purchaseNotification.service";
 
 function generateNo(prefix: string): string {
@@ -38,7 +38,10 @@ const RETURN_INCLUDE = [
   {
     model: PurchaseReturnLine,
     as: "lines",
-    include: [{ model: Product, as: "product", attributes: ["id", "name"] }],
+    include: [
+      { model: Product, as: "product", attributes: ["id", "name"] },
+      { model: Uom, as: "uom", attributes: ["id", "name"] },
+    ],
   },
 ];
 
@@ -94,6 +97,33 @@ export const praService = {
     });
 
     return this.getById(pra.id, user);
+  },
+
+  async update(id: number, payload: any, user: any) {
+    const pra = await PurchaseReturnAuthorization.findOne({
+      where: { id, branch_id: user.branch_id },
+    });
+    if (!pra) throw { status: 404, message: "PRA not found" };
+    if (pra.status !== "draft")
+      throw { status: 400, message: "Only draft PRA can be edited" };
+
+    if (!payload.purchase_order_id)
+      throw { status: 400, message: "purchase_order_id is required" };
+    if (!payload.supplier_id)
+      throw { status: 400, message: "supplier_id is required" };
+    if (!payload.reason?.trim())
+      throw { status: 400, message: "reason is required" };
+
+    await pra.update({
+      purchase_order_id: payload.purchase_order_id,
+      supplier_id: payload.supplier_id,
+      reason: payload.reason,
+      return_type: payload.return_type ?? "debit_note",
+      total_return_amount: payload.total_return_amount ?? 0,
+      notes: payload.notes ?? null,
+    });
+
+    return this.getById(id, user);
   },
 
   async submit(id: number, user: any) {
@@ -164,6 +194,83 @@ export const praService = {
 
 // ─── Purchase Return Service ──────────────────────────────────────────────────
 
+// ─── Helper: Quy đổi UOM ──────────────────────────────────────────────────────
+
+/**
+ * Quy đổi quantity từ purchase UOM sang stock UOM của product.
+ * Priority lookup: product-specific → generic → reverse product-specific → reverse generic → fallback.
+ * Nếu uom_id = product.uom_id hoặc không có conversion → trả về quantity gốc.
+ */
+async function resolveQtyInStockUom(
+  quantity: number,
+  purchaseUomId: number | null | undefined,
+  productStockUomId: number | null | undefined,
+  productId: number | null | undefined,
+): Promise<number> {
+  if (
+    !purchaseUomId ||
+    !productStockUomId ||
+    purchaseUomId === productStockUomId
+  ) {
+    return quantity;
+  }
+
+  // Step 1: Forward product-specific
+  if (productId) {
+    const conversion = await UomConversion.findOne({
+      where: {
+        product_id: productId,
+        from_uom_id: purchaseUomId,
+        to_uom_id: productStockUomId,
+      },
+    });
+    if (conversion) {
+      return quantity * parseFloat(String(conversion.factor));
+    }
+  }
+
+  // Step 2: Forward generic
+  const genericConversion = await UomConversion.findOne({
+    where: {
+      product_id: null,
+      from_uom_id: purchaseUomId,
+      to_uom_id: productStockUomId,
+    },
+  });
+  if (genericConversion) {
+    return quantity * parseFloat(String(genericConversion.factor));
+  }
+
+  // Step 3: Reverse product-specific
+  if (productId) {
+    const reverseProductSpecific = await UomConversion.findOne({
+      where: {
+        product_id: productId,
+        from_uom_id: productStockUomId,
+        to_uom_id: purchaseUomId,
+      },
+    });
+    if (reverseProductSpecific) {
+      return quantity / parseFloat(String(reverseProductSpecific.factor));
+    }
+  }
+
+  // Step 4: Reverse generic
+  const reverseGeneric = await UomConversion.findOne({
+    where: {
+      product_id: null,
+      from_uom_id: productStockUomId,
+      to_uom_id: purchaseUomId,
+    },
+  });
+  if (reverseGeneric) {
+    return quantity / parseFloat(String(reverseGeneric.factor));
+  }
+
+  // Fallback: không tìm được conversion, trả về quantity gốc
+  return quantity;
+}
+
 export const purchaseReturnService = {
   async getAll(query: any, user: any) {
     const where: any = { branch_id: user.branch_id };
@@ -224,14 +331,30 @@ export const purchaseReturnService = {
         const lineTotal = qty * price;
         total += lineTotal;
 
+        // Quy đổi quantity_returned sang stock UOM
+        const product = await Product.findByPk(line.product_id, {
+          attributes: ["id", "uom_id"],
+        });
+        const productStockUomId = product?.uom_id ?? null;
+        const qtyInStockUom = await resolveQtyInStockUom(
+          qty,
+          line.uom_id ?? null,
+          productStockUomId,
+          line.product_id,
+        );
+
         await PurchaseReturnLine.create(
           {
             return_id: ret.id,
             product_id: line.product_id,
             po_line_id: line.po_line_id ?? null,
             quantity_returned: qty,
+            uom_id: line.uom_id ?? null,
+            qty_in_stock_uom: qtyInStockUom,
             quantity_confirmed: 0,
+            quantity_confirmed_stock_uom: 0,
             quantity_rejected: 0,
+            quantity_rejected_stock_uom: 0,
             unit_price: price,
             line_total: lineTotal,
             reason: line.reason ?? null,
@@ -246,6 +369,91 @@ export const purchaseReturnService = {
     });
 
     return this.getById(retId, user);
+  },
+
+  async update(id: number, payload: any, user: any) {
+    const ret = await PurchaseReturn.findOne({
+      where: { id, branch_id: user.branch_id },
+    });
+    if (!ret) throw { status: 404, message: "Purchase Return not found" };
+    if (ret.status !== "draft")
+      throw {
+        status: 400,
+        message: "Only draft Purchase Return can be edited",
+      };
+
+    if (!payload.supplier_id)
+      throw { status: 400, message: "supplier_id is required" };
+    if (!payload.return_date)
+      throw { status: 400, message: "return_date is required" };
+    if (!Array.isArray(payload.lines) || payload.lines.length === 0) {
+      throw { status: 400, message: "lines must have at least 1 item" };
+    }
+
+    await sequelize.transaction(async (t) => {
+      // Update header
+      await ret.update(
+        {
+          supplier_id: payload.supplier_id,
+          purchase_order_id: payload.purchase_order_id ?? null,
+          return_date: payload.return_date,
+          notes: payload.notes ?? null,
+        },
+        { transaction: t },
+      );
+
+      // Delete old lines
+      await PurchaseReturnLine.destroy({
+        where: { return_id: id },
+        transaction: t,
+      });
+
+      // Create new lines
+      let total = 0;
+      for (const line of payload.lines) {
+        const qty = Number(line.quantity_returned);
+        const price = Number(line.unit_price);
+        const lineTotal = qty * price;
+        total += lineTotal;
+
+        // Quy đổi quantity_returned sang stock UOM
+        const product = await Product.findByPk(line.product_id, {
+          attributes: ["id", "uom_id"],
+        });
+        const productStockUomId = product?.uom_id ?? null;
+        const qtyInStockUom = await resolveQtyInStockUom(
+          qty,
+          line.uom_id ?? null,
+          productStockUomId,
+          line.product_id,
+        );
+
+        await PurchaseReturnLine.create(
+          {
+            return_id: id,
+            product_id: line.product_id,
+            po_line_id: line.po_line_id ?? null,
+            quantity_returned: qty,
+            uom_id: line.uom_id ?? null,
+            qty_in_stock_uom: qtyInStockUom,
+            quantity_confirmed: 0,
+            quantity_confirmed_stock_uom: 0,
+            quantity_rejected: 0,
+            quantity_rejected_stock_uom: 0,
+            unit_price: price,
+            line_total: lineTotal,
+            reason: line.reason ?? null,
+            condition: line.condition ?? "good",
+          },
+          { transaction: t },
+        );
+      }
+
+      // Update total
+      await ret.update({ total_return_amount: total }, { transaction: t });
+    });
+
+    return this.getById(id, user);
   },
 
   async ship(id: number, user: any) {
@@ -274,10 +482,36 @@ export const purchaseReturnService = {
 
     await sequelize.transaction(async (t) => {
       for (const item of lines) {
+        // Lấy line để biết uom_id
+        const returnLine = await PurchaseReturnLine.findByPk(item.line_id);
+        if (!returnLine) continue;
+
+        // Quy đổi qty_confirmed sang stock UOM
+        const product = await Product.findByPk(returnLine.product_id, {
+          attributes: ["id", "uom_id"],
+        });
+        const productStockUomId = product?.uom_id ?? null;
+        const qtyConfirmedStockUom = await resolveQtyInStockUom(
+          item.qty_confirmed,
+          returnLine.uom_id ?? null,
+          productStockUomId,
+          returnLine.product_id,
+        );
+
+        // Quy đổi qty_rejected sang stock UOM
+        const qtyRejectedStockUom = await resolveQtyInStockUom(
+          item.qty_rejected,
+          returnLine.uom_id ?? null,
+          productStockUomId,
+          returnLine.product_id,
+        );
+
         await PurchaseReturnLine.update(
           {
             quantity_confirmed: item.qty_confirmed,
+            quantity_confirmed_stock_uom: qtyConfirmedStockUom,
             quantity_rejected: item.qty_rejected,
+            quantity_rejected_stock_uom: qtyRejectedStockUom,
           },
           { where: { id: item.line_id, return_id: id }, transaction: t },
         );

@@ -18,6 +18,9 @@ import {
   rejectRfqThunk,
   convertRfqToPoThunk,
   createRfqVersionThunk,
+  submitRfqThunk,
+  approveRfqThunk,
+  rejectRfqApprovalThunk,
   clearSelected,
 } from "../../store/rfq";
 import { StatusBadge } from "../../../../components/common";
@@ -40,8 +43,18 @@ export default function RfqDetailPage() {
   const role = user?.role.code;
 
   const [modal, setModal] = useState<
-    "send" | "receive" | "accept" | "reject" | "convert" | "version" | null
+    | "send"
+    | "receive"
+    | "accept"
+    | "reject"
+    | "convert"
+    | "version"
+    | "submit"
+    | "approve"
+    | "reject_approval"
+    | null
   >(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   useEffect(() => {
     const numId = Number(id);
@@ -86,6 +99,26 @@ export default function RfqDetailPage() {
           navigate(`/purchase/rfqs/${newRfq.id}`);
           break;
         }
+        case "submit":
+          await dispatch(submitRfqThunk(rfq.id)).unwrap();
+          toast.success("RFQ submitted for approval");
+          break;
+        case "approve":
+          await dispatch(approveRfqThunk(rfq.id)).unwrap();
+          toast.success("RFQ approved");
+          break;
+        case "reject_approval": {
+          if (!rejectReason.trim()) {
+            toast.error("Rejection reason is required");
+            return;
+          }
+          await dispatch(
+            rejectRfqApprovalThunk({ id: rfq.id, reason: rejectReason }),
+          ).unwrap();
+          toast.success("RFQ approval rejected");
+          setRejectReason("");
+          break;
+        }
       }
       setModal(null);
     } catch (e: any) {
@@ -107,6 +140,7 @@ export default function RfqDetailPage() {
         label: "Edit",
         variant: "outline" as const,
         onClick: () => navigate(`/purchase/rfqs/${rfq.id}/edit`),
+        disabled: rfq.approval_status === "waiting_approval",
       });
     }
     if (rfq.status === "draft" && role === Roles.PURCHASE) {
@@ -124,23 +158,49 @@ export default function RfqDetailPage() {
       });
     }
     if (rfq.status === "received") {
-      if (role === Roles.PURCHASE || role === Roles.PURCHASEMANAGER) {
-        base.push({
-          label: "Create PO",
-          variant: "success" as const,
-          onClick: () => setModal("convert"),
-        });
-        base.push({
-          label: "New Version",
-          variant: "outline" as const,
-          onClick: () => setModal("version"),
-        });
-        base.push({
-          label: "Reject",
-          variant: "danger" as const,
-          onClick: () => setModal("reject"),
-        });
+      // Only show these actions if NOT waiting for approval
+      if (rfq.approval_status !== "waiting_approval") {
+        if (role === Roles.PURCHASE) {
+          base.push({
+            label: "Create PO",
+            variant: "success" as const,
+            onClick: () => setModal("convert"),
+          });
+          base.push({
+            label: "New Version",
+            variant: "outline" as const,
+            onClick: () => setModal("version"),
+          });
+          base.push({
+            label: "Reject",
+            variant: "danger" as const,
+            onClick: () => setModal("reject"),
+          });
+        }
       }
+    }
+    // Approval workflow buttons
+    if (rfq.approval_status === "draft" && role === Roles.PURCHASE) {
+      base.push({
+        label: "Submit for Approval",
+        variant: "primary" as const,
+        onClick: () => setModal("submit"),
+      });
+    }
+    if (
+      rfq.approval_status === "waiting_approval" &&
+      role === Roles.PURCHASEMANAGER
+    ) {
+      base.push({
+        label: "Approve",
+        variant: "success" as const,
+        onClick: () => setModal("approve"),
+      });
+      base.push({
+        label: "Reject",
+        variant: "danger" as const,
+        onClick: () => setModal("reject_approval"),
+      });
     }
     return base;
   };
@@ -221,6 +281,78 @@ export default function RfqDetailPage() {
               <p className="text-xs text-gray-500 mb-1">Version</p>
               <p className="text-sm text-gray-800">v{rfq.version}</p>
             </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Status</p>
+              <StatusBadge status={rfq.status} />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Approval Status</p>
+              <span
+                className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                  rfq.approval_status === "approved"
+                    ? "bg-green-50 text-green-700"
+                    : rfq.approval_status === "waiting_approval"
+                      ? "bg-yellow-50 text-yellow-700"
+                      : rfq.approval_status === "rejected"
+                        ? "bg-red-50 text-red-700"
+                        : "bg-gray-50 text-gray-700"
+                }`}
+              >
+                {rfq.approval_status === "draft" && "Draft"}
+                {rfq.approval_status === "waiting_approval" &&
+                  "Waiting Approval"}
+                {rfq.approval_status === "approved" && "Approved"}
+                {rfq.approval_status === "rejected" && "Rejected"}
+              </span>
+            </div>
+            {rfq.submitted_at && (
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Submitted At</p>
+                <p className="text-sm text-gray-800">
+                  {new Date(rfq.submitted_at).toLocaleDateString("vi-VN")} at{" "}
+                  {new Date(rfq.submitted_at).toLocaleTimeString("vi-VN", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </p>
+              </div>
+            )}
+            {rfq.approved_at && (
+              <div>
+                <p className="text-xs text-gray-500 mb-1">
+                  {rfq.approval_status === "rejected"
+                    ? "Rejected At"
+                    : "Approved At"}
+                </p>
+                <p className="text-sm text-gray-800">
+                  {new Date(rfq.approved_at).toLocaleDateString("vi-VN")} at{" "}
+                  {new Date(rfq.approved_at).toLocaleTimeString("vi-VN", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </p>
+              </div>
+            )}
+            {rfq.approver && (
+              <div>
+                <p className="text-xs text-gray-500 mb-1">
+                  {rfq.approval_status === "rejected"
+                    ? "Rejected By"
+                    : "Approved By"}
+                </p>
+                <p className="text-sm text-gray-800">
+                  {rfq.approver.full_name}
+                </p>
+              </div>
+            )}
+            {rfq.reject_reason && (
+              <div className="md:col-span-3">
+                <p className="text-xs text-gray-500 mb-1">Rejection Reason</p>
+                <p className="text-sm text-red-700 bg-red-50 p-2 rounded border border-red-200">
+                  {rfq.reject_reason}
+                </p>
+              </div>
+            )}
             {rfq.sent_at && (
               <div>
                 <p className="text-xs text-gray-500 mb-1">Sent At</p>
@@ -249,7 +381,7 @@ export default function RfqDetailPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50/80">
+                <tr className="border-b border-orange-100 bg-orange-50/60">
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     #
                   </th>
@@ -261,6 +393,9 @@ export default function RfqDetailPage() {
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     Qty
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    UOM
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     Unit Price
@@ -302,6 +437,10 @@ export default function RfqDetailPage() {
                       <td className="px-4 py-3 text-right text-gray-800">
                         {line.quantity}
                       </td>
+                      <td className="px-4 py-3 text-left text-gray-600">
+                        {/* Assuming RFQ API returns uom object with name */}
+                        {(line as any).uom?.name ?? "—"}
+                      </td>
                       <td className="px-4 py-3 text-right text-gray-800">
                         {formatVND(line.unit_price)}
                       </td>
@@ -326,7 +465,7 @@ export default function RfqDetailPage() {
               <tfoot className="border-t border-gray-200 bg-gray-50/50">
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className="px-4 py-3 text-right text-sm font-medium text-gray-600"
                   >
                     Subtotal
@@ -476,6 +615,64 @@ export default function RfqDetailPage() {
         variant="primary"
         loading={actionLoading}
       />
+      <ActionConfirmModal
+        isOpen={modal === "submit"}
+        onClose={() => setModal(null)}
+        onConfirm={() => handleAction("submit")}
+        title="Submit for Approval"
+        description={`Submit ${rfq.rfq_no} for approval? It will be sent to your manager.`}
+        confirmText="Submit"
+        variant="primary"
+        loading={actionLoading}
+      />
+      <ActionConfirmModal
+        isOpen={modal === "approve"}
+        onClose={() => setModal(null)}
+        onConfirm={() => handleAction("approve")}
+        title="Approve RFQ"
+        description={`Approve ${rfq.rfq_no}?`}
+        confirmText="Approve"
+        variant="success"
+        loading={actionLoading}
+      />
+      {/* Reject Approval Modal - with reason input */}
+      {modal === "reject_approval" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+              Reject RFQ Approval
+            </h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Please provide a reason for rejecting {rfq.rfq_no}.
+            </p>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Rejection reason..."
+              rows={3}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-orange-500 mb-4"
+            />
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => {
+                  setModal(null);
+                  setRejectReason("");
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleAction("reject_approval")}
+                disabled={!rejectReason.trim() || actionLoading}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:bg-gray-400 rounded-md"
+              >
+                {actionLoading ? "Rejecting..." : "Reject"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

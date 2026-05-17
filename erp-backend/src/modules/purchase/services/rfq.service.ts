@@ -9,6 +9,7 @@ import { User } from "../../auth/models/user.model";
 import { Branch } from "../../company/models/branch.model";
 import { Product } from "../../product/models/product.model";
 import { UomConversion } from "../../master-data/models/uomConversion.model";
+import { UnitOfMeasure } from "../../master-data/models/uom.model";
 import { Role } from "../../../core/types/enum";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -398,6 +399,59 @@ export const rfqService = {
     return this.getById(id, user);
   },
 
+  // ─── APPROVAL WORKFLOW ─────────────────────────────────────────────────────
+
+  async submit(id: number, user: any) {
+    const rfq = await PurchaseRfq.findOne({
+      where: { id, branch_id: user.branch_id },
+    });
+    if (!rfq) throw { status: 404, message: "RFQ not found" };
+    if (rfq.approval_status !== "draft") {
+      throw { status: 400, message: "Only draft RFQ can be submitted" };
+    }
+    await rfq.update({
+      approval_status: "waiting_approval",
+      submitted_at: new Date(),
+    });
+    return this.getById(id, user);
+  },
+
+  async approve(id: number, user: any) {
+    const rfq = await PurchaseRfq.findOne({
+      where: { id, branch_id: user.branch_id },
+    });
+    if (!rfq) throw { status: 404, message: "RFQ not found" };
+    if (rfq.approval_status !== "waiting_approval") {
+      throw { status: 400, message: "RFQ is not waiting for approval" };
+    }
+    await rfq.update({
+      approval_status: "approved",
+      approved_by: user.id,
+      approved_at: new Date(),
+    });
+    return this.getById(id, user);
+  },
+
+  async rejectApproval(id: number, payload: any, user: any) {
+    const rfq = await PurchaseRfq.findOne({
+      where: { id, branch_id: user.branch_id },
+    });
+    if (!rfq) throw { status: 404, message: "RFQ not found" };
+    if (rfq.approval_status !== "waiting_approval") {
+      throw { status: 400, message: "RFQ is not waiting for approval" };
+    }
+    if (!payload.reason?.trim()) {
+      throw { status: 400, message: "Rejection reason is required" };
+    }
+    await rfq.update({
+      approval_status: "rejected",
+      approved_by: user.id,
+      approved_at: new Date(),
+      reject_reason: payload.reason,
+    });
+    return this.getById(id, user);
+  },
+
   // ─── CONVERT TO PO ─────────────────────────────────────────────────────────
 
   async convertToPo(id: number, user: any) {
@@ -562,6 +616,7 @@ export const rfqService = {
           as: "lines",
           include: [
             { model: Product, as: "product", attributes: ["id", "name"] },
+            { model: UnitOfMeasure, as: "uom", attributes: ["id", "name"] },
           ],
         },
       ],
@@ -590,6 +645,7 @@ export const rfqService = {
         productMap.get(line.product_id)!.rfqs[rfq.id] = {
           unit_price: line.unit_price,
           quantity: line.quantity,
+          uom: (line as any).uom,
           discount_percent: line.discount_percent,
           line_total_after_tax: line.line_total_after_tax,
           lead_time_days: line.lead_time_days,

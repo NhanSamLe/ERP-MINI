@@ -51,11 +51,13 @@ export function StandardFormLayout({
   return (
     <div className="min-h-screen bg-gray-50/60">
       {/* Sticky page header bar */}
-      <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
+      <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm border-t-2 border-t-orange-500">
         <div className="max-w-screen-2xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
           {/* Left: title */}
           <div className="min-w-0 flex items-center gap-2">
-            <h1 className="text-base font-semibold text-gray-900 truncate">{title}</h1>
+            <h1 className="text-base font-semibold text-gray-900 truncate">
+              {title}
+            </h1>
             {statusBadge}
           </div>
 
@@ -78,7 +80,9 @@ export function StandardFormLayout({
                   {action.isLoading ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   ) : (
-                    action.icon && <span className="w-3.5 h-3.5">{action.icon}</span>
+                    action.icon && (
+                      <span className="w-3.5 h-3.5">{action.icon}</span>
+                    )
                   )}
                   {action.isLoading ? "Processing..." : action.label}
                 </button>
@@ -90,7 +94,9 @@ export function StandardFormLayout({
 
       {/* Page content */}
       <div className="max-w-screen-2xl mx-auto px-6 py-5">
-        <div className={`grid gap-5 items-start ${sidebarContent ? "grid-cols-1 lg:grid-cols-[1fr_280px]" : "grid-cols-1"}`}>
+        <div
+          className={`grid gap-5 items-start ${sidebarContent ? "grid-cols-1 lg:grid-cols-[1fr_280px]" : "grid-cols-1"}`}
+        >
           {/* Main column */}
           <main className="min-w-0 space-y-4">{children}</main>
 

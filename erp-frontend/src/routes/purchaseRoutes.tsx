@@ -20,6 +20,7 @@ import RfqListPage from "@/features/purchase/pages/rfq/RfqListPage";
 import RfqDetailPage from "@/features/purchase/pages/rfq/RfqDetailPage";
 import RfqCreatePage from "@/features/purchase/pages/rfq/RfqCreatePage";
 import RfqEditPage from "@/features/purchase/pages/rfq/RfqEditPage";
+import RfqComparePage from "@/features/purchase/pages/rfq/RfqComparePage";
 import PraListPage from "@/features/purchase/pages/purchaseReturn/PraListPage";
 import PraDetailPage from "@/features/purchase/pages/purchaseReturn/PraDetailPage";
 import PraCreatePage from "@/features/purchase/pages/purchaseReturn/PraCreatePage";
@@ -211,6 +212,16 @@ const purchaseRoutes: RouteObject[] = [
     element: (
       <ProtectedRoute allowedRoles={[Roles.PURCHASE]}>
         <RfqEditPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "purchase/rfqs/compare",
+    element: (
+      <ProtectedRoute
+        allowedRoles={[Roles.PURCHASE, Roles.PURCHASEMANAGER, Roles.ACCOUNT]}
+      >
+        <RfqComparePage />
       </ProtectedRoute>
     ),
   },

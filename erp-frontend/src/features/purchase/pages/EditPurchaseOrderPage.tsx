@@ -6,7 +6,6 @@ import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../../store/store";
 import { Product } from "../../../features/products/store/product.types";
 import { useParams, useNavigate } from "react-router-dom";
-
 import {
   Select,
   SelectTrigger,
@@ -14,8 +13,19 @@ import {
   SelectContent,
   SelectItem,
 } from "../../../components/ui/Select";
-import { Calendar, Search, Plus, Trash2 } from "lucide-react";
-
+import {
+  Search,
+  Plus,
+  Trash2,
+  Package,
+  ChevronRight,
+  Hash,
+  CalendarDays,
+  Truck,
+  Receipt,
+  StickyNote,
+  AlertCircle,
+} from "lucide-react";
 import {
   fetchProductByIdThunk,
   searchProductsThunk,
@@ -38,6 +48,8 @@ import {
 } from "../utils/uomHelper";
 import { Uom } from "@/features/master-data/dto/uom.dto";
 import { PurchaseOrderStatus } from "../constants/purchaseStatus.enum";
+import { formatVND } from "@/utils/currency.helper";
+import { StatusBadge } from "../components/Common";
 
 interface LineItem {
   id?: number;
@@ -45,8 +57,8 @@ interface LineItem {
   product_id: string | number;
   product_name: string;
   product_image: string;
-  sale_price?: number; // Price per stock UOM (for calculation)
-  price_in_purchase_uom?: number; // Price per purchase UOM (what user sees & saves)
+  sale_price?: number;
+  price_in_purchase_uom?: number;
   sku?: string;
   quantity: number;
   quantity_in_stock_uom?: number;
@@ -100,9 +112,6 @@ export default function EditPurchaseOrderPage() {
     dispatch(fetchAllConversionsThunk());
   }, [dispatch, id]);
 
-  const selectedSupplierName =
-    partners.items.find((w) => w.id === Number(supplierId))?.name || "";
-
   useEffect(() => {
     if (!purchaseOrder) return;
     fetchBranch(purchaseOrder.branch_id!)
@@ -115,9 +124,8 @@ export default function EditPurchaseOrderPage() {
       if (
         dropdownRef.current &&
         !dropdownRef.current.contains(e.target as Node)
-      ) {
+      )
         setShowDropdown(false);
-      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -144,7 +152,6 @@ export default function EditPurchaseOrderPage() {
     return () => clearTimeout(timer);
   }, [searchTerm, dispatch]);
 
-  // ── Helper: recalc totals ─────────────────────────────────────────────────
   const recalcTotals = (updatedLines: LineItem[]) => {
     const before = updatedLines.reduce(
       (s, l) =>
@@ -158,10 +165,9 @@ export default function EditPurchaseOrderPage() {
     setTotalAfterTax(after);
   };
 
-  // ── Add new product ───────────────────────────────────────────────────────
   const handleSelectProduct = async (product: Product) => {
     if (lines.some((l) => l.product_id === product.id)) {
-      alert("Sản phẩm đã có trong danh sách!");
+      toast.warning("Product already added!");
       return;
     }
     const tax = await dispatch(
@@ -169,17 +175,14 @@ export default function EditPurchaseOrderPage() {
     ).unwrap();
     const rate = Number(tax?.rate || 0);
     const qty = 1;
-
     const allSupplierInfos =
       (product as any).supplierInfos ?? product.supplierInfo ?? [];
     const supplierPrice = allSupplierInfos.find(
       (s: any) => s.supplier_id === Number(supplierId),
     )?.price;
     const priceInPurchaseUom = Number(supplierPrice ?? product.cost_price ?? 0);
-
     const purchaseUomId = product.purchase_uom_id ?? product.uom_id ?? null;
     const stockUomId = product.uom_id ?? null;
-
     const priceInStockUom = convertPrice(
       priceInPurchaseUom,
       purchaseUomId,
@@ -196,7 +199,6 @@ export default function EditPurchaseOrderPage() {
     );
     const taxAmount = priceInStockUom * qtyInStockUom * (rate / 100);
     const lineTotal = priceInStockUom * qtyInStockUom + taxAmount;
-
     const newLine: LineItem = {
       id: undefined,
       temp_id: Date.now(),
@@ -217,7 +219,6 @@ export default function EditPurchaseOrderPage() {
       tax_amount: taxAmount,
       line_total: lineTotal,
     };
-
     const updatedLines = [...lines, newLine];
     setLines(updatedLines);
     recalcTotals(updatedLines);
@@ -229,12 +230,10 @@ export default function EditPurchaseOrderPage() {
     setShowDropdown(false);
   };
 
-  // ── Load existing PO lines ────────────────────────────────────────────────
   const finalPO = purchaseOrder;
   useEffect(() => {
     const linesToLoad = finalPO?.lines ?? [];
     if (linesToLoad.length === 0) return;
-
     const loadLines = async () => {
       setSupplierId(finalPO?.supplier_id?.toString() || "");
       if (finalPO?.order_date) {
@@ -243,7 +242,6 @@ export default function EditPurchaseOrderPage() {
       }
       setReference(finalPO?.po_no || "");
       setDescription(finalPO?.description || "");
-
       const enrichedLines = await Promise.all(
         linesToLoad.map(async (l: PurchaseOrderLine) => {
           const product = await dispatch(
@@ -252,17 +250,13 @@ export default function EditPurchaseOrderPage() {
           const tax = await dispatch(
             fetchTaxRatesByIdThunk(product.tax_rate_id || 0),
           ).unwrap();
-
           const purchaseUomId =
             (l as any).uom_id ??
             product.purchase_uom_id ??
             product.uom_id ??
             null;
           const stockUomId = product.uom_id ?? null;
-
-          // unit_price in DB = price per purchase UOM (e.g. 168000/box)
           const priceInPurchaseUom = Number(l.unit_price || 0);
-          // Convert to stock UOM for calculation (e.g. 168000/24 = 7000/pcs)
           const priceInStockUom = convertPrice(
             priceInPurchaseUom,
             purchaseUomId,
@@ -270,7 +264,6 @@ export default function EditPurchaseOrderPage() {
             conversions,
             Number(l.product_id),
           );
-
           const qty = Number(l.quantity || 0);
           const qtyInStockUom =
             Number((l as any).qty_in_stock_uom) ||
@@ -281,11 +274,9 @@ export default function EditPurchaseOrderPage() {
               conversions,
               Number(l.product_id),
             );
-
           const taxRate = Number(tax?.rate || 0);
           const taxAmount = priceInStockUom * qtyInStockUom * (taxRate / 100);
           const lineTotal = priceInStockUom * qtyInStockUom + taxAmount;
-
           return {
             id: l.id ?? undefined,
             temp_id: l.id ?? Date.now(),
@@ -308,9 +299,7 @@ export default function EditPurchaseOrderPage() {
           };
         }),
       );
-
       setLines(enrichedLines);
-
       const newPriceInputs: Record<number, string> = {};
       enrichedLines.forEach((l) => {
         if (l.temp_id !== undefined)
@@ -319,11 +308,9 @@ export default function EditPurchaseOrderPage() {
       setPriceInputs(newPriceInputs);
       recalcTotals(enrichedLines);
     };
-
     loadLines();
   }, [finalPO, dispatch]);
 
-  // ── Update line ───────────────────────────────────────────────────────────
   const updateLine = (
     temp_id: number,
     field: keyof LineItem,
@@ -333,11 +320,9 @@ export default function EditPurchaseOrderPage() {
       removeLine(temp_id);
       return;
     }
-
     const updatedLines = lines.map((line) => {
       if (line.temp_id !== temp_id) return line;
       const updated = { ...line, [field]: value };
-
       if (field === "quantity") {
         const newQty = value || 1;
         updated.quantity_in_stock_uom =
@@ -353,7 +338,6 @@ export default function EditPurchaseOrderPage() {
               )
             : newQty;
       }
-
       if (field === "price_in_purchase_uom") {
         updated.sale_price = convertPrice(
           value,
@@ -363,14 +347,12 @@ export default function EditPurchaseOrderPage() {
           Number(updated.product_id),
         );
       }
-
       const qtyForCalc = updated.quantity_in_stock_uom || updated.quantity;
       const taxAmount =
         (updated.sale_price || 0) * qtyForCalc * (updated.tax_rate / 100);
       const lineTotal = (updated.sale_price || 0) * qtyForCalc + taxAmount;
       return { ...updated, tax_amount: taxAmount, line_total: lineTotal };
     });
-
     setLines(updatedLines);
     recalcTotals(updatedLines);
   };
@@ -388,7 +370,6 @@ export default function EditPurchaseOrderPage() {
     });
   };
 
-  // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
@@ -401,7 +382,6 @@ export default function EditPurchaseOrderPage() {
         navigate("/purchase/orders");
         return;
       }
-
       const today = new Date().toISOString().split("T")[0];
       if (date > today) {
         toast.error("Date cannot be in the future!");
@@ -461,244 +441,342 @@ export default function EditPurchaseOrderPage() {
     }
   };
 
-  return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 bg-gray-50 min-h-screen">
-      <h1 className="text-2xl font-bold text-gray-800">Edit Purchase Order</h1>
+  const selectedSupplierName =
+    partners.items.find((w) => w.id === Number(supplierId))?.name || "";
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Supplier Name <span className="text-red-500">*</span>
-          </label>
-          <Select
-            value={supplierId}
-            onValueChange={(v) => setSupplierId(v)}
-            defaultLabel={selectedSupplierName}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select Supplier" />
-            </SelectTrigger>
-            <SelectContent>
-              {partners.items.map((p) => (
-                <SelectItem key={p.id} value={String(p.id)}>
-                  {p.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+  /* ─── Sidebar ─── */
+  const SidebarSummary = (
+    <div className="space-y-3">
+      {/* Status */}
+      {finalPO?.status && (
+        <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between">
+          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            Status
+          </span>
+          <StatusBadge status={finalPO.status} />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Date <span className="text-red-500">*</span>
-          </label>
-          <div className="relative">
-            <Input
-              type="date"
-              value={date}
-              onChange={setDate}
-              max={new Date().toISOString().split("T")[0]}
-            />
-            <Calendar className="absolute right-3 top-3 h-4 w-4 text-gray-400 pointer-events-none" />
+      )}
+
+      {/* Summary */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            Order Summary
+          </p>
+        </div>
+        <div className="p-4 space-y-3">
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-gray-500">Items</span>
+            <span className="font-semibold text-gray-900">{lines.length}</span>
           </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Reference <span className="text-red-500">*</span>
-          </label>
-          <Input
-            value={reference}
-            onChange={setReference}
-            placeholder="PO-2025-XXXX"
-          />
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-gray-500">Subtotal</span>
+            <span className="font-medium text-gray-700">
+              {formatVND(totalBeforeTax)}
+            </span>
+          </div>
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-gray-500">Tax</span>
+            <span className="font-medium text-blue-600">
+              {formatVND(totalOrderTax)}
+            </span>
+          </div>
+          <div className="pt-3 border-t border-dashed border-gray-200 flex justify-between items-center">
+            <span className="text-sm font-semibold text-gray-800">Total</span>
+            <span className="text-base font-bold text-orange-600">
+              {formatVND(totalAfterTax)}
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Product search */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Product <span className="text-red-500">*</span>
-        </label>
-        <div className="flex gap-3">
-          <div className="relative flex-1" ref={dropdownRef}>
-            <Input
-              placeholder="Search by name or SKU..."
-              value={searchTerm}
-              onChange={setSearchTerm}
-              onFocus={() =>
-                searchTerm && products.length > 0 && setShowDropdown(true)
-              }
-              className="pr-10"
-            />
-            <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400 pointer-events-none" />
-            {showDropdown && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-md shadow-lg z-50 max-h-64 overflow-auto">
-                {searchLoading ? (
-                  <div className="px-4 py-3 text-center text-sm text-gray-500">
-                    Đang tìm...
-                  </div>
-                ) : products.length === 0 ? (
-                  <div className="px-4 py-3 text-center text-sm text-gray-500">
-                    {searchTerm
-                      ? "Không tìm thấy sản phẩm"
-                      : "Gõ ít nhất 2 ký tự để tìm"}
-                  </div>
-                ) : (
-                  products.map((p) => (
-                    <div
-                      key={p.id}
-                      onClick={() => handleSelectProduct(p)}
-                      className="px-4 py-3 hover:bg-orange-50 cursor-pointer border-b last:border-b-0 transition-colors"
+      {/* Quick info */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            Details
+          </p>
+        </div>
+        <div className="p-4 space-y-2.5">
+          <div className="flex items-center gap-2 text-sm">
+            <Hash className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+            <span className="text-gray-500 w-16 flex-shrink-0">Ref</span>
+            <span className="font-mono text-xs font-medium text-gray-900 truncate">
+              {reference || "—"}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <Truck className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+            <span className="text-gray-500 w-16 flex-shrink-0">Supplier</span>
+            <span className="font-medium text-gray-900 truncate">
+              {selectedSupplierName || "—"}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <CalendarDays className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+            <span className="text-gray-500 w-16 flex-shrink-0">Date</span>
+            <span className="font-medium text-gray-900">{date || "—"}</span>
+          </div>
+        </div>
+      </div>
+
+      {lines.length === 0 && (
+        <div className="flex items-start gap-2.5 px-3.5 py-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
+          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+          <span>Add at least one product line before saving.</span>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <Button
+          type="button"
+          onClick={handleSubmit}
+          disabled={isSubmitting || lines.length === 0}
+          className="w-full py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold text-sm shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          {isSubmitting ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              Saving…
+            </>
+          ) : (
+            "Save Changes"
+          )}
+        </Button>
+        <Button
+          type="button"
+          onClick={() => navigate("/purchase/orders")}
+          className="w-full py-2.5 rounded-xl border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 font-medium text-sm transition-colors"
+        >
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-50/60">
+      {/* ── Sticky top bar ── */}
+      <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm border-t-2 border-t-orange-500">
+        <div className="max-w-screen-2xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-sm min-w-0">
+            <span className="text-gray-400">Purchase</span>
+            <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
+            <span className="text-gray-400">Orders</span>
+            <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
+            <span className="font-semibold text-gray-900 truncate">
+              Edit — {reference || `#${id}`}
+            </span>
+          </div>
+          {finalPO?.status && <StatusBadge status={finalPO.status} />}
+        </div>
+      </div>
+
+      <div className="max-w-screen-2xl mx-auto px-6 py-5">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start">
+          {/* ── Main Content ── */}
+          <div className="space-y-4 min-w-0">
+            {/* General Info */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-100 bg-gray-50/60">
+                <Receipt className="w-4 h-4 text-orange-500" />
+                <h2 className="text-sm font-semibold text-gray-700">
+                  General Information
+                </h2>
+              </div>
+              <div className="p-5">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Supplier{" "}
+                      <span className="text-red-400 normal-case font-normal">
+                        *
+                      </span>
+                    </label>
+                    <Select
+                      value={supplierId}
+                      onValueChange={(v) => setSupplierId(v)}
+                      defaultLabel={selectedSupplierName}
                     >
-                      <div className="font-medium text-sm">{p.name}</div>
-                      <div className="text-xs text-gray-500">
-                        SKU: {p.sku} • Sale Price: {p.sale_price?.toFixed(0)}
-                      </div>
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder="Select Supplier" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {partners.items.map((p) => (
+                          <SelectItem key={p.id} value={String(p.id)}>
+                            {p.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Order Date{" "}
+                      <span className="text-red-400 normal-case font-normal">
+                        *
+                      </span>
+                    </label>
+                    <Input
+                      type="date"
+                      value={date}
+                      onChange={setDate}
+                      max={new Date().toISOString().split("T")[0]}
+                      className="h-9 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Reference{" "}
+                      <span className="text-red-400 normal-case font-normal">
+                        *
+                      </span>
+                    </label>
+                    <Input
+                      value={reference}
+                      onChange={setReference}
+                      placeholder="PO-2025-XXXX"
+                      className="h-9 text-sm font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Add Products */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-100 bg-gray-50/60">
+                <Search className="w-4 h-4 text-orange-500" />
+                <h2 className="text-sm font-semibold text-gray-700">
+                  Add Products
+                </h2>
+                <span className="text-xs text-gray-400 ml-auto">
+                  Type at least 2 characters
+                </span>
+              </div>
+              <div className="p-5">
+                <div className="relative" ref={dropdownRef}>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onFocus={() =>
+                        searchTerm &&
+                        products.length > 0 &&
+                        setShowDropdown(true)
+                      }
+                      placeholder="Search by name or SKU…"
+                      className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
+                    />
+                    {searchLoading && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-orange-300 border-t-orange-600 rounded-full animate-spin" />
+                    )}
+                  </div>
+                  {showDropdown && (
+                    <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-60 overflow-auto">
+                      {searchLoading ? (
+                        <div className="px-4 py-3 text-center text-sm text-gray-400">
+                          Searching…
+                        </div>
+                      ) : products.length === 0 ? (
+                        <div className="px-4 py-3 text-center text-sm text-gray-400">
+                          {searchTerm
+                            ? "No products found"
+                            : "Type at least 2 characters"}
+                        </div>
+                      ) : (
+                        products.map((p) => (
+                          <div
+                            key={p.id}
+                            onClick={() => handleSelectProduct(p)}
+                            className="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 cursor-pointer border-b border-gray-50 last:border-0 transition-colors"
+                          >
+                            <div className="w-9 h-9 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-100">
+                              {(p as any).image_url ? (
+                                <img
+                                  src={(p as any).image_url}
+                                  alt={p.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <Package className="w-4 h-4 text-gray-400 m-auto mt-2" />
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="font-medium text-sm text-gray-900 truncate">
+                                {p.name}
+                              </div>
+                              <div className="text-xs text-gray-400 font-mono">
+                                SKU: {p.sku}
+                              </div>
+                            </div>
+                            <Plus className="w-4 h-4 text-orange-400 flex-shrink-0" />
+                          </div>
+                        ))
+                      )}
                     </div>
-                  ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Order Lines */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-100 bg-gray-50/60">
+                <Package className="w-4 h-4 text-orange-500" />
+                <h2 className="text-sm font-semibold text-gray-700">
+                  Order Lines
+                </h2>
+                {lines.length > 0 && (
+                  <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-600">
+                    {lines.length}
+                  </span>
                 )}
               </div>
-            )}
-          </div>
-          <Button className="bg-orange-500 hover:bg-orange-600">
-            <Plus className="h-4 w-4 mr-1" /> Add
-          </Button>
-        </div>
-      </div>
-
-      {/* Product Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-100 text-gray-700">
-                <th className="px-4 py-3 text-left w-10"></th>
-                <th className="px-4 py-3 text-left font-medium">Product</th>
-                <th className="px-4 py-3 text-center font-medium">Image</th>
-                <th className="px-4 py-3 text-center font-medium">
-                  Unit Price
-                </th>
-                <th className="px-4 py-3 text-center font-medium">Quantity</th>
-                <th className="px-4 py-3 text-center font-medium">UOM</th>
-                <th className="px-4 py-3 text-center font-medium">
-                  Qty in Stock UOM
-                </th>
-                <th className="px-4 py-3 text-center font-medium">Tax Type</th>
-                <th className="px-4 py-3 text-center font-medium">
-                  Tax Rate(%)
-                </th>
-                <th className="px-4 py-3 text-right font-medium">Tax Amount</th>
-                <th className="px-4 py-3 text-right font-medium">Line Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lines.length === 0 ? (
-                <tr>
-                  <td colSpan={11} className="text-center py-16 text-gray-500">
-                    Chưa có sản phẩm. Hãy tìm kiếm và thêm ở trên
-                  </td>
-                </tr>
-              ) : (
-                lines.map((line) => (
-                  <tr key={line.temp_id} className="border-t hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <button
-                        className="text-red-500 hover:text-red-700"
-                        onClick={() =>
-                          line.temp_id !== undefined && removeLine(line.temp_id)
-                        }
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="font-medium">{line.product_name}</div>
-                      {line.sku && (
-                        <div className="text-xs text-gray-500">
-                          SKU: {line.sku}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <img
-                        src={line.product_image || "/placeholder.png"}
-                        alt={line.product_name}
-                        className="h-12 w-12 object-cover rounded-md mx-auto border"
-                      />
-                    </td>
-                    {/* Unit Price — editable, per purchase UOM */}
-                    <td className="px-4 py-3 text-center">
-                      <div className="flex flex-col items-center gap-1">
-                        <input
-                          type="number"
-                          className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-400 focus:outline-none w-36 text-right"
-                          value={
-                            line.temp_id !== undefined
-                              ? (priceInputs[line.temp_id] ??
-                                String(line.price_in_purchase_uom ?? 0))
-                              : String(line.price_in_purchase_uom ?? 0)
-                          }
-                          onChange={(e) => {
-                            const raw = e.target.value;
-                            if (line.temp_id !== undefined) {
-                              setPriceInputs((prev) => ({
-                                ...prev,
-                                [line.temp_id!]: raw,
-                              }));
-                              const price = parseFloat(raw);
-                              if (!isNaN(price) && price >= 0) {
-                                updateLine(
-                                  line.temp_id,
-                                  "price_in_purchase_uom",
-                                  price,
-                                );
-                              }
-                            }
-                          }}
-                          onBlur={(e) => {
-                            const price = Math.max(
-                              parseFloat(e.target.value) || 0,
-                              0,
-                            );
-                            if (line.temp_id !== undefined) {
-                              setPriceInputs((prev) => ({
-                                ...prev,
-                                [line.temp_id!]: String(price),
-                              }));
-                              updateLine(
-                                line.temp_id,
-                                "price_in_purchase_uom",
-                                price,
-                              );
-                            }
-                          }}
-                          min="0"
-                          step="any"
-                        />
-                        {line.uom_name && (
-                          <span className="text-xs text-gray-400">
-                            per {line.uom_name}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    {/* Quantity */}
-                    <td className="px-4 py-3 text-center">
-                      <input
-                        type="number"
-                        className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-400 focus:outline-none w-20 text-center"
-                        value={line.quantity}
-                        onChange={(e) => {
-                          const qty = Math.max(Number(e.target.value) || 1, 1);
-                          if (line.temp_id !== undefined)
-                            updateLine(line.temp_id, "quantity", qty);
-                        }}
-                        min="1"
-                        step="1"
-                      />
-                    </td>
-                    {/* UOM selector */}
-                    <td className="px-4 py-3 text-center">
-                      {(() => {
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100">
+                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider w-[30%]">
+                        Product
+                      </th>
+                      <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        Unit Price
+                      </th>
+                      <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        Qty
+                      </th>
+                      <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        UOM
+                      </th>
+                      <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        Stock Qty
+                      </th>
+                      <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        Tax
+                      </th>
+                      <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        Line Total
+                      </th>
+                      <th className="px-2 py-2.5 w-8"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {lines.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="py-14 text-center">
+                          <div className="flex flex-col items-center gap-2 text-gray-400">
+                            <Package className="w-8 h-8 text-gray-300" />
+                            <span className="text-sm">
+                              No products added yet
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      lines.map((line) => {
                         const validUoms = getValidUomsForProduct(
                           uoms,
                           conversions,
@@ -706,165 +784,237 @@ export default function EditPurchaseOrderPage() {
                           Number(line.product_id),
                         );
                         return (
-                          <div className="flex flex-col items-center gap-1">
-                            <select
-                              className="border rounded px-2 py-1 text-sm w-28"
-                              value={line.uom_id ?? ""}
-                              onChange={(e) => {
-                                const val = e.target.value
-                                  ? Number(e.target.value)
-                                  : null;
-                                if (line.temp_id === undefined) return;
-                                const selectedUom = uoms.find(
-                                  (u: Uom) => u.id === val,
-                                );
-                                const newPriceInPurchaseUom = convertPrice(
-                                  line.sale_price || 0,
-                                  line.stock_uom_id,
-                                  val,
-                                  conversions,
-                                  Number(line.product_id),
-                                );
-                                const newQtyInStockUom =
-                                  val &&
-                                  line.stock_uom_id &&
-                                  val !== line.stock_uom_id
-                                    ? previewQtyInStockUom(
-                                        line.quantity,
-                                        val,
-                                        line.stock_uom_id,
-                                        conversions,
-                                        Number(line.product_id),
-                                      )
-                                    : line.quantity;
-                                const taxAmount =
-                                  (line.sale_price || 0) *
-                                  newQtyInStockUom *
-                                  (line.tax_rate / 100);
-                                const lineTotal =
-                                  (line.sale_price || 0) * newQtyInStockUom +
-                                  taxAmount;
-                                setLines((prev) =>
-                                  prev.map((l) =>
-                                    l.temp_id === line.temp_id
-                                      ? {
-                                          ...l,
-                                          uom_id: val,
-                                          uom_name: selectedUom?.name ?? "",
-                                          price_in_purchase_uom:
-                                            newPriceInPurchaseUom,
-                                          quantity_in_stock_uom:
-                                            newQtyInStockUom,
-                                          tax_amount: taxAmount,
-                                          line_total: lineTotal,
-                                        }
-                                      : l,
-                                  ),
-                                );
-                                setPriceInputs((prev) => ({
-                                  ...prev,
-                                  [line.temp_id!]: String(
-                                    newPriceInPurchaseUom,
-                                  ),
-                                }));
-                              }}
-                            >
-                              <option value="">-- UOM --</option>
-                              {validUoms.map((u) => (
-                                <option key={u.id} value={u.id}>
-                                  {u.name}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
+                          <tr
+                            key={line.temp_id}
+                            className="hover:bg-orange-50/40 transition-colors"
+                          >
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-lg overflow-hidden bg-gray-100 border border-gray-100 flex-shrink-0">
+                                  {line.product_image ? (
+                                    <img
+                                      src={line.product_image}
+                                      alt={line.product_name}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <Package className="w-4 h-4 text-gray-400 m-auto mt-2.5" />
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-medium text-gray-900 truncate">
+                                    {line.product_name}
+                                  </p>
+                                  {line.sku && (
+                                    <p className="text-xs text-gray-400 font-mono">
+                                      SKU: {line.sku}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex flex-col items-end gap-0.5">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step="any"
+                                  value={
+                                    line.temp_id !== undefined
+                                      ? (priceInputs[line.temp_id] ??
+                                        String(line.price_in_purchase_uom ?? 0))
+                                      : String(line.price_in_purchase_uom ?? 0)
+                                  }
+                                  onChange={(e) => {
+                                    const raw = e.target.value;
+                                    if (line.temp_id !== undefined) {
+                                      setPriceInputs((prev) => ({
+                                        ...prev,
+                                        [line.temp_id!]: raw,
+                                      }));
+                                      const price = parseFloat(raw);
+                                      if (!isNaN(price) && price >= 0)
+                                        updateLine(
+                                          line.temp_id,
+                                          "price_in_purchase_uom",
+                                          price,
+                                        );
+                                    }
+                                  }}
+                                  onBlur={(e) => {
+                                    const price = Math.max(
+                                      parseFloat(e.target.value) || 0,
+                                      0,
+                                    );
+                                    if (line.temp_id !== undefined) {
+                                      setPriceInputs((prev) => ({
+                                        ...prev,
+                                        [line.temp_id!]: String(price),
+                                      }));
+                                      updateLine(
+                                        line.temp_id,
+                                        "price_in_purchase_uom",
+                                        price,
+                                      );
+                                    }
+                                  }}
+                                  className="w-32 text-right border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                                />
+                                {line.uom_name && (
+                                  <span className="text-xs text-gray-400">
+                                    per {line.uom_name}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <input
+                                type="number"
+                                min={1}
+                                step={1}
+                                value={line.quantity}
+                                onChange={(e) => {
+                                  const qty = Math.max(
+                                    Number(e.target.value) || 1,
+                                    1,
+                                  );
+                                  if (line.temp_id !== undefined)
+                                    updateLine(line.temp_id, "quantity", qty);
+                                }}
+                                className="w-20 text-center border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                              />
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <select
+                                className="text-xs border border-gray-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+                                value={line.uom_id ?? ""}
+                                onChange={(e) => {
+                                  const val = e.target.value
+                                    ? Number(e.target.value)
+                                    : null;
+                                  if (line.temp_id === undefined) return;
+                                  const selectedUom = uoms.find(
+                                    (u: Uom) => u.id === val,
+                                  );
+                                  const newPriceInPurchaseUom = convertPrice(
+                                    line.sale_price || 0,
+                                    line.stock_uom_id,
+                                    val,
+                                    conversions,
+                                    Number(line.product_id),
+                                  );
+                                  const newQtyInStockUom =
+                                    val &&
+                                    line.stock_uom_id &&
+                                    val !== line.stock_uom_id
+                                      ? previewQtyInStockUom(
+                                          line.quantity,
+                                          val,
+                                          line.stock_uom_id,
+                                          conversions,
+                                          Number(line.product_id),
+                                        )
+                                      : line.quantity;
+                                  const taxAmount =
+                                    (line.sale_price || 0) *
+                                    newQtyInStockUom *
+                                    (line.tax_rate / 100);
+                                  const lineTotal =
+                                    (line.sale_price || 0) * newQtyInStockUom +
+                                    taxAmount;
+                                  setLines((prev) =>
+                                    prev.map((l) =>
+                                      l.temp_id === line.temp_id
+                                        ? {
+                                            ...l,
+                                            uom_id: val,
+                                            uom_name: selectedUom?.name ?? "",
+                                            price_in_purchase_uom:
+                                              newPriceInPurchaseUom,
+                                            quantity_in_stock_uom:
+                                              newQtyInStockUom,
+                                            tax_amount: taxAmount,
+                                            line_total: lineTotal,
+                                          }
+                                        : l,
+                                    ),
+                                  );
+                                  setPriceInputs((prev) => ({
+                                    ...prev,
+                                    [line.temp_id!]: String(
+                                      newPriceInPurchaseUom,
+                                    ),
+                                  }));
+                                }}
+                              >
+                                <option value="">— UOM —</option>
+                                {validUoms.map((u: Uom) => (
+                                  <option key={u.id} value={u.id}>
+                                    {u.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span className="text-xs font-mono text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
+                                {(
+                                  line.quantity_in_stock_uom || line.quantity
+                                ).toFixed(2)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600 border border-blue-100">
+                                {line.tax_rate}% {line.tax_type}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right font-semibold text-gray-900 tabular-nums">
+                              {formatVND(line.line_total)}
+                            </td>
+                            <td className="px-2 py-3">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  line.temp_id !== undefined &&
+                                  removeLine(line.temp_id)
+                                }
+                                className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          </tr>
                         );
-                      })()}
-                    </td>
-                    <td className="px-4 py-3 text-center text-sm font-medium">
-                      {(line.quantity_in_stock_uom || line.quantity).toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3 text-center capitalize">
-                      {line.tax_type}
-                    </td>
-                    <td className="px-4 py-3 text-center">{line.tax_rate}%</td>
-                    <td className="px-4 py-3 text-right font-medium">
-                      {line.tax_amount.toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3 text-right font-bold text-orange-600">
-                      {line.line_total.toFixed(2)}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Total Order Tax
-          </label>
-          <Input value={totalOrderTax.toString()} disabled />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Branch
-          </label>
-          <div className="border rounded px-3 py-2 bg-gray-100 text-gray-700">
-            {branch?.name}
+            {/* Notes */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-100 bg-gray-50/60">
+                <StickyNote className="w-4 h-4 text-orange-500" />
+                <h2 className="text-sm font-semibold text-gray-700">Notes</h2>
+                <span className="text-xs text-gray-400 ml-auto">Optional</span>
+              </div>
+              <div className="p-5">
+                <Textarea
+                  value={description}
+                  onChange={setDescription}
+                  rows={3}
+                  className="text-sm resize-none"
+                  placeholder="Enter notes or instructions…"
+                />
+              </div>
+            </div>
           </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Total Before Tax *
-          </label>
-          <Input value={totalBeforeTax.toString()} disabled />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Total After Tax *
-          </label>
-          <Input value={totalAfterTax.toString()} disabled />
-        </div>
-      </div>
 
-      <div className="bg-white rounded-lg shadow p-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Description
-        </label>
-        <Textarea
-          value={description}
-          onChange={setDescription}
-          rows={6}
-          className="resize-none"
-          placeholder="Enter description..."
-        />
-      </div>
-
-      <div className="flex justify-end gap-4 pt-6">
-        <Button
-          variant="outline"
-          className="px-6"
-          onClick={() => navigate("/purchase/orders")}
-        >
-          Cancel
-        </Button>
-        <Button
-          className="bg-orange-500 hover:bg-orange-600 px-8 flex items-center gap-2"
-          onClick={handleSubmit}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? (
-            <>
-              <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-              Submitting...
-            </>
-          ) : (
-            "Submit"
-          )}
-        </Button>
+          {/* ── Sidebar ── */}
+          <aside className="space-y-4 lg:sticky lg:top-[3.5rem]">
+            {SidebarSummary}
+          </aside>
+        </div>
       </div>
     </div>
   );

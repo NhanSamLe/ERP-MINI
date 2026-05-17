@@ -152,7 +152,7 @@ export default function ApPaymentPages() {
         </div>
 
         {/* ================= FILTER ================= */}
-        <div className="bg-white rounded-xl shadow-sm border p-5">
+        <div className="bg-white rounded-xl shadow-sm border-l-4 border-l-orange-400 border p-5">
           <div className="flex flex-wrap gap-4 items-end">
             <div className="flex-1 min-w-[240px]">
               <label className="block text-sm font-medium mb-2">Search</label>
@@ -187,16 +187,26 @@ export default function ApPaymentPages() {
         {/* ================= TABLE ================= */}
         <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
+            <thead className="bg-orange-50/60 border-b border-orange-100">
               <tr>
-                <th className="px-6 py-4 text-left font-semibold">
+                <th className="px-6 py-4 text-left font-semibold text-gray-700">
                   Payment No
                 </th>
-                <th className="px-6 py-4 text-left font-semibold">Supplier</th>
-                <th className="px-6 py-4 text-right font-semibold">Amount</th>
-                <th className="px-6 py-4 text-left font-semibold">Status</th>
-                <th className="px-6 py-4 text-left font-semibold">Approval</th>
-                <th className="px-6 py-4 text-center font-semibold">Actions</th>
+                <th className="px-6 py-4 text-left font-semibold text-gray-700">
+                  Supplier
+                </th>
+                <th className="px-6 py-4 text-right font-semibold text-gray-700">
+                  Amount
+                </th>
+                <th className="px-6 py-4 text-left font-semibold text-gray-700">
+                  Status
+                </th>
+                <th className="px-6 py-4 text-left font-semibold text-gray-700">
+                  Approval
+                </th>
+                <th className="px-6 py-4 text-center font-semibold text-gray-700">
+                  Actions
+                </th>
               </tr>
             </thead>
 
@@ -230,7 +240,10 @@ export default function ApPaymentPages() {
 
               {!loading &&
                 filteredPayments.map((payment) => (
-                  <tr key={payment.id} className="hover:bg-gray-50">
+                  <tr
+                    key={payment.id}
+                    className="hover:bg-orange-50/40 transition-colors"
+                  >
                     <td className="px-6 py-4 font-semibold text-orange-600">
                       {payment.payment_no}
                     </td>
@@ -273,7 +286,7 @@ export default function ApPaymentPages() {
           </table>
 
           {/* ================= FOOTER ================= */}
-          <div className="px-6 py-4 border-t bg-gray-50 text-sm text-gray-600">
+          <div className="px-6 py-4 border-t bg-orange-50/40 text-sm text-gray-600">
             Showing <strong>{filteredPayments.length}</strong> of{" "}
             <strong>{list.length}</strong> payments
           </div>

@@ -43,7 +43,7 @@ export default function PraListPage() {
     <div className="page-container">
       <div className="erp-card overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50/50 to-white">
           <div className="flex items-center gap-2.5">
             <span className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
               <CornerUpLeft className="w-4 h-4 text-orange-500" />
@@ -82,7 +82,7 @@ export default function PraListPage() {
         </div>
 
         {/* Filter bar */}
-        <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
+        <div className="px-5 py-3 border-b border-orange-100 bg-orange-50/30">
           <div className="flex items-center gap-3 flex-wrap">
             <input
               placeholder="Search PRA No, Supplier..."
@@ -124,7 +124,7 @@ export default function PraListPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50/80">
+                <tr className="border-b border-orange-100 bg-orange-50/60">
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     PRA No
                   </th>
@@ -149,7 +149,7 @@ export default function PraListPage() {
                 {filtered.map((pra) => (
                   <tr
                     key={pra.id}
-                    className="hover:bg-orange-50/40 transition-colors cursor-pointer"
+                    className="hover:bg-orange-50/50 transition-colors cursor-pointer"
                     onClick={() =>
                       navigate(`/purchase/return-authorizations/${pra.id}`)
                     }
@@ -181,7 +181,7 @@ export default function PraListPage() {
           </div>
         )}
 
-        <div className="flex items-center px-5 py-3 border-t border-gray-100 bg-gray-50/50">
+        <div className="flex items-center px-5 py-3 border-t border-orange-100 bg-orange-50/30">
           <p className="text-xs text-gray-500">
             Showing{" "}
             <span className="font-semibold text-gray-700">

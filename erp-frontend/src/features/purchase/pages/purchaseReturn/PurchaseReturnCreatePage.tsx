@@ -18,6 +18,9 @@ interface ReturnLine {
   product_name: string;
   po_line_id: number | null;
   quantity_returned: number;
+  uom_id: number | null;
+  uom_name: string;
+  qty_in_stock_uom: number;
   unit_price: number;
   line_total: number;
   reason: string;
@@ -83,6 +86,9 @@ export default function PurchaseReturnCreatePage() {
         product_name: `Product #${poLine.product_id}`,
         po_line_id: poLine.id ?? null,
         quantity_returned: 1,
+        uom_id: poLine.uom_id ?? null,
+        uom_name: poLine.uom?.name ?? "—",
+        qty_in_stock_uom: Number(poLine.qty_in_stock_uom ?? 0),
         unit_price: Number(poLine.unit_price ?? 0),
         line_total: Number(poLine.unit_price ?? 0),
         reason: "",
@@ -144,6 +150,7 @@ export default function PurchaseReturnCreatePage() {
             product_id: l.product_id,
             po_line_id: l.po_line_id,
             quantity_returned: l.quantity_returned,
+            uom_id: l.uom_id,
             unit_price: l.unit_price,
             reason: l.reason || null,
             condition: l.condition,
@@ -305,11 +312,12 @@ export default function PurchaseReturnCreatePage() {
 
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-200 bg-gray-50/80">
+            <tr className="border-b border-orange-100 bg-orange-50/60">
               {[
                 "#",
                 "Product",
                 "Qty Returned",
+                "UOM",
                 "Unit Price",
                 "Condition",
                 "Reason",
@@ -358,6 +366,9 @@ export default function PurchaseReturnCreatePage() {
                       }
                       className="w-20 h-7 px-2 text-sm text-right border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-orange-500"
                     />
+                  </td>
+                  <td className="px-4 py-2 text-xs text-gray-600">
+                    {line.uom_name}
                   </td>
                   <td className="px-4 py-2">
                     <input

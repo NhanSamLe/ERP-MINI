@@ -61,7 +61,7 @@ export default function VendorRefundListPage() {
   return (
     <div className="page-container">
       <div className="erp-card overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50/50 to-white">
           <div className="flex items-center gap-2.5">
             <span className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
               <Banknote className="w-4 h-4 text-orange-500" />
@@ -97,7 +97,7 @@ export default function VendorRefundListPage() {
           </div>
         </div>
 
-        <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50 flex items-center gap-3">
+        <div className="px-5 py-3 border-b border-orange-100 bg-orange-50/30 flex items-center gap-3">
           <input
             placeholder="Search Refund No, Supplier..."
             value={search}
@@ -128,7 +128,7 @@ export default function VendorRefundListPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50/80">
+                <tr className="border-b border-orange-100 bg-orange-50/60">
                   {[
                     "Refund No",
                     "Supplier",
@@ -151,7 +151,7 @@ export default function VendorRefundListPage() {
                 {filtered.map((r) => (
                   <tr
                     key={r.id}
-                    className="hover:bg-orange-50/40 transition-colors cursor-pointer"
+                    className="hover:bg-orange-50/50 transition-colors cursor-pointer"
                     onClick={() => navigate(`/purchase/vendor-refunds/${r.id}`)}
                   >
                     <td className="px-4 py-3 font-medium text-gray-900">
@@ -193,7 +193,7 @@ export default function VendorRefundListPage() {
           </div>
         )}
 
-        <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/50">
+        <div className="px-5 py-3 border-t border-orange-100 bg-orange-50/30">
           <p className="text-xs text-gray-500">
             Showing{" "}
             <span className="font-semibold text-gray-700">

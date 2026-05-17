@@ -205,11 +205,12 @@ export default function PurchaseReturnDetailPage() {
         >
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 bg-gray-50/80">
+              <tr className="border-b border-orange-100 bg-orange-50/60">
                 {[
                   "#",
                   "Product",
                   "Qty Returned",
+                  "UOM",
                   "Qty Confirmed",
                   "Qty Rejected",
                   "Unit Price",
@@ -229,7 +230,7 @@ export default function PurchaseReturnDetailPage() {
               {lines.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="px-4 py-8 text-center text-sm text-gray-400"
                   >
                     No line items
@@ -244,6 +245,9 @@ export default function PurchaseReturnDetailPage() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       {line.quantity_returned}
+                    </td>
+                    <td className="px-4 py-3 text-left text-gray-600">
+                      {(line as any).uom?.name ?? "—"}
                     </td>
                     <td className="px-4 py-3 text-right text-emerald-700 font-medium">
                       {line.quantity_confirmed}

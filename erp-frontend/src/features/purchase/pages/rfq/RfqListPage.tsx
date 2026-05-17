@@ -83,7 +83,7 @@ export default function RfqListPage() {
     <div className="page-container">
       <div className="erp-card overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-orange-50/50 to-white">
           <div className="flex items-center gap-2.5">
             <span className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
               <FileText className="w-4 h-4 text-orange-500" />
@@ -134,7 +134,7 @@ export default function RfqListPage() {
         </div>
 
         {/* Filter bar */}
-        <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
+        <div className="px-5 py-3 border-b border-orange-100 bg-orange-50/30">
           <div className="flex items-center gap-3 flex-wrap">
             <div className="relative flex-1 min-w-[200px] max-w-xs">
               <input
@@ -173,7 +173,7 @@ export default function RfqListPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50/80">
+                <tr className="border-b border-orange-100 bg-orange-50/60">
                   <th className="w-10 px-4 py-3">
                     <input
                       type="checkbox"
@@ -198,6 +198,9 @@ export default function RfqListPage() {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Approval
+                  </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
@@ -207,7 +210,7 @@ export default function RfqListPage() {
                 {filtered.map((rfq) => (
                   <tr
                     key={rfq.id}
-                    className="hover:bg-orange-50/40 transition-colors duration-100 cursor-pointer"
+                    className="hover:bg-orange-50/50 transition-colors duration-100 cursor-pointer"
                     onClick={() => navigate(`/purchase/rfqs/${rfq.id}`)}
                   >
                     <td
@@ -256,11 +259,79 @@ export default function RfqListPage() {
                     <td className="px-4 py-3">
                       <StatusBadge status={rfq.status} />
                     </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                          rfq.approval_status === "approved"
+                            ? "bg-green-50 text-green-700"
+                            : rfq.approval_status === "waiting_approval"
+                              ? "bg-yellow-50 text-yellow-700"
+                              : rfq.approval_status === "rejected"
+                                ? "bg-red-50 text-red-700"
+                                : "bg-gray-50 text-gray-700"
+                        }`}
+                      >
+                        {rfq.approval_status === "draft" && "Draft"}
+                        {rfq.approval_status === "waiting_approval" &&
+                          "Waiting"}
+                        {rfq.approval_status === "approved" && "Approved"}
+                        {rfq.approval_status === "rejected" && "Rejected"}
+                      </span>
+                    </td>
                     <td
                       className="px-4 py-3"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => navigate(`/purchase/rfqs/${rfq.id}`)}
+                          className="p-1.5 rounded text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                          title="View"
+                        >
+                          <svg
+                            className="w-3.5 h-3.5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                            />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                            />
+                          </svg>
+                        </button>
+                        {["draft", "received"].includes(rfq.status) &&
+                          rfq.approval_status !== "waiting_approval" &&
+                          role === Roles.PURCHASE && (
+                            <button
+                              onClick={() =>
+                                navigate(`/purchase/rfqs/${rfq.id}/edit`)
+                              }
+                              className="p-1.5 rounded text-gray-500 hover:text-orange-600 hover:bg-orange-50 transition-colors"
+                              title="Edit"
+                            >
+                              <svg
+                                className="w-3.5 h-3.5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                />
+                              </svg>
+                            </button>
+                          )}
                         {rfq.status === "draft" && role === Roles.PURCHASE && (
                           <button
                             onClick={() => setDeleteTarget(rfq)}
@@ -292,7 +363,7 @@ export default function RfqListPage() {
         )}
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50/50">
+        <div className="flex items-center justify-between px-5 py-3 border-t border-orange-100 bg-orange-50/30">
           <p className="text-xs text-gray-500">
             Showing{" "}
             <span className="font-semibold text-gray-700">

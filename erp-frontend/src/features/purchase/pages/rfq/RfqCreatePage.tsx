@@ -407,7 +407,7 @@ export default function RfqCreatePage() {
       >
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-200 bg-gray-50/80">
+            <tr className="border-b border-orange-100 bg-orange-50/60">
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
                 #
               </th>

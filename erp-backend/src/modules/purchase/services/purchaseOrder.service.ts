@@ -15,6 +15,7 @@ import {
   sequelize,
   TaxRate,
   User,
+  Uom,
 } from "../../../models";
 import { Role } from "../../../core/types/enum";
 import { literal, Op } from "sequelize";
@@ -188,7 +189,14 @@ export const purchaseOrderService = {
   async getPOById(id: number) {
     const po = await PurchaseOrder.findByPk(id, {
       include: [
-        { model: PurchaseOrderLine, as: "lines" },
+        {
+          model: PurchaseOrderLine,
+          as: "lines",
+          include: [
+            { model: Product, as: "product" },
+            { model: Uom, as: "uom", attributes: ["id", "name"] },
+          ],
+        },
         {
           model: User,
           as: "creator",
@@ -304,7 +312,16 @@ export const purchaseOrderService = {
     }
 
     const po = await PurchaseOrder.findByPk(id, {
-      include: [{ model: PurchaseOrderLine, as: "lines" }],
+      include: [
+        {
+          model: PurchaseOrderLine,
+          as: "lines",
+          include: [
+            { model: Product, as: "product" },
+            { model: Uom, as: "uom", attributes: ["id", "name"] },
+          ],
+        },
+      ],
     });
 
     if (!po) throw new Error("Purchase order not found");

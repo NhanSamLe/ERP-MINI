@@ -6,7 +6,6 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../../store/store";
 import { Product } from "../../../features/products/store/product.types";
 import { useNavigate } from "react-router-dom";
-
 import {
   Select,
   SelectTrigger,
@@ -14,8 +13,20 @@ import {
   SelectContent,
   SelectItem,
 } from "../../../components/ui/Select";
-import { Calendar, Search, Plus, Trash2 } from "lucide-react";
-
+import {
+  Search,
+  Plus,
+  Trash2,
+  Package,
+  ChevronRight,
+  AlertCircle,
+  Hash,
+  Building2,
+  CalendarDays,
+  Truck,
+  Receipt,
+  StickyNote,
+} from "lucide-react";
 import { searchProductsThunk } from "../../products/store/product.thunks";
 import { fetchTaxRatesByIdThunk } from "../../master-data/store/master-data/tax/tax.thunks";
 import { fetchAllUomsThunk } from "../../master-data/store/master-data/uom/uom.thunks";
@@ -30,17 +41,18 @@ import {
   convertPrice,
 } from "../utils/uomHelper";
 import { Uom } from "@/features/master-data/dto/uom.dto";
+import { formatVND } from "@/utils/currency.helper";
 
 interface LineItem {
   id: number;
   product_id: string | number;
   product_name: string;
   product_image: string;
-  sale_price?: number; // Price in stock UOM (for calculation)
-  price_in_purchase_uom?: number; // Price user entered (in purchase UOM)
+  sale_price?: number;
+  price_in_purchase_uom?: number;
   sku?: string;
   quantity: number;
-  quantity_in_stock_uom?: number; // Quantity converted to stock UOM
+  quantity_in_stock_uom?: number;
   uom_id?: number | null;
   uom_name?: string;
   stock_uom_id?: number | null;
@@ -70,11 +82,8 @@ export default function CreatePurchaseOrderPage() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const [lines, setLines] = useState<LineItem[]>([]);
-  // ← Cache product objects để recalculate giá khi đổi NCC
   const [productCache, setProductCache] = useState<Record<number, Product>>({});
-  // ← Local string state cho price inputs (tránh cursor reset khi gõ số lớn)
   const [priceInputs, setPriceInputs] = useState<Record<number, string>>({});
-
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const user = useSelector((state: RootState) => state.auth.user);
@@ -135,7 +144,6 @@ export default function CreatePurchaseOrderPage() {
     return () => clearTimeout(timer);
   }, [searchTerm, dispatch]);
 
-  // ── Helper: tính giá từ product + supplierId ──────────────────────────────
   const resolvePrice = (
     product: Product,
     currentSupplierId: string,
@@ -148,51 +156,22 @@ export default function CreatePurchaseOrderPage() {
     return Number(supplierPrice ?? product.cost_price ?? 0);
   };
 
-  // ── Helper: convert price từ stock UOM sang purchase UOM (để hiển thị) ──────
-  // Dùng convertPrice từ uomHelper (xử lý đúng product_id=0 và null)
-  const convertPriceFromStockUom = (
-    priceInStockUom: number,
-    purchaseUomId: number | null | undefined,
-    stockUomId: number | null | undefined,
-    productId: number,
-  ): number => {
-    // stock → purchase: factor = stockUom per purchaseUom
-    // price per purchaseUom = price per stockUom * factor
-    // = convertPrice(price, stockUom, purchaseUom) * factor²? No —
-    // findFactor(stock→purchase) = 1/24 (nếu box→pcs=24)
-    // price/box = price/pcs * 24 = price/pcs / (1/24)
-    // Dùng convertPrice(price, purchaseUom→stockUom) ngược lại:
-    // convertPrice(price, stockUom, purchaseUom) = price / findFactor(stock→purchase)
-    // findFactor(pcs→box) = 1/24 → price / (1/24) = price * 24 ✓
-    return convertPrice(
-      priceInStockUom,
-      stockUomId,
-      purchaseUomId,
-      conversions,
-      productId,
-    );
-  };
-
-  // ── Helper: convert price từ purchase UOM sang stock UOM ──────────────────
-  // Dùng convertPrice từ uomHelper (xử lý đúng product_id=0 và null)
   const convertPriceToStockUom = (
-    priceInPurchaseUom: number,
+    price: number,
     purchaseUomId: number | null | undefined,
     stockUomId: number | null | undefined,
     productId: number,
-  ): number => {
-    // purchase → stock: findFactor(box→pcs)=24
-    // price/pcs = price/box / 24
-    return convertPrice(
-      priceInPurchaseUom,
-      purchaseUomId,
-      stockUomId,
-      conversions,
-      productId,
-    );
-  };
+  ): number =>
+    convertPrice(price, purchaseUomId, stockUomId, conversions, productId);
 
-  // ── Helper: recalculate totals từ danh sách lines ─────────────────────────
+  const convertPriceFromStockUom = (
+    price: number,
+    purchaseUomId: number | null | undefined,
+    stockUomId: number | null | undefined,
+    productId: number,
+  ): number =>
+    convertPrice(price, stockUomId, purchaseUomId, conversions, productId);
+
   const recalcTotals = (updatedLines: LineItem[]) => {
     const beforeTax = updatedLines.reduce(
       (sum, l) =>
@@ -206,31 +185,22 @@ export default function CreatePurchaseOrderPage() {
     setTotalAfterTax(afterTax);
   };
 
-  // ── Chọn NCC: recalculate giá tất cả lines theo NCC mới ──────────────────
   const handleSupplierChange = (newSupplierId: string) => {
     setSupplierId(newSupplierId);
-
     if (lines.length === 0) return;
-
     const updatedLines = lines.map((line) => {
       const cached = productCache[Number(line.product_id)];
       if (!cached) return line;
-
-      // Get new price in purchase UOM
       const newPriceInPurchaseUom = resolvePrice(cached, newSupplierId);
-
-      // Convert to stock UOM
       const newPriceInStockUom = convertPriceToStockUom(
         newPriceInPurchaseUom,
         line.uom_id,
         line.stock_uom_id,
         Number(line.product_id),
       );
-
       const qtyForCalc = line.quantity_in_stock_uom || line.quantity;
       const taxAmount = qtyForCalc * newPriceInStockUom * (line.tax_rate / 100);
       const lineTotal = qtyForCalc * newPriceInStockUom + taxAmount;
-
       return {
         ...line,
         price_in_purchase_uom: newPriceInPurchaseUom,
@@ -239,10 +209,8 @@ export default function CreatePurchaseOrderPage() {
         line_total: lineTotal,
       };
     });
-
     setLines(updatedLines);
     recalcTotals(updatedLines);
-    // Sync price input strings khi đổi NCC
     const newPriceInputs: Record<number, string> = {};
     updatedLines.forEach((l) => {
       newPriceInputs[l.id] = String(l.price_in_purchase_uom ?? 0);
@@ -250,28 +218,20 @@ export default function CreatePurchaseOrderPage() {
     setPriceInputs(newPriceInputs);
   };
 
-  // ── Chọn product: dùng supplierId hiện tại (đã fix stale closure) ─────────
   const handleSelectProduct = async (product: Product) => {
     if (lines.some((l) => l.product_id === product.id)) {
-      alert("Sản phẩm đã có trong danh sách!");
+      toast.warning("Product already added!");
       return;
     }
-
     const tax = await dispatch(
       fetchTaxRatesByIdThunk(product.tax_rate_id || 0),
     ).unwrap();
-
     const rate = Number(tax?.rate || 0);
     const qty = 1;
-
-    // Get price in purchase UOM (from supplier or cost_price)
     const priceInPurchaseUom = resolvePrice(product, supplierId);
-
-    // Calculate quantity in stock UOM
     const purchaseUomId = product.purchase_uom_id ?? product.uom_id ?? null;
     const stockUomId = product.uom_id ?? null;
     let qtyInStockUom = qty;
-
     if (purchaseUomId && stockUomId && purchaseUomId !== stockUomId) {
       qtyInStockUom = previewQtyInStockUom(
         qty,
@@ -281,26 +241,22 @@ export default function CreatePurchaseOrderPage() {
         Number(product.id),
       );
     }
-
-    // Convert price to stock UOM for calculation
     const priceInStockUom = convertPriceToStockUom(
       priceInPurchaseUom,
       purchaseUomId,
       stockUomId,
       Number(product.id),
     );
-
     const taxAmount = qtyInStockUom * priceInStockUom * (rate / 100);
     const lineTotal = qtyInStockUom * priceInStockUom + taxAmount;
-
     const newLine: LineItem = {
       id: Date.now(),
       product_id: product.id,
       product_name: product.name,
       product_image: product.image_url || "",
       sku: product.sku,
-      sale_price: priceInStockUom, // Price in stock UOM (for calculation)
-      price_in_purchase_uom: priceInPurchaseUom, // Price user sees (in purchase UOM)
+      sale_price: priceInStockUom,
+      price_in_purchase_uom: priceInPurchaseUom,
       quantity: qty,
       quantity_in_stock_uom: qtyInStockUom,
       uom_id: purchaseUomId,
@@ -312,19 +268,14 @@ export default function CreatePurchaseOrderPage() {
       tax_amount: taxAmount,
       line_total: lineTotal,
     };
-
-    // Cache lại product để dùng khi đổi NCC sau
     setProductCache((prev) => ({ ...prev, [Number(product.id)]: product }));
-
     const updatedLines = [...lines, newLine];
     setLines(updatedLines);
     recalcTotals(updatedLines);
-    // Init price input string cho line mới
     setPriceInputs((prev) => ({
       ...prev,
       [newLine.id]: String(priceInPurchaseUom),
     }));
-
     setSearchTerm("");
     setShowDropdown(false);
   };
@@ -341,8 +292,6 @@ export default function CreatePurchaseOrderPage() {
     const updatedLines = lines.map((line) => {
       if (line.id !== id) return line;
       const updated = { ...line, [field]: value };
-
-      // If UOM changed, recalculate quantity_in_stock_uom and price conversion
       if (field === "uom_id") {
         const newUomId = value as number | null;
         const qtyInStockUom =
@@ -356,15 +305,8 @@ export default function CreatePurchaseOrderPage() {
               )
             : line.quantity;
         updated.quantity_in_stock_uom = qtyInStockUom;
-
-        // Update uom_name
         const selectedUom = uoms.find((u: Uom) => u.id === newUomId);
         updated.uom_name = selectedUom?.name ?? "";
-
-        // sale_price (per stock UOM) không đổi — chỉ cần recalc price_in_purchase_uom
-        // để hiển thị đúng giá per new UOM cho user
-        // Ví dụ: sale_price = 291.67/pcs, đổi sang Box (1 box=24pcs)
-        //        → price_in_purchase_uom = 291.67 * 24 = 7000/box ✓
         const newPriceInPurchaseUom = convertPriceFromStockUom(
           line.sale_price || 0,
           newUomId,
@@ -372,21 +314,15 @@ export default function CreatePurchaseOrderPage() {
           Number(line.product_id),
         );
         updated.price_in_purchase_uom = newPriceInPurchaseUom;
-        // sale_price stays the same (it's always per stock UOM)
       }
-
-      // If price_in_purchase_uom changed, convert to stock UOM
       if (field === "price_in_purchase_uom") {
-        const newPriceInStockUom = convertPriceToStockUom(
+        updated.sale_price = convertPriceToStockUom(
           value || 0,
           updated.uom_id,
           updated.stock_uom_id,
           Number(updated.product_id),
         );
-        updated.sale_price = newPriceInStockUom;
       }
-
-      // If quantity changed, recalculate quantity_in_stock_uom
       if (field === "quantity") {
         const newQty = value || 1;
         const qtyInStockUom =
@@ -403,27 +339,21 @@ export default function CreatePurchaseOrderPage() {
             : newQty;
         updated.quantity_in_stock_uom = qtyInStockUom;
       }
-
-      // Recalculate tax and line total
       const qtyForCalc = updated.quantity_in_stock_uom || updated.quantity;
       const taxAmount =
         (updated.sale_price || 0) * qtyForCalc * (updated.tax_rate / 100);
       const lineTotal = (updated.sale_price || 0) * qtyForCalc + taxAmount;
-
       return { ...updated, tax_amount: taxAmount, line_total: lineTotal };
     });
     setLines(updatedLines);
     recalcTotals(updatedLines);
-
-    // Sync priceInputs khi UOM thay đổi (để input hiển thị đúng giá per new UOM)
     if (field === "uom_id") {
       const changedLine = updatedLines.find((l) => l.id === id);
-      if (changedLine) {
+      if (changedLine)
         setPriceInputs((prev) => ({
           ...prev,
           [id]: String(changedLine.price_in_purchase_uom ?? 0),
         }));
-      }
     }
   };
 
@@ -452,7 +382,6 @@ export default function CreatePurchaseOrderPage() {
         return toast.error("At least 1 product is required");
       const invalidLine = lines.find((l) => !l.quantity || l.quantity <= 0);
       if (invalidLine) return toast.error("Quantity must be greater than 0");
-
       const requestBody: PurchaseOrderCreate = {
         branch_id: user?.branch.id ?? 0,
         po_no: reference,
@@ -468,7 +397,7 @@ export default function CreatePurchaseOrderPage() {
           quantity: Number(l.quantity),
           qty_in_stock_uom: Number(l.quantity_in_stock_uom || l.quantity),
           uom_id: l.uom_id ?? undefined,
-          unit_price: Number(l.price_in_purchase_uom ?? l.sale_price ?? 0), // giá per purchase UOM (168000/box)
+          unit_price: Number(l.price_in_purchase_uom ?? l.sale_price ?? 0),
           tax_rate_id: Number(l.tax_rate_id),
           line_total: Number(l.line_total),
           line_tax: l.tax_amount ?? 0,
@@ -476,7 +405,7 @@ export default function CreatePurchaseOrderPage() {
         })),
       };
       await dispatch(createPurchaseOrderThunk(requestBody)).unwrap();
-      toast.success("Purchase Order created!");
+      toast.success("Purchase Order created successfully!");
       navigate("/purchase/orders");
     } catch (error) {
       console.error("Failed to create Purchase Order:", error);
@@ -486,347 +415,517 @@ export default function CreatePurchaseOrderPage() {
     }
   };
 
-  return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 bg-gray-50 min-h-screen">
-      <h1 className="text-2xl font-bold text-gray-800">
-        Create Purchase Order
-      </h1>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Supplier Name <span className="text-red-500">*</span>
-          </label>
-          {/* ← onValueChange dùng handleSupplierChange thay vì setSupplierId */}
-          <Select value={supplierId} onValueChange={handleSupplierChange}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select Supplier" />
-            </SelectTrigger>
-            <SelectContent>
-              {partners.items.map((p) => (
-                <SelectItem key={p.id} value={String(p.id)}>
-                  {p.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+  /* ─── Sidebar: Order Summary ─── */
+  const SidebarSummary = (
+    <div className="space-y-3">
+      {/* Summary card */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            Order Summary
+          </p>
         </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Date <span className="text-red-500">*</span>
-          </label>
-          <div className="relative">
-            <Input
-              type="date"
-              value={date}
-              onChange={setDate}
-              max={new Date().toISOString().split("T")[0]}
-            />
-            <Calendar className="absolute right-3 top-3 h-4 w-4 text-gray-400 pointer-events-none" />
+        <div className="p-4 space-y-3">
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-gray-500">Items</span>
+            <span className="font-semibold text-gray-900">{lines.length}</span>
           </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Reference <span className="text-red-500">*</span>
-          </label>
-          <Input
-            value={reference}
-            onChange={setReference}
-            placeholder="PO-2025-XXXX"
-          />
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-gray-500">Subtotal</span>
+            <span className="font-medium text-gray-700">
+              {formatVND(totalBeforeTax)}
+            </span>
+          </div>
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-gray-500">Tax</span>
+            <span className="font-medium text-blue-600">
+              {formatVND(totalOrderTax)}
+            </span>
+          </div>
+          <div className="pt-3 border-t border-dashed border-gray-200 flex justify-between items-center">
+            <span className="text-sm font-semibold text-gray-800">Total</span>
+            <span className="text-base font-bold text-orange-600">
+              {formatVND(totalAfterTax)}
+            </span>
+          </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Product <span className="text-red-500">*</span>
-        </label>
-        <div className="flex gap-3">
-          <div className="relative flex-1" ref={dropdownRef}>
-            <Input
-              placeholder="Search by name or SKU..."
-              value={searchTerm}
-              onChange={setSearchTerm}
-              onFocus={() =>
-                searchTerm && products.length > 0 && setShowDropdown(true)
-              }
-              className="pr-10"
-            />
-            <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400 pointer-events-none" />
-            {showDropdown && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-md shadow-lg z-50 max-h-64 overflow-auto">
-                {searchLoading ? (
-                  <div className="px-4 py-3 text-center text-sm text-gray-500">
-                    Đang tìm...
-                  </div>
-                ) : products.length === 0 ? (
-                  <div className="px-4 py-3 text-center text-sm text-gray-500">
-                    {searchTerm
-                      ? "Không tìm thấy sản phẩm"
-                      : "Gõ ít nhất 2 ký tự để tìm"}
-                  </div>
-                ) : (
-                  products.map((p) => (
-                    <div
-                      key={p.id}
-                      onClick={() => handleSelectProduct(p)}
-                      className="px-4 py-3 hover:bg-orange-50 cursor-pointer border-b last:border-b-0 transition-colors"
-                    >
-                      <div className="font-medium text-sm">{p.name}</div>
-                      <div className="text-xs text-gray-500">
-                        SKU: {p.sku} • Sale Price: {p.sale_price?.toFixed(0)}
-                      </div>
-                    </div>
-                  ))
-                )}
+      {/* Quick info */}
+      {(supplierId || date || reference) && (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Quick Info
+            </p>
+          </div>
+          <div className="p-4 space-y-2.5">
+            {reference && (
+              <div className="flex items-center gap-2 text-sm">
+                <Hash className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                <span className="text-gray-500 w-16 flex-shrink-0">Ref</span>
+                <span className="font-medium text-gray-900 truncate">
+                  {reference}
+                </span>
+              </div>
+            )}
+            {supplierId && (
+              <div className="flex items-center gap-2 text-sm">
+                <Truck className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                <span className="text-gray-500 w-16 flex-shrink-0">
+                  Supplier
+                </span>
+                <span className="font-medium text-gray-900 truncate">
+                  {(partners as any)?.items?.find(
+                    (p: any) => String(p.id) === supplierId,
+                  )?.name ?? "—"}
+                </span>
+              </div>
+            )}
+            {date && (
+              <div className="flex items-center gap-2 text-sm">
+                <CalendarDays className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                <span className="text-gray-500 w-16 flex-shrink-0">Date</span>
+                <span className="font-medium text-gray-900">{date}</span>
+              </div>
+            )}
+            {user?.branch?.name && (
+              <div className="flex items-center gap-2 text-sm">
+                <Building2 className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                <span className="text-gray-500 w-16 flex-shrink-0">Branch</span>
+                <span className="font-medium text-gray-900 truncate">
+                  {user.branch.name}
+                </span>
               </div>
             )}
           </div>
-          <Button className="bg-orange-500 hover:bg-orange-600">
-            <Plus className="h-4 w-4 mr-1" /> Add
-          </Button>
         </div>
-      </div>
+      )}
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-100 text-gray-700">
-                <th className="px-4 py-3 text-left w-10"></th>
-                <th className="px-4 py-3 text-left font-medium">Product</th>
-                <th className="px-4 py-3 text-center font-medium">Image</th>
-                <th className="px-4 py-3 text-center font-medium">
-                  Unit Price
-                </th>
-                <th className="px-4 py-3 text-center font-medium">Quantity</th>
-                <th className="px-4 py-3 text-center font-medium">UOM</th>
-                <th className="px-4 py-3 text-center font-medium">
-                  Qty in Stock UOM
-                </th>
-                <th className="px-4 py-3 text-center font-medium">Tax Type</th>
-                <th className="px-4 py-3 text-center font-medium">
-                  Tax Rate(%)
-                </th>
-                <th className="px-4 py-3 text-right font-medium">Tax Amount</th>
-                <th className="px-4 py-3 text-right font-medium">Line Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lines.length === 0 ? (
-                <tr>
-                  <td colSpan={11} className="text-center py-16 text-gray-500">
-                    Chưa có sản phẩm. Hãy tìm kiếm và thêm ở trên
-                  </td>
-                </tr>
-              ) : (
-                lines.map((line) => (
-                  <tr key={line.id} className="border-t hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() => removeLine(line.id)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="font-medium">{line.product_name}</div>
-                      {line.sku && (
-                        <div className="text-xs text-gray-500">
-                          SKU: {line.sku}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <img
-                        src={line.product_image || "/placeholder.png"}
-                        alt={line.product_name}
-                        className="h-12 w-12 object-cover rounded-md mx-auto border"
-                      />
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <div className="flex flex-col items-center gap-1">
-                        <input
-                          type="number"
-                          className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-400 focus:outline-none w-36 text-right"
-                          value={
-                            priceInputs[line.id] ??
-                            String(line.price_in_purchase_uom ?? 0)
-                          }
-                          onChange={(e) => {
-                            const raw = e.target.value;
-                            // Update local string state (không format, giữ nguyên để gõ thoải mái)
-                            setPriceInputs((prev) => ({
-                              ...prev,
-                              [line.id]: raw,
-                            }));
-                            // Chỉ update line khi có giá trị hợp lệ
-                            const price = parseFloat(raw);
-                            if (!isNaN(price) && price >= 0) {
-                              updateLine(
-                                line.id,
-                                "price_in_purchase_uom",
-                                price,
-                              );
-                            }
-                          }}
-                          onBlur={(e) => {
-                            // Khi blur: normalize về số hợp lệ
-                            const price = Math.max(
-                              parseFloat(e.target.value) || 0,
-                              0,
-                            );
-                            setPriceInputs((prev) => ({
-                              ...prev,
-                              [line.id]: String(price),
-                            }));
-                            updateLine(line.id, "price_in_purchase_uom", price);
-                          }}
-                          min="0"
-                          step="any"
-                        />
-                        {line.uom_name && (
-                          <span className="text-xs text-gray-400">
-                            per {line.uom_name}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <input
-                        type="number"
-                        className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-400 focus:outline-none w-20 text-center"
-                        value={line.quantity}
-                        onChange={(e) => {
-                          const qty = Math.max(Number(e.target.value) || 1, 1);
-                          updateLine(line.id, "quantity", qty);
-                        }}
-                        min="1"
-                        step="1"
-                      />
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {(() => {
-                        const validUoms = getValidUomsForProduct(
-                          uoms,
-                          conversions,
-                          line.stock_uom_id,
-                          Number(line.product_id),
-                        );
-                        const stockUomName =
-                          uoms.find((u: Uom) => u.id === line.stock_uom_id)
-                            ?.name ?? "";
-                        return (
-                          <div className="flex flex-col items-center gap-1">
-                            <select
-                              className="border rounded px-2 py-1 text-sm w-28"
-                              value={line.uom_id ?? ""}
-                              onChange={(e) => {
-                                const val = e.target.value
-                                  ? Number(e.target.value)
-                                  : null;
-                                updateLine(line.id, "uom_id", val);
-                              }}
-                            >
-                              <option value="">-- UOM --</option>
-                              {validUoms.map((u) => (
-                                <option key={u.id} value={u.id}>
-                                  {u.name}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        );
-                      })()}
-                    </td>
-                    <td className="px-4 py-3 text-center text-sm font-medium">
-                      {(line.quantity_in_stock_uom || line.quantity).toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3 text-center capitalize">
-                      {line.tax_type}
-                    </td>
-                    <td className="px-4 py-3 text-center">{line.tax_rate}%</td>
-                    <td className="px-4 py-3 text-right font-medium">
-                      {line.tax_amount.toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3 text-right font-bold text-orange-600">
-                      {line.line_total.toFixed(2)}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      {/* Validation warning */}
+      {lines.length === 0 && (
+        <div className="flex items-start gap-2.5 px-3.5 py-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
+          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+          <span>Add at least one product line before saving.</span>
         </div>
-      </div>
+      )}
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Total Order Tax
-          </label>
-          <Input value={totalOrderTax.toString()} disabled />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Branch
-          </label>
-          <div className="border rounded px-3 py-2 bg-gray-100 text-gray-700">
-            {user?.branch.name}
-          </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Total Before Tax *
-          </label>
-          <Input value={totalBeforeTax.toString()} disabled />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Total After Tax *
-          </label>
-          <Input value={totalAfterTax.toString()} disabled />
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow p-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Description
-        </label>
-        <Textarea
-          value={description}
-          onChange={setDescription}
-          rows={6}
-          className="resize-none"
-          placeholder="Enter description..."
-        />
-      </div>
-
-      <div className="flex justify-end gap-4 pt-6">
+      {/* Action buttons */}
+      <div className="space-y-2">
         <Button
-          variant="outline"
-          className="px-6"
-          onClick={() => navigate("/purchase/orders")}
-        >
-          Cancel
-        </Button>
-        <Button
-          className="bg-orange-500 hover:bg-orange-600 px-8 flex items-center gap-2"
+          type="button"
           onClick={handleSubmit}
-          disabled={isSubmitting}
+          disabled={isSubmitting || lines.length === 0}
+          className="w-full py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold text-sm shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {isSubmitting ? (
             <>
-              <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-              Submitting...
+              <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              Saving…
             </>
           ) : (
-            "Submit"
+            <>
+              <Plus className="w-4 h-4" />
+              Create Purchase Order
+            </>
           )}
         </Button>
+        <Button
+          type="button"
+          onClick={() => navigate("/purchase/orders")}
+          className="w-full py-2.5 rounded-xl border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 font-medium text-sm transition-colors"
+        >
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-50/60">
+      {/* ── Sticky top bar ── */}
+      <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm border-t-2 border-t-orange-500">
+        <div className="max-w-screen-2xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-sm text-gray-500 min-w-0">
+            <span className="text-gray-400">Purchase</span>
+            <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
+            <span className="text-gray-400">Orders</span>
+            <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
+            <span className="font-semibold text-gray-900 truncate">
+              New Purchase Order
+            </span>
+          </div>
+          <span className="text-xs text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full font-mono">
+            {reference}
+          </span>
+        </div>
+      </div>
+
+      {/* ── Main layout ── */}
+      <div className="max-w-screen-2xl mx-auto px-6 py-5">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start">
+          {/* ── Left: Main Content ── */}
+          <div className="space-y-4 min-w-0">
+            {/* Section: General Info */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-100 bg-gray-50/60">
+                <Receipt className="w-4 h-4 text-orange-500" />
+                <h2 className="text-sm font-semibold text-gray-700">
+                  General Information
+                </h2>
+              </div>
+              <div className="p-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      PO Reference
+                    </label>
+                    <Input
+                      value={reference}
+                      onChange={(value) => setReference(value)}
+                      placeholder="PO-YYYYMMDD-XXX"
+                      className="h-9 text-sm font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Supplier{" "}
+                      <span className="text-red-400 normal-case font-normal">
+                        *
+                      </span>
+                    </label>
+                    <Select
+                      value={supplierId}
+                      onValueChange={handleSupplierChange}
+                    >
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder="Select supplier…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(partners as any)?.items?.map((p: any) => (
+                          <SelectItem key={p.id} value={String(p.id)}>
+                            {p.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Order Date{" "}
+                      <span className="text-red-400 normal-case font-normal">
+                        *
+                      </span>
+                    </label>
+                    <Input
+                      type="date"
+                      value={date}
+                      onChange={(value) => setDate(value)}
+                      className="h-9 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Branch
+                    </label>
+                    <Input
+                      value={user?.branch?.name ?? ""}
+                      disabled
+                      className="h-9 text-sm bg-gray-50 text-gray-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Section: Add Products */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-100 bg-gray-50/60">
+                <Search className="w-4 h-4 text-orange-500" />
+                <h2 className="text-sm font-semibold text-gray-700">
+                  Add Products
+                </h2>
+                <span className="text-xs text-gray-400 ml-auto">
+                  Type at least 2 characters to search
+                </span>
+              </div>
+              <div className="p-5">
+                <div className="relative" ref={dropdownRef}>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Search by product name or SKU…"
+                      className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
+                    />
+                    {searchLoading && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-orange-300 border-t-orange-600 rounded-full animate-spin" />
+                    )}
+                  </div>
+                  {showDropdown && products.length > 0 && (
+                    <div className="absolute z-20 mt-1.5 w-full bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto">
+                      {products.map((product) => (
+                        <button
+                          key={product.id}
+                          type="button"
+                          onClick={() => handleSelectProduct(product)}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 transition-colors text-left border-b border-gray-50 last:border-0"
+                        >
+                          <div className="w-9 h-9 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                            {product.image_url ? (
+                              <img
+                                src={product.image_url}
+                                alt={product.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <Package className="w-4 h-4 text-gray-400 m-auto mt-2" />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {product.name}
+                            </p>
+                            {product.sku && (
+                              <p className="text-xs text-gray-400 font-mono">
+                                SKU: {product.sku}
+                              </p>
+                            )}
+                          </div>
+                          <Plus className="w-4 h-4 text-orange-400 flex-shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {showDropdown &&
+                    products.length === 0 &&
+                    !searchLoading &&
+                    searchTerm.length >= 2 && (
+                      <div className="absolute z-20 mt-1.5 w-full bg-white border border-gray-200 rounded-xl shadow-xl px-4 py-6 text-center text-sm text-gray-400">
+                        No products found for "{searchTerm}"
+                      </div>
+                    )}
+                </div>
+              </div>
+            </div>
+
+            {/* Section: Order Lines */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-100 bg-gray-50/60">
+                <Package className="w-4 h-4 text-orange-500" />
+                <h2 className="text-sm font-semibold text-gray-700">
+                  Order Lines
+                </h2>
+                {lines.length > 0 && (
+                  <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-600">
+                    {lines.length}
+                  </span>
+                )}
+              </div>
+
+              {lines.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-14 text-center">
+                  <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                    <Package className="w-6 h-6 text-gray-400" />
+                  </div>
+                  <p className="text-sm font-medium text-gray-500">
+                    No products added
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Search and add products above
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-100">
+                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider w-[35%]">
+                          Product
+                        </th>
+                        <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                          UOM
+                        </th>
+                        <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                          Unit Price
+                        </th>
+                        <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                          Qty
+                        </th>
+                        <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                          Tax
+                        </th>
+                        <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                          Line Total
+                        </th>
+                        <th className="px-2 py-2.5 w-8"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {lines.map((line) => {
+                        const validUoms = getValidUomsForProduct(
+                          uoms,
+                          conversions,
+                          line.stock_uom_id ?? null,
+                          Number(line.product_id),
+                        );
+                        return (
+                          <tr
+                            key={line.id}
+                            className="hover:bg-orange-50/40 transition-colors"
+                          >
+                            {/* Product */}
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-100">
+                                  {line.product_image ? (
+                                    <img
+                                      src={line.product_image}
+                                      alt={line.product_name}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <Package className="w-4 h-4 text-gray-400 m-auto mt-2.5" />
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-medium text-gray-900 truncate">
+                                    {line.product_name}
+                                  </p>
+                                  {line.sku && (
+                                    <p className="text-xs text-gray-400 font-mono">
+                                      SKU: {line.sku}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* UOM */}
+                            <td className="px-4 py-3 text-center">
+                              {validUoms.length > 1 ? (
+                                <select
+                                  value={line.uom_id ?? ""}
+                                  onChange={(e) =>
+                                    updateLine(
+                                      line.id,
+                                      "uom_id",
+                                      Number(e.target.value),
+                                    )
+                                  }
+                                  className="text-xs border border-gray-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+                                >
+                                  {validUoms.map((u: Uom) => (
+                                    <option key={u.id} value={u.id}>
+                                      {u.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <span className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded-md">
+                                  {line.uom_name || "—"}
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Unit Price */}
+                            <td className="px-4 py-3 text-right">
+                              <input
+                                type="number"
+                                min={0}
+                                value={
+                                  priceInputs[line.id] ??
+                                  String(line.price_in_purchase_uom ?? 0)
+                                }
+                                onChange={(e) => {
+                                  setPriceInputs((prev) => ({
+                                    ...prev,
+                                    [line.id]: e.target.value,
+                                  }));
+                                  updateLine(
+                                    line.id,
+                                    "price_in_purchase_uom",
+                                    Number(e.target.value),
+                                  );
+                                }}
+                                className="w-32 text-right border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                              />
+                            </td>
+
+                            {/* Qty */}
+                            <td className="px-4 py-3 text-center">
+                              <input
+                                type="number"
+                                min={1}
+                                value={line.quantity}
+                                onChange={(e) =>
+                                  updateLine(
+                                    line.id,
+                                    "quantity",
+                                    Number(e.target.value),
+                                  )
+                                }
+                                className="w-20 text-center border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                              />
+                            </td>
+
+                            {/* Tax */}
+                            <td className="px-4 py-3 text-center">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600 border border-blue-100">
+                                {line.tax_rate}% {line.tax_type}
+                              </span>
+                            </td>
+
+                            {/* Line Total */}
+                            <td className="px-4 py-3 text-right font-semibold text-gray-900 tabular-nums">
+                              {formatVND(line.line_total)}
+                            </td>
+
+                            {/* Remove */}
+                            <td className="px-2 py-3">
+                              <button
+                                type="button"
+                                onClick={() => removeLine(line.id)}
+                                className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Section: Notes */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-100 bg-gray-50/60">
+                <StickyNote className="w-4 h-4 text-orange-500" />
+                <h2 className="text-sm font-semibold text-gray-700">Notes</h2>
+                <span className="text-xs text-gray-400 ml-auto">Optional</span>
+              </div>
+              <div className="p-5">
+                <Textarea
+                  value={description}
+                  onChange={(value) => setDescription(value)}
+                  placeholder="Add any notes or instructions for this purchase order…"
+                  rows={3}
+                  className="text-sm resize-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* ── Right: Sticky Sidebar ── */}
+          <aside className="space-y-4 lg:sticky lg:top-[3.5rem]">
+            {SidebarSummary}
+          </aside>
+        </div>
       </div>
     </div>
   );

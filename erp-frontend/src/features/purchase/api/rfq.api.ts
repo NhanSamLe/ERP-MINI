@@ -137,6 +137,23 @@ export const rfqApi = {
     return res.data.data;
   },
 
+  submit: async (id: number): Promise<Rfq> => {
+    const res = await axiosClient.post(`/purchase/rfqs/${id}/submit`);
+    return res.data.data;
+  },
+
+  approve: async (id: number): Promise<Rfq> => {
+    const res = await axiosClient.post(`/purchase/rfqs/${id}/approve`);
+    return res.data.data;
+  },
+
+  rejectApproval: async (id: number, reason: string): Promise<Rfq> => {
+    const res = await axiosClient.post(`/purchase/rfqs/${id}/reject-approval`, {
+      reason,
+    });
+    return res.data.data;
+  },
+
   convertToPo: async (
     id: number,
   ): Promise<{ po_id: number; rfq_id: number }> => {

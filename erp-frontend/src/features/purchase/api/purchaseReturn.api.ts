@@ -41,8 +41,12 @@ export interface PurchaseReturnLine {
   product_id: number;
   po_line_id?: number | null;
   quantity_returned: number;
+  uom_id?: number | null;
+  qty_in_stock_uom: number;
   quantity_confirmed: number;
+  quantity_confirmed_stock_uom: number;
   quantity_rejected: number;
+  quantity_rejected_stock_uom: number;
   unit_price: number;
   line_total: number;
   reason?: string | null;
@@ -161,6 +165,13 @@ export const praApi = {
     const res = await axiosClient.post("/purchase/return-authorizations", body);
     return res.data.data;
   },
+  update: async (id: number, body: Partial<Pra>): Promise<Pra> => {
+    const res = await axiosClient.put(
+      `/purchase/return-authorizations/${id}`,
+      body,
+    );
+    return res.data.data;
+  },
   submit: async (id: number): Promise<Pra> => {
     const res = await axiosClient.post(
       `/purchase/return-authorizations/${id}/submit`,
@@ -195,6 +206,13 @@ export const purchaseReturnApi = {
     body: Partial<PurchaseReturn> & { lines: Partial<PurchaseReturnLine>[] },
   ): Promise<PurchaseReturn> => {
     const res = await axiosClient.post("/purchase/returns", body);
+    return res.data.data;
+  },
+  update: async (
+    id: number,
+    body: Partial<PurchaseReturn> & { lines: Partial<PurchaseReturnLine>[] },
+  ): Promise<PurchaseReturn> => {
+    const res = await axiosClient.put(`/purchase/returns/${id}`, body);
     return res.data.data;
   },
   ship: async (id: number): Promise<PurchaseReturn> => {

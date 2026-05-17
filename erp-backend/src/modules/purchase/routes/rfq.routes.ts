@@ -28,6 +28,12 @@ router.post("/:id/send", purchaseOnly, rfqController.send);
 router.post("/:id/mark-received", purchaseOnly, rfqController.markReceived);
 router.post("/:id/accept", purchaseOnly, rfqController.accept);
 router.post("/:id/reject", purchaseOnly, rfqController.reject);
+
+// ─── APPROVAL WORKFLOW ─────────────────────────────────────────────────────
+router.post("/:id/submit", purchaseOnly, rfqController.submit);
+router.post("/:id/approve", managerOnly, rfqController.approve);
+router.post("/:id/reject-approval", managerOnly, rfqController.rejectApproval);
+
 router.post("/:id/convert-to-po", purchaseOnly, rfqController.convertToPo);
 router.post("/:id/new-version", purchaseOnly, rfqController.createNewVersion);
 

@@ -102,6 +102,40 @@ export const rfqController = {
     }
   },
 
+  async submit(req: Request, res: Response) {
+    const user = (req as any).user;
+    try {
+      const data = await rfqService.submit(Number(req.params.id), user);
+      res.json({ success: true, message: "RFQ submitted for approval", data });
+    } catch (err: any) {
+      handleError(res, err);
+    }
+  },
+
+  async approve(req: Request, res: Response) {
+    const user = (req as any).user;
+    try {
+      const data = await rfqService.approve(Number(req.params.id), user);
+      res.json({ success: true, message: "RFQ approved", data });
+    } catch (err: any) {
+      handleError(res, err);
+    }
+  },
+
+  async rejectApproval(req: Request, res: Response) {
+    const user = (req as any).user;
+    try {
+      const data = await rfqService.rejectApproval(
+        Number(req.params.id),
+        req.body,
+        user,
+      );
+      res.json({ success: true, message: "RFQ approval rejected", data });
+    } catch (err: any) {
+      handleError(res, err);
+    }
+  },
+
   async convertToPo(req: Request, res: Response) {
     const user = (req as any).user;
     try {
@@ -137,12 +171,10 @@ export const rfqController = {
         .map(Number)
         .filter((n) => !isNaN(n) && n > 0);
       if (ids.length < 2) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "Provide at least 2 RFQ ids via ?ids=1,2,3",
-          });
+        return res.status(400).json({
+          success: false,
+          message: "Provide at least 2 RFQ ids via ?ids=1,2,3",
+        });
       }
       const data = await rfqService.compare(ids, user);
       res.json({ success: true, data });

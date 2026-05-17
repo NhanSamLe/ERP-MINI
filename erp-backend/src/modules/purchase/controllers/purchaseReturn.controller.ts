@@ -42,6 +42,18 @@ export const praController = {
       handleError(res, err);
     }
   },
+  async update(req: Request, res: Response) {
+    try {
+      const data = await praService.update(
+        Number(req.params.id),
+        req.body,
+        (req as any).user,
+      );
+      res.json({ success: true, message: "PRA updated", data });
+    } catch (err: any) {
+      handleError(res, err);
+    }
+  },
   async submit(req: Request, res: Response) {
     try {
       const data = await praService.submit(
@@ -115,6 +127,18 @@ export const purchaseReturnController = {
         (req as any).user,
       );
       res.status(201).json({ success: true, data });
+    } catch (err: any) {
+      handleError(res, err);
+    }
+  },
+  async update(req: Request, res: Response) {
+    try {
+      const data = await purchaseReturnService.update(
+        Number(req.params.id),
+        req.body,
+        (req as any).user,
+      );
+      res.json({ success: true, message: "Purchase Return updated", data });
     } catch (err: any) {
       handleError(res, err);
     }

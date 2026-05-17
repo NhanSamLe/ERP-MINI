@@ -288,6 +288,7 @@ export default function ApInvoicePages() {
         <PageHeader
           title="AP Invoices"
           subtitle="Manage all purchase invoices"
+          icon={<FileText className="w-5 h-5" />}
           actions={
             <div className="flex gap-2">
               <button
@@ -331,7 +332,7 @@ export default function ApInvoicePages() {
         </div>
 
         {/* ─── Filters ─── */}
-        <div className="bg-white rounded-xl shadow-sm border p-5">
+        <div className="bg-white rounded-xl shadow-sm border-l-4 border-l-orange-400 border p-5">
           <div className="flex flex-wrap gap-4 items-end">
             <div className="flex-1 min-w-[240px]">
               <label className="block text-sm font-medium mb-2">Search</label>
@@ -383,23 +384,35 @@ export default function ApInvoicePages() {
         {/* ─── Table ─── */}
         <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
+            <thead className="bg-orange-50/60 border-b border-orange-100">
               <tr>
-                <th className="px-5 py-4 text-left font-semibold">
+                <th className="px-5 py-4 text-left font-semibold text-gray-700">
                   Invoice No
                 </th>
-                <th className="px-5 py-4 text-left font-semibold">Source</th>
-                <th className="px-5 py-4 text-left font-semibold">Branch</th>
-                <th className="px-5 py-4 text-left font-semibold">
+                <th className="px-5 py-4 text-left font-semibold text-gray-700">
+                  Source
+                </th>
+                <th className="px-5 py-4 text-left font-semibold text-gray-700">
+                  Branch
+                </th>
+                <th className="px-5 py-4 text-left font-semibold text-gray-700">
                   Created By
                 </th>
-                <th className="px-5 py-4 text-right font-semibold">
+                <th className="px-5 py-4 text-right font-semibold text-gray-700">
                   Total Amount
                 </th>
-                <th className="px-5 py-4 text-left font-semibold">Status</th>
-                <th className="px-5 py-4 text-left font-semibold">Approval</th>
-                <th className="px-5 py-4 text-left font-semibold">Matching</th>
-                <th className="px-5 py-4 text-center font-semibold">Actions</th>
+                <th className="px-5 py-4 text-left font-semibold text-gray-700">
+                  Status
+                </th>
+                <th className="px-5 py-4 text-left font-semibold text-gray-700">
+                  Approval
+                </th>
+                <th className="px-5 py-4 text-left font-semibold text-gray-700">
+                  Matching
+                </th>
+                <th className="px-5 py-4 text-center font-semibold text-gray-700">
+                  Actions
+                </th>
               </tr>
             </thead>
 
@@ -433,7 +446,10 @@ export default function ApInvoicePages() {
 
               {!loading &&
                 filteredInvoices.map((invoice) => (
-                  <tr key={invoice.id} className="hover:bg-gray-50">
+                  <tr
+                    key={invoice.id}
+                    className="hover:bg-orange-50/40 transition-colors"
+                  >
                     <td className="px-5 py-4">
                       <div className="font-semibold text-orange-600">
                         {invoice.invoice_no}
@@ -509,7 +525,7 @@ export default function ApInvoicePages() {
             </tbody>
           </table>
 
-          <div className="px-6 py-4 border-t bg-gray-50 text-sm text-gray-600">
+          <div className="px-6 py-4 border-t bg-orange-50/40 text-sm text-gray-600">
             Showing <strong>{filteredInvoices.length}</strong> /{" "}
             <strong>{list.length}</strong> invoices
           </div>

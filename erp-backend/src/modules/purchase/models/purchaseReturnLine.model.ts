@@ -9,8 +9,12 @@ export interface PurchaseReturnLineAttrs {
   product_id: number;
   po_line_id?: number | null;
   quantity_returned: number;
+  uom_id?: number | null;
+  qty_in_stock_uom: number;
   quantity_confirmed: number;
+  quantity_confirmed_stock_uom: number;
   quantity_rejected: number;
+  quantity_rejected_stock_uom: number;
   unit_price: number;
   line_total: number;
   reason?: string | null;
@@ -19,7 +23,13 @@ export interface PurchaseReturnLineAttrs {
 
 type PurchaseReturnLineCreation = Optional<
   PurchaseReturnLineAttrs,
-  "id" | "quantity_confirmed" | "quantity_rejected" | "line_total" | "condition"
+  | "id"
+  | "quantity_confirmed"
+  | "quantity_confirmed_stock_uom"
+  | "quantity_rejected"
+  | "quantity_rejected_stock_uom"
+  | "line_total"
+  | "condition"
 >;
 
 export class PurchaseReturnLine
@@ -31,8 +41,12 @@ export class PurchaseReturnLine
   public product_id!: number;
   public po_line_id?: number | null;
   public quantity_returned!: number;
+  public uom_id?: number | null;
+  public qty_in_stock_uom!: number;
   public quantity_confirmed!: number;
+  public quantity_confirmed_stock_uom!: number;
   public quantity_rejected!: number;
+  public quantity_rejected_stock_uom!: number;
   public unit_price!: number;
   public line_total!: number;
   public reason?: string | null;
@@ -46,12 +60,28 @@ PurchaseReturnLine.init(
     product_id: { type: DataTypes.BIGINT, allowNull: false },
     po_line_id: { type: DataTypes.BIGINT, allowNull: true },
     quantity_returned: { type: DataTypes.DECIMAL(18, 3), allowNull: false },
+    uom_id: { type: DataTypes.BIGINT, allowNull: true },
+    qty_in_stock_uom: {
+      type: DataTypes.DECIMAL(18, 3),
+      allowNull: false,
+      defaultValue: 0,
+    },
     quantity_confirmed: {
       type: DataTypes.DECIMAL(18, 3),
       allowNull: false,
       defaultValue: 0,
     },
+    quantity_confirmed_stock_uom: {
+      type: DataTypes.DECIMAL(18, 3),
+      allowNull: false,
+      defaultValue: 0,
+    },
     quantity_rejected: {
+      type: DataTypes.DECIMAL(18, 3),
+      allowNull: false,
+      defaultValue: 0,
+    },
+    quantity_rejected_stock_uom: {
       type: DataTypes.DECIMAL(18, 3),
       allowNull: false,
       defaultValue: 0,
