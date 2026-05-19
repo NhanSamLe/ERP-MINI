@@ -94,7 +94,7 @@ export const bulkActionService = {
             referenceType: "PURCHASE_ORDER",
             referenceId: po.id,
             referenceNo: po.po_no,
-            branchId: po.branch_id,
+            branchId: po.branch_id!,
             submitterId: po.created_by,
             approverName: user.full_name || user.username,
             io,
@@ -113,7 +113,7 @@ export const bulkActionService = {
       success: failed.length === 0,
       count: successCount,
       message: `Đã phê duyệt ${successCount} đơn đặt hàng`,
-      failed: failed.length > 0 ? failed : undefined,
+      ...(failed.length > 0 && { failed }),
     };
   },
 
@@ -203,7 +203,7 @@ export const bulkActionService = {
             referenceType: "PURCHASE_ORDER",
             referenceId: po.id,
             referenceNo: po.po_no,
-            branchId: po.branch_id,
+            branchId: po.branch_id!,
             submitterId: po.created_by,
             approverName: user.full_name || user.username,
             rejectReason: reason,
@@ -223,7 +223,7 @@ export const bulkActionService = {
       success: failed.length === 0,
       count: successCount,
       message: `Đã hủy ${successCount} đơn đặt hàng`,
-      failed: failed.length > 0 ? failed : undefined,
+      ...(failed.length > 0 && { failed }),
     };
   },
 

@@ -208,6 +208,7 @@ export default function ViewPurchaseOrderPage() {
             sale_price: Number(l.unit_price || 0),
             quantity: Number(l.quantity || 0),
             uom_id: l.uom_id ?? null,
+            uom: (l as any).uom,
             discount: Number(l.discount ?? 0),
             tax_rate: tax?.rate || 0,
             tax_rate_id: product.tax_rate_id,
