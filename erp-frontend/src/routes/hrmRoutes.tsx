@@ -11,6 +11,7 @@ import PayrollItemPage from "../features/hrm/page/PayrollItemPage";
 import PayrollRunPage from "../features/hrm/page/PayrollRunPage";
 import LeavePage from "../features/hrm/page/LeavePage";
 
+
 const hrmRoutes: RouteObject[] = [
   {
     path: "/hrm/department",

@@ -13,7 +13,9 @@ export interface EmployeeType {
   base_salary: number;
   bank_account?: string | null;
   bank_name?: string | null;
-  status: "active" | "inactive";
+  status: "active" | "inactive" | "resigned";
+  resign_date?: string | null;
+  resign_reason?: string | null;
 
   // JOINs
   department?: {
