@@ -922,7 +922,7 @@ export default function DocumentUploadPage() {
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b">
+                  <thead className="bg-orange-50/60 border-b border-orange-100">
                     <tr>
                       <th className="px-4 py-3 text-left font-semibold text-gray-700">
                         Item Name
@@ -950,7 +950,7 @@ export default function DocumentUploadPage() {
                       </tr>
                     )}
                     {editItems.map((item, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50">
+                      <tr key={idx} className="hover:bg-orange-50/40 transition-colors">
                         <td className="px-4 py-3">
                           <input
                             type="text"

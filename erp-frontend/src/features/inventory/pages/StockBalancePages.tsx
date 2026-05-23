@@ -10,10 +10,12 @@ import {
   SelectContent,
   SelectItem,
 } from "../../../components/ui/Select";
-import { Download, ChevronDown, ChevronRight } from "lucide-react";
+import { Download, ChevronDown, ChevronRight, PackageSearch, TrendingUp, CircleDollarSign, Layers } from "lucide-react";
 import { exportExcelReport } from "@/utils/excel/exportExcelReport";
 import { toast } from "react-toastify";
 import { stockBalanceApi } from "../api/stockBalance.api";
+import { Card, CardContent } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 
 interface GroupedBalance {
   warehouse_id: number;
@@ -125,198 +127,247 @@ export default function StockBalancePages() {
   };
 
   return (
-    <div className="p-8">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold tracking-tight">Manage Stock</h2>
-        <p className="text-gray-500">View and manage stock across warehouses</p>
-      </div>
-
-      <div className="flex items-center justify-between w-full gap-4 mb-4">
+    <div className="max-w-6xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Select value={warehouseId} onValueChange={setWarehouseId}>
-            <SelectTrigger className="min-w-[200px]">
-              <SelectValue placeholder="Warehouse" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">All Warehouses</SelectItem>
-              {warehouses.map((w) => (
-                <SelectItem key={w.id} value={String(w.id)}>
-                  {w.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={productId} onValueChange={setProductId}>
-            <SelectTrigger className="min-w-[200px]">
-              <SelectValue placeholder="Product" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">All Products</SelectItem>
-              {products.map((p) => (
-                <SelectItem key={p.id} value={String(p.id)}>
-                  {p.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-500 shadow-sm">
+            <PackageSearch className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Stock Balances</h1>
+            <p className="text-gray-500 text-sm mt-0.5">
+              Monitor and analyze stock on hand, valuation, and lot-level breakdowns
+            </p>
+          </div>
         </div>
 
-        <button
+        <Button
           onClick={handleExport}
-          className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg transition-colors text-sm font-medium"
+          variant="outline"
+          leftIcon={<Download className="w-4 h-4" />}
+          size="md"
+          className="self-end sm:self-auto"
         >
-          <Download className="w-5 h-5" />
           Export Excel
-        </button>
+        </Button>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              <th className="px-4 py-3 text-left w-8"></th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600">
-                Warehouse
-              </th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600">
-                Product
-              </th>
-              <th className="px-4 py-3 text-right font-medium text-gray-600">
-                Total Qty
-              </th>
-              <th className="px-4 py-3 text-right font-medium text-gray-600">
-                Unit Cost
-              </th>
-              <th className="px-4 py-3 text-right font-medium text-gray-600">
-                Total Value
-              </th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600">
-                Updated At
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={7} className="text-center py-12 text-gray-400">
-                  Loading...
-                </td>
-              </tr>
-            ) : data.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="text-center py-12 text-gray-400">
-                  No stock data
-                </td>
-              </tr>
-            ) : (
-              data.map((row) => {
-                const key = `${row.warehouse_id}_${row.product_id}`;
-                const isExpanded = expandedRows.has(key);
-                const hasLots = row.lots.length > 0;
+      {/* Quick Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-3.5 transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-500 shrink-0">
+            <PackageSearch className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Stock Products</p>
+            <p className="text-lg font-extrabold text-slate-850 mt-0.5">{data.length}</p>
+          </div>
+        </div>
 
-                return (
-                  <>
-                    {/* Main row */}
-                    <tr
-                      key={key}
-                      className={`border-t hover:bg-gray-50 ${hasLots ? "cursor-pointer" : ""}`}
-                      onClick={() => hasLots && toggleExpand(key)}
-                    >
-                      <td className="px-4 py-3 text-gray-400">
-                        {hasLots ? (
-                          isExpanded ? (
-                            <ChevronDown className="w-4 h-4" />
-                          ) : (
-                            <ChevronRight className="w-4 h-4" />
-                          )
-                        ) : null}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700">
-                        {row.warehouse?.name ?? "N/A"}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          {row.product?.image_url && (
-                            <img
-                              src={row.product.image_url}
-                              className="w-9 h-9 rounded-md border object-cover"
-                            />
-                          )}
-                          <div>
-                            <div className="font-medium text-gray-800">
-                              {row.product?.name ?? "N/A"}
-                            </div>
-                            <div className="text-xs text-gray-400">
-                              {row.product?.sku}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-3.5 transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-500 shrink-0">
+            <Layers className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Quantity</p>
+            <p className="text-lg font-extrabold text-slate-850 mt-0.5">
+              {data.reduce((s, x) => s + Number(x.total_quantity), 0).toLocaleString("vi-VN", { maximumFractionDigits: 2 })}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-3.5 transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shrink-0">
+            <CircleDollarSign className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Valuation</p>
+            <p className="text-lg font-extrabold text-indigo-600 mt-0.5">
+              {data.reduce((s, x) => s + Number(x.total_value), 0).toLocaleString("vi-VN")} ₫
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content Card */}
+      <Card className="border-slate-100 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">
+        {/* Filter header */}
+        <div className="p-5 border-b border-slate-100 bg-slate-50/10 flex flex-col sm:flex-row items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3 w-full">
+            <Select value={warehouseId} onValueChange={setWarehouseId}>
+              <SelectTrigger className="w-full sm:w-[220px] h-10 bg-white border-slate-200 focus:ring-orange-500 focus:border-orange-500 rounded-lg">
+                <SelectValue placeholder="All Warehouses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Warehouses</SelectItem>
+                {warehouses.map((w) => (
+                  <SelectItem key={w.id} value={String(w.id)}>
+                    {w.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={productId} onValueChange={setProductId}>
+              <SelectTrigger className="w-full sm:w-[260px] h-10 bg-white border-slate-200 focus:ring-orange-500 focus:border-orange-500 rounded-lg">
+                <SelectValue placeholder="All Products" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Products</SelectItem>
+                {products.map((p) => (
+                  <SelectItem key={p.id} value={String(p.id)}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50/80 text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-slate-100">
+              <tr>
+                <th className="px-6 py-3 text-left w-10"></th>
+                <th className="px-6 py-3 text-left">Warehouse</th>
+                <th className="px-6 py-3 text-left">Product</th>
+                <th className="px-6 py-3 text-right">Total Qty</th>
+                <th className="px-6 py-3 text-right">Unit Cost</th>
+                <th className="px-6 py-3 text-right">Total Value</th>
+                <th className="px-6 py-3 text-left">Updated At</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-16 text-slate-400">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-8 h-8 border-3 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-xs font-medium">Loading stock balances...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : data.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-16 text-slate-400 italic">
+                    No stock data available
+                  </td>
+                </tr>
+              ) : (
+                data.map((row) => {
+                  const key = `${row.warehouse_id}_${row.product_id}`;
+                  const isExpanded = expandedRows.has(key);
+                  const hasLots = row.lots.length > 0;
+
+                  return (
+                    <span key={key} className="contents">
+                      {/* Main row */}
+                      <tr
+                        className={`hover:bg-slate-50/40 transition-colors ${hasLots ? "cursor-pointer" : ""}`}
+                        onClick={() => hasLots && toggleExpand(key)}
+                      >
+                        <td className="px-6 py-3.5 text-slate-400 text-center">
+                          {hasLots ? (
+                            isExpanded ? (
+                              <ChevronDown className="w-4 h-4 text-orange-500" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4" />
+                            )
+                          ) : null}
+                        </td>
+                        <td className="px-6 py-3.5 font-semibold text-slate-700">
+                          {row.warehouse?.name ?? "N/A"}
+                        </td>
+                        <td className="px-6 py-3.5">
+                          <div className="flex items-center gap-3">
+                            {row.product?.image_url && (
+                              <img
+                                src={row.product.image_url}
+                                className="w-10 h-10 rounded-lg border border-slate-100 object-cover shadow-sm bg-slate-50"
+                              />
+                            )}
+                            <div>
+                              <div className="font-semibold text-slate-800">
+                                {row.product?.name ?? "N/A"}
+                              </div>
+                              <div className="text-[10px] font-bold font-mono tracking-wide text-slate-400 uppercase mt-0.5">
+                                {row.product?.sku}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-right font-semibold text-gray-800">
-                        {Number(row.total_quantity).toLocaleString("vi-VN", {
-                          maximumFractionDigits: 3,
-                        })}
-                      </td>
-                      <td className="px-4 py-3 text-right text-gray-600">
-                        {Number(row.unit_cost).toLocaleString("vi-VN")}
-                      </td>
-                      <td className="px-4 py-3 text-right text-gray-600">
-                        {Number(row.total_value).toLocaleString("vi-VN")}
-                      </td>
-                      <td className="px-4 py-3 text-gray-500 text-xs">
-                        {row.updated_at
-                          ? new Date(row.updated_at).toLocaleString("vi-VN")
-                          : "N/A"}
-                      </td>
-                    </tr>
+                        </td>
+                        <td className="px-6 py-3.5 text-right font-bold text-slate-800">
+                          {Number(row.total_quantity).toLocaleString("vi-VN", {
+                            maximumFractionDigits: 3,
+                          })}
+                        </td>
+                        <td className="px-6 py-3.5 text-right font-mono text-slate-600">
+                          {Number(row.unit_cost).toLocaleString("vi-VN")}
+                        </td>
+                        <td className="px-6 py-3.5 text-right font-bold text-indigo-600 bg-indigo-50/10">
+                          {Number(row.total_value).toLocaleString("vi-VN")}
+                        </td>
+                        <td className="px-6 py-3.5 text-slate-500 text-xs font-medium">
+                          {row.updated_at
+                            ? new Date(row.updated_at).toLocaleString("vi-VN")
+                            : "N/A"}
+                        </td>
+                      </tr>
 
-                    {/* Lot detail rows */}
-                    {isExpanded &&
-                      row.lots.map((lot, idx) => (
-                        <tr
-                          key={`${key}_lot_${idx}`}
-                          className="bg-blue-50 border-t border-blue-100"
-                        >
-                          <td className="px-4 py-2"></td>
-                          <td className="px-4 py-2 text-xs text-gray-400 pl-8">
-                            ↳ Lot
-                          </td>
-                          <td className="px-4 py-2 text-xs text-blue-700 font-mono">
-                            {lot.lot_no ?? "No Lot"}
-                            {lot.expiry_date && (
-                              <span className="ml-2 text-gray-400">
-                                exp: {lot.expiry_date}
-                              </span>
-                            )}
-                            {lot.serial_no && (
-                              <span className="ml-2 text-gray-400">
-                                S/N: {lot.serial_no}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-2 text-right text-xs text-blue-700 font-medium">
-                            {Number(lot.quantity).toLocaleString("vi-VN", {
-                              maximumFractionDigits: 3,
-                            })}
-                          </td>
-                          <td className="px-4 py-2 text-right text-xs text-gray-500">
-                            {Number(lot.unit_cost).toLocaleString("vi-VN")}
-                          </td>
-                          <td className="px-4 py-2 text-right text-xs text-gray-500">
-                            {Number(
-                              lot.quantity * lot.unit_cost,
-                            ).toLocaleString("vi-VN")}
-                          </td>
-                          <td className="px-4 py-2"></td>
-                        </tr>
-                      ))}
-                  </>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+                      {/* Lot detail rows */}
+                      {isExpanded &&
+                        row.lots.map((lot, idx) => (
+                          <tr
+                            key={`${key}_lot_${idx}`}
+                            className="bg-indigo-50/30 border-t border-indigo-100/40"
+                          >
+                            <td className="px-6 py-2.5"></td>
+                            <td className="px-6 py-2.5 text-xs text-indigo-500 font-bold uppercase tracking-wider pl-8">
+                              ↳ Lot Breakdown
+                            </td>
+                            <td className="px-6 py-2.5 text-xs text-slate-700 font-medium">
+                              <div className="flex flex-wrap items-center gap-3">
+                                <span className="font-mono bg-indigo-100/60 text-indigo-800 px-2 py-0.5 rounded font-bold">
+                                  {lot.lot_no ?? "No Lot"}
+                                </span>
+                                {lot.expiry_date && (
+                                  <span className="text-rose-600 font-bold text-[10px] bg-rose-50 border border-rose-100 px-1.5 py-0.5 rounded uppercase tracking-wide">
+                                    Exp: {lot.expiry_date}
+                                  </span>
+                                )}
+                                {lot.serial_no && (
+                                  <span className="text-slate-500 text-[10px] bg-slate-100 px-1.5 py-0.5 rounded">
+                                    S/N: {lot.serial_no}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-6 py-2.5 text-right text-xs text-indigo-700 font-bold font-mono">
+                              {Number(lot.quantity).toLocaleString("vi-VN", {
+                                maximumFractionDigits: 3,
+                              })}
+                            </td>
+                            <td className="px-6 py-2.5 text-right text-xs font-mono text-slate-500">
+                              {Number(lot.unit_cost).toLocaleString("vi-VN")}
+                            </td>
+                            <td className="px-6 py-2.5 text-right text-xs font-bold font-mono text-indigo-600">
+                              {Number(
+                                lot.quantity * lot.unit_cost,
+                              ).toLocaleString("vi-VN")}
+                            </td>
+                            <td className="px-6 py-2.5"></td>
+                          </tr>
+                        ))}
+                    </span>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
     </div>
   );
 }

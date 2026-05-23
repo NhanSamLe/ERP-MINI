@@ -9,11 +9,18 @@ interface Props {
   noPadding?: boolean;
 }
 
-export function FormSection({ title, icon, children, action, description, noPadding }: Props) {
+export function FormSection({
+  title,
+  icon,
+  children,
+  action,
+  description,
+  noPadding,
+}: Props) {
   return (
     <section className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-orange-100 bg-gradient-to-r from-orange-50/40 to-white">
         <div className="flex items-center gap-2.5 min-w-0">
           {icon && (
             <span className="w-7 h-7 flex items-center justify-center rounded-md bg-orange-50 text-orange-500 shrink-0">
@@ -21,9 +28,13 @@ export function FormSection({ title, icon, children, action, description, noPadd
             </span>
           )}
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold text-gray-800 leading-none">{title}</h2>
+            <h2 className="text-sm font-semibold text-gray-800 leading-none">
+              {title}
+            </h2>
             {description && (
-              <p className="text-xs text-gray-400 mt-0.5 truncate">{description}</p>
+              <p className="text-xs text-gray-400 mt-0.5 truncate">
+                {description}
+              </p>
             )}
           </div>
         </div>
@@ -31,9 +42,7 @@ export function FormSection({ title, icon, children, action, description, noPadd
       </div>
 
       {/* Content */}
-      <div className={noPadding ? "" : "px-5 py-4"}>
-        {children}
-      </div>
+      <div className={noPadding ? "" : "px-5 py-4"}>{children}</div>
     </section>
   );
 }

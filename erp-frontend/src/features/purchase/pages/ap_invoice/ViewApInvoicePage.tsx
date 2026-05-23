@@ -217,7 +217,7 @@ export default function ViewApInvoicePage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-8">
+    <div className="max-w-7xl mx-auto space-y-6 pb-8 bg-gray-50 -m-6 p-6 min-h-screen">
       {/* ================= HEADER ================= */}
       <div className="bg-gradient-to-r from-white via-orange-50/30 to-white rounded-2xl border-2 border-orange-100 p-6 shadow-lg">
         <div className="flex items-start justify-between">
@@ -532,7 +532,7 @@ export default function ViewApInvoicePage() {
 
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b-2 border-gray-100">
+              <thead className="bg-orange-50/60 border-b-2 border-orange-100">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                     Product
@@ -559,7 +559,7 @@ export default function ViewApInvoicePage() {
                 {invoice.lines?.map((line, idx) => (
                   <tr
                     key={line.id}
-                    className="hover:bg-orange-50/30 transition-colors"
+                    className="hover:bg-orange-50/50 transition-colors"
                   >
                     {/* PRODUCT */}
                     <td className="px-6 py-4">
@@ -592,7 +592,7 @@ export default function ViewApInvoicePage() {
                     {/* QUANTITY + UOM */}
                     <td className="px-6 py-4 text-right">
                       <span className="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 text-sm font-semibold text-gray-700">
-                        {line.quantity}
+                        {line.quantity} {(line as any).uom?.name || (line as any).product?.uom?.name || ""}
                       </span>
                     </td>
 
@@ -684,6 +684,71 @@ export default function ViewApInvoicePage() {
             highlight
           />
         </div>
+
+        {/* Payment tracking — paid_amount / remaining */}
+        {(invoice as any).paid_amount !== undefined && (
+          <div className="mt-6 pt-5 border-t border-gray-200">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold text-gray-700">
+                Payment Progress
+              </span>
+              <span className="text-xs text-gray-500">
+                {Number((invoice as any).paid_amount ?? 0).toLocaleString(
+                  "vi-VN",
+                )}{" "}
+                / {Number(invoice.total_after_tax ?? 0).toLocaleString("vi-VN")}{" "}
+                VND
+              </span>
+            </div>
+            <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+              <div
+                className="h-3 rounded-full bg-orange-500 transition-all"
+                style={{
+                  width: `${Math.min(100, (Number((invoice as any).paid_amount ?? 0) / Math.max(1, Number(invoice.total_after_tax ?? 1))) * 100)}%`,
+                }}
+              />
+            </div>
+            <div className="flex justify-between mt-2 text-xs">
+              <span className="text-emerald-600 font-medium">
+                Paid:{" "}
+                {Number((invoice as any).paid_amount ?? 0).toLocaleString(
+                  "vi-VN",
+                )}{" "}
+                VND
+              </span>
+              <span className="text-red-500 font-medium">
+                Remaining:{" "}
+                {Math.max(
+                  0,
+                  Number(invoice.total_after_tax ?? 0) -
+                    Number((invoice as any).paid_amount ?? 0),
+                ).toLocaleString("vi-VN")}{" "}
+                VND
+              </span>
+            </div>
+            {(invoice as any).last_payment_date && (
+              <p className="text-xs text-gray-400 mt-1">
+                Last payment:{" "}
+                {new Date(
+                  (invoice as any).last_payment_date,
+                ).toLocaleDateString("vi-VN")}
+              </p>
+            )}
+            {(invoice as any).due_date && (
+              <p
+                className={`text-xs mt-1 font-medium ${new Date((invoice as any).due_date) < new Date() && invoice.status !== "paid" ? "text-red-500" : "text-gray-400"}`}
+              >
+                Due:{" "}
+                {new Date((invoice as any).due_date).toLocaleDateString(
+                  "vi-VN",
+                )}
+                {new Date((invoice as any).due_date) < new Date() &&
+                  invoice.status !== "paid" &&
+                  " ⚠️ Overdue"}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ================= OCR & MATCHING INFO ================= */}

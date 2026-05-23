@@ -18,6 +18,22 @@ export interface PurchaseOrderAttrs {
   total_tax?: number;
   total_after_tax?: number;
   description?: string;
+  // Phase 1 — new tracking fields
+  rfq_id?: number | null;
+  currency_id?: number | null;
+  exchange_rate?: number;
+  payment_term_id?: number | null;
+  discount_percent?: number;
+  discount_amount?: number;
+  receipt_status?: "pending" | "partial" | "fully_received";
+  invoice_status?: "not_invoiced" | "partial" | "invoiced";
+  supplier_ref_no?: string | null;
+  delivery_address?: string | null;
+  expected_delivery_date?: string | null;
+  buyer_id?: number | null;
+  internal_notes?: string | null;
+  supplier_notes?: string | null;
+  price_list_id?: number | null;
   created_by: number;
   approved_by?: number | null;
   submitted_at?: Date | null;
@@ -47,6 +63,21 @@ export class PurchaseOrder
     | "completed"
     | "cancelled";
   public description?: string;
+  public rfq_id?: number | null;
+  public currency_id?: number | null;
+  public exchange_rate?: number;
+  public payment_term_id?: number | null;
+  public discount_percent?: number;
+  public discount_amount?: number;
+  public receipt_status?: "pending" | "partial" | "fully_received";
+  public invoice_status?: "not_invoiced" | "partial" | "invoiced";
+  public supplier_ref_no?: string | null;
+  public delivery_address?: string | null;
+  public expected_delivery_date?: string | null;
+  public buyer_id?: number | null;
+  public internal_notes?: string | null;
+  public supplier_notes?: string | null;
+  public price_list_id?: number | null;
   public created_by!: number;
   public approved_by?: number | null;
   public submitted_at?: Date | null;
@@ -71,11 +102,46 @@ PurchaseOrder.init(
         "confirmed",
         "partially_received",
         "completed",
-        "cancelled"
+        "cancelled",
       ),
       defaultValue: "draft",
     },
     description: { type: DataTypes.TEXT, allowNull: true },
+    rfq_id: { type: DataTypes.BIGINT, allowNull: true },
+    currency_id: { type: DataTypes.BIGINT, allowNull: true },
+    exchange_rate: {
+      type: DataTypes.DECIMAL(18, 6),
+      allowNull: false,
+      defaultValue: 1.0,
+    },
+    payment_term_id: { type: DataTypes.BIGINT, allowNull: true },
+    discount_percent: {
+      type: DataTypes.DECIMAL(5, 2),
+      allowNull: false,
+      defaultValue: 0,
+    },
+    discount_amount: {
+      type: DataTypes.DECIMAL(18, 2),
+      allowNull: false,
+      defaultValue: 0,
+    },
+    receipt_status: {
+      type: DataTypes.ENUM("pending", "partial", "fully_received"),
+      allowNull: false,
+      defaultValue: "pending",
+    },
+    invoice_status: {
+      type: DataTypes.ENUM("not_invoiced", "partial", "invoiced"),
+      allowNull: false,
+      defaultValue: "not_invoiced",
+    },
+    supplier_ref_no: { type: DataTypes.STRING(100), allowNull: true },
+    delivery_address: { type: DataTypes.TEXT, allowNull: true },
+    expected_delivery_date: { type: DataTypes.DATEONLY, allowNull: true },
+    buyer_id: { type: DataTypes.BIGINT, allowNull: true },
+    internal_notes: { type: DataTypes.TEXT, allowNull: true },
+    supplier_notes: { type: DataTypes.TEXT, allowNull: true },
+    price_list_id: { type: DataTypes.BIGINT, allowNull: true },
     created_by: { type: DataTypes.BIGINT, allowNull: false },
     approved_by: { type: DataTypes.BIGINT, allowNull: true },
     submitted_at: { type: DataTypes.DATE },
@@ -88,5 +154,5 @@ PurchaseOrder.init(
     timestamps: true,
     createdAt: "created_at",
     updatedAt: "updated_at",
-  }
+  },
 );

@@ -10,9 +10,20 @@ import {
 import { StockLot, CreateLotDTO } from "../api/stockLot.api";
 import { partnerApi } from "../../partner/api/partner.api";
 import { productApi } from "../../products/api/product.api";
-import { Plus, Pencil, Trash2, Search, AlertTriangle, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, AlertTriangle, Layers, ShieldCheck, XCircle, Clock } from "lucide-react";
 import { toast } from "react-toastify";
-import { formatMoney } from "@/utils/currency.helper";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function daysUntil(dateStr: string | null | undefined): number | null {
@@ -22,28 +33,34 @@ function daysUntil(dateStr: string | null | undefined): number | null {
 }
 
 function ExpiryBadge({ date }: { date: string | null | undefined }) {
-  if (!date) return <span className="text-gray-400 text-xs">—</span>;
+  if (!date) return <span className="text-slate-400 text-xs">—</span>;
   const days = daysUntil(date);
-  if (days === null) return <span className="text-xs">{date}</span>;
+  if (days === null) return <span className="text-xs font-semibold font-mono">{date}</span>;
   if (days < 0)
     return (
-      <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">
+      <Badge
+        className="text-[10px] px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-100 font-extrabold uppercase shadow-none hover:bg-rose-50"
+      >
         Expired
-      </span>
+      </Badge>
     );
   if (days <= 30)
     return (
-      <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">
+      <Badge
+        className="text-[10px] px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-100 font-extrabold shadow-none hover:bg-rose-50"
+      >
         {date} ({days}d)
-      </span>
+      </Badge>
     );
   if (days <= 90)
     return (
-      <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium">
+      <Badge
+        className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100 font-extrabold shadow-none hover:bg-amber-50"
+      >
         {date} ({days}d)
-      </span>
+      </Badge>
     );
-  return <span className="text-xs text-gray-600">{date}</span>;
+  return <span className="text-xs text-slate-650 font-semibold font-mono">{date}</span>;
 }
 
 // ─── Lot Form Modal ───────────────────────────────────────────────────────────
@@ -113,73 +130,73 @@ function LotFormModal({ mode, initial, onClose, onSave }: LotFormProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
-        <div className="flex items-center justify-between px-6 py-4 border-b">
-          <h2 className="text-lg font-semibold text-gray-800">
-            {mode === "create" ? "Create Lot" : "Edit Lot"}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>
+            {mode === "create" ? "Create Stock Lot" : "Edit Stock Lot"}
+          </DialogTitle>
+          <DialogDescription>
+            Input metadata, serial numbers, and expiry thresholds for this inventory batch
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              Product <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={form.product_id}
+              onChange={(e) =>
+                setForm({ ...form, product_id: e.target.value })
+              }
+              disabled={mode === "edit"}
+              className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
+            >
+              <option value="">-- Select Product --</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({p.sku})
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Product <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={form.product_id}
-                onChange={(e) =>
-                  setForm({ ...form, product_id: e.target.value })
-                }
-                disabled={mode === "edit"}
-                className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
-              >
-                <option value="">-- Select Product --</option>
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} ({p.sku})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                 Lot No <span className="text-red-500">*</span>
               </label>
-              <input
+              <Input
                 value={form.lot_no}
-                onChange={(e) => setForm({ ...form, lot_no: e.target.value })}
+                onChange={(val) => setForm({ ...form, lot_no: val })}
                 disabled={mode === "edit"}
-                className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none font-mono"
+                className="border-slate-200 focus:ring-orange-400 focus:border-orange-400 font-mono"
                 placeholder="e.g. LOT-2026-001"
               />
               {mode === "edit" && (
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-[10px] text-gray-400 mt-0.5">
                   Lot No cannot be changed
                 </p>
               )}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                 Serial No
               </label>
-              <input
+              <Input
                 value={form.serial_no}
-                onChange={(e) =>
-                  setForm({ ...form, serial_no: e.target.value })
-                }
-                className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
-                placeholder="Optional"
+                onChange={(val) => setForm({ ...form, serial_no: val })}
+                className="border-slate-200 focus:ring-orange-400 focus:border-orange-400"
+                placeholder="Optional serial ID"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                 Manufacture Date
               </label>
               <input
@@ -188,11 +205,11 @@ function LotFormModal({ mode, initial, onClose, onSave }: LotFormProps) {
                 onChange={(e) =>
                   setForm({ ...form, manufacture_date: e.target.value })
                 }
-                className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                 Expiry Date
               </label>
               <input
@@ -201,64 +218,64 @@ function LotFormModal({ mode, initial, onClose, onSave }: LotFormProps) {
                 onChange={(e) =>
                   setForm({ ...form, expiry_date: e.target.value })
                 }
-                className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
-              />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Supplier
-              </label>
-              <select
-                value={form.supplier_id}
-                onChange={(e) =>
-                  setForm({ ...form, supplier_id: e.target.value })
-                }
-                className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
-              >
-                <option value="">-- Select Supplier --</option>
-                {suppliers.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Notes
-              </label>
-              <textarea
-                value={form.notes}
-                onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                rows={2}
-                className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
-                placeholder="Optional notes..."
+                className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
               />
             </div>
           </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <button
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              Supplier
+            </label>
+            <select
+              value={form.supplier_id}
+              onChange={(e) =>
+                setForm({ ...form, supplier_id: e.target.value })
+              }
+              className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
+            >
+              <option value="">-- Select Supplier --</option>
+              {suppliers.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              Notes
+            </label>
+            <textarea
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              rows={2}
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
+              placeholder="Optional notes..."
+            />
+          </div>
+
+          <DialogFooter className="pt-4 border-t border-slate-100 flex-row justify-end gap-3">
+            <Button
               type="button"
+              variant="outline"
               onClick={onClose}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm"
+              disabled={saving}
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              disabled={saving}
-              className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm disabled:opacity-60"
+              variant="primary"
+              loading={saving}
             >
-              {saving
-                ? "Saving..."
-                : mode === "create"
-                  ? "Create Lot"
-                  : "Save Changes"}
-            </button>
-          </div>
+              {mode === "create" ? "Create Lot" : "Save Changes"}
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -341,163 +358,236 @@ export default function StockLotPage() {
   }).length;
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between bg-white px-6 py-4 rounded-xl border shadow-sm">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-800">Stock Lots</h1>
-          <p className="text-sm text-gray-500">
-            {lots.length} lots total
-            {expiringCount > 0 && (
-              <span className="ml-2 text-red-500 font-medium">
-                · {expiringCount} expiring soon
-              </span>
-            )}
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-500 shadow-sm">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Stock Lots</h1>
+            <p className="text-gray-500 text-sm mt-0.5">
+              {lots.length} lots total
+              {expiringCount > 0 && (
+                <Badge variant="destructive" className="ml-2.5 text-[10px] font-bold border shadow-none bg-rose-50 text-rose-700 border-rose-100">
+                  {expiringCount} expiring soon
+                </Badge>
+              )}
+            </p>
+          </div>
         </div>
-        <button
+        <Button
           onClick={() => {
             setEditTarget(null);
             setFormMode("create");
           }}
-          className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+          leftIcon={<Plus className="w-4 h-4" />}
+          size="md"
+          className="self-end sm:self-auto"
         >
-          <Plus className="w-4 h-4" /> Create Lot
-        </button>
+          Create Lot
+        </Button>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white px-4 py-3 rounded-xl border shadow-sm flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by lot no, product, serial..."
-            className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
-          />
+      {/* Quick Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-3.5 transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 shrink-0">
+            <Layers className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Batches</p>
+            <p className="text-lg font-extrabold text-slate-850 mt-0.5">{lots.length}</p>
+          </div>
         </div>
-        <select
-          value={filterExpiry}
-          onChange={(e) => setFilterExpiry(e.target.value as any)}
-          className="border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
-        >
-          <option value="all">All Expiry</option>
-          <option value="expiring30">Expiring ≤ 30 days</option>
-          <option value="expiring90">Expiring ≤ 90 days</option>
-          <option value="expired">Expired</option>
-        </select>
-        {(search || filterExpiry !== "all") && (
-          <button
-            onClick={() => {
-              setSearch("");
-              setFilterExpiry("all");
-            }}
-            className="text-sm text-orange-500 hover:underline"
-          >
-            Clear
-          </button>
-        )}
+
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-3.5 transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="w-10 h-10 rounded-xl bg-amber-50/50 border border-amber-100 flex items-center justify-center text-amber-500 shrink-0">
+            <Clock className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Expiring 30d</p>
+            <p className="text-lg font-extrabold text-slate-850 mt-0.5">{expiringCount}</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-3.5 transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="w-10 h-10 rounded-xl bg-rose-50/50 border border-rose-100 flex items-center justify-center text-rose-500 shrink-0">
+            <XCircle className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Expired Lots</p>
+            <p className="text-lg font-extrabold text-slate-850 mt-0.5">
+              {lots.filter(l => { const d = daysUntil(l.expiry_date); return d !== null && d < 0; }).length}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-3.5 transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-500 shrink-0">
+            <ShieldCheck className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Healthy Batches</p>
+            <p className="text-lg font-extrabold text-slate-850 mt-0.5">
+              {lots.filter(l => { const d = daysUntil(l.expiry_date); return d === null || d > 30; }).length}
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-gray-600 text-left">
-            <tr>
-              <th className="px-4 py-3 font-medium">Product</th>
-              <th className="px-4 py-3 font-medium">Lot No</th>
-              <th className="px-4 py-3 font-medium">Serial No</th>
-              <th className="px-4 py-3 font-medium">Manufacture</th>
-              <th className="px-4 py-3 font-medium">Expiry</th>
-              <th className="px-4 py-3 font-medium">Supplier</th>
-              <th className="px-4 py-3 font-medium">Notes</th>
-              <th className="px-4 py-3 font-medium text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {loading ? (
-              <tr>
-                <td colSpan={8} className="py-12 text-center">
-                  <div className="w-6 h-6 border-2 border-orange-400 border-t-transparent rounded-full animate-spin mx-auto" />
-                </td>
-              </tr>
-            ) : filtered.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="py-12 text-center text-gray-400">
-                  No lots found
-                </td>
-              </tr>
-            ) : (
-              filtered.map((lot) => {
-                const days = daysUntil(lot.expiry_date);
-                const isExpired = days !== null && days < 0;
-                const isWarning = days !== null && days >= 0 && days <= 30;
-                return (
-                  <tr
-                    key={lot.id}
-                    className={`hover:bg-gray-50 ${isExpired ? "bg-red-50" : isWarning ? "bg-orange-50" : ""}`}
-                  >
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-gray-800">
-                        {lot.product?.name || `#${lot.product_id}`}
-                      </div>
-                      <div className="text-xs text-gray-400 font-mono">
-                        {lot.product?.sku}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 font-mono text-gray-700">
-                      {lot.lot_no}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">
-                      {lot.serial_no || "—"}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">
-                      {lot.manufacture_date || "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1">
-                        {(isExpired || isWarning) && (
-                          <AlertTriangle
-                            className={`w-3.5 h-3.5 ${isExpired ? "text-red-500" : "text-orange-500"}`}
-                          />
-                        )}
-                        <ExpiryBadge date={lot.expiry_date} />
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">
-                      {lot.supplier?.name || "—"}
-                    </td>
-                    <td className="px-4 py-3 text-gray-400 text-xs max-w-[120px] truncate">
-                      {lot.notes || "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() => {
-                            setEditTarget(lot);
-                            setFormMode("edit");
-                          }}
-                          className="p-1.5 rounded hover:bg-blue-50 text-blue-500 transition"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setDeleteTarget(lot)}
-                          className="p-1.5 rounded hover:bg-red-50 text-red-500 transition"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
+      {/* Main Content Card */}
+      <Card className="border-slate-100 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">
+        {/* Filters Header */}
+        <div className="p-5 border-b border-slate-100 bg-slate-50/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none z-10" />
+            <Input
+              placeholder="Search lots by SKU, lot no, product name..."
+              value={search}
+              onChange={setSearch}
+              className="pl-9 bg-white border-slate-200 focus:ring-orange-500 focus:border-orange-500"
+            />
+          </div>
+
+          <div className="flex items-center gap-3">
+            <select
+              value={filterExpiry}
+              onChange={(e) => setFilterExpiry(e.target.value as any)}
+              className="h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition min-w-[160px]"
+            >
+              <option value="all">All Expiry</option>
+              <option value="expiring30">Expiring ≤ 30 days</option>
+              <option value="expiring90">Expiring ≤ 90 days</option>
+              <option value="expired">Expired</option>
+            </select>
+
+            {(search || filterExpiry !== "all") && (
+              <Button
+                onClick={() => {
+                  setSearch("");
+                  setFilterExpiry("all");
+                }}
+                variant="ghost"
+                size="sm"
+                className="text-orange-500 hover:text-orange-600 hover:bg-orange-50/40"
+              >
+                Clear Filters
+              </Button>
             )}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50/80 text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-slate-100">
+              <tr>
+                <th className="py-3.5 px-6 text-left">Product</th>
+                <th className="py-3.5 px-6 text-left">Lot No</th>
+                <th className="py-3.5 px-6 text-left">Serial No</th>
+                <th className="py-3.5 px-6 text-left">Manufacture</th>
+                <th className="py-3.5 px-6 text-left">Expiry</th>
+                <th className="py-3.5 px-6 text-left">Supplier</th>
+                <th className="py-3.5 px-6 text-left">Notes</th>
+                <th className="py-3.5 px-6 text-center w-28">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {loading ? (
+                <tr>
+                  <td colSpan={8} className="py-16 text-center text-slate-400">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-8 h-8 border-3 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-xs font-medium">Loading lots data...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-16 text-center text-slate-400 italic">
+                    No lots found
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((lot) => {
+                  const days = daysUntil(lot.expiry_date);
+                  const isExpired = days !== null && days < 0;
+                  const isWarning = days !== null && days >= 0 && days <= 30;
+                  return (
+                    <tr
+                      key={lot.id}
+                      className={`hover:bg-slate-50/40 transition-colors ${
+                        isExpired 
+                          ? "bg-rose-50/20 hover:bg-rose-50/30" 
+                          : isWarning 
+                            ? "bg-amber-50/20 hover:bg-amber-50/30" 
+                            : ""
+                      }`}
+                    >
+                      <td className="py-3.5 px-6">
+                        <div className="font-bold text-slate-800">
+                          {lot.product?.name || `#${lot.product_id}`}
+                        </div>
+                        <div className="text-[10px] font-mono font-bold text-slate-400 mt-0.5 tracking-wider uppercase">
+                          {lot.product?.sku}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-6 font-semibold font-mono text-slate-700">
+                        {lot.lot_no}
+                      </td>
+                      <td className="py-3.5 px-6 font-mono text-xs text-slate-600">
+                        {lot.serial_no || "—"}
+                      </td>
+                      <td className="py-3.5 px-6 text-slate-500 text-xs font-medium font-mono">
+                        {lot.manufacture_date || "—"}
+                      </td>
+                      <td className="py-3.5 px-6">
+                        <div className="flex items-center gap-1.5">
+                          {(isExpired || isWarning) && (
+                            <AlertTriangle
+                              className={`w-3.5 h-3.5 shrink-0 ${isExpired ? "text-rose-500 animate-pulse" : "text-amber-500"}`}
+                            />
+                          )}
+                          <ExpiryBadge date={lot.expiry_date} />
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-6 text-slate-600 text-xs font-semibold">
+                        {lot.supplier?.name || "—"}
+                      </td>
+                      <td className="py-3.5 px-6 text-slate-400 text-xs max-w-[140px] truncate italic" title={lot.notes || ""}>
+                        {lot.notes || "—"}
+                      </td>
+                      <td className="py-3.5 px-6 text-center">
+                        <div className="flex justify-center items-center gap-2">
+                          <button
+                            onClick={() => {
+                              setEditTarget(lot);
+                              setFormMode("edit");
+                            }}
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-blue-600 bg-white hover:bg-blue-50 hover:border-blue-100 transition-colors shadow-sm"
+                            title="Edit"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setDeleteTarget(lot)}
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-rose-600 bg-white hover:bg-rose-50 hover:text-rose-700 hover:border-rose-100 transition-colors shadow-sm"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
 
       {/* Form Modal */}
       {formMode && (
@@ -512,41 +602,45 @@ export default function StockLotPage() {
         />
       )}
 
-      {/* Delete Confirm */}
-      {deleteTarget && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-lg p-6 w-96 text-center">
-            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
-              <Trash2 className="w-6 h-6 text-red-500" />
-            </div>
-            <h2 className="text-lg font-semibold text-gray-800 mb-2">
-              Delete Lot?
-            </h2>
-            <p className="text-sm text-gray-500 mb-1">
-              You are about to delete lot
-            </p>
-            <p className="text-sm font-mono font-medium text-gray-800 mb-5">
-              {deleteTarget.lot_no}
-            </p>
-            <div className="flex justify-center gap-3">
-              <button
-                onClick={() => setDeleteTarget(null)}
-                disabled={deleting}
-                className="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="px-5 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm"
-              >
-                {deleting ? "Deleting..." : "Yes, Delete"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Delete Confirmation Modal */}
+      <Dialog open={deleteTarget !== null} onOpenChange={() => setDeleteTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          {deleteTarget && (
+            <>
+              <DialogHeader>
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 mb-4 animate-pulse">
+                  <Trash2 className="h-6 w-6 text-red-600" />
+                </div>
+                <DialogTitle className="text-center text-lg font-bold text-gray-900">
+                  Delete Stock Lot
+                </DialogTitle>
+                <DialogDescription className="text-center text-sm text-gray-500 mt-1">
+                  Are you sure you want to delete lot <span className="font-mono font-bold text-slate-800">{deleteTarget.lot_no}</span>?
+                  This action cannot be undone and will remove all corresponding batch entries.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="flex-row justify-center gap-3 mt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setDeleteTarget(null)}
+                  disabled={deleting}
+                  className="w-full sm:w-auto"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="danger"
+                  onClick={handleDelete}
+                  loading={deleting}
+                  className="w-full sm:w-auto"
+                >
+                  Yes, Delete
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
