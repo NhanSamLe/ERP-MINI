@@ -9,7 +9,7 @@ import { User } from "../../auth/models/user.model";
 import { Branch } from "../../company/models/branch.model";
 import { Product } from "../../product/models/product.model";
 import { UomConversion } from "../../master-data/models/uomConversion.model";
-import { UnitOfMeasure } from "../../master-data/models/uom.model";
+import { Uom } from "../../master-data/models/uom.model";
 import { Role } from "../../../core/types/enum";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -113,6 +113,11 @@ const INCLUDE_FULL = [
         as: "product",
         attributes: ["id", "name", "image_url"],
       },
+      {
+        model: Uom,
+        as: "uom",
+        attributes: ["id", "name"],
+      },
     ],
   },
 ];
@@ -206,17 +211,19 @@ export const rfqService = {
           {
             rfq_id: rfq.id,
             product_id: line.product_id,
-            description: line.description ?? null,
+            ...(line.description != null && { description: line.description }),
             quantity: qty,
-            uom_id: line.uom_id ?? null,
+            ...(line.uom_id != null && { uom_id: line.uom_id }),
             unit_price: price,
-            discount_percent: discPct,
-            discount_amount: discAmt,
-            tax_rate_id: line.tax_rate_id ?? null,
+            ...(discPct > 0 && { discount_percent: discPct }),
+            ...(discAmt > 0 && { discount_amount: discAmt }),
+            ...(line.tax_rate_id != null && { tax_rate_id: line.tax_rate_id }),
             line_total: lineTotal,
             line_tax: lineTax,
             line_total_after_tax: lineTotalAfterTax,
-            lead_time_days: line.lead_time_days ?? null,
+            ...(line.lead_time_days != null && {
+              lead_time_days: line.lead_time_days,
+            }),
           },
           { transaction: t },
         );
@@ -295,17 +302,23 @@ export const rfqService = {
             {
               rfq_id: id,
               product_id: line.product_id,
-              description: line.description ?? null,
+              ...(line.description != null && {
+                description: line.description,
+              }),
               quantity: qty,
-              uom_id: line.uom_id ?? null,
+              ...(line.uom_id != null && { uom_id: line.uom_id }),
               unit_price: price,
-              discount_percent: discPct,
-              discount_amount: discAmt,
-              tax_rate_id: line.tax_rate_id ?? null,
+              ...(discPct > 0 && { discount_percent: discPct }),
+              ...(discAmt > 0 && { discount_amount: discAmt }),
+              ...(line.tax_rate_id != null && {
+                tax_rate_id: line.tax_rate_id,
+              }),
               line_total: lineTotal,
               line_tax: lineTax,
               line_total_after_tax: lineTotal + lineTax,
-              lead_time_days: line.lead_time_days ?? null,
+              ...(line.lead_time_days != null && {
+                lead_time_days: line.lead_time_days,
+              }),
             },
             { transaction: t },
           );
@@ -472,21 +485,33 @@ export const rfqService = {
         {
           branch_id: rfq.branch_id,
           po_no: generatePoNo(),
-          supplier_id: rfq.supplier_id ?? undefined,
+          ...(rfq.supplier_id != null && { supplier_id: rfq.supplier_id }),
           order_date: new Date(),
           status: "draft",
           total_before_tax: rfq.total_before_tax,
           total_tax: rfq.total_tax,
           total_after_tax: rfq.total_after_tax,
-          rfq_id: rfq.id,
-          currency_id: rfq.currency_id,
-          exchange_rate: rfq.exchange_rate,
-          payment_term_id: rfq.payment_term_id,
-          discount_percent: rfq.discount_percent,
-          discount_amount: rfq.discount_amount,
-          supplier_notes: rfq.supplier_notes,
-          internal_notes: rfq.internal_notes,
-          buyer_id: rfq.buyer_id,
+          ...(rfq.id != null && { rfq_id: rfq.id }),
+          ...(rfq.currency_id != null && { currency_id: rfq.currency_id }),
+          ...(rfq.exchange_rate != null && {
+            exchange_rate: rfq.exchange_rate,
+          }),
+          ...(rfq.payment_term_id != null && {
+            payment_term_id: rfq.payment_term_id,
+          }),
+          ...(rfq.discount_percent != null && {
+            discount_percent: rfq.discount_percent,
+          }),
+          ...(rfq.discount_amount != null && {
+            discount_amount: rfq.discount_amount,
+          }),
+          ...(rfq.supplier_notes != null && {
+            supplier_notes: rfq.supplier_notes,
+          }),
+          ...(rfq.internal_notes != null && {
+            internal_notes: rfq.internal_notes,
+          }),
+          ...(rfq.buyer_id != null && { buyer_id: rfq.buyer_id }),
           created_by: user.id,
         } as any,
         { transaction: t },
@@ -510,14 +535,18 @@ export const rfqService = {
           {
             po_id: po.id,
             product_id: line.product_id,
-            description: line.description,
+            ...(line.description != null && { description: line.description }),
             quantity: line.quantity,
-            uom_id: line.uom_id,
+            ...(line.uom_id != null && { uom_id: line.uom_id }),
             qty_in_stock_uom,
             unit_price: line.unit_price,
-            discount_percent: line.discount_percent,
-            discount_amount: line.discount_amount,
-            tax_rate_id: line.tax_rate_id,
+            ...(line.discount_percent != null && {
+              discount_percent: line.discount_percent,
+            }),
+            ...(line.discount_amount != null && {
+              discount_amount: line.discount_amount,
+            }),
+            ...(line.tax_rate_id != null && { tax_rate_id: line.tax_rate_id }),
             line_total: line.line_total,
             line_tax: line.line_tax,
             line_total_after_tax: line.line_total_after_tax,
@@ -549,24 +578,36 @@ export const rfqService = {
         {
           branch_id: rfq.branch_id,
           rfq_no: generateRfqNo(),
-          supplier_id: rfq.supplier_id,
-          currency_id: rfq.currency_id,
-          exchange_rate: rfq.exchange_rate,
-          payment_term_id: rfq.payment_term_id,
+          ...(rfq.supplier_id != null && { supplier_id: rfq.supplier_id }),
+          ...(rfq.currency_id != null && { currency_id: rfq.currency_id }),
+          ...(rfq.exchange_rate != null && {
+            exchange_rate: rfq.exchange_rate,
+          }),
+          ...(rfq.payment_term_id != null && {
+            payment_term_id: rfq.payment_term_id,
+          }),
           rfq_date: rfq.rfq_date,
-          valid_until: rfq.valid_until,
+          ...(rfq.valid_until != null && { valid_until: rfq.valid_until }),
           status: "draft",
           approval_status: "draft",
           version: rfq.version + 1,
-          parent_id: rfq.id,
+          ...(rfq.id != null && { parent_id: rfq.id }),
           total_before_tax: rfq.total_before_tax,
           total_tax: rfq.total_tax,
           total_after_tax: rfq.total_after_tax,
-          discount_percent: rfq.discount_percent,
-          discount_amount: rfq.discount_amount,
-          supplier_notes: rfq.supplier_notes,
-          internal_notes: rfq.internal_notes,
-          buyer_id: rfq.buyer_id,
+          ...(rfq.discount_percent != null && {
+            discount_percent: rfq.discount_percent,
+          }),
+          ...(rfq.discount_amount != null && {
+            discount_amount: rfq.discount_amount,
+          }),
+          ...(rfq.supplier_notes != null && {
+            supplier_notes: rfq.supplier_notes,
+          }),
+          ...(rfq.internal_notes != null && {
+            internal_notes: rfq.internal_notes,
+          }),
+          ...(rfq.buyer_id != null && { buyer_id: rfq.buyer_id }),
           created_by: user.id,
         },
         { transaction: t },
@@ -578,17 +619,23 @@ export const rfqService = {
           {
             rfq_id: newRfq.id,
             product_id: line.product_id,
-            description: line.description,
+            ...(line.description != null && { description: line.description }),
             quantity: line.quantity,
-            uom_id: line.uom_id,
+            ...(line.uom_id != null && { uom_id: line.uom_id }),
             unit_price: line.unit_price,
-            discount_percent: line.discount_percent,
-            discount_amount: line.discount_amount,
-            tax_rate_id: line.tax_rate_id,
+            ...(line.discount_percent != null && {
+              discount_percent: line.discount_percent,
+            }),
+            ...(line.discount_amount != null && {
+              discount_amount: line.discount_amount,
+            }),
+            ...(line.tax_rate_id != null && { tax_rate_id: line.tax_rate_id }),
             line_total: line.line_total,
             line_tax: line.line_tax,
             line_total_after_tax: line.line_total_after_tax,
-            lead_time_days: line.lead_time_days,
+            ...(line.lead_time_days != null && {
+              lead_time_days: line.lead_time_days,
+            }),
           },
           { transaction: t },
         );
@@ -615,8 +662,12 @@ export const rfqService = {
           model: PurchaseRfqLine,
           as: "lines",
           include: [
-            { model: Product, as: "product", attributes: ["id", "name"] },
-            { model: UnitOfMeasure, as: "uom", attributes: ["id", "name"] },
+            {
+              model: Product,
+              as: "product",
+              attributes: ["id", "name", "uom_id"],
+            },
+            { model: Uom, as: "uom", attributes: ["id", "name"] },
           ],
         },
       ],
@@ -635,6 +686,15 @@ export const rfqService = {
     for (const rfq of rfqs) {
       const lines = (rfq as any).lines as PurchaseRfqLine[];
       for (const line of lines) {
+        // Calculate qty_in_stock_uom for normalized comparison
+        // Use product.uom_id as the stock UOM
+        const qtyInStockUom = await resolveQtyInStockUom(
+          line.quantity,
+          line.uom_id,
+          (line as any).product?.uom_id,
+          line.product_id,
+        );
+
         if (!productMap.has(line.product_id)) {
           productMap.set(line.product_id, {
             product_name:
@@ -645,6 +705,7 @@ export const rfqService = {
         productMap.get(line.product_id)!.rfqs[rfq.id] = {
           unit_price: line.unit_price,
           quantity: line.quantity,
+          qty_in_stock_uom: qtyInStockUom,
           uom: (line as any).uom,
           discount_percent: line.discount_percent,
           line_total_after_tax: line.line_total_after_tax,

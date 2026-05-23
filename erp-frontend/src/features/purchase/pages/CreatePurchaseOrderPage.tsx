@@ -524,16 +524,13 @@ export default function CreatePurchaseOrderPage() {
               Saving…
             </>
           ) : (
-            <>
-              <Plus className="w-4 h-4" />
-              Create Purchase Order
-            </>
+            <>Create Purchase Order</>
           )}
         </Button>
         <Button
           type="button"
           onClick={() => navigate("/purchase/orders")}
-          className="w-full py-2.5 rounded-xl border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 font-medium text-sm transition-colors"
+          className="w-full py-2.5 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-50 font-medium text-sm transition-colors"
         >
           Cancel
         </Button>

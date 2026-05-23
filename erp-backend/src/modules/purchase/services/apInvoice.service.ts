@@ -202,7 +202,9 @@ export const apInvoiceService = {
     if (dupResult.isDuplicate && input.overrideDuplicate) {
       duplicateWarning = {
         existingInvoiceId: dupResult.existingInvoiceId!,
-        existingInvoiceDate: dupResult.existingInvoiceDate,
+        ...(dupResult.existingInvoiceDate && {
+          existingInvoiceDate: dupResult.existingInvoiceDate,
+        }),
         message: dupResult.message ?? "Ghi đè hóa đơn trùng lặp",
       };
     }
@@ -225,9 +227,9 @@ export const apInvoiceService = {
           source: input.source,
           invoice_no: input.invoice_no,
           invoice_date: input.invoice_date,
-          due_date: resolvedDueDate,
+          ...(resolvedDueDate && { due_date: resolvedDueDate }),
           supplier_id: input.supplier_id,
-          po_id: input.po_id ?? undefined,
+          ...(input.po_id && { po_id: input.po_id }),
           branch_id: input.branch_id,
           created_by: input.created_by,
           approval_status: "draft",
@@ -259,12 +261,12 @@ export const apInvoiceService = {
         await ApInvoiceLine.create(
           {
             ap_invoice_id: invoice.id,
-            product_id: line.product_id ?? undefined,
+            ...(line.product_id && { product_id: line.product_id }),
             description: line.description ?? "",
             quantity: qty,
             unit_price: price,
             uom_id: line.uom_id ?? null,
-            tax_rate_id: line.tax_rate_id ?? undefined,
+            ...(line.tax_rate_id && { tax_rate_id: line.tax_rate_id }),
             line_total: lineTotal,
             line_tax: line.line_tax ?? 0,
             line_total_after_tax: line.line_total_after_tax ?? lineTotal,
@@ -332,8 +334,8 @@ export const apInvoiceService = {
 
     return {
       invoice: createdInvoice!,
-      duplicateWarning,
-      matchingResult,
+      ...(duplicateWarning && { duplicateWarning }),
+      ...(matchingResult && { matchingResult }),
     };
   },
 
@@ -479,12 +481,12 @@ export const apInvoiceService = {
         invoice_date: invoiceDate,
         due_date: dueDate,
         supplier_id: po.supplier_id!,
-        po_id: po.id,
-        branch_id: po.branch_id,
+        ...(po.id && { po_id: po.id }),
+        branch_id: po.branch_id!,
         created_by: user.id,
-        total_before_tax: totalBeforeTax,
-        total_tax: totalTax,
-        total_after_tax: totalAfterTax,
+        ...(totalBeforeTax > 0 && { total_before_tax: totalBeforeTax }),
+        ...(totalTax > 0 && { total_tax: totalTax }),
+        ...(totalAfterTax > 0 && { total_after_tax: totalAfterTax }),
         lines,
       },
       user,
@@ -645,15 +647,15 @@ export const apInvoiceService = {
         invoice_date: invoiceDate,
         due_date: dueDate,
         supplier_id: po.supplier_id!,
-        po_id: po.id,
-        branch_id: po.branch_id,
+        ...(po.id && { po_id: po.id }),
+        branch_id: po.branch_id!,
         created_by: user.id,
         invoice_series: metadata?.invoice_series ?? null,
         invoice_template: metadata?.invoice_template ?? null,
         tax_code: metadata?.tax_code ?? null,
-        total_before_tax: totalBeforeTax,
-        total_tax: totalTax,
-        total_after_tax: totalAfterTax,
+        ...(totalBeforeTax > 0 && { total_before_tax: totalBeforeTax }),
+        ...(totalTax > 0 && { total_tax: totalTax }),
+        ...(totalAfterTax > 0 && { total_after_tax: totalAfterTax }),
         lines,
       },
       user,

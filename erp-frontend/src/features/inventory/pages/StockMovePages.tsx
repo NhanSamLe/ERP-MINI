@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../../store/store";
 import { fetchWarehousesThunk } from "../store/stock/warehouse/warehouse.thunks";
@@ -52,7 +52,7 @@ import EditReceiptModal, {
 import { fetchPurchaseOrderByStatus } from "../../purchase/store/purchaseOrder.thunks";
 import EditTransferModal from "../components/Modal/TransferModal/EditTransferModal";
 import CreateTransferModal from "../components/Modal/TransferModal/CreateTransferModal";
-import { Trash2, Download } from "lucide-react";
+import { Trash2, Download, Package, Plus, Clock, FileCheck, CheckCircle2 } from "lucide-react";
 import CreateAdjustmentModal from "../components/Modal/AdjustmentModal/CreateAdjustmentModal";
 import { getErrorMessage } from "@/utils/ErrorHelper";
 import EditAdjustmentModal from "../components/Modal/AdjustmentModal/EditAdjustmentModal";
@@ -62,6 +62,16 @@ import EditIssueModal from "../components/Modal/IssueModal/EditIssueModal";
 import { useNavigate } from "react-router-dom";
 import { Roles } from "@/types/enum";
 import { exportExcelReport } from "@/utils/excel/exportExcelReport";
+import { Card, CardContent } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 export default function StockMovePages() {
   const dispatch = useDispatch<AppDispatch>();
@@ -80,17 +90,17 @@ export default function StockMovePages() {
   const [type, setType] = useState("");
 
   const typeColorMap: Record<string, string> = {
-    receipt: "bg-green-100 text-green-700",
-    issue: "bg-red-100 text-red-700",
-    transfer: "bg-blue-100 text-blue-700",
-    adjustment: "bg-orange-100 text-orange-700",
+    receipt: "bg-green-50 text-green-700 border-green-200 hover:bg-green-50",
+    issue: "bg-red-50 text-red-700 border-red-200 hover:bg-red-50",
+    transfer: "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50",
+    adjustment: "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50",
   };
 
   const statusColorMap: Record<string, string> = {
-    draft: "bg-gray-100 text-gray-700",
-    waiting_approval: "bg-yellow-100 text-yellow-700",
-    posted: "bg-green-100 text-green-700",
-    cancelled: "bg-red-100 text-red-700",
+    draft: "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-100",
+    waiting_approval: "bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-50",
+    posted: "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50",
+    cancelled: "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-50",
   };
   const [openCreateReceiptModal, setOpenCreateReceiptModal] = useState(false);
   const [openCreateTransferModal, setOpenCreateTransferModal] = useState(false);
@@ -256,7 +266,7 @@ export default function StockMovePages() {
 
         return (
           <div className="flex flex-col">
-            <span className=" text-gray-700">{row.creator.full_name}</span>
+            <span className="font-medium text-gray-700">{row.creator.full_name}</span>
           </div>
         );
       },
@@ -266,13 +276,13 @@ export default function StockMovePages() {
       key: "type",
       label: "Type",
       render: (row: StockMove) => (
-        <span
-          className={`px-3 py-1 rounded-full text-xs font-semibold ${
-            typeColorMap[row.type] || "bg-gray-100 text-gray-700"
+        <Badge
+          className={`px-2.5 py-0.5 rounded-full text-xs font-bold border shadow-none capitalize ${
+            typeColorMap[row.type] || "bg-gray-50 text-gray-700 border-gray-200"
           }`}
         >
-          {row.type.toUpperCase()}
-        </span>
+          {row.type}
+        </Badge>
       ),
     },
 
@@ -287,13 +297,13 @@ export default function StockMovePages() {
       key: "status",
       label: "Status",
       render: (row: StockMove) => (
-        <span
-          className={`px-3 py-1 rounded-full text-xs font-semibold ${
-            statusColorMap[row.status] || "bg-gray-100 text-gray-700"
+        <Badge
+          className={`px-2.5 py-0.5 rounded-full text-xs font-bold border shadow-none capitalize ${
+            statusColorMap[row.status] || "bg-gray-50 text-gray-700 border-gray-200"
           }`}
         >
-          {row.status.toUpperCase()}
-        </span>
+          {row.status.replace("_", " ")}
+        </Badge>
       ),
     },
     {
@@ -303,7 +313,7 @@ export default function StockMovePages() {
         const text = row.note || "";
         const truncated =
           text.length > 20 ? text.substring(0, 20) + "..." : text;
-        return <span className="italic">{truncated}</span>;
+        return <span className="italic text-slate-500">{truncated}</span>;
       },
     },
   ];
@@ -702,54 +712,34 @@ export default function StockMovePages() {
   };
 
   return (
-    <div className="p-8">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold tracking-tight">Manage Stock</h2>
-        <p className="text-gray-500">View and manage stock across warehouses</p>
-      </div>
-
-      <div className="flex items-center justify-between w-full gap-4 margin-bottom-20">
+    <div className="max-w-6xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Select value={warehouseId} onValueChange={setWarehouseId}>
-            <SelectTrigger className="min-w-[200px]">
-              <SelectValue placeholder="Warehouse" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem key={""} value={""}>
-                None
-              </SelectItem>
-              {warehouses.map((w) => (
-                <SelectItem key={w.id} value={String(w.id)}>
-                  {w.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={type} onValueChange={setType}>
-            <SelectTrigger className="min-w-[200px]">
-              <SelectValue placeholder="Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">All Types</SelectItem>
-              <SelectItem value="receipt">Receipt</SelectItem>
-              <SelectItem value="issue">Issue</SelectItem>
-              <SelectItem value="transfer">Transfer</SelectItem>
-              <SelectItem value="adjustment">Adjustment</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-500 shadow-sm">
+            <Package className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Stock Movements</h1>
+            <p className="text-gray-500 text-sm mt-0.5">
+              Track, transfer, receive, adjust, and issue stock items across warehouses
+            </p>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <button
+
+        <div className="flex items-center gap-3 self-end sm:self-auto">
+          <Button
             onClick={handleExport}
-            className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg transition-colors text-sm font-medium"
+            variant="outline"
+            leftIcon={<Download className="w-4 h-4" />}
+            size="md"
           >
-            <Download className="w-5 h-5" />
             Export Excel
-          </button>
+          </Button>
           <BasicDropdownMenu
             trigger={
-              <Button className="primary hover:secondary text-white mb-2">
-                Create Movement ▾
+              <Button size="md" leftIcon={<Plus className="w-4 h-4" />}>
+                Create Movement
               </Button>
             }
             items={[
@@ -770,76 +760,166 @@ export default function StockMovePages() {
           />
         </div>
       </div>
-      <div className="bg-white p-4 rounded-xl shadow-sm border">
-        <DataTable
-          data={filteredData}
-          itemsPerPage={7}
-          columns={columns}
-          loading={loading}
-          onView={(item) => navigate(`/inventory/stock_move/view/${item.id}`)}
-          onEdit={(item) => {
-            try {
-              setSelectedStockMove(item);
-              switch (item.type) {
-                case "receipt":
-                  setOpenEditReceiptModal(true);
-                  break;
-                case "transfer":
-                  setOpenEditTransferModal(true);
-                  break;
-                case "adjustment":
-                  setOpenEditAdjustmentModal(true);
-                  break;
-                case "issue":
-                  setOpenEditIssueModal(true);
-                  break;
-                default:
-                  toast.warn("Unknown stock move type");
-              }
-            } catch (error) {
-              console.log(error);
-              toast.error("Failed to load stock move detail");
-            }
-          }}
-          onDelete={(item) => {
-            setSelectedStockMove(item);
-            setConfirmOpen(true);
-          }}
-          canEdit={(item) => item.status === "draft" && role === Roles.WHSTAFF}
-          canDelete={(item) =>
-            item.status === "draft" && role === Roles.WHSTAFF
-          }
-        />
-      </div>
-      {confirmOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-lg p-6 w-96 text-center">
-            <Trash2 className="w-10 h-10 text-red-500 mx-auto mb-3" />
-            <h2 className="text-lg font-semibold mb-2">
-              Are you sure you want to delete this Stock move?
-            </h2>
-            <p className="text-sm text-gray-500 mb-5">
-              This action cannot be undone.
-            </p>
-            <div className="flex justify-center gap-3">
-              <Button
-                onClick={() => setConfirmOpen(false)}
-                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm"
-                disabled={deleting}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleDelete}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm"
-                disabled={deleting}
-              >
-                {deleting ? "Deleting..." : "Yes, Delete"}
-              </Button>
-            </div>
+
+      {/* Quick Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-3.5 transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 shrink-0">
+            <Package className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Moves</p>
+            <p className="text-lg font-extrabold text-slate-850 mt-0.5">{items.length}</p>
           </div>
         </div>
-      )}
+
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-3.5 transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="w-10 h-10 rounded-xl bg-amber-50/50 border border-amber-100 flex items-center justify-center text-amber-500 shrink-0">
+            <FileCheck className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pending Approval</p>
+            <p className="text-lg font-extrabold text-slate-850 mt-0.5">
+              {items.filter(x => x.status === 'waiting_approval').length}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-3.5 transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-500 shrink-0">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Posted / Approved</p>
+            <p className="text-lg font-extrabold text-slate-850 mt-0.5">
+              {items.filter(x => x.status === 'posted').length}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-3.5 transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 shrink-0">
+            <Clock className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Draft Movements</p>
+            <p className="text-lg font-extrabold text-slate-850 mt-0.5">{items.filter(x => x.status === 'draft').length}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <Card className="border-slate-100 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">
+        {/* Filters Header */}
+        <div className="p-5 border-b border-slate-100 bg-slate-50/10 flex flex-col sm:flex-row items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3 w-full">
+            <Select value={warehouseId} onValueChange={setWarehouseId}>
+              <SelectTrigger className="w-full sm:w-[200px] h-10 bg-white border-slate-200 focus:ring-orange-500 focus:border-orange-500 rounded-lg">
+                <SelectValue placeholder="All Warehouses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={""}>All Warehouses</SelectItem>
+                {warehouses.map((w) => (
+                  <SelectItem key={w.id} value={String(w.id)}>
+                    {w.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={type} onValueChange={setType}>
+              <SelectTrigger className="w-full sm:w-[200px] h-10 bg-white border-slate-200 focus:ring-orange-500 focus:border-orange-500 rounded-lg">
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Types</SelectItem>
+                <SelectItem value="receipt">Receipt</SelectItem>
+                <SelectItem value="issue">Issue</SelectItem>
+                <SelectItem value="transfer">Transfer</SelectItem>
+                <SelectItem value="adjustment">Adjustment</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Table wrapper */}
+        <div className="p-5">
+          <DataTable
+            data={filteredData}
+            itemsPerPage={7}
+            columns={columns}
+            loading={loading}
+            onView={(item) => navigate(`/inventory/stock_move/view/${item.id}`)}
+            onEdit={(item) => {
+              try {
+                setSelectedStockMove(item);
+                switch (item.type) {
+                  case "receipt":
+                    setOpenEditReceiptModal(true);
+                    break;
+                  case "transfer":
+                    setOpenEditTransferModal(true);
+                    break;
+                  case "adjustment":
+                    setOpenEditAdjustmentModal(true);
+                    break;
+                  case "issue":
+                    setOpenEditIssueModal(true);
+                    break;
+                  default:
+                    toast.warn("Unknown stock move type");
+                }
+              } catch (error) {
+                console.log(error);
+                toast.error("Failed to load stock move detail");
+              }
+            }}
+            onDelete={(item) => {
+              setSelectedStockMove(item);
+              setConfirmOpen(true);
+            }}
+            canEdit={(item) => item.status === "draft" && role === Roles.WHSTAFF}
+            canDelete={(item) =>
+              item.status === "draft" && role === Roles.WHSTAFF
+            }
+          />
+        </div>
+      </Card>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 mb-4 animate-pulse">
+              <Trash2 className="h-6 w-6 text-red-600" />
+            </div>
+            <DialogTitle className="text-center text-lg font-bold text-gray-900">
+              Delete Stock Move
+            </DialogTitle>
+            <DialogDescription className="text-center text-sm text-gray-500">
+              Are you sure you want to delete this stock move? This action cannot be undone and will permanently remove this record from the system.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-row justify-center gap-3 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmOpen(false)}
+              disabled={deleting}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleDelete}
+              loading={deleting}
+              className="w-full sm:w-auto"
+            >
+              Yes, Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <CreateTransferModal
         open={openCreateTransferModal}
         warehouses={warehouses}

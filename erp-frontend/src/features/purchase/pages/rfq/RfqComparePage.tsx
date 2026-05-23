@@ -69,7 +69,7 @@ export default function RfqComparePage() {
   const rfqs = compareData.rfqs;
   const products = compareData.products;
 
-  // Find best price for each product
+  // Find best price per unit (normalized by stock UOM)
   const getBestPrice = (productId: number) => {
     const product = products.find((p) => p.product_id === productId);
     if (!product) return null;
@@ -77,9 +77,16 @@ export default function RfqComparePage() {
     let bestPrice = Infinity;
     let bestRfqId = null;
 
-    Object.entries(product.by_rfq).forEach(([rfqId, data]) => {
-      if (data.line_total_after_tax < bestPrice) {
-        bestPrice = data.line_total_after_tax;
+    Object.entries(product.by_rfq).forEach(([rfqId, data]: [string, any]) => {
+      // Calculate unit price normalized by qty_in_stock_uom
+      const qtyInStockUom = data.qty_in_stock_uom || data.quantity;
+      const normalizedUnitPrice =
+        qtyInStockUom > 0
+          ? data.line_total_after_tax / qtyInStockUom
+          : Infinity;
+
+      if (normalizedUnitPrice < bestPrice) {
+        bestPrice = normalizedUnitPrice;
         bestRfqId = Number(rfqId);
       }
     });
@@ -161,6 +168,16 @@ export default function RfqComparePage() {
           ))}
         </div>
 
+        {/* Info Box */}
+        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-sm text-blue-900">
+            <strong>📌 Note:</strong> Prices are normalized by stock unit of
+            measure (UOM) for accurate comparison. If RFQs have different
+            quantities, "Cost/unit" shows the price per standard unit for fair
+            comparison.
+          </p>
+        </div>
+
         {/* Comparison Table */}
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
@@ -171,7 +188,7 @@ export default function RfqComparePage() {
                     Product
                   </th>
                   <th className="px-6 py-3 text-left font-semibold text-gray-900">
-                    Qty
+                    Qty Requested
                   </th>
                   <th className="px-6 py-3 text-left font-semibold text-gray-900">
                     UOM
@@ -216,6 +233,12 @@ export default function RfqComparePage() {
                       {rfqs.map((rfq) => {
                         const lineData = product.by_rfq[rfq.id];
                         const isBest = bestPrice && bestPrice.rfqId === rfq.id;
+                        const qtyInStockUom =
+                          lineData?.qty_in_stock_uom || lineData?.quantity;
+                        const costPerUnit =
+                          qtyInStockUom > 0
+                            ? lineData?.line_total_after_tax / qtyInStockUom
+                            : 0;
 
                         return (
                           <td
@@ -235,6 +258,9 @@ export default function RfqComparePage() {
                                   </div>
                                 )}
                                 <div className="text-xs text-gray-500">
+                                  Cost/unit: {formatVND(costPerUnit)}
+                                </div>
+                                <div className="text-xs text-gray-500">
                                   Total:{" "}
                                   {formatVND(lineData.line_total_after_tax)}
                                 </div>
@@ -252,7 +278,7 @@ export default function RfqComparePage() {
                       })}
 
                       <td className="px-6 py-4 text-center bg-green-50 font-bold text-green-700">
-                        {bestPrice ? formatVND(bestPrice.price) : "—"}
+                        {bestPrice ? `${formatVND(bestPrice.price)}/unit` : "—"}
                       </td>
                     </tr>
                   );
@@ -264,6 +290,9 @@ export default function RfqComparePage() {
                 <tr>
                   <td colSpan={2} className="px-6 py-4 font-bold text-gray-900">
                     Total Amount
+                  </td>
+                  <td className="px-6 py-4 text-xs text-gray-500 italic">
+                    (as quoted, not normalized)
                   </td>
                   {rfqs.map((rfq) => (
                     <td

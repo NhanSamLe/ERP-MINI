@@ -391,7 +391,7 @@ export default function PurchaseReturnEditPage() {
                   disabled={lines.some((l) => l.po_line_id === pl.id)}
                   className="w-full text-left px-3 py-2 text-sm bg-white border border-gray-200 rounded hover:bg-orange-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
-                  Product #{pl.product_id} — Qty: {pl.quantity} ×{" "}
+                  Product #{pl.product_id} — Qty: {pl.quantity} {(pl as any).uom?.name || (pl as any).product?.uom?.name || ""} ×{" "}
                   {Number(pl.unit_price).toLocaleString("vi-VN")}
                 </button>
               ))}

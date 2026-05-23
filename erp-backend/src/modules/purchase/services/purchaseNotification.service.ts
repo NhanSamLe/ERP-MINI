@@ -129,7 +129,7 @@ export const purchaseNotificationService = {
         referenceNo: params.praNo,
         url: `/purchase/return-authorizations/${params.praId}`,
         branchId: params.branchId,
-        io: params.io,
+        ...(params.io !== undefined && { io: params.io }),
       });
     } catch (err: any) {
       console.error(
@@ -161,7 +161,7 @@ export const purchaseNotificationService = {
         referenceNo: params.returnNo,
         url: `/purchase/returns/${params.returnId}`,
         branchId: params.branchId,
-        io: params.io,
+        ...(params.io !== undefined && { io: params.io }),
       });
     } catch (err: any) {
       console.error(
@@ -203,7 +203,7 @@ export const purchaseNotificationService = {
         referenceNo: params.debitNoteNo,
         url: `/purchase/debit-notes/${params.debitNoteId}`,
         branchId: params.branchId,
-        io: params.io,
+        ...(params.io !== undefined && { io: params.io }),
       });
     } catch (err: any) {
       console.error(

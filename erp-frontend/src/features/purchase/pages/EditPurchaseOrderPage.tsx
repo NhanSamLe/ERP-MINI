@@ -546,7 +546,7 @@ export default function EditPurchaseOrderPage() {
         <Button
           type="button"
           onClick={() => navigate("/purchase/orders")}
-          className="w-full py-2.5 rounded-xl border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 font-medium text-sm transition-colors"
+          className="w-full py-2.5 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-50 font-medium text-sm transition-colors"
         >
           Cancel
         </Button>

@@ -19,10 +19,21 @@ import {
   Trash2,
   ToggleLeft,
   ToggleRight,
-  X,
   Warehouse,
 } from "lucide-react";
 import { toast } from "react-toastify";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 // ─── Type badge ───────────────────────────────────────────────────────────────
 const TYPE_LABELS: Record<StockLocationType, string> = {
@@ -35,13 +46,13 @@ const TYPE_LABELS: Record<StockLocationType, string> = {
   transit: "Transit",
 };
 const TYPE_COLORS: Record<StockLocationType, string> = {
-  view: "bg-gray-100 text-gray-600",
-  internal: "bg-blue-100 text-blue-700",
-  input: "bg-green-100 text-green-700",
-  output: "bg-orange-100 text-orange-700",
-  customer: "bg-purple-100 text-purple-700",
-  supplier: "bg-yellow-100 text-yellow-700",
-  transit: "bg-teal-100 text-teal-700",
+  view: "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-50",
+  internal: "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50",
+  input: "bg-green-50 text-green-700 border-green-200 hover:bg-green-50",
+  output: "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-50",
+  customer: "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-50",
+  supplier: "bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-50",
+  transit: "bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-50",
 };
 
 // ─── Tree node component ──────────────────────────────────────────────────────
@@ -65,15 +76,17 @@ function TreeNode({
   const [expanded, setExpanded] = useState(true);
   const hasChildren = node.children && node.children.length > 0;
 
+  const isSelected = selectedId === Number(node.id);
+
   return (
-    <div>
+    <div className="space-y-0.5">
       <div
-        className={`flex items-center gap-1 px-2 py-1.5 rounded-lg cursor-pointer group transition ${
-          selectedId === Number(node.id)
-            ? "bg-orange-50 border border-orange-200"
-            : "hover:bg-gray-50"
+        className={`flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer group transition duration-200 border ${
+          isSelected
+            ? "bg-orange-50 border-orange-200 shadow-sm"
+            : "hover:bg-slate-50/60 border-transparent hover:border-slate-100/80"
         }`}
-        style={{ paddingLeft: `${depth * 16 + 8}px` }}
+        style={{ marginLeft: `${depth * 16}px` }}
         onClick={() => onSelect(node)}
       >
         {/* Expand toggle */}
@@ -82,7 +95,7 @@ function TreeNode({
             e.stopPropagation();
             setExpanded((v) => !v);
           }}
-          className="w-4 h-4 flex items-center justify-center text-gray-400 shrink-0"
+          className="w-5 h-5 rounded hover:bg-slate-200/50 flex items-center justify-center text-slate-400 shrink-0 transition"
         >
           {hasChildren ? (
             expanded ? (
@@ -96,39 +109,47 @@ function TreeNode({
         </button>
 
         <MapPin
-          className={`w-3.5 h-3.5 shrink-0 ${node.is_active ? "text-orange-400" : "text-gray-300"}`}
+          className={`w-4 h-4 shrink-0 transition-colors ${
+            node.is_active 
+              ? isSelected ? "text-orange-500" : "text-orange-400"
+              : "text-slate-300"
+          }`}
         />
 
         <span
-          className={`text-sm flex-1 truncate ${node.is_active ? "text-gray-800" : "text-gray-400 line-through"}`}
+          className={`text-sm font-semibold flex-1 truncate ${
+            node.is_active ? "text-slate-750" : "text-slate-400 line-through font-normal"
+          }`}
         >
           {node.name}
         </span>
 
-        <span className="text-xs text-gray-400 font-mono shrink-0">
+        <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold text-slate-400 bg-slate-100 uppercase tracking-wider shrink-0">
           {node.code}
         </span>
 
-        <span
-          className={`text-xs px-1.5 py-0.5 rounded font-medium shrink-0 ${TYPE_COLORS[node.type]}`}
+        <Badge
+          className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border shadow-none ${
+            TYPE_COLORS[node.type] || "bg-slate-100 text-slate-600 border-slate-200"
+          }`}
         >
           {TYPE_LABELS[node.type]}
-        </span>
+        </Badge>
 
         {/* Actions — show on hover */}
-        <div className="hidden group-hover:flex items-center gap-1 ml-1 shrink-0">
+        <div className="hidden group-hover:flex items-center gap-1 ml-2 shrink-0">
           <button
             onClick={(e) => {
               e.stopPropagation();
               onToggleActive(node);
             }}
-            className="p-1 rounded hover:bg-gray-200 text-gray-500 transition"
+            className="p-1 rounded-md hover:bg-slate-200/60 text-slate-500 transition-colors"
             title={node.is_active ? "Deactivate" : "Activate"}
           >
             {node.is_active ? (
-              <ToggleRight className="w-3.5 h-3.5 text-green-500" />
+              <ToggleRight className="w-4 h-4 text-emerald-500" />
             ) : (
-              <ToggleLeft className="w-3.5 h-3.5 text-gray-400" />
+              <ToggleLeft className="w-4 h-4 text-slate-300" />
             )}
           </button>
           <button
@@ -136,7 +157,8 @@ function TreeNode({
               e.stopPropagation();
               onEdit(node);
             }}
-            className="p-1 rounded hover:bg-blue-50 text-blue-500 transition"
+            className="p-1 rounded-md hover:bg-blue-50 border border-transparent hover:border-blue-100 text-blue-500 transition-colors"
+            title="Edit"
           >
             <Pencil className="w-3.5 h-3.5" />
           </button>
@@ -145,7 +167,8 @@ function TreeNode({
               e.stopPropagation();
               onDelete(node);
             }}
-            className="p-1 rounded hover:bg-red-50 text-red-500 transition"
+            className="p-1 rounded-md hover:bg-rose-50 border border-transparent hover:border-rose-100 text-rose-500 transition-colors"
+            title="Delete"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -153,12 +176,12 @@ function TreeNode({
       </div>
 
       {hasChildren && expanded && (
-        <div>
+        <div className="mt-1 space-y-1 border-l border-slate-100 ml-[9px] pl-[7px]">
           {node.children!.map((child) => (
             <TreeNode
               key={child.id}
               node={child}
-              depth={depth + 1}
+              depth={depth}
               selectedId={selectedId}
               onSelect={onSelect}
               onEdit={onEdit}
@@ -232,56 +255,51 @@ function LocationFormModal({
   });
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
-        <div className="flex items-center justify-between px-6 py-4 border-b">
-          <h2 className="text-lg font-semibold text-gray-800">
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>
             {mode === "create" ? "Add Location" : "Edit Location"}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+          </DialogTitle>
+          <DialogDescription>
+            Configure properties and relationships for this storage location
+          </DialogDescription>
+        </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                 Name <span className="text-red-500">*</span>
               </label>
-              <input
+              <Input
                 value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
+                onChange={(val) => setForm({ ...form, name: val })}
+                className="border-slate-200 focus:ring-orange-400 focus:border-orange-400"
                 placeholder="e.g. Shelf A1"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                 Code <span className="text-red-500">*</span>
               </label>
-              <input
+              <Input
                 value={form.code}
-                onChange={(e) =>
-                  setForm({ ...form, code: e.target.value.toUpperCase() })
-                }
-                className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none font-mono"
+                onChange={(val) => setForm({ ...form, code: val.toUpperCase() })}
+                className="border-slate-200 focus:ring-orange-400 focus:border-orange-400 font-mono"
                 placeholder="e.g. SHELF-A1"
                 disabled={mode === "edit"}
               />
               {mode === "edit" && (
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-[10px] text-gray-400">
                   Code cannot be changed
                 </p>
               )}
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               Type
             </label>
             <select
@@ -289,7 +307,7 @@ function LocationFormModal({
               onChange={(e) =>
                 setForm({ ...form, type: e.target.value as StockLocationType })
               }
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
+              className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
             >
               {Object.entries(TYPE_LABELS).map(([val, label]) => (
                 <option key={val} value={val}>
@@ -299,14 +317,14 @@ function LocationFormModal({
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               Parent Location
             </label>
             <select
               value={form.parent_id}
               onChange={(e) => setForm({ ...form, parent_id: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
+              className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
             >
               <option value="">— Root (no parent) —</option>
               {parentOptions.map((l) => (
@@ -317,7 +335,7 @@ function LocationFormModal({
             </select>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5 pt-2">
             <input
               type="checkbox"
               id="is_active"
@@ -325,36 +343,33 @@ function LocationFormModal({
               onChange={(e) =>
                 setForm({ ...form, is_active: e.target.checked })
               }
-              className="w-4 h-4 text-orange-500 rounded"
+              className="w-4.5 h-4.5 text-orange-500 rounded border-slate-200 focus:ring-orange-500 focus:ring-offset-0"
             />
-            <label htmlFor="is_active" className="text-sm text-gray-700">
-              Active
+            <label htmlFor="is_active" className="text-sm font-semibold text-slate-700">
+              Active / Visible
             </label>
           </div>
 
-          <div className="flex justify-end gap-3 pt-2">
-            <button
+          <DialogFooter className="pt-4 border-t border-slate-100 flex-row justify-end gap-3">
+            <Button
               type="button"
+              variant="outline"
               onClick={onClose}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm"
+              disabled={saving}
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              disabled={saving}
-              className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm disabled:opacity-60"
+              variant="primary"
+              loading={saving}
             >
-              {saving
-                ? "Saving..."
-                : mode === "create"
-                  ? "Add Location"
-                  : "Save Changes"}
-            </button>
-          </div>
+              {mode === "create" ? "Add Location" : "Save Changes"}
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -462,28 +477,29 @@ export default function StockLocationPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between bg-white px-6 py-4 rounded-xl border shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <MapPin className="w-6 h-6 text-orange-500" />
+          <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-500 shadow-sm">
+            <MapPin className="w-6 h-6" />
+          </div>
           <div>
-            <h1 className="text-xl font-semibold text-gray-800">
-              Stock Locations
-            </h1>
-            <p className="text-sm text-gray-500">
-              Manage warehouse location structure
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Stock Locations</h1>
+            <p className="text-gray-500 text-sm mt-0.5">
+              Organize and structure layout, shelving, and aisles inside your warehouses
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+
+        <div className="flex items-center gap-3 self-end md:self-auto">
           {/* Warehouse selector */}
           <div className="flex items-center gap-2">
-            <Warehouse className="w-4 h-4 text-gray-400" />
+            <Warehouse className="w-4 h-4 text-slate-400" />
             <select
               value={selectedWarehouseId || ""}
               onChange={(e) => setSelectedWarehouseId(Number(e.target.value))}
-              className="border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
+              className="h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
             >
               <option value="">Select warehouse</option>
               {warehouses.map((w) => (
@@ -493,152 +509,179 @@ export default function StockLocationPage() {
               ))}
             </select>
           </div>
-          <button
+          
+          <Button
             onClick={() => {
               setEditTarget(null);
               setFormMode("create");
             }}
             disabled={!selectedWarehouseId}
-            className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-40"
+            leftIcon={<Plus className="w-4 h-4" />}
+            size="md"
           >
-            <Plus className="w-4 h-4" /> Add Location
-          </button>
+            Add Location
+          </Button>
         </div>
       </div>
 
       {!selectedWarehouseId ? (
-        <div className="bg-white rounded-xl border shadow-sm p-12 text-center text-gray-400">
-          <Warehouse className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p>Select a warehouse to view its locations</p>
-        </div>
+        <Card className="border-slate-100 shadow-sm p-16 text-center bg-white/80 backdrop-blur-md">
+          <Warehouse className="w-14 h-14 mx-auto mb-4 text-slate-300 opacity-60 animate-pulse" />
+          <h3 className="text-base font-bold text-slate-700">No Warehouse Selected</h3>
+          <p className="text-sm text-slate-400 mt-1 max-w-xs mx-auto">
+            Choose a warehouse from the dropdown menu to inspect and manage its physical layout structure.
+          </p>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Tree panel */}
-          <div className="lg:col-span-2 bg-white rounded-xl border shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b bg-gray-50 flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">
-                Location Tree
-              </span>
-              <span className="text-xs text-gray-400">
+          <Card className="lg:col-span-2 border-slate-100 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md flex flex-col">
+            <CardHeader className="pb-4 border-b border-slate-50 bg-slate-50/20 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-base font-semibold text-slate-800">
+                  Location Structure Tree
+                </CardTitle>
+                <CardDescription className="text-xs text-slate-400">
+                  Hierarchical physical representation
+                </CardDescription>
+              </div>
+              <Badge variant="outline" className="bg-slate-50 text-slate-600 font-bold border-slate-200 px-2.5 py-1 text-xs">
                 {flatList.length} locations
-              </span>
-            </div>
-            <div className="p-3 min-h-[400px]">
+              </Badge>
+            </CardHeader>
+            <CardContent className="p-4 flex-1 min-h-[400px] max-h-[550px] overflow-y-auto">
               {loading ? (
-                <div className="flex items-center justify-center h-40">
-                  <div className="w-6 h-6 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                <div className="flex flex-col items-center justify-center py-20 text-slate-450 gap-2">
+                  <div className="w-8 h-8 border-3 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                  <span className="text-xs font-semibold">Building tree structure...</span>
                 </div>
               ) : tree.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-40 text-gray-400">
-                  <MapPin className="w-8 h-8 mb-2 opacity-30" />
-                  <p className="text-sm">No locations yet</p>
-                  <button
+                <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+                  <MapPin className="w-12 h-12 mb-3 opacity-30 text-orange-500 animate-bounce" />
+                  <h3 className="font-bold text-slate-700">Empty Layout</h3>
+                  <p className="text-sm text-slate-400 mt-1">This warehouse currently does not have any inventory locations set up.</p>
+                  <Button
                     onClick={() => {
                       setEditTarget(null);
                       setFormMode("create");
                     }}
-                    className="mt-3 text-sm text-orange-500 hover:underline"
+                    variant="ghost"
+                    className="mt-4 hover:bg-orange-50/50"
                   >
-                    Add first location
-                  </button>
+                    Add First Location
+                  </Button>
                 </div>
               ) : (
-                tree.map((node) => (
-                  <TreeNode
-                    key={node.id}
-                    node={node}
-                    depth={0}
-                    selectedId={
-                      selectedLocation ? Number(selectedLocation.id) : null
-                    }
-                    onSelect={setSelectedLocation}
-                    onEdit={(loc) => {
-                      setEditTarget(loc);
-                      setFormMode("edit");
-                    }}
-                    onDelete={setDeleteTarget}
-                    onToggleActive={handleToggleActive}
-                  />
-                ))
+                <div className="space-y-1">
+                  {tree.map((node) => (
+                    <TreeNode
+                      key={node.id}
+                      node={node}
+                      depth={0}
+                      selectedId={
+                        selectedLocation ? Number(selectedLocation.id) : null
+                      }
+                      onSelect={setSelectedLocation}
+                      onEdit={(loc) => {
+                        setEditTarget(loc);
+                        setFormMode("edit");
+                      }}
+                      onDelete={setDeleteTarget}
+                      onToggleActive={handleToggleActive}
+                    />
+                  ))}
+                </div>
               )}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* Detail panel */}
-          <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b bg-gray-50">
-              <span className="text-sm font-medium text-gray-700">
-                {selectedLocation ? "Location Details" : "Select a location"}
-              </span>
-            </div>
-            {selectedLocation ? (
-              <div className="p-5 space-y-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-semibold text-gray-800">
-                      {selectedLocation.name}
-                    </h3>
-                    <p className="text-xs text-gray-400 font-mono mt-0.5">
-                      {selectedLocation.code}
-                    </p>
-                  </div>
-                  <span
-                    className={`text-xs px-2 py-1 rounded-full font-medium ${TYPE_COLORS[selectedLocation.type]}`}
-                  >
-                    {TYPE_LABELS[selectedLocation.type]}
-                  </span>
-                </div>
-
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Path</span>
-                    <span className="text-gray-700 font-mono text-xs">
-                      {selectedLocation.path}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Status</span>
-                    <span
-                      className={`font-medium ${selectedLocation.is_active ? "text-green-600" : "text-gray-400"}`}
+          <Card className="border-slate-100 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md flex flex-col h-fit">
+            <CardHeader className="pb-4 border-b border-slate-50 bg-slate-50/20">
+              <CardTitle className="text-base font-semibold text-slate-800">
+                Location Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-5">
+              {selectedLocation ? (
+                <div className="space-y-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="font-bold text-slate-800 text-base">
+                        {selectedLocation.name}
+                      </h3>
+                      <p className="text-[10px] tracking-widest font-mono font-bold text-slate-400 mt-1 bg-slate-50 px-2 py-0.5 rounded border border-slate-100 w-fit">
+                        {selectedLocation.code}
+                      </p>
+                    </div>
+                    <Badge
+                      className={`px-2.5 py-0.5 rounded-full text-xs font-bold border shadow-none ${
+                        TYPE_COLORS[selectedLocation.type] || "bg-slate-100 text-slate-600 border-slate-200"
+                      }`}
                     >
-                      {selectedLocation.is_active ? "Active" : "Inactive"}
-                    </span>
+                      {TYPE_LABELS[selectedLocation.type]}
+                    </Badge>
                   </div>
-                  {selectedLocation.parent && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Parent</span>
-                      <span className="text-gray-700">
-                        {selectedLocation.parent.name}
+
+                  <div className="space-y-3.5 border-t border-b border-slate-50 py-4">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-semibold text-slate-450 uppercase tracking-wide">Path URL</span>
+                      <span className="text-slate-800 font-mono font-bold bg-slate-50 px-2 py-0.5 rounded">
+                        {selectedLocation.path}
                       </span>
                     </div>
-                  )}
-                </div>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-semibold text-slate-450 uppercase tracking-wide">Status</span>
+                      <Badge
+                        className={`shadow-none font-bold border text-[10px] ${
+                          selectedLocation.is_active 
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-100" 
+                            : "bg-slate-50 text-slate-400 border-slate-100"
+                        }`}
+                      >
+                        {selectedLocation.is_active ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+                    {selectedLocation.parent && (
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-semibold text-slate-450 uppercase tracking-wide">Parent</span>
+                        <span className="text-slate-700 font-semibold bg-slate-50 px-2 py-0.5 rounded">
+                          {selectedLocation.parent.name}
+                        </span>
+                      </div>
+                    )}
+                  </div>
 
-                <div className="flex gap-2 pt-2">
-                  <button
-                    onClick={() => {
-                      setEditTarget(selectedLocation);
-                      setFormMode("edit");
-                    }}
-                    className="flex-1 flex items-center justify-center gap-1.5 border border-blue-200 text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg text-sm transition"
-                  >
-                    <Pencil className="w-3.5 h-3.5" /> Edit
-                  </button>
-                  <button
-                    onClick={() => setDeleteTarget(selectedLocation)}
-                    className="flex-1 flex items-center justify-center gap-1.5 border border-red-200 text-red-500 hover:bg-red-50 px-3 py-2 rounded-lg text-sm transition"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" /> Delete
-                  </button>
+                  <div className="flex gap-3 pt-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setEditTarget(selectedLocation);
+                        setFormMode("edit");
+                      }}
+                      leftIcon={<Pencil className="w-3.5 h-3.5" />}
+                      className="flex-1"
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="danger"
+                      onClick={() => setDeleteTarget(selectedLocation)}
+                      leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+                      className="flex-1"
+                    >
+                      Delete
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-48 text-gray-300">
-                <MapPin className="w-10 h-10 mb-2" />
-                <p className="text-sm">Click a location to view details</p>
-              </div>
-            )}
-          </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16 text-slate-350">
+                  <MapPin className="w-12 h-12 mb-3 text-slate-300 animate-pulse" />
+                  <p className="text-xs font-semibold text-slate-450">Click on a tree branch to inspect detailed properties</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -657,47 +700,46 @@ export default function StockLocationPage() {
         />
       )}
 
-      {/* Delete Confirm */}
-      {deleteTarget && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-lg p-6 w-96 text-center">
-            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
-              <Trash2 className="w-6 h-6 text-red-500" />
-            </div>
-            <h2 className="text-lg font-semibold text-gray-800 mb-2">
-              Delete Location?
-            </h2>
-            <p className="text-sm text-gray-500 mb-1">
-              You are about to delete
-            </p>
-            <p className="text-sm font-medium text-gray-800 mb-1">
-              {deleteTarget.name}
-            </p>
-            <p className="text-xs font-mono text-gray-400 mb-5">
-              {deleteTarget.path}
-            </p>
-            <p className="text-xs text-gray-400 mb-6">
-              This action cannot be undone.
-            </p>
-            <div className="flex justify-center gap-3">
-              <button
-                onClick={() => setDeleteTarget(null)}
-                className="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm"
-                disabled={deleting}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                className="px-5 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm"
-                disabled={deleting}
-              >
-                {deleting ? "Deleting..." : "Yes, Delete"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Delete Confirmation Modal */}
+      <Dialog open={deleteTarget !== null} onOpenChange={() => setDeleteTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          {deleteTarget && (
+            <>
+              <DialogHeader>
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 mb-4 animate-pulse">
+                  <Trash2 className="h-6 w-6 text-red-600" />
+                </div>
+                <DialogTitle className="text-center text-lg font-bold text-gray-900">
+                  Delete Storage Location
+                </DialogTitle>
+                <DialogDescription className="text-center text-sm text-gray-500 space-y-1 mt-1">
+                  <p>Are you sure you want to delete the location <span className="font-semibold text-slate-800">{deleteTarget.name}</span>?</p>
+                  <p className="text-xs font-mono text-slate-450 mt-1">({deleteTarget.path})</p>
+                  <p className="text-xs text-rose-500 font-semibold mt-2">This action is irreversible and might cause orphaned child locations!</p>
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="flex-row justify-center gap-3 mt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setDeleteTarget(null)}
+                  disabled={deleting}
+                  className="w-full sm:w-auto"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="danger"
+                  onClick={handleDelete}
+                  loading={deleting}
+                  className="w-full sm:w-auto"
+                >
+                  Yes, Delete
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

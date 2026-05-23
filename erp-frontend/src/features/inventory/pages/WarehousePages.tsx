@@ -9,6 +9,8 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  Building,
+  MapPin,
 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../../store/store";
@@ -18,6 +20,17 @@ import {
 } from "../store/stock/warehouse/warehouse.thunks";
 import { toast } from "react-toastify";
 import { getErrorMessage } from "@/utils/ErrorHelper";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 export default function WarehousePages() {
   const nav = useNavigate();
@@ -91,129 +104,178 @@ export default function WarehousePages() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <WarehouseIcon className="w-7 h-7 text-orange-500" />
+          <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-500 shadow-sm">
+            <WarehouseIcon className="w-6 h-6" />
+          </div>
           <div>
-            <h1 className="text-2xl font-bold">Warehouse Management</h1>
-            <p className="text-gray-500 text-sm">
-              Manage all warehouses in the system
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Warehouse Management</h1>
+            <p className="text-gray-500 text-sm mt-0.5">
+              Manage and monitor all warehouse installations in the system
             </p>
           </div>
         </div>
 
         {isAdmin && (
-          <button
+          <Button
             onClick={() => nav("/inventory/warehouses/create")}
-            className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg"
+            leftIcon={<Plus className="w-4 h-4" />}
+            size="md"
           >
-            <Plus className="w-4 h-4" /> New Warehouse
-          </button>
+            New Warehouse
+          </Button>
         )}
       </div>
 
-      {/* Search */}
-      <div className="mb-5 relative">
-        <Search className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
-        <input
-          type="text"
-          placeholder="Search..."
-          className="w-full border rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-orange-400"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      {/* Quick Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-3.5 transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-500 shrink-0">
+            <WarehouseIcon className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Warehouses</p>
+            <p className="text-lg font-extrabold text-slate-850 mt-0.5">{items.length}</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-3.5 transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-500 shrink-0">
+            <Building className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Branches Covered</p>
+            <p className="text-lg font-extrabold text-slate-850 mt-0.5">
+              {Array.from(new Set(items.map(x => x.branch_id))).length}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-3.5 transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shrink-0">
+            <MapPin className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Located Regions</p>
+            <p className="text-lg font-extrabold text-slate-850 mt-0.5">
+              {items.filter(x => x.address).length}
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-gray-600">
-            <tr>
-              <th className="py-3 px-4 text-left">Code</th>
-              <th className="py-3 px-4 text-left">Name</th>
-              <th className="py-3 px-4 text-left">Address</th>
-              <th className="py-3 px-4 text-center">Actions</th>
-            </tr>
-          </thead>
+      {/* Main Content Area */}
+      <Card className="border-slate-100 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">
+        {/* Search Header */}
+        <div className="p-5 border-b border-slate-100 bg-slate-50/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none z-10" />
+            <Input
+              placeholder="Search warehouses by name, code, or address..."
+              value={search}
+              onChange={setSearch}
+              className="pl-9 bg-white border-slate-200 focus:ring-orange-500 focus:border-orange-500"
+            />
+          </div>
+        </div>
 
-          <tbody>
-            {loading ? (
+        {/* Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50/80 text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-slate-100">
               <tr>
-                <td colSpan={4} className="py-6 text-center">
-                  Loading...
-                </td>
+                <th className="py-3.5 px-6 text-left">Code</th>
+                <th className="py-3.5 px-6 text-left">Name</th>
+                <th className="py-3.5 px-6 text-left">Address</th>
+                <th className="py-3.5 px-6 text-center w-28">Actions</th>
               </tr>
-            ) : totalItems === 0 ? (
-              <tr>
-                <td colSpan={4} className="py-6 text-center">
-                  No warehouses found
-                </td>
-              </tr>
-            ) : (
-              pageItems.map((w) => (
-                <tr key={w.id} className="border-t">
-                  <td className="py-3 px-4">{w.code}</td>
-                  <td className="py-3 px-4">{w.name}</td>
-                  <td className="py-3 px-4">{w.address ?? "-"}</td>
-                  <td className="py-3 px-4 text-center">
-                    <div className="flex justify-center gap-2">
-                      <Link
-                        to={`/inventory/warehouses/${w.id}/edit`}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md border hover:bg-gray-50"
-                      >
-                        {isAdmin ? (
-                          <Pencil className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </Link>
+            </thead>
 
-                      {isAdmin && (
-                        <button
-                          onClick={() => openDeleteModal(Number(w.id))}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md border text-red-600 hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
+            <tbody className="divide-y divide-slate-100">
+              {loading ? (
+                <tr>
+                  <td colSpan={4} className="py-16 text-center text-slate-400">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-8 h-8 border-3 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-xs font-medium">Loading warehouses...</span>
                     </div>
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : totalItems === 0 ? (
+                <tr>
+                  <td colSpan={4} className="py-16 text-center text-slate-400 italic">
+                    No warehouses found
+                  </td>
+                </tr>
+              ) : (
+                pageItems.map((w) => (
+                  <tr key={w.id} className="hover:bg-slate-50/40 transition-colors">
+                    <td className="py-3.5 px-6 font-semibold text-slate-700">{w.code}</td>
+                    <td className="py-3.5 px-6 font-medium text-slate-800">{w.name}</td>
+                    <td className="py-3.5 px-6 text-slate-600">{w.address ?? "-"}</td>
+                    <td className="py-3.5 px-6 text-center">
+                      <div className="flex justify-center items-center gap-2">
+                        <Link
+                          to={`/inventory/warehouses/${w.id}/edit`}
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm"
+                          title={isAdmin ? "Edit" : "View"}
+                        >
+                          {isAdmin ? (
+                            <Pencil className="w-3.5 h-3.5" />
+                          ) : (
+                            <Eye className="w-3.5 h-3.5" />
+                          )}
+                        </Link>
+
+                        {isAdmin && (
+                          <button
+                            onClick={() => openDeleteModal(Number(w.id))}
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-rose-600 bg-white hover:bg-rose-50 hover:text-rose-700 hover:border-rose-100 transition-colors shadow-sm"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
 
         {/* Pagination */}
         {totalItems > 0 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t bg-gray-50 text-xs text-gray-600">
+          <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/30 text-xs text-slate-500">
             <div>
               Showing{" "}
-              <span className="font-medium">
+              <span className="font-semibold text-slate-800">
                 {startIndex + 1} - {Math.min(startIndex + pageSize, totalItems)}
               </span>{" "}
-              of <span className="font-medium">{totalItems}</span> warehouses
+              of <span className="font-semibold text-slate-800">{totalItems}</span> warehouses
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <button
                 onClick={() => goToPage(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="px-2 py-1 border rounded disabled:opacity-40"
+                className="p-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
               >
-                <ChevronLeft className="w-3 h-3" />
+                <ChevronLeft className="w-3.5 h-3.5 text-slate-600" />
               </button>
 
               {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
                 <button
                   key={p}
                   onClick={() => goToPage(p)}
-                  className={`w-7 h-7 border rounded ${
+                  className={`w-8 h-8 rounded-lg border text-sm font-semibold transition ${
                     p === currentPage
-                      ? "bg-orange-500 text-white"
-                      : "hover:bg-gray-100"
+                      ? "bg-orange-500 border-orange-500 text-white shadow-sm"
+                      : "border-slate-200 text-slate-600 hover:bg-slate-50"
                   }`}
                 >
                   {p}
@@ -223,47 +285,49 @@ export default function WarehousePages() {
               <button
                 onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="px-2 py-1 border rounded disabled:opacity-40"
+                className="p-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
               >
-                <ChevronRight className="w-3 h-3" />
+                <ChevronRight className="w-3.5 h-3.5 text-slate-600" />
               </button>
             </div>
           </div>
         )}
-      </div>
-      {confirmOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-lg p-6 w-96 text-center">
-            <Trash2 className="w-10 h-10 text-red-500 mx-auto mb-3" />
+      </Card>
 
-            <h2 className="text-lg font-semibold mb-2">
-              Are you sure you want to delete this warehouse?
-            </h2>
-
-            <p className="text-sm text-gray-500 mb-5">
-              This action cannot be undone.
-            </p>
-
-            <div className="flex justify-center gap-3">
-              <button
-                onClick={() => setConfirmOpen(false)}
-                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm"
-                disabled={deleting}
-              >
-                Cancel
-              </button>
-
-              <button
-                onClick={handleDelete}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm"
-                disabled={deleting}
-              >
-                {deleting ? "Deleting..." : "Yes, Delete"}
-              </button>
+      {/* Delete Confirmation Modal */}
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 mb-4 animate-pulse">
+              <Trash2 className="h-6 w-6 text-red-600" />
             </div>
-          </div>
-        </div>
-      )}
+            <DialogTitle className="text-center text-lg font-bold text-gray-900">
+              Delete Warehouse
+            </DialogTitle>
+            <DialogDescription className="text-center text-sm text-gray-500">
+              Are you sure you want to delete this warehouse? This action cannot be undone and will permanently remove this record from the system.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-row justify-center gap-3 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmOpen(false)}
+              disabled={deleting}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleDelete}
+              loading={deleting}
+              className="w-full sm:w-auto"
+            >
+              Yes, Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

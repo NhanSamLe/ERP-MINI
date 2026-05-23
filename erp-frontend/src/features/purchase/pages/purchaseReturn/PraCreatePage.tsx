@@ -7,6 +7,7 @@ import { AppDispatch, RootState } from "../../../../store/store";
 import { createPraThunk } from "../../store/purchaseReturn";
 import { loadPartners } from "@/features/partner/store/partner.thunks";
 import { fetchPurchaseOrdersThunk } from "../../store/purchaseOrder.thunks";
+import { getAllApInvoicesThunk } from "../../store/apInvoice/apInvoice.thunks";
 import { StandardFormLayout } from "../../../../components/layout/StandardFormLayout";
 import { FormSection } from "../../../../components/layout/FormSection";
 
@@ -25,6 +26,7 @@ export default function PraCreatePage() {
   const { items: purchaseOrders } = useSelector(
     (s: RootState) => s.purchaseOrder,
   );
+  const { list: apInvoices } = useSelector((s: RootState) => s.apInvoice);
   const user = useSelector((s: RootState) => s.auth.user);
 
   // Form fields
@@ -32,7 +34,7 @@ export default function PraCreatePage() {
   const [purchaseOrderId, setPurchaseOrderId] = useState<number | "">(
     searchParams.get("po_id") ? Number(searchParams.get("po_id")) : "",
   );
-  const [apInvoiceId] = useState<number | "">("");
+  const [apInvoiceId, setApInvoiceId] = useState<number | "">("");
   const [returnType, setReturnType] = useState<
     "debit_note" | "refund" | "replacement"
   >("debit_note");
@@ -45,6 +47,7 @@ export default function PraCreatePage() {
   useEffect(() => {
     dispatch(loadPartners({ type: "supplier" }));
     dispatch(fetchPurchaseOrdersThunk());
+    dispatch(getAllApInvoicesThunk());
   }, [dispatch]);
 
   // Auto-fill supplier when PO is selected
@@ -144,6 +147,40 @@ export default function PraCreatePage() {
               <p className="text-xs text-amber-600 mt-1">
                 No confirmed POs available. PO must be
                 confirmed/received/completed.
+              </p>
+            )}
+          </div>
+
+          {/* AP Invoice */}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              AP Invoice <span className="text-gray-400">(optional)</span>
+            </label>
+            <select
+              value={apInvoiceId}
+              onChange={(e) =>
+                setApInvoiceId(e.target.value ? Number(e.target.value) : "")
+              }
+              disabled={!purchaseOrderId}
+              className="w-full h-9 px-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100 disabled:text-gray-400"
+            >
+              <option value="">— Select AP Invoice —</option>
+              {apInvoices
+                .filter(
+                  (inv) =>
+                    inv.po_id === purchaseOrderId &&
+                    inv.status !== "draft" &&
+                    inv.status !== "cancelled"
+                )
+                .map((inv) => (
+                  <option key={inv.id} value={inv.id}>
+                    {inv.invoice_no} — {Number(inv.total_after_tax).toLocaleString("vi-VN")}
+                  </option>
+                ))}
+            </select>
+            {!purchaseOrderId && (
+              <p className="text-[10px] text-gray-500 mt-1">
+                Select a PO first to see its invoices
               </p>
             )}
           </div>

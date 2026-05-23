@@ -15,12 +15,23 @@ import { toast } from "react-toastify";
 import { formatDateTime } from "@/utils/time.helper";
 import { getErrorMessage } from "@/utils/ErrorHelper";
 import { Roles } from "@/types/enum";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { ChevronLeft, ClipboardList, Info, BarChart3, ListCollapse, Play, CheckCircle, Ban, AlertTriangle } from "lucide-react";
 
 const statusColors: Record<string, string> = {
-  draft: "bg-gray-100 text-gray-700 border border-gray-300",
-  in_progress: "bg-blue-100 text-blue-700 border border-blue-300",
-  validated: "bg-green-100 text-green-700 border border-green-300",
-  cancelled: "bg-red-100 text-red-700 border border-red-300",
+  draft: "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-100",
+  in_progress: "bg-blue-50 text-blue-700 border-blue-150 hover:bg-blue-50",
+  validated: "bg-emerald-50 text-emerald-700 border-emerald-150 hover:bg-emerald-50",
+  cancelled: "bg-rose-50 text-rose-700 border-rose-150 hover:bg-rose-50",
 };
 
 export default function PhysicalInventoryDetailPage() {
@@ -94,9 +105,12 @@ export default function PhysicalInventoryDetailPage() {
 
   if (loading || !inv) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-gray-500">
-          {loading ? "Loading..." : "Not found"}
+      <div className="min-h-screen flex items-center justify-center bg-slate-50/50">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-sm font-medium text-slate-500">
+            {loading ? "Loading audit sheet..." : "Inventory session not found"}
+          </p>
         </div>
       </div>
     );
@@ -110,81 +124,97 @@ export default function PhysicalInventoryDetailPage() {
   const canCancel = ["draft", "in_progress"].includes(inv.status);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 md:p-10">
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header */}
-        <header className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl font-semibold text-gray-900">
-                Physical Inventory #{inv.inv_no}
-              </h1>
-              <span
-                className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${statusColors[inv.status]}`}
-              >
-                {inv.status.replace("_", " ")}
-              </span>
+    <div className="max-w-6xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center justify-center w-10 h-10 rounded-xl border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 hover:text-slate-900 transition shadow-sm"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-500 shadow-sm shrink-0">
+              <ClipboardList className="w-6 h-6" />
             </div>
-            <p className="mt-1 text-sm text-gray-500">
-              {inv.warehouse?.name} · {inv.inv_date}
-            </p>
+            <div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+                  Audit Sheet #{inv.inv_no}
+                </h1>
+                <Badge
+                  className={`px-2.5 py-0.5 rounded-full text-xs font-bold border shadow-none capitalize ${
+                    statusColors[inv.status] || "bg-slate-50 text-slate-600 border-slate-200"
+                  }`}
+                >
+                  {inv.status.replace("_", " ")}
+                </Badge>
+              </div>
+              <p className="text-slate-555 text-sm mt-0.5 font-medium">
+                {inv.warehouse?.name} · {inv.inv_date}
+              </p>
+            </div>
           </div>
+        </div>
 
-          <div className="flex items-center gap-3 flex-wrap">
-            <button
-              onClick={() => navigate(-1)}
-              className="px-4 py-2 rounded-lg border border-gray-200 bg-white text-sm text-gray-700 hover:shadow transition"
+        <div className="flex items-center gap-2.5 self-end md:self-auto">
+          {canStart && (
+            <Button
+              variant="primary"
+              onClick={() => setConfirmAction("start")}
+              leftIcon={<Play className="w-4 h-4" />}
             >
-              ← Back
-            </button>
+              Start Session
+            </Button>
+          )}
+          {canValidate && (
+            <Button
+              variant="success"
+              onClick={() => setConfirmAction("validate")}
+              leftIcon={<CheckCircle className="w-4 h-4" />}
+            >
+              Validate
+            </Button>
+          )}
+          {canCancel && (
+            <Button
+              variant="danger"
+              onClick={() => setConfirmAction("cancel")}
+              leftIcon={<Ban className="w-4 h-4" />}
+            >
+              Cancel
+            </Button>
+          )}
+        </div>
+      </div>
 
-            {canStart && (
-              <Button
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-                onClick={() => setConfirmAction("start")}
-              >
-                Start Inventory
-              </Button>
-            )}
-            {canValidate && (
-              <Button
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                onClick={() => setConfirmAction("validate")}
-              >
-                Validate
-              </Button>
-            )}
-            {canCancel && (
-              <Button
-                className="bg-red-600 hover:bg-red-700 text-white"
-                onClick={() => setConfirmAction("cancel")}
-              >
-                Cancel
-              </Button>
-            )}
-          </div>
-        </header>
-
-        {/* Info + Summary */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-            <h2 className="text-base font-semibold text-gray-800 mb-4">
-              Information
-            </h2>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <InfoRow label="Inv No" value={inv.inv_no} />
-              <InfoRow label="Date" value={inv.inv_date} />
-              <InfoRow label="Warehouse" value={inv.warehouse?.name ?? "—"} />
+      {/* Info + Summary grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Info panel */}
+        <Card className="lg:col-span-2 border-slate-100 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">
+          <CardHeader className="pb-4 border-b border-slate-50 bg-slate-50/20">
+            <div className="flex items-center gap-2 text-slate-800">
+              <Info className="w-4 h-4 text-orange-500" />
+              <CardTitle className="text-base font-semibold">Audit Overview</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-5 text-xs">
+              <InfoRow label="Audit Sheet No" value={inv.inv_no} />
+              <InfoRow label="Inventory Date" value={inv.inv_date} />
+              <InfoRow label="Target Warehouse" value={inv.warehouse?.name ?? "—"} />
               <InfoRow
-                label="Status"
+                label="Current Status"
                 value={
-                  <span className="capitalize">
+                  <Badge className="bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded capitalize shadow-none border border-slate-200">
                     {inv.status.replace("_", " ")}
-                  </span>
+                  </Badge>
                 }
               />
               <InfoRow
-                label="Created By"
+                label="Sheet Creator"
                 value={inv.creator?.full_name ?? "—"}
               />
               <InfoRow
@@ -204,240 +234,275 @@ export default function PhysicalInventoryDetailPage() {
                 </>
               )}
             </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
-            <h2 className="text-base font-semibold text-gray-800 mb-3">
-              Summary
-            </h2>
-            <div className="space-y-2 text-sm">
-              <SummaryRow label="Total lines" value={inv.lines?.length ?? 0} />
-              <SummaryRow
-                label="Lines with diff"
-                value={
-                  inv.lines?.filter((l) => Number(l.difference_qty) !== 0)
-                    .length ?? 0
-                }
-              />
-              <SummaryRow
-                label="Total theoretical"
-                value={
-                  inv.lines
-                    ?.reduce((s, l) => s + Number(l.theoretical_qty), 0)
-                    .toFixed(2) ?? 0
-                }
-              />
-              <SummaryRow
-                label="Total counted"
-                value={
-                  inv.lines
-                    ?.reduce((s, l) => s + Number(l.counted_qty), 0)
-                    .toFixed(2) ?? 0
-                }
-              />
+        {/* Summary stats */}
+        <Card className="border-slate-100 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">
+          <CardHeader className="pb-4 border-b border-slate-50 bg-slate-50/20">
+            <div className="flex items-center gap-2 text-slate-800">
+              <BarChart3 className="w-4 h-4 text-indigo-500" />
+              <CardTitle className="text-base font-semibold">Audit Summary</CardTitle>
             </div>
-          </div>
-        </div>
-
-        {/* Lines table */}
-        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-          <div className="px-6 py-4 border-b border-gray-100">
-            <h3 className="text-base font-semibold text-gray-900">
-              Inventory Lines
-            </h3>
-            <p className="text-sm text-gray-500 mt-0.5">
-              {inv.status === "in_progress"
-                ? "Enter counted quantities for each product"
-                : "Stock count results"}
-            </p>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-600">
-                <tr>
-                  <th className="p-3">Product</th>
-                  <th className="p-3">SKU</th>
-                  <th className="p-3">Location</th>
-                  <th className="p-3">Lot</th>
-                  <th className="p-3 text-right">Theoretical</th>
-                  <th className="p-3 text-right">Counted</th>
-                  <th className="p-3 text-right">Difference</th>
-                  <th className="p-3 text-right">Unit Cost</th>
-                  {inv.status === "in_progress" && (
-                    <th className="p-3 w-20"></th>
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {!inv.lines || inv.lines.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={9}
-                      className="p-6 text-center text-gray-400 italic"
-                    >
-                      No lines. Start the inventory to load stock data.
-                    </td>
-                  </tr>
-                ) : (
-                  inv.lines.map((line, idx) => {
-                    const diff = Number(line.difference_qty);
-                    const isEditing = editedQty[line.id] !== undefined;
-                    return (
-                      <tr
-                        key={line.id}
-                        className={`border-t ${idx % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
-                      >
-                        <td className="p-3">
-                          <div className="flex items-center gap-2">
-                            {line.product?.image_url && (
-                              <img
-                                src={line.product.image_url}
-                                className="w-8 h-8 rounded object-cover border border-gray-200"
-                                alt=""
-                              />
-                            )}
-                            <span className="font-medium text-gray-800">
-                              {line.product?.name}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="p-3 font-mono text-xs text-gray-500">
-                          {line.product?.sku}
-                        </td>
-                        <td className="p-3 text-xs">
-                          {line.location ? (
-                            <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-700">
-                              {line.location.code} · {line.location.name}
-                            </span>
-                          ) : (
-                            <span className="text-gray-300 italic text-xs">
-                              No location
-                            </span>
-                          )}
-                        </td>
-                        <td className="p-3 text-xs">
-                          {line.lot ? (
-                            <span className="text-indigo-700 font-medium">
-                              {line.lot.lot_no}
-                            </span>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                        <td className="p-3 text-right font-mono">
-                          {Number(line.theoretical_qty).toFixed(2)}
-                        </td>
-                        <td className="p-3 text-right">
-                          {inv.status === "in_progress" ? (
-                            <input
-                              type="number"
-                              min={0}
-                              step="1"
-                              value={
-                                isEditing
-                                  ? editedQty[line.id]
-                                  : Number(line.counted_qty).toFixed(2)
-                              }
-                              onChange={(e) =>
-                                setEditedQty((prev) => ({
-                                  ...prev,
-                                  [line.id]: e.target.value,
-                                }))
-                              }
-                              className="w-24 border rounded px-2 py-1 text-right font-mono focus:outline-none focus:ring-2 focus:ring-blue-300"
-                            />
-                          ) : (
-                            <span className="font-mono">
-                              {Number(line.counted_qty).toFixed(2)}
-                            </span>
-                          )}
-                        </td>
-                        <td
-                          className={`p-3 text-right font-mono font-semibold ${diff > 0 ? "text-green-600" : diff < 0 ? "text-red-600" : "text-gray-500"}`}
-                        >
-                          {diff > 0 ? "+" : ""}
-                          {diff.toFixed(2)}
-                        </td>
-                        <td className="p-3 text-right text-gray-500 font-mono text-xs">
-                          {line.unit_cost != null
-                            ? Number(line.unit_cost).toFixed(4)
-                            : "—"}
-                        </td>
-                        {inv.status === "in_progress" && (
-                          <td className="p-3 text-right">
-                            {isEditing && (
-                              <button
-                                onClick={() => handleSaveLine(line)}
-                                disabled={savingLine === line.id}
-                                className="text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-                              >
-                                {savingLine === line.id ? "..." : "Save"}
-                              </button>
-                            )}
-                          </td>
-                        )}
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+          </CardHeader>
+          <CardContent className="p-5 space-y-4">
+            <div className="space-y-3.5 text-xs">
+              <SummaryRow label="Total Audit Lines" value={inv.lines?.length ?? 0} />
+              <SummaryRow
+                label="Lines flag with difference"
+                value={
+                  <Badge
+                    variant={inv.lines?.filter((l) => Number(l.difference_qty) !== 0).length ? "destructive" : "default"}
+                    className="font-extrabold shadow-none rounded px-2 text-[10px]"
+                  >
+                    {inv.lines?.filter((l) => Number(l.difference_qty) !== 0).length ?? 0}
+                  </Badge>
+                }
+              />
+              <div className="border-t border-slate-100 pt-3 space-y-3">
+                <SummaryRow
+                  label="Theoretical Qty"
+                  value={
+                    <span className="font-mono font-bold text-slate-600">
+                      {inv.lines
+                        ?.reduce((s, l) => s + Number(l.theoretical_qty), 0)
+                        .toLocaleString("vi-VN", { maximumFractionDigits: 2 }) ?? 0}
+                    </span>
+                  }
+                />
+                <SummaryRow
+                  label="Actual Counted Qty"
+                  value={
+                    <span className="font-mono font-extrabold text-indigo-650 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                      {inv.lines
+                        ?.reduce((s, l) => s + Number(l.counted_qty), 0)
+                        .toLocaleString("vi-VN", { maximumFractionDigits: 2 }) ?? 0}
+                    </span>
+                  }
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Confirm dialogs */}
-      {confirmAction && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
-            <h2 className="text-lg font-semibold mb-3 capitalize">
-              {confirmAction === "start" && "Start Inventory?"}
-              {confirmAction === "validate" && "Validate Inventory?"}
-              {confirmAction === "cancel" && "Cancel Inventory?"}
-            </h2>
-            <p className="text-sm text-gray-600 mb-6">
-              {confirmAction === "start" &&
-                "This will load current stock quantities as theoretical values."}
-              {confirmAction === "validate" &&
-                "This will update stock balances based on counted quantities. This action cannot be undone."}
-              {confirmAction === "cancel" &&
-                "This inventory session will be cancelled."}
-            </p>
-            <div className="flex justify-end gap-3">
-              <Button
-                variant="secondary"
-                onClick={() => setConfirmAction(null)}
-                disabled={submitting}
-              >
-                Close
-              </Button>
-              <Button
-                className={
-                  confirmAction === "validate"
-                    ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                    : confirmAction === "cancel"
-                      ? "bg-red-600 hover:bg-red-700 text-white"
-                      : "bg-blue-600 hover:bg-blue-700 text-white"
-                }
-                onClick={() => handleAction(confirmAction)}
-                disabled={submitting}
-              >
-                {submitting ? "Processing..." : "Confirm"}
-              </Button>
+      {/* Lines Table */}
+      <Card className="border-slate-100 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">
+        <CardHeader className="px-6 py-4 border-b border-slate-100 bg-slate-50/20 flex flex-row items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ListCollapse className="w-5 h-5 text-slate-700" />
+            <div>
+              <CardTitle className="text-base font-semibold text-slate-800">
+                Audit Record Entries
+              </CardTitle>
+              <CardDescription className="text-xs text-slate-400 mt-0.5">
+                {inv.status === "in_progress"
+                  ? "Audit session is in progress. Input actual storage stock levels below"
+                  : "Finalized physical count values"}
+              </CardDescription>
             </div>
           </div>
+        </CardHeader>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50/80 text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-slate-100">
+              <tr>
+                <th className="py-3.5 px-6 text-left">Product</th>
+                <th className="py-3.5 px-6 text-left">SKU</th>
+                <th className="py-3.5 px-6 text-left">Location</th>
+                <th className="py-3.5 px-6 text-left">Lot</th>
+                <th className="py-3.5 px-6 text-right">Theoretical</th>
+                <th className="py-3.5 px-6 text-right">Actual Counted</th>
+                <th className="py-3.5 px-6 text-right">Difference</th>
+                <th className="py-3.5 px-6 text-right">Unit Cost</th>
+                {inv.status === "in_progress" && (
+                  <th className="py-3.5 px-6 text-center w-24">Actions</th>
+                )}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {!inv.lines || inv.lines.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={inv.status === "in_progress" ? 9 : 8}
+                    className="py-16 text-center text-slate-450 italic"
+                  >
+                    No lines found. Propose start session to load system stock snapshots.
+                  </td>
+                </tr>
+              ) : (
+                inv.lines.map((line) => {
+                  const diff = Number(line.difference_qty);
+                  const isEditing = editedQty[line.id] !== undefined;
+                  return (
+                    <tr
+                      key={line.id}
+                      className="hover:bg-slate-50/30 transition-colors"
+                    >
+                      <td className="py-3.5 px-6">
+                        <div className="flex items-center gap-3">
+                          {line.product?.image_url && (
+                            <img
+                              src={line.product.image_url}
+                              className="w-9 h-9 rounded-lg object-cover border border-slate-100 bg-slate-50 shadow-sm shrink-0"
+                              alt=""
+                            />
+                          )}
+                          <span className="font-semibold text-slate-800">
+                            {line.product?.name}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-6 font-mono text-xs font-bold text-slate-450 uppercase tracking-wider">
+                        {line.product?.sku}
+                      </td>
+                      <td className="py-3.5 px-6 text-xs">
+                        {line.location ? (
+                          <Badge variant="secondary" className="shadow-none rounded px-2 text-[10px] bg-slate-100 text-slate-600 border border-slate-200">
+                            {line.location.code} · {line.location.name}
+                          </Badge>
+                        ) : (
+                          <span className="text-slate-350 italic text-xs">
+                            No location
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-6 text-xs">
+                        {line.lot ? (
+                          <Badge className="shadow-none rounded bg-indigo-50 border border-indigo-150 text-indigo-700 font-mono font-bold text-[10px]">
+                            {line.lot.lot_no}
+                          </Badge>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="py-3.5 px-6 text-right font-mono font-bold text-slate-600">
+                        {Number(line.theoretical_qty).toLocaleString("vi-VN", { maximumFractionDigits: 2 })}
+                      </td>
+                      <td className="py-3.5 px-6 text-right">
+                        {inv.status === "in_progress" ? (
+                          <input
+                            type="number"
+                            min={0}
+                            step="any"
+                            value={
+                              isEditing
+                                ? editedQty[line.id]
+                                : Number(line.counted_qty).toString()
+                            }
+                            onChange={(e) =>
+                              setEditedQty((prev) => ({
+                                ...prev,
+                                [line.id]: e.target.value,
+                              }))
+                            }
+                            className="w-24 h-9 border border-slate-200 rounded-lg px-2.5 text-right font-mono font-bold focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
+                          />
+                        ) : (
+                          <span className="font-mono font-extrabold text-slate-800">
+                            {Number(line.counted_qty).toLocaleString("vi-VN", { maximumFractionDigits: 2 })}
+                          </span>
+                        )}
+                      </td>
+                      <td
+                        className={`py-3.5 px-6 text-right font-mono font-bold ${
+                          diff > 0 
+                            ? "text-emerald-600 bg-emerald-50/10" 
+                            : diff < 0 
+                              ? "text-rose-600 bg-rose-50/10" 
+                              : "text-slate-500"
+                        }`}
+                      >
+                        {diff > 0 ? "+" : ""}
+                        {diff.toLocaleString("vi-VN", { maximumFractionDigits: 2 })}
+                      </td>
+                      <td className="py-3.5 px-6 text-right text-slate-400 font-mono text-xs font-semibold">
+                        {line.unit_cost != null
+                          ? Number(line.unit_cost).toLocaleString("vi-VN", { minimumFractionDigits: 2 })
+                          : "—"}
+                      </td>
+                      {inv.status === "in_progress" && (
+                        <td className="py-3.5 px-6 text-center">
+                          {isEditing ? (
+                            <Button
+                              onClick={() => handleSaveLine(line)}
+                              disabled={savingLine === line.id}
+                              size="xs"
+                              variant="primary"
+                              className="w-full h-8"
+                            >
+                              {savingLine === line.id ? "..." : "Save"}
+                            </Button>
+                          ) : (
+                            <span className="text-[11px] text-slate-400 font-semibold italic">Recorded</span>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
+      </Card>
+
+      {/* Radix Action Confirm dialog */}
+      <Dialog open={confirmAction !== null} onOpenChange={() => setConfirmAction(null)}>
+        <DialogContent className="sm:max-w-md">
+          {confirmAction && (
+            <>
+              <DialogHeader>
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-orange-100 mb-4 animate-pulse">
+                  <AlertTriangle className="h-6 w-6 text-orange-600" />
+                </div>
+                <DialogTitle className="text-center text-lg font-bold text-slate-900 capitalize">
+                  {confirmAction === "start" && "Start Count Session?"}
+                  {confirmAction === "validate" && "Validate Count Results?"}
+                  {confirmAction === "cancel" && "Abort Count Audit?"}
+                </DialogTitle>
+                <DialogDescription className="text-center text-sm text-gray-500 mt-1.5">
+                  {confirmAction === "start" &&
+                    "This initializes the sheet and locks down snapshot current values as theoretical safety counts."}
+                  {confirmAction === "validate" &&
+                    "WARNING: This finishes the counts, validates discrepancies, and adjusts inventory stock levels. This action is final."}
+                  {confirmAction === "cancel" &&
+                    "This cancels the session sheet. Recorded data lines will be discarded safely."}
+                </DialogDescription>
+              </DialogHeader>
+
+              <DialogFooter className="flex-row justify-center gap-3 mt-4 border-t border-slate-100 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setConfirmAction(null)}
+                  disabled={submitting}
+                  className="w-full sm:w-auto"
+                >
+                  Close
+                </Button>
+                <Button
+                  variant={confirmAction === "validate" ? "success" : confirmAction === "cancel" ? "danger" : "primary"}
+                  onClick={() => handleAction(confirmAction)}
+                  loading={submitting}
+                  className="w-full sm:w-auto"
+                >
+                  Confirm
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div>
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="font-medium text-gray-800 mt-0.5">{value}</p>
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{label}</span>
+      <div className="font-semibold text-slate-800 text-sm mt-0.5">{value}</div>
     </div>
   );
 }
@@ -450,9 +515,9 @@ function SummaryRow({
   value: React.ReactNode;
 }) {
   return (
-    <div className="flex justify-between items-center">
-      <span className="text-gray-500">{label}</span>
-      <span className="font-semibold text-gray-800">{value}</span>
+    <div className="flex justify-between items-center text-xs">
+      <span className="font-semibold text-slate-500 uppercase tracking-wider">{label}</span>
+      <div className="font-bold text-slate-800">{value}</div>
     </div>
   );
 }

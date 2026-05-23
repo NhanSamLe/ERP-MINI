@@ -365,6 +365,14 @@ export const purchaseReturnService = {
       }
 
       await ret.update({ total_return_amount: total }, { transaction: t });
+
+      if (payload.pra_id) {
+        const pra = await PurchaseReturnAuthorization.findByPk(payload.pra_id, { transaction: t });
+        if (pra && pra.status === "approved") {
+          await pra.update({ status: "processing" }, { transaction: t });
+        }
+      }
+
       return ret.id;
     });
 
@@ -535,14 +543,28 @@ export const purchaseReturnService = {
   },
 
   async complete(id: number, user: any) {
-    const ret = await PurchaseReturn.findOne({
-      where: { id, branch_id: user.branch_id },
+    const retId = await sequelize.transaction(async (t) => {
+      const ret = await PurchaseReturn.findOne({
+        where: { id, branch_id: user.branch_id },
+        transaction: t,
+      });
+      if (!ret) throw { status: 404, message: "Purchase Return not found" };
+      if (ret.status !== "confirmed")
+        throw { status: 400, message: "Only confirmed return can be completed" };
+
+      await ret.update({ status: "completed" }, { transaction: t });
+
+      if (ret.pra_id) {
+        const pra = await PurchaseReturnAuthorization.findByPk(ret.pra_id, { transaction: t });
+        if (pra && (pra.status === "processing" || pra.status === "approved")) {
+          await pra.update({ status: "completed" }, { transaction: t });
+        }
+      }
+
+      return ret.id;
     });
-    if (!ret) throw { status: 404, message: "Purchase Return not found" };
-    if (ret.status !== "confirmed")
-      throw { status: 400, message: "Only confirmed return can be completed" };
-    await ret.update({ status: "completed" });
-    return this.getById(id, user);
+
+    return this.getById(retId, user);
   },
 };
 
