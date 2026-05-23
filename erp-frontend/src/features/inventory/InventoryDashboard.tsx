@@ -18,33 +18,43 @@ import {
 } from "../reports/api/inventoryReport.api";
 import { formatMoney } from "@/utils/currency.helper";
 import { AlertTriangle, Package, Clock, FileCheck } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/badge";
 
 function StatCard({
   label,
   value,
   icon,
-  color,
+  gradientClass,
+  iconBgClass,
   onClick,
 }: {
   label: string;
   value: string | number;
   icon: React.ReactNode;
-  color: string;
+  gradientClass: string;
+  iconBgClass: string;
   onClick?: () => void;
 }) {
   return (
     <div
       onClick={onClick}
-      className={`bg-white border border-gray-200 rounded-2xl p-5 shadow-sm flex items-center gap-4 ${onClick ? "cursor-pointer hover:shadow-md transition" : ""}`}
+      className={`relative overflow-hidden bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex items-center gap-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-md group ${
+        onClick ? "cursor-pointer" : ""
+      }`}
     >
+      {/* Background soft gradient layer */}
+      <div className={`absolute inset-0 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity duration-300 bg-gradient-to-br ${gradientClass}`} />
+      
+      {/* Icon container */}
       <div
-        className={`w-12 h-12 rounded-xl flex items-center justify-center ${color}`}
+        className={`w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-sm transition-all duration-300 group-hover:scale-110 ${iconBgClass}`}
       >
         {icon}
       </div>
-      <div>
-        <p className="text-sm text-gray-500">{label}</p>
-        <p className="text-2xl font-bold text-gray-900 mt-0.5">{value}</p>
+      <div className="z-10">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{label}</p>
+        <p className="text-2xl font-extrabold text-gray-900 mt-1 tracking-tight">{value}</p>
       </div>
     </div>
   );
@@ -94,8 +104,11 @@ export default function InventoryDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <p className="text-gray-400">Loading dashboard...</p>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50/50">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-sm font-medium text-slate-500">Loading dashboard...</p>
+        </div>
       </div>
     );
   }
@@ -108,57 +121,48 @@ export default function InventoryDashboard() {
     value: Number(p.total_value ?? 0),
   }));
 
-  const COLORS = [
-    "#6366f1",
-    "#8b5cf6",
-    "#a78bfa",
-    "#c4b5fd",
-    "#ddd6fe",
-    "#818cf8",
-    "#4f46e5",
-    "#7c3aed",
-    "#9333ea",
-    "#a855f7",
-  ];
-
   return (
-    <div className="min-h-screen bg-gray-50 p-6 md:p-8 space-y-6">
+    <div className="min-h-screen bg-slate-50/40 p-6 md:p-8 space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">
+        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
           Inventory Dashboard
         </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Overview of your warehouse operations
+        <p className="text-sm font-medium text-slate-500 mt-1.5">
+          Real-time overview of your warehouse operations & valuation
         </p>
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <StatCard
           label="Total Stock Value"
           value={formatMoney(stats?.total_stock_value ?? 0)}
-          icon={<Package className="w-6 h-6 text-indigo-600" />}
-          color="bg-indigo-50"
+          icon={<Package className="w-5 h-5" />}
+          gradientClass="from-indigo-500 to-purple-600"
+          iconBgClass="bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-indigo-100"
         />
         <StatCard
           label="Low Stock Products"
           value={stats?.low_stock_count ?? 0}
-          icon={<AlertTriangle className="w-6 h-6 text-orange-500" />}
-          color="bg-orange-50"
+          icon={<AlertTriangle className="w-5 h-5" />}
+          gradientClass="from-amber-500 to-orange-600"
+          iconBgClass="bg-gradient-to-br from-amber-500 to-orange-600 shadow-orange-100"
           onClick={() => navigate("/inventory/stock")}
         />
         <StatCard
           label="Expiring Lots (30d)"
           value={stats?.expiring_lots_count ?? 0}
-          icon={<Clock className="w-6 h-6 text-red-500" />}
-          color="bg-red-50"
+          icon={<Clock className="w-5 h-5" />}
+          gradientClass="from-rose-500 to-red-600"
+          iconBgClass="bg-gradient-to-br from-rose-500 to-red-600 shadow-red-100"
           onClick={() => navigate("/inventory/lots")}
         />
         <StatCard
           label="Pending Approvals"
           value={stats?.pending_moves_count ?? 0}
-          icon={<FileCheck className="w-6 h-6 text-blue-500" />}
-          color="bg-blue-50"
+          icon={<FileCheck className="w-5 h-5" />}
+          gradientClass="from-sky-500 to-blue-600"
+          iconBgClass="bg-gradient-to-br from-sky-500 to-blue-600 shadow-blue-100"
           onClick={() => navigate("/inventory/stock_move")}
         />
       </div>
@@ -166,150 +170,204 @@ export default function InventoryDashboard() {
       {/* Chart + Expiring lots */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Bar chart */}
-        <div className="lg:col-span-2 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-          <h2 className="text-base font-semibold text-gray-800 mb-4">
-            Top 10 Products by Stock Value
-          </h2>
-          {chartData.length === 0 ? (
-            <div className="h-48 flex items-center justify-center text-gray-400 italic text-sm">
-              No data available
+        <Card className="lg:col-span-2 border-gray-100 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md flex flex-col">
+          <CardHeader className="pb-4 border-b border-gray-50 bg-gray-50/20">
+            <div>
+              <CardTitle className="text-base font-semibold text-gray-800">
+                Top 10 Products by Stock Value
+              </CardTitle>
+              <CardDescription className="text-xs text-gray-400 mt-0.5">
+                Products with the highest inventory asset value
+              </CardDescription>
             </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart
-                data={chartData}
-                margin={{ top: 4, right: 8, left: 8, bottom: 40 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis
-                  dataKey="name"
-                  tick={{ fontSize: 11 }}
-                  angle={-30}
-                  textAnchor="end"
-                  interval={0}
-                />
-                <YAxis
-                  tick={{ fontSize: 11 }}
-                  tickFormatter={(v) => formatMoney(v)}
-                  width={80}
-                />
-                <Tooltip formatter={(v: number) => formatMoney(v)} />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                  {chartData.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
+          </CardHeader>
+          <CardContent className="p-6 flex-1 flex flex-col justify-center">
+            {chartData.length === 0 ? (
+              <div className="h-48 flex items-center justify-center text-gray-400 italic text-sm">
+                No data available
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart
+                  data={chartData}
+                  margin={{ top: 20, right: 8, left: 8, bottom: 40 }}
+                >
+                  <defs>
+                    <linearGradient id="chartBarGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#6366f1" stopOpacity={0.9} />
+                      <stop offset="100%" stopColor="#4f46e5" stopOpacity={0.3} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 11, fill: "#64748b" }}
+                    angle={-30}
+                    textAnchor="end"
+                    interval={0}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: "#64748b" }}
+                    tickFormatter={(v) => formatMoney(v)}
+                    width={80}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: "rgba(255, 255, 255, 0.95)", 
+                      borderRadius: "12px", 
+                      border: "1px solid #e2e8f0", 
+                      boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)"
+                    }}
+                    formatter={(v: number) => [formatMoney(v), "Stock Value"]} 
+                  />
+                  <Bar dataKey="value" fill="url(#chartBarGradient)" radius={[6, 6, 0, 0]} barSize={24} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Expiring lots */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
-          <h2 className="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-red-500" />
-            Expiring Lots (30 days)
-          </h2>
-          {expiring.length === 0 ? (
-            <p className="text-sm text-gray-400 italic">
-              No lots expiring soon
-            </p>
-          ) : (
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {expiring.map((lot) => {
-                const days = daysUntil(lot.expiry_date);
-                return (
-                  <div
-                    key={lot.id}
-                    className="flex items-center justify-between text-sm border-b border-gray-50 pb-2"
-                  >
-                    <div>
-                      <p className="font-medium text-gray-800">
-                        {lot.product?.name}
-                      </p>
-                      <p className="text-xs text-gray-500 font-mono">
-                        {lot.lot_no}
-                      </p>
-                    </div>
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full font-medium ${days <= 7 ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"}`}
-                    >
-                      {days}d
-                    </span>
-                  </div>
-                );
-              })}
+        <Card className="border-gray-100 shadow-sm bg-white/80 backdrop-blur-md overflow-hidden flex flex-col">
+          <CardHeader className="pb-4 border-b border-gray-50 bg-gray-50/20">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-rose-500 animate-pulse" />
+              <CardTitle className="text-base font-semibold text-gray-800">
+                Expiring Lots
+              </CardTitle>
             </div>
-          )}
-        </div>
+            <CardDescription className="text-xs text-gray-400 mt-0.5">
+              Inventory batches expiring within 30 days
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-5 flex-1">
+            {expiring.length === 0 ? (
+              <p className="text-sm text-gray-400 italic">
+                No lots expiring soon
+              </p>
+            ) : (
+              <div className="space-y-3 max-h-[260px] overflow-y-auto pr-1">
+                {expiring.map((lot) => {
+                  const days = daysUntil(lot.expiry_date);
+                  const isCritical = days <= 7;
+                  return (
+                    <div
+                      key={lot.id}
+                      className="flex items-center justify-between text-sm p-3 rounded-xl bg-slate-50/50 hover:bg-slate-50 border border-slate-100/50 hover:border-slate-100 transition duration-200"
+                    >
+                      <div className="space-y-0.5">
+                        <p className="font-semibold text-gray-800 line-clamp-1">
+                          {lot.product?.name}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] px-1.5 py-0.5 font-semibold font-mono rounded bg-slate-200/60 text-slate-600">
+                            Lot: {lot.lot_no}
+                          </span>
+                          <span className="text-xs text-gray-400 font-mono">
+                            Exp: {new Date(lot.expiry_date).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                      <Badge
+                        className={`text-xs border px-2.5 py-0.5 rounded-full font-bold shadow-none ${
+                          isCritical
+                            ? "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-50"
+                            : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50"
+                        }`}
+                      >
+                        {days}d left
+                      </Badge>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Low stock table */}
-      <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-orange-500" />
-          <h2 className="text-base font-semibold text-gray-800">
-            Low Stock Alert
-          </h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-600">
-              <tr>
-                <th className="p-3 text-left">Product</th>
-                <th className="p-3 text-left">SKU</th>
-                <th className="p-3 text-left">Warehouse</th>
-                <th className="p-3 text-right">Current Qty</th>
-                <th className="p-3 text-right">Min Qty</th>
-                <th className="p-3 text-right">Shortage</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lowStock.length === 0 ? (
+      <Card className="border-gray-100 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">
+        <CardHeader className="px-6 py-4 border-b border-gray-100 flex flex-row items-center justify-between bg-gray-50/20">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-amber-500" />
+            <div>
+              <CardTitle className="text-base font-semibold text-gray-800">
+                Low Stock Alert
+              </CardTitle>
+              <CardDescription className="text-xs text-gray-400 mt-0.5">
+                Products below their defined minimum safety stock level
+              </CardDescription>
+            </div>
+          </div>
+          <Badge variant="outline" className="bg-amber-50/50 text-amber-700 border-amber-200 font-bold px-3 py-1 text-xs">
+            {lowStock.length} items flagged
+          </Badge>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50/80 text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-gray-100">
                 <tr>
-                  <td
-                    colSpan={6}
-                    className="p-6 text-center text-gray-400 italic"
-                  >
-                    All products are sufficiently stocked
-                  </td>
+                  <th className="px-6 py-3 text-left">Product</th>
+                  <th className="px-6 py-3 text-left">SKU</th>
+                  <th className="px-6 py-3 text-left">Warehouse</th>
+                  <th className="px-6 py-3 text-right">Current Qty</th>
+                  <th className="px-6 py-3 text-right">Min Qty</th>
+                  <th className="px-6 py-3 text-right">Shortage</th>
                 </tr>
-              ) : (
-                lowStock.map((item, idx) => {
-                  const qty = Number(item.quantity);
-                  const min = Number(item.product?.min_stock_qty ?? 0);
-                  const shortage = min - qty;
-                  return (
-                    <tr
-                      key={item.id}
-                      className={`border-t ${idx % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {lowStock.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="px-6 py-10 text-center text-gray-400 italic text-sm"
                     >
-                      <td className="p-3 font-medium text-gray-800">
-                        {item.product?.name}
-                      </td>
-                      <td className="p-3 font-mono text-xs text-gray-500">
-                        {item.product?.sku}
-                      </td>
-                      <td className="p-3 text-gray-600">
-                        {item.warehouse?.name}
-                      </td>
-                      <td className="p-3 text-right font-mono text-red-600 font-semibold">
-                        {qty.toFixed(2)}
-                      </td>
-                      <td className="p-3 text-right font-mono text-gray-600">
-                        {min.toFixed(2)}
-                      </td>
-                      <td className="p-3 text-right font-mono text-orange-600 font-semibold">
-                        -{shortage.toFixed(2)}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                      All products are sufficiently stocked
+                    </td>
+                  </tr>
+                ) : (
+                  lowStock.map((item, idx) => {
+                    const qty = Number(item.quantity);
+                    const min = Number(item.product?.min_stock_qty ?? 0);
+                    const shortage = min - qty;
+                    return (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-slate-50/80 transition-colors"
+                      >
+                        <td className="px-6 py-4 font-semibold text-gray-800">
+                          {item.product?.name}
+                        </td>
+                        <td className="px-6 py-4 font-mono text-xs text-gray-500">
+                          {item.product?.sku}
+                        </td>
+                        <td className="px-6 py-4 text-gray-600">
+                          {item.warehouse?.name}
+                        </td>
+                        <td className="px-6 py-4 text-right font-mono text-rose-600 font-bold">
+                          {qty.toFixed(2)}
+                        </td>
+                        <td className="px-6 py-4 text-right font-mono text-gray-500">
+                          {min.toFixed(2)}
+                        </td>
+                        <td className="px-6 py-4 text-right font-mono text-amber-600 font-bold bg-amber-50/10">
+                          -{shortage.toFixed(2)}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

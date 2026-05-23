@@ -33,6 +33,7 @@ import VendorRefundCreatePage from "@/features/purchase/pages/purchaseReturn/Ven
 import PurchaseReturnCreatePage from "@/features/purchase/pages/purchaseReturn/PurchaseReturnCreatePage";
 import PurchaseReturnDetailPage from "@/features/purchase/pages/purchaseReturn/PurchaseReturnDetailPage";
 import PurchaseReturnEditPage from "@/features/purchase/pages/purchaseReturn/PurchaseReturnEditPage";
+import PurchaseReturnListPage from "@/features/purchase/pages/purchaseReturn/PurchaseReturnListPage";
 
 const purchaseRoutes: RouteObject[] = [
   {
@@ -284,6 +285,21 @@ const purchaseRoutes: RouteObject[] = [
     ),
   },
   // ─── Purchase Returns (physical) ──────────────────────────────────────────
+  {
+    path: "purchase/returns",
+    element: (
+      <ProtectedRoute
+        allowedRoles={[
+          Roles.PURCHASE,
+          Roles.PURCHASEMANAGER,
+          Roles.ACCOUNT,
+          Roles.CHACC,
+        ]}
+      >
+        <PurchaseReturnListPage />
+      </ProtectedRoute>
+    ),
+  },
   {
     path: "purchase/returns/create",
     element: (

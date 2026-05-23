@@ -192,7 +192,9 @@ export default function DebitNoteDetailPage() {
                     <td className="px-4 py-3 font-medium text-gray-900">
                       {line.product?.name ?? `Product #${line.product_id}`}
                     </td>
-                    <td className="px-4 py-3 text-right">{line.quantity}</td>
+                    <td className="px-4 py-3 text-right">
+                      {line.quantity} {(line as any).uom?.name || (line as any).product?.uom?.name || ""}
+                    </td>
                     <td className="px-4 py-3 text-right">
                       {formatVND(line.unit_price)}
                     </td>

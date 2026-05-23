@@ -592,7 +592,7 @@ export default function ViewApInvoicePage() {
                     {/* QUANTITY + UOM */}
                     <td className="px-6 py-4 text-right">
                       <span className="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 text-sm font-semibold text-gray-700">
-                        {line.quantity}
+                        {line.quantity} {(line as any).uom?.name || (line as any).product?.uom?.name || ""}
                       </span>
                     </td>
 
