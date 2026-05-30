@@ -17,6 +17,7 @@ import { Uom } from "@/features/master-data/dto/uom.dto";
 import {
   getValidUomsForProduct,
   previewQtyInStockUom,
+  convertPrice,
 } from "../../utils/uomHelper";
 
 interface LineItem {
@@ -128,10 +129,16 @@ export default function RfqCreatePage() {
       fetchTaxRatesByIdThunk(product.tax_rate_id || 0),
     ).unwrap();
     const taxRate = Number(tax?.rate ?? 0);
-    const price = Number(product.cost_price ?? 0);
-    const calc = calcLine(1, price, taxRate);
     const stockUomId = product.uom_id ?? null;
     const purchaseUomId = (product as any).purchase_uom_id ?? stockUomId;
+    const price = convertPrice(
+      Number(product.cost_price ?? 0),
+      stockUomId,
+      purchaseUomId,
+      conversions,
+      Number(product.id),
+    );
+    const calc = calcLine(1, price, taxRate);
     setLines((prev) => [
       ...prev,
       {

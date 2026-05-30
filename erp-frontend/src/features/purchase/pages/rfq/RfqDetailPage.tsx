@@ -128,14 +128,27 @@ export default function RfqDetailPage() {
 
   const actions = () => {
     if (!rfq) return [];
-    const base = [
+    const base: Array<{
+      label: string;
+      variant: "outline" | "primary" | "success" | "danger";
+      onClick: () => void;
+      disabled?: boolean;
+    }> = [
       {
         label: "Back",
-        variant: "outline" as const,
+        variant: "outline",
         onClick: () => navigate("/purchase/rfqs"),
       },
     ];
-    if (["draft", "received"].includes(rfq.status) && role === Roles.PURCHASE) {
+
+    // 1. Kiểm tra Branch_id (chỉ hiển thị nếu trùng chi nhánh)
+    if (rfq.branch_id !== user?.branch?.id) {
+      return base;
+    }
+
+    const isCreator = Number(rfq.created_by) === Number(user?.id);
+
+    if (["draft", "received"].includes(rfq.status) && role === Roles.PURCHASE && isCreator) {
       base.push({
         label: "Edit",
         variant: "outline" as const,
@@ -143,21 +156,22 @@ export default function RfqDetailPage() {
         disabled: rfq.approval_status === "waiting_approval",
       });
     }
-    if (rfq.status === "draft" && role === Roles.PURCHASE) {
+    // Nút Gửi RFQ chỉ hiện khi người tạo truy cập VÀ trạng thái duyệt đã là approved
+    if (rfq.status === "draft" && role === Roles.PURCHASE && isCreator && rfq.approval_status === "approved") {
       base.push({
         label: "Send RFQ",
         variant: "primary" as const,
         onClick: () => setModal("send"),
       });
     }
-    if (rfq.status === "sent" && role === Roles.PURCHASE) {
+    if (rfq.status === "sent" && role === Roles.PURCHASE && isCreator) {
       base.push({
         label: "Mark Received",
         variant: "primary" as const,
         onClick: () => setModal("receive"),
       });
     }
-    if (rfq.status === "received") {
+    if (rfq.status === "received" && isCreator) {
       // Only show these actions if NOT waiting for approval
       if (rfq.approval_status !== "waiting_approval") {
         if (role === Roles.PURCHASE) {
@@ -179,14 +193,15 @@ export default function RfqDetailPage() {
         }
       }
     }
-    // Approval workflow buttons
-    if (rfq.approval_status === "draft" && role === Roles.PURCHASE) {
+    // Approval workflow buttons - Chỉ người tạo mới được gửi duyệt
+    if (rfq.approval_status === "draft" && role === Roles.PURCHASE && isCreator) {
       base.push({
         label: "Submit for Approval",
         variant: "primary" as const,
         onClick: () => setModal("submit"),
       });
     }
+    // Trưởng phòng duyệt (không được là người tạo để đảm bảo tính khách quan - Maker & Checker)
     if (
       rfq.approval_status === "waiting_approval" &&
       role === Roles.PURCHASEMANAGER

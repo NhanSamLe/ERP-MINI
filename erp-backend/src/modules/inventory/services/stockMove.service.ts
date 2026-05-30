@@ -19,6 +19,7 @@ import { Product } from "../../product/models/product.model";
 import { Uom } from "../../master-data/models/uom.model";
 import { UomConversion } from "../../master-data/models/uomConversion.model";
 import { warehouseService } from "./warehouse.service";
+import { sequelize } from "../../../config/db";
 
 /**
  * Convert quantity từ line.uom_id sang product.uom_id (đơn vị lưu kho).
@@ -208,16 +209,11 @@ export const stockMoveService = {
 
   async createReceipt(body: StockMoveCreateDTO, user: any) {
     if (!body.reference_id) {
-      throw {
-        status: 400,
-        message: "Reference ID is required to create a receipt.",
-      };
+      throw new Error("Reference ID is required to create a receipt.");
     }
     const allowedRoles = [Role.WHSTAFF];
     if (!allowedRoles.includes(user.role)) {
-      throw new Error(
-        "You do not have permission to create Stock Move Receipt",
-      );
+      throw new Error("You do not have permission to create Stock Move Receipt");
     }
 
     const warehouse = await warehouseService.getById(body.warehouse_id);
@@ -229,82 +225,91 @@ export const stockMoveService = {
     if (warehouse.branch_id !== user.branch_id) {
       throw new Error("You cannot create a receipt for another branch.");
     }
-    const poLines = await purchaseOrderService.getPOLines(body.reference_id);
-    const poMap = new Map<number, PurchaseOrderLine>();
-    poLines.forEach((l) => {
-      if (l.product_id != null) {
-        poMap.set(l.product_id, l);
-      }
-    });
 
-    for (const line of body.lines) {
-      const poLine = await purchaseOrderService.validateProductInPO(
-        poMap,
-        line.product_id,
-      );
-
-      const received = await purchaseOrderService.getAlreadyReceivedQty(
-        body.reference_id,
-        line.product_id,
-      );
-
-      // Validate theo stock UOM: dùng qty_in_stock_uom của PO line (đã quy đổi)
-      // line.quantity từ stock move cũng phải là stock UOM
-      const poQtyInStockUom = parseFloat(
-        String(poLine.qty_in_stock_uom ?? poLine.quantity ?? 0),
-      );
-      await purchaseOrderService.validateRemainingQuantity(
-        line.product_id,
-        line.quantity,
-        poQtyInStockUom,
-        received,
-      );
-    }
-
-    const data: any = {
-      move_no: body.move_no,
-      move_date: new Date(body.move_date),
-      type: body.type,
-      warehouse_to_id: body.warehouse_id,
-      reference_type: body.reference_type,
-      note: body.note,
-      created_by: user.id,
-    };
-
-    if (body.reference_id !== undefined) {
-      data.reference_id = body.reference_id;
-    }
-
-    const move = await StockMove.create(data);
-    await Promise.all(
-      body.lines.map(async (line) => {
-        // Nếu có new_lot → tạo StockLot trước
-        let lotId = line.lot_id ?? null;
-        if (line.new_lot?.lot_no) {
-          const newLot = await StockLot.create({
-            product_id: line.product_id,
-            lot_no: line.new_lot.lot_no.trim(),
-            expiry_date: line.new_lot.expiry_date ?? null,
-            manufacture_date: line.new_lot.manufacture_date ?? null,
-            serial_no: line.new_lot.serial_no ?? null,
-            supplier_id: line.new_lot.supplier_id ?? null,
-            notes: line.new_lot.notes ?? null,
-          } as any);
-          lotId = Number(newLot.id);
+    const t = await sequelize.transaction();
+    try {
+      const poLines = await purchaseOrderService.getPOLines(body.reference_id);
+      const poMap = new Map<number, PurchaseOrderLine>();
+      poLines.forEach((l) => {
+        if (l.product_id != null) {
+          poMap.set(l.product_id, l);
         }
-        return StockMoveLine.create({
-          move_id: move.id,
-          product_id: line.product_id,
-          quantity: line.quantity,
-          uom_id: line.uom_id ?? null,
-          location_from_id: line.location_from_id ?? null,
-          location_to_id: line.location_to_id ?? null,
-          lot_id: lotId,
-        });
-      }),
-    );
+      });
 
-    return await this.getById(move.id);
+      for (const line of body.lines) {
+        const poLine = await purchaseOrderService.validateProductInPO(
+          poMap,
+          line.product_id,
+        );
+
+        const received = await purchaseOrderService.getAlreadyReceivedQty(
+          body.reference_id,
+          line.product_id,
+        );
+
+        // Validate theo stock UOM: dùng qty_in_stock_uom của PO line (đã quy đổi)
+        // line.quantity từ stock move cũng phải là stock UOM
+        const poQtyInStockUom = parseFloat(
+          String(poLine.qty_in_stock_uom ?? poLine.quantity ?? 0),
+        );
+        await purchaseOrderService.validateRemainingQuantity(
+          line.product_id,
+          line.quantity,
+          poQtyInStockUom,
+          received,
+        );
+      }
+
+      const data: any = {
+        move_no: body.move_no,
+        move_date: new Date(body.move_date),
+        type: body.type,
+        warehouse_to_id: body.warehouse_id,
+        reference_type: body.reference_type,
+        note: body.note,
+        created_by: user.id,
+        branch_id: user.branch_id,
+      };
+
+      if (body.reference_id !== undefined) {
+        data.reference_id = body.reference_id;
+      }
+
+      const move = await StockMove.create(data, { transaction: t });
+      await Promise.all(
+        body.lines.map(async (line) => {
+          // Nếu có new_lot → tạo StockLot trước
+          let lotId = line.lot_id ?? null;
+          if (line.new_lot?.lot_no) {
+            const newLot = await StockLot.create({
+              product_id: line.product_id,
+              lot_no: line.new_lot.lot_no.trim(),
+              expiry_date: line.new_lot.expiry_date ?? null,
+              manufacture_date: line.new_lot.manufacture_date ?? null,
+              serial_no: line.new_lot.serial_no ?? null,
+              supplier_id: line.new_lot.supplier_id ?? null,
+              notes: line.new_lot.notes ?? null,
+            } as any, { transaction: t });
+            lotId = Number(newLot.id);
+          }
+          return StockMoveLine.create({
+            move_id: move.id,
+            product_id: line.product_id,
+            quantity: line.quantity,
+            uom_id: line.uom_id ?? null,
+            location_from_id: line.location_from_id ?? null,
+            location_to_id: line.location_to_id ?? null,
+            lot_id: lotId,
+          }, { transaction: t });
+        }),
+      );
+
+      await t.commit();
+      return await this.getById(move.id);
+    } catch (error) {
+      await t.rollback();
+      throw error;
+    }
   },
 
   async createIssue(body: StockMoveCreateDTO, user: any) {
@@ -364,6 +369,7 @@ export const stockMoveService = {
       reference_type: body.reference_type,
       note: body.note,
       created_by: user.id,
+      branch_id: user.branch_id,
     };
     if (body.reference_id !== undefined) {
       data.reference_id = body.reference_id;
@@ -403,52 +409,72 @@ export const stockMoveService = {
       throw new Error("You cannot create a Adjustment for another branch.");
     }
 
-    for (const line of body.lines) {
-      const { product_id, quantity } = line;
-      const stockBalance = await stockBalanceService.findByProductAndWarehouse(
-        product_id,
-        warehouseId,
-      );
-      if (quantity <= 0) {
-        if (!stockBalance) {
-          const productResult = await productService.getById(product_id);
-          throw {
-            status: 400,
-            message: `Sản phẩm ID ${productResult?.name} chưa tồn tại trong kho, không thể điều chỉnh giảm.`,
-          };
+    const t = await sequelize.transaction();
+    try {
+      for (const line of body.lines) {
+        const { product_id, quantity } = line;
+
+        const product = await Product.findByPk(product_id, { transaction: t });
+        if (!product) {
+          throw new Error(`Product ID ${product_id} not found.`);
         }
-        const absQty = Math.abs(quantity);
-        if (stockBalance.quantity < absQty) {
-          throw {
-            status: 400,
-            message: `Không đủ tồn kho để giảm. Hiện tại: ${stockBalance.quantity}, yêu cầu giảm: ${absQty}`,
-          };
+
+        if (quantity <= 0) {
+          const stockBalance = await StockBalance.findOne({
+            where: { product_id, warehouse_id: warehouseId },
+            lock: t.LOCK.UPDATE,
+            transaction: t,
+          });
+
+          if (!stockBalance) {
+            throw new Error(`Sản phẩm ${product.name} chưa tồn tại trong kho, không thể điều chỉnh giảm.`);
+          }
+
+          const absQty = Math.abs(quantity);
+          const requiredInStockUom = await convertToStockUom(
+            parseFloat(String(absQty)),
+            line.uom_id,
+            product.uom_id,
+            product.id,
+          );
+
+          if (stockBalance.quantity < requiredInStockUom) {
+            throw new Error(`Không đủ tồn kho để giảm. Hiện tại: ${stockBalance.quantity}, yêu cầu giảm (Stock UOM): ${requiredInStockUom}`);
+          }
         }
       }
+
+      const data: any = {
+        move_no: body.move_no,
+        move_date: new Date(body.move_date),
+        type: body.type,
+        warehouse_from_id: body.warehouse_id,
+        reference_type: body.reference_type,
+        note: body.note,
+        created_by: user.id,
+        branch_id: user.branch_id,
+      };
+      
+      const move = await StockMove.create(data, { transaction: t });
+      await Promise.all(
+        body.lines.map((line) =>
+          StockMoveLine.create({
+            move_id: move.id,
+            product_id: line.product_id,
+            quantity: line.quantity,
+            uom_id: line.uom_id ?? null,
+            location_from_id: line.location_from_id ?? null,
+            location_to_id: line.location_to_id ?? null,
+          }, { transaction: t }),
+        ),
+      );
+      
+      await t.commit();
+      return await this.getById(move.id);
+    } catch (error) {
+      await t.rollback();
+      throw error;
     }
-    const data: any = {
-      move_no: body.move_no,
-      move_date: new Date(body.move_date),
-      type: body.type,
-      warehouse_from_id: body.warehouse_id,
-      reference_type: body.reference_type,
-      note: body.note,
-      created_by: user.id,
-    };
-    const move = await StockMove.create(data);
-    await Promise.all(
-      body.lines.map((line) =>
-        StockMoveLine.create({
-          move_id: move.id,
-          product_id: line.product_id,
-          quantity: line.quantity,
-          uom_id: line.uom_id ?? null,
-          location_from_id: line.location_from_id ?? null,
-          location_to_id: line.location_to_id ?? null,
-        }),
-      ),
-    );
-    return await this.getById(move.id);
   },
 
   async createTransfer(body: StockMoveTransferDTO, user: any) {
@@ -473,65 +499,73 @@ export const stockMoveService = {
       throw new Error("You cannot create a transfer involving other branches.");
     }
 
-    for (const line of body.lines) {
-      const balanceFrom = await StockBalance.findOne({
-        where: {
-          warehouse_id: body.warehouse_from_id,
-          product_id: line.product_id,
-        },
-      });
+    const t = await sequelize.transaction();
+    try {
+      for (const line of body.lines) {
+        const balanceFrom = await StockBalance.findOne({
+          where: {
+            warehouse_id: body.warehouse_from_id,
+            product_id: line.product_id,
+          },
+          lock: t.LOCK.UPDATE,
+          transaction: t,
+        });
 
-      const product = await Product.findByPk(line.product_id);
+        const product = await Product.findByPk(line.product_id, { transaction: t });
 
-      if (!product) {
-        throw {
-          status: 400,
-          message: `Product ID ${line.product_id} not found.`,
-        };
+        if (!product) {
+          throw new Error(`Product ID ${line.product_id} not found.`);
+        }
+
+        if (!balanceFrom) {
+          throw new Error(`Product ${product.name} is not available in warehouse ${warehouseFrom.name}.`);
+        }
+
+        const available = Number(balanceFrom.quantity);
+        const requiredInStockUom = await convertToStockUom(
+          parseFloat(String(line.quantity)),
+          line.uom_id,
+          product.uom_id,
+          product.id,
+        );
+
+        if (available < requiredInStockUom) {
+          throw new Error(`Not enough quantity of ${product.name} in warehouse ${warehouseFrom.name}. Available: ${available}, Required (Stock UOM): ${requiredInStockUom}`);
+        }
       }
 
-      if (!balanceFrom) {
-        throw {
-          status: 400,
-          message: `Product ${product.name} is not available in warehouse ${warehouseFrom.name}.`,
-        };
-      }
-
-      const available = Number(balanceFrom.quantity);
-      const required = Number(line.quantity);
-
-      if (available < required) {
-        throw {
-          status: 400,
-          message: `Not enough quantity of ${product.name} in warehouse ${warehouseFrom.name}. Available: ${available}, Required: ${required}`,
-        };
-      }
+      const data: any = {
+        move_no: body.move_no,
+        move_date: new Date(body.move_date),
+        type: body.type,
+        warehouse_from_id: body.warehouse_from_id,
+        warehouse_to_id: body.warehouse_to_id,
+        reference_type: body.reference_type,
+        note: body.note,
+        created_by: user.id,
+        branch_id: user.branch_id,
+      };
+      
+      const move = await StockMove.create(data, { transaction: t });
+      await Promise.all(
+        body.lines.map((line) =>
+          StockMoveLine.create({
+            move_id: move.id,
+            product_id: line.product_id,
+            quantity: line.quantity,
+            uom_id: line.uom_id ?? null,
+            location_from_id: line.location_from_id ?? null,
+            location_to_id: line.location_to_id ?? null,
+          }, { transaction: t }),
+        ),
+      );
+      
+      await t.commit();
+      return await this.getById(move.id);
+    } catch (error) {
+      await t.rollback();
+      throw error;
     }
-
-    const data: any = {
-      move_no: body.move_no,
-      move_date: new Date(body.move_date),
-      type: body.type,
-      warehouse_from_id: body.warehouse_from_id,
-      warehouse_to_id: body.warehouse_to_id,
-      reference_type: body.reference_type,
-      note: body.note,
-      created_by: user.id,
-    };
-    const move = await StockMove.create(data);
-    await Promise.all(
-      body.lines.map((line) =>
-        StockMoveLine.create({
-          move_id: move.id,
-          product_id: line.product_id,
-          quantity: line.quantity,
-          uom_id: line.uom_id ?? null,
-          location_from_id: line.location_from_id ?? null,
-          location_to_id: line.location_to_id ?? null,
-        }),
-      ),
-    );
-    return await this.getById(move.id);
   },
 
   async updateReceipt(id: number, body: StockMoveUpdateDTO, user: any) {
@@ -1136,16 +1170,24 @@ export const stockMoveService = {
     locationId?: number | null,
     lotId?: number | null,
     unitCost?: number | null,
+    transaction?: any
   ) {
     const where: any = { warehouse_id: warehouseId, product_id: productId };
     if (locationId != null) where.location_id = locationId;
     if (lotId != null) where.lot_id = lotId;
 
-    const existing = await StockBalance.findOne({ where });
+    const existing = await StockBalance.findOne({ 
+      where,
+      lock: transaction ? transaction.LOCK.UPDATE : undefined,
+      transaction 
+    });
     const qtyChange = parseFloat(String(quantityChange));
     const incomingCost = unitCost != null ? parseFloat(String(unitCost)) : null;
 
     if (!existing) {
+      if (qtyChange < 0) {
+        throw new Error(`Insufficient stock for product ID ${productId} in warehouse ID ${warehouseId}. Current: 0, Requested deduction: ${Math.abs(qtyChange)}`);
+      }
       // Tạo mới — chỉ có ý nghĩa khi nhập kho (qty > 0)
       const initCost = incomingCost ?? 0;
       return StockBalance.create({
@@ -1156,12 +1198,16 @@ export const stockMoveService = {
         quantity: qtyChange,
         unit_cost: initCost,
         total_value: qtyChange * initCost,
-      });
+      }, { transaction });
     }
 
     const oldQty = parseFloat(String(existing.quantity));
     const oldCost = parseFloat(String(existing.unit_cost ?? 0));
     const newQty = oldQty + qtyChange;
+
+    if (newQty < 0) {
+      throw new Error(`Insufficient stock for product ID ${productId} in warehouse ID ${warehouseId}. Current: ${oldQty}, Requested deduction: ${Math.abs(qtyChange)}`);
+    }
 
     let newCost: number;
     let newValue: number;
@@ -1179,20 +1225,20 @@ export const stockMoveService = {
       newCost = oldCost;
     }
 
+    // Chặn NaN / Infinity
+    if (!isFinite(newCost)) newCost = 0;
+
     newValue = newQty * newCost;
 
     existing.quantity = newQty;
     existing.unit_cost = newCost;
     existing.total_value = newValue;
-    return existing.save();
+    return existing.save({ transaction });
   },
 
   async approveStockMove(stockMoveId: number, user: any) {
     if (user.role !== Role.WHMANAGER) {
-      throw {
-        status: 403,
-        message: "You do not have permission to approve Stock Move.",
-      };
+      throw new Error("You do not have permission to approve Stock Move.");
     }
     const move = await this.getById(stockMoveId);
     if (!move) throw new Error("StockMove not found");
@@ -1207,81 +1253,75 @@ export const stockMoveService = {
 
     if (move.type === "receipt") {
       if (!warehouseTo) {
-        throw { status: 400, message: "Warehouse To not found" };
+        throw new Error("Warehouse To not found");
       }
       if (warehouseTo.branch_id !== user.branch_id) {
-        throw {
-          status: 403,
-          message: "You cannot approve a stock receipt outside your branch.",
-        };
+        throw new Error("You cannot approve a stock receipt outside your branch.");
       }
     }
 
     if (["issue", "adjustment"].includes(move.type)) {
       if (!warehouseFrom) {
-        throw {
-          status: 400,
-          message: "Warehouse From not found",
-        };
+        throw new Error("Warehouse From not found");
       }
       if (warehouseFrom.branch_id !== user.branch_id) {
-        throw {
-          status: 403,
-          message: "You cannot approve a stock move outside your branch.",
-        };
+        throw new Error("You cannot approve a stock move outside your branch.");
       }
     }
     // 5. Check branch for TRANSFER (both sides must match)
     if (move.type === "transfer") {
       if (!warehouseFrom) {
-        throw {
-          status: 400,
-          message: "Warehouse From not found",
-        };
+        throw new Error("Warehouse From not found");
       }
       if (!warehouseTo) {
-        throw { status: 400, message: "Warehouse To not found" };
+        throw new Error("Warehouse To not found");
       }
 
       if (
         warehouseFrom.branch_id !== user.branch_id ||
         warehouseTo.branch_id !== user.branch_id
       ) {
-        throw {
-          status: 403,
-          message:
-            "You cannot approve a transfer involving warehouses in other branches.",
-        };
+        throw new Error(
+          "You cannot approve a transfer involving warehouses in other branches.",
+        );
       }
     }
 
     const lines = move.lines ?? [];
 
-    switch (move.type) {
-      case "receipt":
-        await this.processReceipt(move, lines);
-        break;
+    const t = await sequelize.transaction();
+    try {
+      switch (move.type) {
+        case "receipt":
+          await this.processReceipt(move, lines, t);
+          break;
 
-      case "issue":
-        await this.processIssue(move, lines);
-        break;
+        case "issue":
+          await this.processIssue(move, lines, t);
+          break;
 
-      case "transfer":
-        await this.processTransfer(move, lines);
-        break;
+        case "transfer":
+          await this.processTransfer(move, lines, t);
+          break;
 
-      case "adjustment":
-        await this.processAdjustment(move, lines);
-        break;
+        case "adjustment":
+          await this.processAdjustment(move, lines, t);
+          break;
 
-      default:
-        throw new Error("Unknown stock move type");
+        default:
+          throw new Error("Unknown stock move type");
+      }
+      await move.update({
+        status: "posted",
+        approved_by: user.id,
+        approved_at: new Date(),
+      }, { transaction: t });
+
+      await t.commit();
+    } catch (error) {
+      await t.rollback();
+      throw error;
     }
-    await move.update({
-      status: "posted",
-      approved_by: user.id,
-      approved_at: new Date(),
-    });
 
     const updatedMove = await StockMove.findByPk(move.id, {
       include: [
@@ -1319,10 +1359,11 @@ export const stockMoveService = {
     return updatedMove?.get({ plain: true });
   },
 
-  async processReceipt(move: any, lines: any[]) {
+  async processReceipt(move: any, lines: any[], t: any) {
     for (const line of lines) {
       const product = await Product.findByPk(line.product_id, {
         attributes: ["uom_id"],
+        transaction: t
       });
       const actualQty = await convertToStockUom(
         parseFloat(String(line.quantity)),
@@ -1336,6 +1377,7 @@ export const stockMoveService = {
       if (move.reference_type === "purchase_order" && move.reference_id) {
         const poLine = await PurchaseOrderLine.findOne({
           where: { po_id: move.reference_id, product_id: line.product_id },
+          transaction: t
         });
         if (poLine?.unit_price != null) {
           unitCost = parseFloat(String(poLine.unit_price));
@@ -1349,17 +1391,19 @@ export const stockMoveService = {
         line.location_to_id ?? null,
         line.lot_id ?? null,
         unitCost,
+        t
       );
     }
 
     // Nếu không phải PO thì thôi
     if (move.reference_type !== "purchase_order" || !move.reference_id) return;
 
-    const po = await PurchaseOrder.findByPk(move.reference_id);
+    const po = await PurchaseOrder.findByPk(move.reference_id, { transaction: t });
     if (!po) return;
 
     const poLines = await PurchaseOrderLine.findAll({
       where: { po_id: po.id },
+      transaction: t
     });
 
     // Lấy tất cả các product_id của PO
@@ -1384,6 +1428,7 @@ export const stockMoveService = {
       where: {
         product_id: { [Op.in]: productIds },
       },
+      transaction: t
     });
     let fullyReceived = true;
 
@@ -1415,16 +1460,17 @@ export const stockMoveService = {
     }
     await po.update({
       status: fullyReceived ? "completed" : "partially_received",
-    });
+    }, { transaction: t });
   },
 
   // ==================================================
   // TYPE: issue
   // ==================================================
-  async processIssue(move: any, lines: any[]) {
+  async processIssue(move: any, lines: any[], t: any) {
     for (const line of lines) {
       const product = await Product.findByPk(line.product_id, {
         attributes: ["uom_id"],
+        transaction: t
       });
       const actualQty = await convertToStockUom(
         parseFloat(String(line.quantity)),
@@ -1438,12 +1484,14 @@ export const stockMoveService = {
         -actualQty,
         line.location_from_id ?? null,
         line.lot_id ?? null,
+        undefined,
+        t
       );
     }
     if (move.reference_type === "sale_order") {
       await SaleOrder.update(
         { status: "shipped", delivery_status: "delivered" },
-        { where: { id: move.reference_id } },
+        { where: { id: move.reference_id }, transaction: t },
       );
     }
   },
@@ -1451,10 +1499,11 @@ export const stockMoveService = {
   // ==================================================
   // TYPE: transfer
   // ==================================================
-  async processTransfer(move: any, lines: any[]) {
+  async processTransfer(move: any, lines: any[], t: any) {
     for (const line of lines) {
       const product = await Product.findByPk(line.product_id, {
         attributes: ["uom_id"],
+        transaction: t
       });
       const actualQty = await convertToStockUom(
         parseFloat(String(line.quantity)),
@@ -1468,6 +1517,8 @@ export const stockMoveService = {
         -actualQty,
         line.location_from_id ?? null,
         line.lot_id ?? null,
+        undefined,
+        t
       );
       await this.updateStockBalance(
         move.warehouse_to_id,
@@ -1475,14 +1526,17 @@ export const stockMoveService = {
         +actualQty,
         line.location_to_id ?? null,
         line.lot_id ?? null,
+        undefined,
+        t
       );
     }
   },
 
-  async processAdjustment(move: any, lines: any[]) {
+  async processAdjustment(move: any, lines: any[], t: any) {
     for (const line of lines) {
       const product = await Product.findByPk(line.product_id, {
         attributes: ["uom_id"],
+        transaction: t
       });
       const rawQty = Number(line.quantity);
       const sign = rawQty >= 0 ? 1 : -1;
@@ -1500,6 +1554,8 @@ export const stockMoveService = {
         actualQty,
         line.location_from_id ?? null,
         line.lot_id ?? null,
+        undefined,
+        t
       );
     }
   },

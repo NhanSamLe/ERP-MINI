@@ -28,6 +28,7 @@ import { Uom } from "@/features/master-data/dto/uom.dto";
 import {
   getValidUomsForProduct,
   previewQtyInStockUom,
+  convertPrice,
 } from "../../utils/uomHelper";
 
 interface LineItem {
@@ -194,10 +195,16 @@ export default function RfqEditPage() {
       fetchTaxRatesByIdThunk(product.tax_rate_id || 0),
     ).unwrap();
     const taxRate = Number(tax?.rate ?? 0);
-    const price = Number(product.cost_price ?? 0);
-    const calc = calcLine(1, price, taxRate);
     const stockUomId = product.uom_id ?? null;
     const purchaseUomId = (product as any).purchase_uom_id ?? stockUomId;
+    const price = convertPrice(
+      Number(product.cost_price ?? 0),
+      stockUomId,
+      purchaseUomId,
+      conversions,
+      Number(product.id),
+    );
+    const calc = calcLine(1, price, taxRate);
     setLines((prev) => [
       ...prev,
       {
@@ -275,7 +282,7 @@ export default function RfqEditPage() {
       await dispatch(
         updateRfqThunk({
           id: rfq.id,
-          payload: {
+          body: {
             supplier_id: supplierId || null,
             rfq_date: rfqDate,
             valid_until: validUntil || null,
@@ -294,7 +301,7 @@ export default function RfqEditPage() {
               lead_time_days: l.lead_time_days ?? null,
             })),
           },
-        } as any),
+        }),
       ).unwrap();
       toast.success("RFQ updated");
       navigate(`/purchase/rfqs/${rfq.id}`);

@@ -1,4 +1,4 @@
-﻿import { Warehouse } from "../warehouse/warehouse.types";
+import { Warehouse } from "../warehouse/warehouse.types";
 
 export type StockMoveType = "receipt" | "issue" | "transfer" | "adjustment";
 export type ReferenceType =
@@ -56,10 +56,11 @@ export interface StockMove {
   created_at: string;
   updated_at: string;
   created_by: number;
-  approved_by?: string;
+  approved_by?: number | null;
   submitted_at?: string;
   approved_at?: string;
   reject_reason?: string;
+  branch_id?: number | null;
 
   lines?: StockMoveLine[];
   creator: {

@@ -16,7 +16,7 @@ import {
   SelectContent,
   SelectItem,
 } from "../../../components/ui/Select";
-import { PhysicalInventory } from "../api/physicalInventory.api";
+import { PhysicalInventory } from "../store/stock/physicalInventory/physicalInventory.types";
 import { toast } from "react-toastify";
 import { formatDateTime } from "@/utils/time.helper";
 import { Plus, Eye, ClipboardList, Search, FileEdit, CheckSquare, RefreshCw, Layers } from "lucide-react";
@@ -95,7 +95,7 @@ export default function PhysicalInventoryListPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto p-6 md:p-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
