@@ -19,4 +19,5 @@ export const chatRateLimit = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: false,
 });

@@ -22,6 +22,7 @@ import { stockLocationReducer } from "../features/inventory/store";
 import { stockLotReducer } from "../features/inventory/store";
 import { physicalInventoryReducer } from "../features/inventory/store";
 import { chatReducer } from "../features/ai-chatbot/store/chatSlice";
+import { localRagReducer } from "../features/ai-local-rag/store/localRagSlice";
 import {
   leadReducer,
   opportunityReducer,
@@ -67,6 +68,7 @@ const rootReducer = combineReducers({
   stockLot: stockLotReducer,
   physicalInventory: physicalInventoryReducer,
   chat: chatReducer,
+  localRag: localRagReducer,
   lead: leadReducer,
   opportunity: opportunityReducer,
   activity: activityReducer,

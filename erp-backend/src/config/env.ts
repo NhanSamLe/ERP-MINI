@@ -38,4 +38,11 @@ export const env = {
   frontend: {
     url: process.env.FRONTEND_URL || "http://localhost:3000",
   },
+  qdrant: {
+    url: process.env.QDRANT_URL || "http://localhost:6333",
+    apiKey: process.env.QDRANT_API_KEY || "",
+  },
+  ollama: {
+    host: process.env.OLLAMA_HOST || "http://localhost:11434",
+  },
 };
