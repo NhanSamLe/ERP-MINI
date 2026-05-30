@@ -109,6 +109,60 @@ import { applyAssociations } from "./associations";
 
 applyAssociations();
 
+// Auto RAG Synchronization Hooks
+import { syncService } from "../modules/ai/services/sync.service";
+
+function registerAutoSyncHooks() {
+  const handleAutoSync = async (instance: any) => {
+    try {
+      const modelName = instance.constructor.name;
+      const entityId = instance.id;
+      if (!entityId) return;
+
+      console.log(`[Auto-Sync Hook] Model ${modelName} changed. ID: ${entityId}`);
+
+      if (modelName === "Product") {
+        syncService.syncOne("inventory", "product", entityId).catch((err) => {
+          console.error(`[Auto-Sync] Error syncing Product ID ${entityId}:`, err);
+        });
+      } else if (modelName === "Lead") {
+        syncService.syncOne("crm", "lead", entityId).catch((err) => {
+          console.error(`[Auto-Sync] Error syncing Lead ID ${entityId}:`, err);
+        });
+      } else if (modelName === "PurchaseOrder") {
+        syncService.syncOne("purchase", "purchase_order", entityId).catch((err) => {
+          console.error(`[Auto-Sync] Error syncing PurchaseOrder ID ${entityId}:`, err);
+        });
+      } else if (modelName === "SaleOrder") {
+        syncService.syncOne("sale", "sale_order", entityId).catch((err) => {
+          console.error(`[Auto-Sync] Error syncing SaleOrder ID ${entityId}:`, err);
+        });
+      } else if (modelName === "Partner") {
+        if (instance.is_customer || instance.type === "customer") {
+          syncService.syncOne("crm", "customer", entityId).catch((err) => {
+            console.error(`[Auto-Sync] Error syncing Customer ID ${entityId}:`, err);
+          });
+        }
+        if (instance.is_supplier || instance.type === "supplier") {
+          syncService.syncOne("purchase", "vendor", entityId).catch((err) => {
+            console.error(`[Auto-Sync] Error syncing Vendor ID ${entityId}:`, err);
+          });
+        }
+      }
+    } catch (err) {
+      console.error("[Auto-Sync Hook Global Error]:", err);
+    }
+  };
+
+  const modelsToHook: any[] = [Product, Lead, PurchaseOrder, SaleOrder, Partner];
+  for (const model of modelsToHook) {
+    model.addHook("afterCreate", "autoSyncAfterCreate", handleAutoSync);
+    model.addHook("afterUpdate", "autoSyncAfterUpdate", handleAutoSync);
+  }
+}
+
+registerAutoSyncHooks();
+
 export {
   sequelize,
   User,

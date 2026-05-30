@@ -4,6 +4,7 @@ import { sequelize } from "./config/db";
 import { env } from "./config/env";
 import { logger } from "./config/logger";
 import { initializeWebSocket } from "./config/websocket.config";
+import { qdrantService } from "./modules/ai/services/qdrant.service";
 import "./models";
 
 const PORT = env.port || 4040;
@@ -12,6 +13,11 @@ async function startServer() {
   try {
     await sequelize.authenticate();
     logger.info("Database connected successfully.");
+
+    // Khởi tạo collection Qdrant
+    await qdrantService.initCollection().catch((err) => {
+      logger.error("Failed to initialize Qdrant Collection:", err);
+    });
 
     // Tạo HTTP server từ Express app
     const httpServer = createServer(app);
