@@ -903,6 +903,10 @@ export function applyAssociations() {
   GlEntry.hasMany(GlEntryLine, { foreignKey: "entry_id", as: "lines" });
   GlEntryLine.belongsTo(GlEntry, { foreignKey: "entry_id", as: "entry" });
 
+  // GlAccount self-reference (cây tài khoản)
+  GlAccount.hasMany(GlAccount, { foreignKey: "parent_id", as: "children" });
+  GlAccount.belongsTo(GlAccount, { foreignKey: "parent_id", as: "parent" });
+
   // Account ↔ EntryLines
   GlAccount.hasMany(GlEntryLine, {
     foreignKey: "account_id",

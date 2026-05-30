@@ -3,6 +3,9 @@ import * as glAccountController from "../controllers/glAccount.controller";
 
 const router = Router();
 
+// GET /finance/gl-accounts/tree  — cây tài khoản nested (phải đặt trước /:id)
+router.get("/tree", glAccountController.getTree);
+
 // GET /finance/gl-accounts?search=111
 router.get("/", glAccountController.getAll);
 

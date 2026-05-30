@@ -11,6 +11,15 @@ export async function getAll(req: Request, res: Response) {
   }
 }
 
+export async function getTree(req: Request, res: Response) {
+  try {
+    const data = await glAccountService.getGlAccountTree();
+    return res.json(data);
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message });
+  }
+}
+
 export async function getById(req: Request, res: Response) {
   try {
     const id = parseInt(req.params.id as string, 10);
