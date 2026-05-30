@@ -180,9 +180,12 @@ export default function EditPurchaseOrderPage() {
     const supplierPrice = allSupplierInfos.find(
       (s: any) => s.supplier_id === Number(supplierId),
     )?.price;
-    const priceInPurchaseUom = Number(supplierPrice ?? product.cost_price ?? 0);
     const purchaseUomId = product.purchase_uom_id ?? product.uom_id ?? null;
     const stockUomId = product.uom_id ?? null;
+    const priceInPurchaseUom =
+      supplierPrice !== undefined && supplierPrice !== null
+        ? Number(supplierPrice)
+        : convertPrice(Number(product.cost_price ?? 0), stockUomId, purchaseUomId, conversions, Number(product.id));
     const priceInStockUom = convertPrice(
       priceInPurchaseUom,
       purchaseUomId,
@@ -577,8 +580,8 @@ export default function EditPurchaseOrderPage() {
           {/* ── Main Content ── */}
           <div className="space-y-4 min-w-0">
             {/* General Info */}
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-100 bg-gray-50/60">
+            <div className="bg-white rounded-xl border border-gray-200 overflow-visible">
+              <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-100 bg-gray-50/60 rounded-t-xl">
                 <Receipt className="w-4 h-4 text-orange-500" />
                 <h2 className="text-sm font-semibold text-gray-700">
                   General Information
@@ -644,8 +647,8 @@ export default function EditPurchaseOrderPage() {
             </div>
 
             {/* Add Products */}
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-100 bg-gray-50/60">
+            <div className="bg-white rounded-xl border border-gray-200 overflow-visible">
+              <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-100 bg-gray-50/60 rounded-t-xl">
                 <Search className="w-4 h-4 text-orange-500" />
                 <h2 className="text-sm font-semibold text-gray-700">
                   Add Products

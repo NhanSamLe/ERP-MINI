@@ -7,7 +7,7 @@ import {
   updateLotThunk,
   deleteLotThunk,
 } from "../store/stock/stocklot/stockLot.thunks";
-import { StockLot, CreateLotDTO } from "../api/stockLot.api";
+import { StockLot, CreateLotDTO } from "../store/stock/stocklot/stockLot.types";
 import { partnerApi } from "../../partner/api/partner.api";
 import { productApi } from "../../products/api/product.api";
 import { Plus, Pencil, Trash2, Search, AlertTriangle, Layers, ShieldCheck, XCircle, Clock } from "lucide-react";
@@ -358,7 +358,7 @@ export default function StockLotPage() {
   }).length;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto p-6 md:p-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">

@@ -11,6 +11,8 @@ import { Product } from "../../product/models/product.model";
 import { UomConversion } from "../../master-data/models/uomConversion.model";
 import { Uom } from "../../master-data/models/uom.model";
 import { Role } from "../../../core/types/enum";
+import { PurchasePriceList } from "../models/purchasePriceList.model";
+import { PurchasePriceListItem } from "../models/purchasePriceListItem.model";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -359,10 +361,22 @@ export const rfqService = {
   // ─── STATUS TRANSITIONS ────────────────────────────────────────────────────
 
   async send(id: number, user: any) {
+    // 1. Kiểm tra Branch_id (Nếu khác chi nhánh thì findOne trả về null -> báo không tìm thấy hoặc chặn lại)
     const rfq = await PurchaseRfq.findOne({
       where: { id, branch_id: user.branch_id },
     });
-    if (!rfq) throw { status: 404, message: "RFQ not found" };
+    if (!rfq) throw { status: 404, message: "RFQ not found or access denied for this branch" };
+
+    // 2. Kiểm tra người gửi phải là người tạo (created_by)
+    if (Number(rfq.created_by) !== Number(user.id)) {
+      throw { status: 403, message: "Only the creator of this RFQ can send it" };
+    }
+
+    // 3. Kiểm tra Trạng thái phê duyệt (approval_status)
+    if (rfq.approval_status !== "approved") {
+      throw { status: 400, message: "Only approved RFQ can be sent (Please submit for approval first)" };
+    }
+
     if (rfq.status !== "draft") {
       throw { status: 400, message: "Only draft RFQ can be sent" };
     }
@@ -481,6 +495,40 @@ export const rfqService = {
     }
 
     const poId = await sequelize.transaction(async (t) => {
+      // 1. Tự động tạo Bảng giá mua mới từ RFQ được duyệt
+      const pl = await PurchasePriceList.create(
+        {
+          branch_id: rfq.branch_id,
+          name: `Bảng giá từ RFQ ${rfq.rfq_no}`,
+          code: `PL-RFQ-${rfq.id}`,
+          supplier_id: rfq.supplier_id,
+          is_active: true,
+          start_date: new Date(),
+          end_date: rfq.valid_until ?? null, // <-- Bổ sung thiết lập thời hạn kết thúc từ RFQ
+          created_by: user.id,
+        } as any,
+        { transaction: t }
+      );
+
+      const lines = (rfq as any).lines as PurchaseRfqLine[];
+      for (const line of lines) {
+        await PurchasePriceListItem.create(
+          {
+            price_list_id: pl.id,
+            product_id: line.product_id,
+            supplier_id: rfq.supplier_id,
+            min_quantity: line.quantity ?? 1,
+            unit_price: line.unit_price,
+            discount_percent: line.discount_percent ?? 0,
+            uom_id: line.uom_id ?? null,
+            lead_time_days: line.lead_time_days ?? null,
+            start_date: new Date(),
+          } as any,
+          { transaction: t }
+        );
+      }
+
+      // 2. Tạo PurchaseOrder và liên kết với price_list_id vừa sinh ra
       const po = await PurchaseOrder.create(
         {
           branch_id: rfq.branch_id,
@@ -492,6 +540,7 @@ export const rfqService = {
           total_tax: rfq.total_tax,
           total_after_tax: rfq.total_after_tax,
           ...(rfq.id != null && { rfq_id: rfq.id }),
+          price_list_id: pl.id,
           ...(rfq.currency_id != null && { currency_id: rfq.currency_id }),
           ...(rfq.exchange_rate != null && {
             exchange_rate: rfq.exchange_rate,
@@ -517,7 +566,6 @@ export const rfqService = {
         { transaction: t },
       );
 
-      const lines = (rfq as any).lines as PurchaseRfqLine[];
       for (const line of lines) {
         // Lấy stock UOM của product để tính qty_in_stock_uom
         const product = await Product.findByPk(line.product_id, {

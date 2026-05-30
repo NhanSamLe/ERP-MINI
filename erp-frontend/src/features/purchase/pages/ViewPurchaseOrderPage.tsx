@@ -508,7 +508,7 @@ export default function ViewPurchaseOrderPage() {
                           <td className="px-4 py-3 text-right font-bold text-gray-900 tabular-nums">
                             {formatVND(
                               line.line_total_after_tax ||
-                                line.line_total + line.tax_amount,
+                              line.line_total + line.tax_amount,
                             )}
                           </td>
                         </tr>
@@ -676,14 +676,13 @@ export default function ViewPurchaseOrderPage() {
                       <div className="flex items-center gap-3">
                         <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
                           <div
-                            className={`h-1.5 rounded-full transition-all ${
-                              status === "fully_received" ||
+                            className={`h-1.5 rounded-full transition-all ${status === "fully_received" ||
                               status === "invoiced"
-                                ? `${fullColor} w-full`
-                                : status === "partial"
-                                  ? `${halfColor} w-1/2`
-                                  : "bg-gray-300 w-0"
-                            }`}
+                              ? `${fullColor} w-full`
+                              : status === "partial"
+                                ? `${halfColor} w-1/2`
+                                : "bg-gray-300 w-0"
+                              }`}
                           />
                         </div>
                         <StatusBadge status={status} />
@@ -694,46 +693,46 @@ export default function ViewPurchaseOrderPage() {
                 {((finalPO as any).expected_delivery_date ||
                   (finalPO as any).supplier_ref_no ||
                   (finalPO as any).rfq_id) && (
-                  <div className="px-5 pb-5 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm border-t border-gray-100 pt-4">
-                    {(finalPO as any).expected_delivery_date && (
-                      <div>
-                        <p className="text-xs text-gray-400 mb-0.5">
-                          Expected Delivery
-                        </p>
-                        <p className="font-medium text-gray-800">
-                          {new Date(
-                            (finalPO as any).expected_delivery_date,
-                          ).toLocaleDateString("vi-VN")}
-                        </p>
-                      </div>
-                    )}
-                    {(finalPO as any).supplier_ref_no && (
-                      <div>
-                        <p className="text-xs text-gray-400 mb-0.5">
-                          Supplier Ref No
-                        </p>
-                        <p className="font-medium text-gray-800">
-                          {(finalPO as any).supplier_ref_no}
-                        </p>
-                      </div>
-                    )}
-                    {(finalPO as any).rfq_id && (
-                      <div>
-                        <p className="text-xs text-gray-400 mb-0.5">From RFQ</p>
-                        <button
-                          onClick={() =>
-                            navigate(
-                              `/purchase/rfqs/${(finalPO as any).rfq_id}`,
-                            )
-                          }
-                          className="font-medium text-orange-600 hover:underline text-sm"
-                        >
-                          View RFQ →
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
+                    <div className="px-5 pb-5 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm border-t border-gray-100 pt-4">
+                      {(finalPO as any).expected_delivery_date && (
+                        <div>
+                          <p className="text-xs text-gray-400 mb-0.5">
+                            Expected Delivery
+                          </p>
+                          <p className="font-medium text-gray-800">
+                            {new Date(
+                              (finalPO as any).expected_delivery_date,
+                            ).toLocaleDateString("vi-VN")}
+                          </p>
+                        </div>
+                      )}
+                      {(finalPO as any).supplier_ref_no && (
+                        <div>
+                          <p className="text-xs text-gray-400 mb-0.5">
+                            Supplier Ref No
+                          </p>
+                          <p className="font-medium text-gray-800">
+                            {(finalPO as any).supplier_ref_no}
+                          </p>
+                        </div>
+                      )}
+                      {(finalPO as any).rfq_id && (
+                        <div>
+                          <p className="text-xs text-gray-400 mb-0.5">From RFQ</p>
+                          <button
+                            onClick={() =>
+                              navigate(
+                                `/purchase/rfqs/${(finalPO as any).rfq_id}`,
+                              )
+                            }
+                            className="font-medium text-orange-600 hover:underline text-sm"
+                          >
+                            View RFQ →
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
               </div>
             )}
 
@@ -885,7 +884,7 @@ export default function ViewPurchaseOrderPage() {
             <Button
               onClick={() => setConfirmSubmit(false)}
               disabled={submitting}
-              className="px-5 py-2 rounded-xl border border-gray-300 font-semibold text-gray-700 bg-white hover:bg-gray-50 text-sm"
+              className="px-5 py-2 rounded-xl border border-gray-300 font-semibold text-gray-700 hover:bg-gray-50 text-sm"
             >
               Cancel
             </Button>
@@ -912,7 +911,7 @@ export default function ViewPurchaseOrderPage() {
             <Button
               onClick={() => setConfirmApprove(false)}
               disabled={submitting}
-              className="px-5 py-2 rounded-xl border border-gray-300 font-semibold text-gray-700 bg-white hover:bg-gray-50 text-sm"
+              className="px-5 py-2 rounded-xl border border-gray-300 font-semibold text-gray-700  hover:bg-gray-50 text-sm"
             >
               Cancel
             </Button>
@@ -945,7 +944,7 @@ export default function ViewPurchaseOrderPage() {
                 setRejectReason("");
               }}
               disabled={submitting}
-              className="px-5 py-2 rounded-xl border border-gray-300 font-semibold text-gray-700 bg-white hover:bg-gray-50 text-sm"
+              className="px-5 py-2 rounded-xl border border-gray-300 font-semibold text-gray-700 hover:bg-gray-50 text-sm"
             >
               Close
             </Button>

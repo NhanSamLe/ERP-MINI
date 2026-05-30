@@ -8,7 +8,7 @@ import {
   updateLocationThunk,
   deleteLocationThunk,
 } from "../store/stock/stocklocation/stockLocation.thunks";
-import { StockLocation, StockLocationType } from "../api/stockLocation.api";
+import { StockLocation, StockLocationType } from "../store/stock/stocklocation/stockLocation.types";
 import { fetchWarehousesThunk } from "../store/stock/warehouse/warehouse.thunks";
 import {
   MapPin,
@@ -477,7 +477,7 @@ export default function StockLocationPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto p-6 md:p-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-3">

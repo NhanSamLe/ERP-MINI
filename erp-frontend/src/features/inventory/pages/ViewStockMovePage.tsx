@@ -179,7 +179,7 @@ export default function ViewStockMovePage() {
   const isTransfer = data.type === "transfer";
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto p-6 md:p-8 space-y-6">
       {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-3">
