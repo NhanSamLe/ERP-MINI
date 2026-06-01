@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast } from "react-toastify";
 import { EmployeeDTO } from "../../hrm/dto/employee.dto";
 import axiosClient from "../../../api/axiosClient";
 
@@ -61,11 +62,11 @@ export default function UserFormModal({ open, employee, onClose }: Props) {
 
   const save = async () => {
     if (!form.role_id) {
-      alert("Vui lòng chọn vai trò");
+      toast.error("Vui lòng chọn vai trò");
       return;
     }
     if (!form.username || !form.full_name || !form.email || !form.password) {
-      alert("Vui lòng điền đầy đủ thông tin bắt buộc");
+      toast.error("Vui lòng điền đầy đủ thông tin bắt buộc");
       return;
     }
 

@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
+import { toast } from "react-toastify";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../../store/store";
 
@@ -61,7 +62,7 @@ export default function PositionPage() {
     const msg = typeof error === "string"
       ? error
       : error?.message || "Có lỗi xảy ra khi lưu chức danh";
-    alert(msg); // 👈 sẽ hiện "Chức danh này đã tồn tại trong chi nhánh này"
+    toast.error(msg);
   }
 };
 
@@ -384,3 +385,4 @@ export default function PositionPage() {
     </div>
   );
 }
+

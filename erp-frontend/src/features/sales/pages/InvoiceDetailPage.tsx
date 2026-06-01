@@ -10,6 +10,7 @@ import {
 import { ActionConfirmModal, StatusBadge } from "@/components/common";
 import { StandardFormLayout, FormSection } from "@/components/layout";
 import { formatVND } from "@/utils/currency.helper";
+import InvoiceExportToolbar from "../components/ar.components.ts/InvoiceExportToolbar";
 import {
   FileText, User, CreditCard, Phone, Mail, MapPin,
   Package, AlertTriangle, CheckCircle2, Clock, UserCheck, Loader2,
@@ -311,6 +312,9 @@ export default function InvoiceDetailPage() {
           <p className="text-sm text-gray-400 italic">Không có thông tin khách hàng.</p>
         )}
       </FormSection>
+
+      {/* ─── Export / Print toolbar ─── */}
+      <InvoiceExportToolbar invoice={invoice} />
 
       {/* ─── 3. INVOICE LINES ─── */}
       <FormSection

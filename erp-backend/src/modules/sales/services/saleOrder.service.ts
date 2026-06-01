@@ -14,6 +14,14 @@ import { generateOrderNo } from "../utils";
 import { Role } from "../../../core/types/enum";
 import { notificationService } from "../../../core/services/notification.service";
 
+async function withBranchContext(user: any) {
+  if (user?.branch_id) return user;
+  const dbUser = await User.findByPk(user.id, { attributes: ["id", "branch_id"] });
+  const branchId = (dbUser as any)?.branch_id;
+  if (!branchId) throw new Error("User branch is missing. Please login again.");
+  return { ...user, branch_id: branchId };
+}
+
 export const saleOrderService = {
   /** -----------------------------------------------------
    * HELPER: Tính thuế từng dòng
@@ -83,6 +91,7 @@ export const saleOrderService = {
    * GET ALL — lọc branch + ownership
    * ---------------------------------------------------- */
   async getAll(user: JwtPayload) {
+    user = await withBranchContext(user);
     const where: any = { branch_id: user.branch_id };
 
     if (user.role === "SALES") {
@@ -166,6 +175,11 @@ export const saleOrderService = {
               model: TaxRate,
               as: "taxRate",
               attributes: ["id", "name", "rate"],
+            },
+            {
+              model: Uom,
+              as: "uom",
+              attributes: ["id", "name", "code"],
             },
           ],
         },
@@ -512,6 +526,7 @@ export const saleOrderService = {
           approved_at: new Date(),
           approved_by: manager.id,
           status: "confirmed",
+          delivery_status: "pending",
         },
         { transaction: t }
       );

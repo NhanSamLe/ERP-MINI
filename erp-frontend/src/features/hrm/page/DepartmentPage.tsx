@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../../store/store";
+import { toast } from "react-toastify";
 
 import {
   loadDepartments,
@@ -62,7 +63,7 @@ export default function DepartmentPage() {
       typeof error === "string"
         ? error
         : error?.message || "Có lỗi xảy ra khi lưu phòng ban";
-    alert(msg); // sẽ hiện: "Department code already exists" hoặc "Phòng ban này đã tồn tại trong chi nhánh này"
+    toast.error(msg);
   }
 };
 
@@ -78,13 +79,9 @@ export default function DepartmentPage() {
 
     dispatch(loadDepartments({ search }));
 
-    alert(
-      dep.status === "active"
-        ? "Đã khóa phòng ban"
-        : "Đã mở lại phòng ban"
-    );
+    toast.success(dep.status === "active" ? "Đã khóa phòng ban" : "Đã mở lại phòng ban");
   } catch (error: any) {
-    alert(error || "Có lỗi xảy ra");
+    toast.error(typeof error === "string" ? error : error?.message || "Có lỗi xảy ra");
   }
 };
 

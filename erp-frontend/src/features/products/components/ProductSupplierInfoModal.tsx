@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect } from "react";
+import { toast } from "react-toastify";
 import { X } from "lucide-react";
 import { Button } from "../../../components/ui/Button";
 import { FormInput } from "../../../components/ui/FormInput";
@@ -72,7 +73,7 @@ export function ProductSupplierInfoModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.supplier_id === 0) {
-      alert("Please select a supplier");
+      toast.error("Vui lòng chọn nhà cung cấp");
       return;
     }
     setIsSubmitting(true);
@@ -210,3 +211,4 @@ export function ProductSupplierInfoModal({
     </div>
   );
 }
+

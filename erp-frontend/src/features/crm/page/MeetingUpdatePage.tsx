@@ -1,31 +1,11 @@
-// src/features/crm/pages/MeetingUpdatePage.tsx
-
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-
-import {
-  getActivityDetail,
-  updateActivity,
-  updateMeetingDetail,
-} from "../service/activity.service";
-
-import { Alert } from "@/components/ui/Alert";
-import { Button } from "@/components/ui/buttonn";
-import { Card, CardHeader, CardContent } from "@/components/ui/Card";
-import { Separator } from "@/components/ui/separator";
-import { FormInput } from "@/components/ui/FormInput";
-
-import {
-  ArrowLeft,
-  Calendar,
-  MapPin,
-  Users,
-  Link2,
-  FileText,
-  Settings,
-} from "lucide-react";
-
+import { toast } from "react-toastify";
+import { getActivityDetail, updateActivity, updateMeetingDetail } from "../service/activity.service";
 import { Activity } from "../dto/activity.dto";
+import { StandardFormLayout, FormSection } from "@/components/layout";
+import { StatusBadge } from "@/components/common";
+import { Calendar, MapPin, Users, Link2, FileText, Clock } from "lucide-react";
 
 export default function MeetingUpdatePage() {
   const navigate = useNavigate();
@@ -34,302 +14,218 @@ export default function MeetingUpdatePage() {
 
   const [detail, setDetail] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const [alert, setAlert] = useState<{
-    type: "success" | "error" | "warning";
-    message: string;
-  } | null>(null);
+  const [subject,     setSubject]     = useState("");
+  const [priority,    setPriority]    = useState<"low" | "medium" | "high">("medium");
+  const [notes,       setNotes]       = useState("");
+  const [startAt,     setStartAt]     = useState("");
+  const [endAt,       setEndAt]       = useState("");
+  const [location,    setLocation]    = useState("");
+  const [attendees,   setAttendees]   = useState("");
+  const [meetingLink, setMeetingLink] = useState("");
 
-  // ========================
-  // FORM STATE
-  // ========================
-  const [general, setGeneral] = useState({
-    subject: "",
-    priority: "medium" as "low" | "medium" | "high",
-    notes: "",
-  });
-
-  const [meetingInfo, setMeetingInfo] = useState({
-    start_at: "",
-    end_at: "",
-    location: "",
-    attendees: "",
-    meeting_link: "",
-  });
-
-  const updateGeneral = <K extends keyof typeof general>(
-    key: K,
-    value: (typeof general)[K]
-  ) => setGeneral((p) => ({ ...p, [key]: value }));
-
-  const updateMeetingInfo = <K extends keyof typeof meetingInfo>(
-    key: K,
-    value: (typeof meetingInfo)[K]
-  ) => setMeetingInfo((p) => ({ ...p, [key]: value }));
-
-  // ========================
-  // LOAD DETAIL
-  // ========================
-  useEffect(() => {
-    loadDetail();
-  }, [activityId]);
+  useEffect(() => { loadDetail(); }, [activityId]);
 
   const loadDetail = async () => {
     try {
       setLoading(true);
       const res = await getActivityDetail(activityId);
       setDetail(res);
-
-      // SECTION 1 – General Info
-      setGeneral({
-        subject: res.subject || "",
-        priority: res.priority || "medium",
-        notes: res.notes || "",
-      });
-
-      // SECTION 2 – Meeting Info
+      setSubject(res.subject || "");
+      setPriority(res.priority || "medium");
+      setNotes(res.notes || "");
       if (res.meeting) {
-        const m = res.meeting;
-        setMeetingInfo({
-          start_at: m.start_at
-            ? new Date(m.start_at).toISOString().slice(0, 16)
-            : "",
-          end_at: m.end_at
-            ? new Date(m.end_at).toISOString().slice(0, 16)
-            : "",
-          location: m.location || "",
-          attendees: m.attendees || "",
-          meeting_link: m.meeting_link || "",
-        });
+        setStartAt(res.meeting.start_at ? new Date(res.meeting.start_at).toISOString().slice(0, 16) : "");
+        setEndAt(res.meeting.end_at   ? new Date(res.meeting.end_at).toISOString().slice(0, 16)   : "");
+        setLocation(res.meeting.location || "");
+        setAttendees(res.meeting.attendees || "");
+        setMeetingLink(res.meeting.meeting_link || "");
       }
-    } catch (err: unknown) {
-      setAlert({
-        type: "error",
-        message:
-          err instanceof Error ? err.message : "Không thể tải dữ liệu cuộc họp",
-      });
+    } catch {
+      toast.error("Không thể tải dữ liệu cuộc họp");
     } finally {
       setLoading(false);
     }
   };
 
-  // ========================
-  // SAVE GENERAL
-  // ========================
-  const handleSaveGeneral = async () => {
-    try {
-      await updateActivity({
-        activityId,
-        subject: general.subject,
-        notes: general.notes || null,
-        priority: general.priority,
-      });
-
-      setAlert({ type: "success", message: "Đã lưu thông tin chung!" });
-    } catch (err: unknown) {
-      setAlert({
-        type: "error",
-        message:
-          err instanceof Error
-            ? err.message
-            : "Không thể lưu thông tin chung",
-      });
+  const handleSave = async () => {
+    if (!subject.trim()) { toast.error("Vui lòng nhập tiêu đề"); return; }
+    if (startAt && endAt && new Date(startAt) >= new Date(endAt)) {
+      toast.error("Thời gian kết thúc phải sau thời gian bắt đầu");
+      return;
     }
-  };
-
-  // ========================
-  // SAVE MEETING DETAIL
-  // ========================
-  const handleSaveMeetingDetail = async () => {
     try {
+      setSaving(true);
+      await updateActivity({ activityId, subject, notes: notes || null, priority });
       await updateMeetingDetail(activityId, {
         activity_id: activityId,
-        start_at: meetingInfo.start_at
-          ? new Date(meetingInfo.start_at)
-          : null,
-        end_at: meetingInfo.end_at ? new Date(meetingInfo.end_at) : null,
-        location: meetingInfo.location || null,
-        attendees: meetingInfo.attendees || null,
-        meeting_link: meetingInfo.meeting_link || null,
+        start_at:    startAt ? new Date(startAt) : null,
+        end_at:      endAt   ? new Date(endAt)   : null,
+        location:    location || null,
+        attendees:   attendees || null,
+        meeting_link: meetingLink || null,
       });
-
-      setAlert({
-        type: "success",
-        message: "Đã lưu thông tin chi tiết Meeting!",
-      });
-    } catch (err: unknown) {
-      setAlert({
-        type: "error",
-        message:
-          err instanceof Error
-            ? err.message
-            : "Không thể lưu chi tiết meeting",
-      });
+      toast.success("Đã lưu thông tin cuộc họp");
+    } catch {
+      toast.error("Không thể lưu, vui lòng thử lại");
+    } finally {
+      setSaving(false);
     }
   };
 
-  if (loading) return <div className="p-8 text-center">Đang tải...</div>;
-  if (!detail) return <div className="p-8 text-center">Không tìm thấy cuộc họp</div>;
+  const isDone = detail?.status === "completed";
 
   return (
-    <div className="min-h-screen bg-gray-50">
-
-      {/* HEADER */}
-      <div className="bg-white border-b px-6 py-4 flex items-center gap-4 max-w-5xl mx-auto">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
-
-        <h1 className="text-xl font-semibold flex items-center gap-2">
-          <Calendar className="w-6 h-6 text-orange-500" />
-          Cập nhật cuộc họp
-        </h1>
-      </div>
-
-      {/* BODY */}
-      <div className="max-w-5xl mx-auto px-6 py-6 space-y-6">
-
-        {alert && (
-          <Alert
-            type={alert.type}
-            message={alert.message}
-            onClose={() => setAlert(null)}
-          />
-        )}
-
-        {/* ==============================
-            1️⃣ GENERAL INFORMATION
-        =============================== */}
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-3">
-            <Settings className="w-5 h-5 text-gray-600" />
-            <h2 className="text-lg font-semibold">Thông tin chung</h2>
-          </CardHeader>
-          <Separator />
-          <CardContent className="space-y-6 pt-5">
-
-            <FormInput
-              label="Tiêu đề cuộc họp"
-              required
-              value={general.subject}
-              onChange={(v) => updateGeneral("subject", v)}
-            />
-
-            {/* PRIORITY */}
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Mức ưu tiên
-              </label>
-              <select
-                value={general.priority}
-                onChange={(e) =>
-                  updateGeneral(
-                    "priority",
-                    e.target.value as "low" | "medium" | "high"
-                  )
-                }
-                className="border px-4 py-2 rounded-lg"
-              >
-                <option value="low">Thấp</option>
-                <option value="medium">Trung bình</option>
-                <option value="high">Cao</option>
-              </select>
+    <StandardFormLayout
+      title={subject || "Cập nhật cuộc họp"}
+      loading={loading}
+      statusBadge={detail ? <StatusBadge status={detail.status ?? "pending"} /> : undefined}
+      actions={[
+        { label: "Quay lại", variant: "outline", onClick: () => navigate(-1) },
+        {
+          label: saving ? "Đang lưu..." : "Lưu thay đổi",
+          variant: "primary",
+          onClick: handleSave,
+          isLoading: saving,
+          disabled: saving || isDone,
+        },
+      ]}
+      sidebarContent={
+        detail?.meeting ? (
+          <FormSection title="Thông tin cuộc họp" icon={<Calendar className="w-4 h-4" />}>
+            <div className="space-y-3 text-sm">
+              <div>
+                <p className="text-xs text-gray-500 mb-0.5">Bắt đầu</p>
+                <p className="font-medium text-gray-800">
+                  {detail.meeting.start_at ? new Date(detail.meeting.start_at).toLocaleString("vi-VN") : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-0.5">Kết thúc</p>
+                <p className="font-medium text-gray-800">
+                  {detail.meeting.end_at ? new Date(detail.meeting.end_at).toLocaleString("vi-VN") : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-0.5">Trạng thái</p>
+                <StatusBadge status={detail.status ?? "pending"} />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-0.5">Người phụ trách</p>
+                <p className="font-medium text-gray-800">{detail.owner?.full_name || "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-0.5">Liên kết</p>
+                <p className="font-medium text-gray-800 capitalize">{detail.related_type} #{detail.related_id}</p>
+              </div>
             </div>
+          </FormSection>
+        ) : undefined
+      }
+    >
+      {/* General info */}
+      <FormSection title="Thông tin chung" icon={<Calendar className="w-4 h-4" />}>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Tiêu đề <span className="text-red-500">*</span>
+            </label>
+            <input
+              value={subject}
+              onChange={e => setSubject(e.target.value)}
+              placeholder="Tiêu đề cuộc họp..."
+              className="h-9 w-full rounded-md border border-gray-200 px-3 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-orange-400"
+            />
+          </div>
 
-            {/* NOTES */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Mức ưu tiên</label>
+            <select
+              value={priority}
+              onChange={e => setPriority(e.target.value as any)}
+              className="h-9 rounded-md border border-gray-200 px-3 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-orange-400"
+            >
+              <option value="low">Thấp</option>
+              <option value="medium">Trung bình</option>
+              <option value="high">Cao</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Ghi chú</label>
+            <textarea
+              rows={3}
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder="Ghi chú thêm..."
+              className="w-full resize-none rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-orange-400"
+            />
+          </div>
+        </div>
+      </FormSection>
+
+      {/* Meeting detail */}
+      <FormSection title="Chi tiết cuộc họp" icon={<Clock className="w-4 h-4" />}>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium mb-2 flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                Ghi chú
-              </label>
-              <textarea
-                rows={4}
-                className="w-full border rounded-lg px-4 py-3"
-                value={general.notes}
-                onChange={(e) => updateGeneral("notes", e.target.value)}
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Thời gian bắt đầu</label>
+              <input
+                type="datetime-local"
+                value={startAt}
+                onChange={e => setStartAt(e.target.value)}
+                className="h-9 w-full rounded-md border border-gray-200 px-3 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-orange-400"
               />
             </div>
-
-            <div className="flex justify-end">
-              <Button onClick={handleSaveGeneral}>
-                Lưu thông tin chung
-              </Button>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Thời gian kết thúc</label>
+              <input
+                type="datetime-local"
+                value={endAt}
+                onChange={e => setEndAt(e.target.value)}
+                className="h-9 w-full rounded-md border border-gray-200 px-3 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-orange-400"
+              />
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* ==============================
-            2️⃣ MEETING DETAIL
-        =============================== */}
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-3">
-            <Calendar className="w-5 h-5 text-blue-600" />
-            <h2 className="text-lg font-semibold">Chi tiết cuộc họp</h2>
-          </CardHeader>
-
-          <Separator />
-
-          <CardContent className="space-y-6 pt-5">
-
-            {/* START + END */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <label className="block text-sm mb-2">Thời gian bắt đầu</label>
-                <input
-                  type="datetime-local"
-                  className="border w-full rounded-lg px-4 py-2"
-                  value={meetingInfo.start_at}
-                  onChange={(e) =>
-                    updateMeetingInfo("start_at", e.target.value)
-                  }
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm mb-2">Thời gian kết thúc</label>
-                <input
-                  type="datetime-local"
-                  className="border w-full rounded-lg px-4 py-2"
-                  value={meetingInfo.end_at}
-                  onChange={(e) =>
-                    updateMeetingInfo("end_at", e.target.value)
-                  }
-                />
-              </div>
-            </div>
-
-            {/* LOCATION */}
-            <FormInput
-              label="Địa điểm"
-              value={meetingInfo.location}
-              onChange={(v) => updateMeetingInfo("location", v)}
-              icon={<MapPin className="w-4 h-4" />}
+          <div>
+            <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
+              <MapPin className="w-3.5 h-3.5" /> Địa điểm
+            </label>
+            <input
+              value={location}
+              onChange={e => setLocation(e.target.value)}
+              placeholder="Phòng họp, địa chỉ, hoặc Online..."
+              className="h-9 w-full rounded-md border border-gray-200 px-3 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-orange-400"
             />
+          </div>
 
-            {/* ATTENDEES */}
-            <FormInput
-              label="Người tham dự"
-              value={meetingInfo.attendees}
-              onChange={(v) => updateMeetingInfo("attendees", v)}
-              icon={<Users className="w-4 h-4" />}
+          <div>
+            <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
+              <Users className="w-3.5 h-3.5" /> Người tham dự
+            </label>
+            <input
+              value={attendees}
+              onChange={e => setAttendees(e.target.value)}
+              placeholder="Tên hoặc email, cách nhau bằng dấu phẩy..."
+              className="h-9 w-full rounded-md border border-gray-200 px-3 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-orange-400"
             />
+          </div>
 
-            {/* MEETING LINK */}
-            <FormInput
-              label="Link họp"
-              value={meetingInfo.meeting_link}
-              onChange={(v) => updateMeetingInfo("meeting_link", v)}
-              icon={<Link2 className="w-4 h-4" />}
+          <div>
+            <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
+              <Link2 className="w-3.5 h-3.5" /> Link họp
+            </label>
+            <input
+              value={meetingLink}
+              onChange={e => setMeetingLink(e.target.value)}
+              placeholder="https://meet.google.com/..."
+              className="h-9 w-full rounded-md border border-gray-200 px-3 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-orange-400"
             />
-
-            <div className="flex justify-end">
-              <Button onClick={handleSaveMeetingDetail}>
-                Lưu chi tiết cuộc họp
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+          </div>
+        </div>
+      </FormSection>
+    </StandardFormLayout>
   );
 }

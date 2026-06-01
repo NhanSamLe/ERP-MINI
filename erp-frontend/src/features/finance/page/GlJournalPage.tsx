@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom"; // ✅ thêm
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import {
   BookOpen,
   RefreshCcw,
@@ -49,7 +50,7 @@ const GlJournalPage: React.FC = () => {
       setFilteredData(rows);
     } catch (e: any) {
       console.error(e);
-      alert(e.message || "Lỗi tải danh sách nhật ký");
+      toast.error(e.message || "Lỗi tải danh sách nhật ký");
     } finally {
       setLoading(false);
     }
@@ -69,7 +70,7 @@ const GlJournalPage: React.FC = () => {
   }, [searchTerm, data]);
 
   const handleExport = () => {
-    alert("Xuất dữ liệu Excel/PDF");
+    toast.info("Chức năng xuất file đang được phát triển.");
   };
 
   return (

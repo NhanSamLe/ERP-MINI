@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { toast } from "react-toastify";
 import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 import {
   fetchPayrollRuns,
@@ -253,7 +254,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
   const handleCreateRun = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createPeriodId || !runNo.trim()) {
-      alert("Vui lòng chọn kỳ lương và nhập mã bảng lương");
+      toast.error("Vui lòng chọn kỳ lương và nhập mã bảng lương");
       return;
     }
     try {
@@ -299,13 +300,13 @@ console.log("attendance keys:", Object.keys(res.data || {}));
     try {
       await apiClient.post(`/hrm/payroll-runs/${currentRun.id}/calculate`, {});
       await dispatch(fetchPayrollRunDetail(currentRun.id!) as any).unwrap();
-      alert("Đã tính lương xong!");
+      toast.success("Đã tính lương xong!");
       // refresh evidence nếu đang mở
       if (showEvidenceModal && evidenceEmployeeId) {
         await openEvidence(evidenceEmployeeId);
       }
     } catch (e: any) {
-      alert(e?.response?.data?.message || "Tính lương lỗi");
+      toast.error(e?.response?.data?.message || "Tính lương lỗi");
     }
   };
 
@@ -325,7 +326,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
     e.preventDefault();
     if (!currentRun) return;
     if (!lineEmployeeId || !lineAmount) {
-      alert("Vui lòng nhập nhân viên và số tiền");
+      toast.error("Vui lòng nhập nhân viên và số tiền");
       return;
     }
     const employee_id = Number(lineEmployeeId);

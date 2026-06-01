@@ -119,7 +119,7 @@ export default function CreateTransferModal({
 
   const handleSelectProduct = async (p: Product) => {
     if (lineItems.some((l) => l.product_id === p.id)) {
-      alert("Sản phẩm đã có trong danh sách!");
+      toast.warn("Sản phẩm đã có trong danh sách!");
       setSearchTerm("");
       return;
     }
@@ -476,3 +476,4 @@ export default function CreateTransferModal({
     </div>
   );
 }
+

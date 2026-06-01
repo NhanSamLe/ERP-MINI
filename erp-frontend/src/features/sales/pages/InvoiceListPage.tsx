@@ -10,7 +10,8 @@ import { ArInvoiceDto } from "../dto/invoice.dto";
 import { StatusBadge } from "@/components/common";
 import { exportExcelReport } from "@/utils/excel/exportExcelReport";
 import CreateInvoiceModal from "../components/ar.components.ts/InvoiceCreateModal";
-import { FileText, Plus, Download, Search } from "lucide-react";
+import { FileText, Plus, Download, Search, Eye } from "lucide-react";
+import { toast } from "react-toastify";
 
 export default function InvoiceListPage() {
   const dispatch = useAppDispatch();
@@ -85,7 +86,7 @@ export default function InvoiceListPage() {
         footer: { creator: user?.full_name || "Admin" },
       });
     } catch {
-      alert("Lỗi xuất file excel");
+      toast.error("Lỗi xuất file Excel");
     }
   };
 
@@ -223,9 +224,10 @@ export default function InvoiceListPage() {
                       <td className="px-5 py-3.5 text-center">
                         <button
                           onClick={() => navigate(`/invoices/${inv.id}`)}
-                          className="inline-flex items-center gap-1 h-7 px-2.5 text-xs font-medium text-gray-600 border border-gray-200 rounded-md hover:bg-orange-50 hover:border-orange-300 hover:text-orange-600 transition-colors"
+                          title="Xem chi tiết"
+                          className="p-1.5 rounded text-gray-400 hover:text-orange-600 hover:bg-orange-50 transition-colors"
                         >
-                          Xem
+                          <Eye className="w-3.5 h-3.5" />
                         </button>
                       </td>
                     </tr>

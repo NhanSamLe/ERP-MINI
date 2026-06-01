@@ -103,6 +103,15 @@ export const sendEmailForActivity = (activityId: number) =>
     activity_id: activityId,
 });
 
+export const sendEmailWithAttachments = (activityId: number, files: File[]) => {
+  const form = new FormData();
+  form.append("activity_id", String(activityId));
+  files.forEach(f => form.append("attachments", f));
+  return axiosClient.post("/crm/activities/email/send-with-attachments", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+};
+
 export const getSalesDashboard = () => {
   return axiosClient.get("/crm/dashboard/sales");
 };

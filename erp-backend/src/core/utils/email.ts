@@ -48,19 +48,35 @@ export function resetPasswordTemplate(username: string, resetLink: string) {
 }
 
 
+export interface EmailAttachment {
+  filename: string;
+  content: Buffer;
+  contentType: string;
+}
+
 export async function sendEmail2(
   to: string,
   subject: string,
   text: string,
-  html?: string
+  html?: string,
+  cc?: string | null,
+  bcc?: string | null,
+  attachments?: EmailAttachment[]
 ) {
   try {
     const info = await transporter.sendMail({
       from: `"ERP System" <${env.mail.user}>`,
       to,
+      ...(cc ? { cc } : {}),
+      ...(bcc ? { bcc } : {}),
       subject,
       text,
       html: html || text,
+      attachments: attachments?.map(a => ({
+        filename: a.filename,
+        content: a.content,
+        contentType: a.contentType,
+      })),
     });
 
     console.log("📧 Email sent:", info.messageId);

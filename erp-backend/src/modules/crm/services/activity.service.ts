@@ -27,11 +27,10 @@ import {
   UpdateEmailDetailDto,
   UpdateMeetingDetailDto,
   UpdateTaskDetailDto,
-  TimelineEventDto,
   ReassignActivityDto,
 } from "../dto/activity.dto";
 
-import { sendEmail2 } from "../../../core/utils/email";
+import { sendEmail2, EmailAttachment } from "../../../core/utils/email";
 import { addTimeline } from "./timeLine.service";
 import { markLeadContacted } from "./lead.service";
 import { calculateLeadScore } from "./scoringRule.service";
@@ -42,9 +41,6 @@ function requireField(v: any, field: string) {
   if (!v && v !== 0) throw new Error(`Thiếu: ${field}`);
 }
 
-function requireDateOrder(start: Date, end: Date) {
-  if (start >= end) throw new Error("start_at phải nhỏ hơn end_at");
-}
 
 // log event
 async function logTimeline(
@@ -336,10 +332,6 @@ export async function createEmailActivity(dto: CreateEmailActivityDto) {
     status: status1,
     done: isDone
   });
-  let messageId = null;
-  let errorMsg = null;
-
-
   await EmailActivity.create({
     activity_id: activity.id,
     direction: dto.direction,
@@ -354,12 +346,23 @@ export async function createEmailActivity(dto: CreateEmailActivityDto) {
   return activity;
 }
 
-export async function sendEmailForActivity(dto: { activity_id: number }) {
+export async function sendEmailForActivity(
+  dto: { activity_id: number },
+  attachments?: EmailAttachment[]
+) {
   const email = await EmailActivity.findOne({ where: { activity_id: dto.activity_id } });
   if (!email) throw new Error("Email detail không tồn tại");
 
   try {
-    const info = await sendEmail2(email.email_to!, email.subject || "", email.text_body || "");
+    const info = await sendEmail2(
+      email.email_to!,
+      email.subject || "",
+      email.text_body || "",
+      email.html_body || undefined,
+      email.cc || null,
+      email.bcc || null,
+      attachments
+    );
     await email.update({ status: "sent", message_id: info.messageId });
 
     await Activity.update(
@@ -384,6 +387,7 @@ export async function updateEmailDetail(dto: UpdateEmailDetailDto) {
 
   await detail.update({
     subject: dto.subject ?? detail.subject ?? null,
+    email_to: (dto as any).email_to ?? detail.email_to ?? null,
     cc: dto.cc ?? detail.cc ?? null,
     bcc: dto.bcc ?? detail.bcc ?? null,
     html_body: dto.html_body ?? detail.html_body ?? null,
@@ -653,8 +657,8 @@ export async function triggerTaskReminder() {
     include: [{ model: Activity, as: "activity" }],
   });
 
-  for (const t of tasks) {
-
+  for (const _t of tasks) {
+    // reminder logic placeholder
   }
 }
 export async function autoTaskOverdueActivity(dto: { task_activity_id: number }) {

@@ -147,7 +147,7 @@ export default function EditAdjustmentModal({
 
   const handleSelectProduct = (p: Product) => {
     if (lineItems.some((l) => l.product_id === p.id)) {
-      alert("Sản phẩm đã có trong danh sách!");
+      toast.warn("Sản phẩm đã có trong danh sách!");
       setSearchTerm("");
       return;
     }
@@ -421,3 +421,4 @@ export default function EditAdjustmentModal({
     </div>
   );
 }
+

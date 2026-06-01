@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useRef } from "react";
 import { Button } from "../../../components/ui/Button";
 import { Input } from "../../../components/ui/input";
 import { Textarea } from "../../../components/ui/textarea";
@@ -154,7 +154,7 @@ export default function EditPurchaseOrderPage() {
 
   const handleSelectProduct = async (product: Product) => {
     if (lines.some((l) => l.product_id === product.id)) {
-      alert("Sản phẩm đã có trong danh sách!");
+      toast.warn("Sản phẩm đã có trong danh sách!");
       return;
     }
 
@@ -762,3 +762,4 @@ export default function EditPurchaseOrderPage() {
     </div>
   );
 }
+

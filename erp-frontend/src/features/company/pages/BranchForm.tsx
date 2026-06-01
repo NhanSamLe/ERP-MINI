@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "react-toastify";
 import {
   fetchBranch,
   createBranch,
@@ -171,7 +172,7 @@ export default function BranchForm({ mode }: { mode: "create" | "edit" }) {
 
   const save = async () => {
     if (!form.code?.trim() || !form.name?.trim()) {
-      alert("Code & Name are required");
+      toast.error("Mã và tên chi nhánh là bắt buộc");
       return;
     }
     if (mode === "create") {

@@ -39,7 +39,21 @@ export interface ArInvoiceDto {
   id: number;
 
   branch_id: number;
-  branch?: { id: number; name: string };
+  branch?: {
+    id: number;
+    name: string;
+    address?: string;
+    tax_code?: string;
+    phone?: string;
+    company?: {
+      id: number;
+      name: string;
+      tax_code?: string;
+      address?: string;
+      phone?: string;
+      email?: string;
+    };
+  };
 
   invoice_no: string;
   invoice_date: string;

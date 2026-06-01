@@ -420,6 +420,34 @@ export const sendEmailForActivity = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * 5b. SEND EMAIL WITH ATTACHMENTS (multipart/form-data)
+ */
+export const sendEmailWithAttachments = async (req: Request, res: Response) => {
+  try {
+    const { activity_id } = req.body;
+    const files = (req.files as Express.Multer.File[]) || [];
+
+    const attachments = files.map(f => ({
+      filename: f.originalname,
+      content: f.buffer,
+      contentType: f.mimetype,
+    }));
+
+    const email = await activityService.sendEmailForActivity(
+      { activity_id: Number(activity_id) },
+      attachments.length > 0 ? attachments : undefined
+    );
+
+    return res.json({
+      message: "Gửi email thành công",
+      data: email,
+    });
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message });
+  }
+};
+
 export async function getTimeline(req: Request, res: Response) {
   try {
     const type = req.params.type as "lead" | "opportunity" | "customer";

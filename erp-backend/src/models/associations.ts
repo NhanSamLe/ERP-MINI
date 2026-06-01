@@ -293,6 +293,7 @@ export function applyAssociations() {
     foreignKey: "tax_rate_id",
     as: "taxRate",
   });
+  SaleOrderLine.belongsTo(Uom, { foreignKey: "uom_id", as: "uom" });
   TaxRate.hasMany(SaleOrderLine, {
     foreignKey: "tax_rate_id",
     as: "saleOrderLines",

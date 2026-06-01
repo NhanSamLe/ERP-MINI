@@ -137,6 +137,7 @@ router.post("/activities/email/cancel", authMiddleware([]), activityController.c
 
 router.post("/activities/meeting/complete", authMiddleware([]), activityController.completeMeeting);
 router.post("/activities/email/send", authMiddleware([]), activityController.sendEmailForActivity);
+router.post("/activities/email/send-with-attachments", authMiddleware([]), upload.array("attachments", 10), activityController.sendEmailWithAttachments);
 
 router.get("/dashboard/sales", authMiddleware([]), getSalesDashboard);
 

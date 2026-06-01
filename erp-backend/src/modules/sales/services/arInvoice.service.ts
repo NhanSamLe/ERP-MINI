@@ -8,6 +8,7 @@ import {
   Partner,
   User,
   Branch,
+  Company,
   SaleOrder,
   SaleOrderLine,
   PaymentTerm,
@@ -85,7 +86,10 @@ export const arInvoiceService = {
         },
         { model: Currency, as: "currency", attributes: ["id", "code", "symbol", "name"] },
         { model: Partner, as: "customer", attributes: ["id", "name", "phone", "email", "tax_code", "address"] },
-        { model: Branch, as: "branch", attributes: ["id", "name"] },
+        {
+          model: Branch, as: "branch", attributes: ["id", "name", "address", "tax_code", "phone"],
+          include: [{ model: Company, as: "company", attributes: ["id", "name", "tax_code", "address", "phone", "email"] }],
+        },
         { model: User, as: "creator", attributes: ["id", "username", "full_name"] },
         { model: User, as: "approver", attributes: ["id", "username", "full_name"] },
         {
@@ -123,7 +127,10 @@ export const arInvoiceService = {
         },
         { model: Currency, as: "currency", attributes: ["id", "code", "symbol", "name"] },
         { model: Partner, as: "customer", attributes: ["id", "name", "phone", "email", "tax_code", "address"] },
-        { model: Branch, as: "branch", attributes: ["id", "name"] },
+        {
+          model: Branch, as: "branch", attributes: ["id", "name", "address", "tax_code", "phone"],
+          include: [{ model: Company, as: "company", attributes: ["id", "name", "tax_code", "address", "phone", "email"] }],
+        },
         { model: User, as: "creator", attributes: ["id", "username", "full_name"] },
         { model: User, as: "approver", attributes: ["id", "username", "full_name"] },
         {

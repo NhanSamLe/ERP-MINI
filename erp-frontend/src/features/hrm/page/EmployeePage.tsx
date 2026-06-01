@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast } from "react-toastify";
 import { EmployeeDTO, EmployeeFormPayload } from "../dto/employee.dto";
 
 import {
@@ -89,7 +90,7 @@ const [userForEmployee, setUserForEmployee] = useState<EmployeeDTO | null>(null)
       });
     }
   } catch (err: any) {
-    alert(err?.response?.data?.message || "Có lỗi xảy ra");
+    toast.error(err?.response?.data?.message || "Có lỗi xảy ra");
   }
 };
 
@@ -103,7 +104,7 @@ const [userForEmployee, setUserForEmployee] = useState<EmployeeDTO | null>(null)
       await deleteEmployee(emp.id);
       await load();
     } catch (err: any) {
-      alert(err?.response?.data?.message || "Không thể xóa");
+      toast.error(err?.response?.data?.message || "Không thể xóa");
     }
   };
 

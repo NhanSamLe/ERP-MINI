@@ -18,6 +18,11 @@ export interface SaleOrderLineDto {
 
   quantity?: number;
   uom_id?: number | null;
+  uom?: {
+    id: number;
+    name: string;
+    code: string;
+  } | null;
   unit_price?: number;
 
   tax_rate_id?: number | null;
@@ -58,6 +63,8 @@ export interface SaleOrderDto {
 
   approval_status: ApprovalStatus;
   status: SaleOrderStatus;
+  delivery_status?: "pending" | "partial" | "delivered";
+  invoice_status?: "not_invoiced" | "partial" | "invoiced";
 
   created_by: number;
 
