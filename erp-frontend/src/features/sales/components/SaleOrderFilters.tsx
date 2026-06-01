@@ -8,12 +8,12 @@ interface Props {
 }
 
 const statusOptions = [
-  { value: "",                 label: "All Status" },
-  { value: "draft",            label: "Draft" },
-  { value: "waiting_approval", label: "Waiting Approval" },
-  { value: "approved",         label: "Approved" },
-  { value: "confirmed",        label: "Confirmed" },
-  { value: "rejected",         label: "Rejected" },
+  { value: "",                 label: "Tất cả" },
+  { value: "draft",            label: "Nháp" },
+  { value: "waiting_approval", label: "Chờ duyệt" },
+  { value: "approved",         label: "Đã duyệt" },
+  { value: "confirmed",        label: "Đã xác nhận" },
+  { value: "rejected",         label: "Từ chối" },
 ];
 
 export default function SaleOrderFilters({ search, status, onSearchChange, onStatusChange }: Props) {
@@ -24,7 +24,7 @@ export default function SaleOrderFilters({ search, status, onSearchChange, onSta
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
         <input
           value={search}
-          placeholder="Search order # or customer..."
+          placeholder="Tìm số đơn, khách hàng..."
           onChange={(e) => onSearchChange(e.target.value)}
           className="w-full h-8 pl-8 pr-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 placeholder:text-gray-400"
         />

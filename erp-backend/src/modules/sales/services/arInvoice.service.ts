@@ -11,6 +11,8 @@ import {
   SaleOrder,
   SaleOrderLine,
   PaymentTerm,
+  Currency,
+  Uom,
   sequelize
 } from "../../../models";
 import { ArInvoiceStatus, ApprovalStatus } from "../../../core/types/enum";
@@ -71,31 +73,21 @@ export const arInvoiceService = {
       include: [
         {
           model: SaleOrder,
-          as: "order", // << alias đúng
+          as: "order",
           attributes: ["id", "order_no", "order_date"],
           include: [
             {
               model: Partner,
               as: "customer",
               attributes: ["id", "name", "phone", "email"],
-            }
-          ]
+            },
+          ],
         },
-        {
-          model: Branch,
-          as: "branch",
-          attributes: ["id", "name"],
-        },
-        {
-          model: User,
-          as: "creator",
-          attributes: ["id", "username", "full_name"],
-        },
-        {
-          model: User,
-          as: "approver",
-          attributes: ["id", "username", "full_name"],
-        },
+        { model: Currency, as: "currency", attributes: ["id", "code", "symbol", "name"] },
+        { model: Partner, as: "customer", attributes: ["id", "name", "phone", "email", "tax_code", "address"] },
+        { model: Branch, as: "branch", attributes: ["id", "name"] },
+        { model: User, as: "creator", attributes: ["id", "username", "full_name"] },
+        { model: User, as: "approver", attributes: ["id", "username", "full_name"] },
         {
           model: ArInvoiceLine,
           as: "lines",
@@ -103,20 +95,13 @@ export const arInvoiceService = {
             {
               model: Product,
               as: "product",
-              attributes: ["id", "name", "image_url", "sale_price", "tax_rate_id", "uom", "sku"],
+              attributes: ["id", "name", "image_url", "sale_price", "tax_rate_id", "sku"],
               include: [
-                {
-                  model: TaxRate,
-                  as: "taxRate",
-                  attributes: ["id", "name", "rate"],
-                },
+                { model: TaxRate, as: "taxRate", attributes: ["id", "name", "rate"] },
+                { model: Uom, as: "uom", attributes: ["id", "name", "code"] },
               ],
             },
-            {
-              model: TaxRate,
-              as: "taxRate",
-              attributes: ["id", "name", "rate"],
-            },
+            { model: TaxRate, as: "taxRate", attributes: ["id", "name", "rate"] },
           ],
         },
       ],
@@ -130,31 +115,17 @@ export const arInvoiceService = {
       include: [
         {
           model: SaleOrder,
-          as: "order", // << alias đúng
+          as: "order",
           attributes: ["id", "order_no", "order_date"],
           include: [
-            {
-              model: Partner,
-              as: "customer",
-              attributes: ["id", "name", "phone", "email"],
-            }
-          ]
+            { model: Partner, as: "customer", attributes: ["id", "name", "phone", "email"] },
+          ],
         },
-        {
-          model: Branch,
-          as: "branch",
-          attributes: ["id", "name"],
-        },
-        {
-          model: User,
-          as: "creator",
-          attributes: ["id", "username", "full_name"],
-        },
-        {
-          model: User,
-          as: "approver",
-          attributes: ["id", "username", "full_name"],
-        },
+        { model: Currency, as: "currency", attributes: ["id", "code", "symbol", "name"] },
+        { model: Partner, as: "customer", attributes: ["id", "name", "phone", "email", "tax_code", "address"] },
+        { model: Branch, as: "branch", attributes: ["id", "name"] },
+        { model: User, as: "creator", attributes: ["id", "username", "full_name"] },
+        { model: User, as: "approver", attributes: ["id", "username", "full_name"] },
         {
           model: ArInvoiceLine,
           as: "lines",
@@ -162,20 +133,13 @@ export const arInvoiceService = {
             {
               model: Product,
               as: "product",
-              attributes: ["id", "name", "image_url", "sale_price", "tax_rate_id"],
+              attributes: ["id", "name", "image_url", "sale_price", "tax_rate_id", "sku"],
               include: [
-                {
-                  model: TaxRate,
-                  as: "taxRate",   // ✅ alias đúng
-                  attributes: ["id", "name", "rate"],
-                },
+                { model: TaxRate, as: "taxRate", attributes: ["id", "name", "rate"] },
+                { model: Uom, as: "uom", attributes: ["id", "name", "code"] },
               ],
             },
-            {
-              model: TaxRate,
-              as: "taxRate",
-              attributes: ["id", "name", "rate"],
-            },
+            { model: TaxRate, as: "taxRate", attributes: ["id", "name", "rate"] },
           ],
         },
       ],

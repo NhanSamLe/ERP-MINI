@@ -1,23 +1,36 @@
 import * as model from "../../../models";
 import { Opportunity } from "../../../models";
 import { Op } from "sequelize";
-import { ActivityType, ActivityRelatedType , OpportunityStage} from "../../../core/types/enum";
+import { ActivityType, ActivityRelatedType , LeadStage, OpportunityStage} from "../../../core/types/enum";
 import { Lead } from "../../../models";
 import {canManage} from "./lead.service";
 import { addTimeline } from "./timeLine.service";
 
-export async function getAllOpportunities() {
+export async function getAllOpportunities(user: any) {
+  const where: any = { is_deleted: false };
+  if (user.role === "ADMIN") {
+    // ADMIN: xem tất cả mọi branch
+  } else if (user.role === "SALESMANAGER") {
+    // SALESMANAGER: xem tất cả trong branch của mình
+    where.branch_id = user.branch_id;
+  } else {
+    // SALES: chỉ xem deal của mình
+    where.branch_id = user.branch_id;
+    where.owner_id = user.id;
+  }
+
   return Opportunity.findAll({
-    where: { is_deleted: false },
+    where,
     include: [
       { model: model.User, as: "owner", attributes: ["id", "full_name", "email", "phone"] },
       { model: model.Lead, as: "lead" },
       { model: model.Partner, as: "customer" },
+      { model: model.Currency, as: "currency", attributes: ["id", "code", "symbol", "name"] },
     ],
     order: [["created_at", "DESC"]],
   });
 }
-export async function getOpportunityById(oppId: number) {
+export async function getOpportunityById(oppId: number, user?: any) {
   const opp = await Opportunity.findOne({
     where: { id: oppId, is_deleted: false },
     include: [
@@ -28,10 +41,17 @@ export async function getOpportunityById(oppId: number) {
       },
       { model: model.Lead, as: "lead" },
       { model: model.Partner, as: "customer" },
+      { model: model.Currency, as: "currency", attributes: ["id", "code", "symbol", "name"] },
     ],
   });
 
   if (!opp) throw new Error("Opportunity không tồn tại");
+  if (user) {
+    if (user.role !== "ADMIN" && opp.branch_id !== user.branch_id)
+      throw new Error("Access denied: cross-branch");
+    if (user.role === "SALES" && opp.owner_id !== user.id)
+      throw new Error("Access denied: bạn không quản lý deal này");
+  }
   return opp;
 }
 
@@ -52,6 +72,14 @@ export async function createOpportunity(data: {
   currency_id?: number | null;
   exchange_rate?: number;
 }) {
+  if (data.lead_id) {
+    const lead = await Lead.findByPk(data.lead_id);
+    if (!lead || lead.is_deleted) throw new Error("Lead không tồn tại");
+    if (lead.stage !== LeadStage.NEW) {
+      throw new Error("Lead đã được chuyển đổi hoặc không còn ở trạng thái New. Hãy tạo Opportunity từ Customer.");
+    }
+  }
+
   // Use owner's branch_id instead of lead's branch_id
   const branchId = data.owner_branch_id ?? null;
 
@@ -107,12 +135,11 @@ export async function updateOpportunity(
     expected_value: payload.expected_value ?? opp.expected_value ?? null,
     probability: payload.probability ?? opp.probability ?? null,
     closing_date: payload.closing_date ?? opp.closing_date ?? null,
-    next_action: payload.next_action !== undefined ? payload.next_action : opp.next_action,
-    next_action_date: payload.next_action_date !== undefined ? payload.next_action_date : opp.next_action_date,
-    actual_close_date: payload.actual_close_date !== undefined ? payload.actual_close_date : opp.actual_close_date,
-    currency_id: payload.currency_id !== undefined ? payload.currency_id : opp.currency_id,
-    exchange_rate: payload.exchange_rate !== undefined ? payload.exchange_rate : opp.exchange_rate,
-    notes: payload.notes !== undefined ? payload.notes : (opp as any).notes,
+    next_action: payload.next_action !== undefined ? payload.next_action : (opp.next_action ?? null),
+    next_action_date: payload.next_action_date !== undefined ? payload.next_action_date : (opp.next_action_date ?? null),
+    actual_close_date: payload.actual_close_date !== undefined ? payload.actual_close_date : (opp.actual_close_date ?? null),
+    currency_id: payload.currency_id !== undefined ? payload.currency_id : (opp.currency_id ?? null),
+    exchange_rate: payload.exchange_rate !== undefined ? payload.exchange_rate : (opp.exchange_rate ?? 1),
   });
    await addTimeline({
     related_type: "opportunity",
@@ -144,7 +171,7 @@ export async function changePipelineStage(oppId: number, newStageId: number, use
   if (!stage) throw new Error("Stage không tồn tại");
 
   // Determine new stage value based on pipeline stage properties
-  let newStageValue: string;
+  let newStageValue: "prospecting" | "negotiation" | "won" | "lost";
   if (stage.is_won) {
     newStageValue = "won";
   } else if (stage.is_lost) {
@@ -302,8 +329,12 @@ export async function markLost(
 export async function reassignOpportunity(
   oppId: number,
   newUserId: number,
-  managerId: number
+  managerId: number,
+  managerRole: string
 ) {
+  if (!["SALESMANAGER", "ADMIN"].includes(managerRole))
+    throw new Error("Chỉ Sales Manager hoặc Admin mới có thể chuyển đổi opportunity");
+
   const opp = await Opportunity.findByPk(oppId);
   if (!opp) throw new Error("Opportunity không tồn tại");
 
@@ -316,7 +347,7 @@ export async function reassignOpportunity(
     related_id: oppId,
     event_type: "opportunity_reassigned",
     title: "Opportunity reassigned",
-    description: `Từ User ${old} → User ${newUserId}`,
+    description: `Từ User ${old} → User ${newUserId} (bởi Manager ${managerId})`,
     created_by: managerId,
   });
 
@@ -346,6 +377,7 @@ export async function getMyOpportunities(
       },
       { model: model.Lead, as: "lead" },
       { model: model.Partner, as: "customer" },
+      { model: model.Currency, as: "currency", attributes: ["id", "code", "symbol", "name"] },
     ],
     order: [["updated_at", "DESC"]],
   });
@@ -359,7 +391,10 @@ export async function getPipelineSummary() {
     attributes: [
       "stage",
       [model.sequelize.fn("COUNT", model.sequelize.col("id")), "count"],
-      [model.sequelize.fn("SUM", model.sequelize.col("expected_value")), "total_value"],
+      [
+        model.sequelize.literal("SUM(COALESCE(expected_value, 0) * COALESCE(exchange_rate, 1))"),
+        "total_value",
+      ],
     ],
     group: ["stage"],
     raw: true,
@@ -422,6 +457,7 @@ export async function getClosingOpportunitiesThisMonth(userId?: number) {
       },
       { model: model.Lead, as: "lead" },
       { model: model.Partner, as: "customer" },
+      { model: model.Currency, as: "currency", attributes: ["id", "code", "symbol", "name"] },
     ],
     order: [["closing_date", "ASC"]],
   });
@@ -445,6 +481,7 @@ export async function getUnclosedOpportunities(userId?: number) {
       },
       { model: model.Lead, as: "lead" },
       { model: model.Partner, as: "customer" },
+      { model: model.Currency, as: "currency", attributes: ["id", "code", "symbol", "name"] },
     ],
     order: [["updated_at", "DESC"]],
   });
@@ -459,7 +496,8 @@ export async function getOpportunitiesByLead(leadId: number) {
         as: "owner",
         attributes: ["id", "full_name", "email", "phone"],
       },
-      { model: model.Partner, as: "customer" }
+      { model: model.Partner, as: "customer" },
+      { model: model.Currency, as: "currency", attributes: ["id", "code", "symbol", "name"] }
     ],
     order: [["created_at", "DESC"]],
   });

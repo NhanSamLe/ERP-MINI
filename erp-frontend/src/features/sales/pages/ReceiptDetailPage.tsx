@@ -9,715 +9,591 @@ import {
   allocateReceipt,
   fetchUnpaidInvoices,
 } from "../store/receipt.slice";
-import { formatVND } from "@/utils/currency.helper";
-import { ArrowLeft, Check, X, AlertTriangle, FileText, Wallet } from "lucide-react";
+import { ActionConfirmModal, StatusBadge } from "@/components/common";
+import { StandardFormLayout, FormSection } from "@/components/layout";
+import {
+  Wallet, User, CreditCard, Phone,
+  FileText, AlertTriangle, CheckCircle2, Clock, UserCheck, Loader2,
+  X, Check,
+} from "lucide-react";
+
+const fmtDate = (d?: string | null) =>
+  d ? new Date(d).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
+const fmtTime = (d?: string | null) =>
+  d ? new Date(d).toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
+
+const Field = ({ label, value }: { label: string; value?: string | null }) => (
+  <div>
+    <p className="text-xs text-gray-500 mb-0.5">{label}</p>
+    <p className="text-sm font-medium text-gray-800">{value || "—"}</p>
+  </div>
+);
 
 export default function ReceiptDetailPage() {
   const { id } = useParams();
   const receiptId = Number(id);
   const navigate = useNavigate();
-
   const dispatch = useAppDispatch();
-  const { selected: receipt, loading, unpaidInvoices } = useAppSelector(
-    (s) => s.receipt
-  );
+
+  const { selected: receipt, loading, unpaidInvoices } = useAppSelector((s) => s.receipt);
   const { user } = useAppSelector((s) => s.auth);
 
+  const [activeModal, setActiveModal] = useState<"submit" | "approve" | "reject" | null>(null);
   const [showAllocPanel, setShowAllocPanel] = useState(false);
-  const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [alloc, setAlloc] = useState<Record<number, number>>({});
-  const [rejectReason, setRejectReason] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
-    if (receiptId) {
-      dispatch(fetchReceiptDetail(receiptId));
-    }
+    if (receiptId) dispatch(fetchReceiptDetail(receiptId));
   }, [dispatch, receiptId]);
 
   useEffect(() => {
     if (message) {
-      const timer = setTimeout(() => setMessage(null), 3000);
-      return () => clearTimeout(timer);
+      const t = setTimeout(() => setMessage(null), 3000);
+      return () => clearTimeout(t);
     }
   }, [message]);
 
   if (loading || !receipt) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600 text-lg animate-pulse">Loading receipt details...</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-gray-400">
+          <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+          <p className="text-sm font-medium">Đang tải phiếu thu...</p>
         </div>
       </div>
     );
   }
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
-        <div className="text-center bg-white p-8 rounded-lg shadow-sm border">
-          <AlertTriangle size={48} className="mx-auto text-red-500 mb-4" />
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Access Denied</h2>
-          <p className="text-gray-600">You do not have permission to view this page.</p>
-        </div>
-      </div>
-    );
-  }
+  if (!user) return <div className="p-10 text-center text-gray-500">Không có quyền truy cập</div>;
+
+  /* ─── derived ─── */
+  const currencySymbol = receipt.currency?.symbol || receipt.currency?.code || "VND";
+  const currencyCode = receipt.currency?.code || "VND";
+  const exchangeRate = Number(receipt.exchange_rate || 1);
+  const fmtMoney = (v: number | null | undefined) =>
+    `${Number(v || 0).toLocaleString("vi-VN", { maximumFractionDigits: 2 })} ${currencySymbol}`;
 
   const isAccountant = user?.role?.code === "ACCOUNT";
   const isChiefAcc = user?.role?.code === "CHACC";
-
-  const isDraft = receipt.status === "draft";
+  const isOwner = receipt.created_by === user.id;
+  const isRejected = receipt.approval_status === "rejected";
   const isPosted = receipt.status === "posted";
   const isApproved = receipt.approval_status === "approved";
-  const isRejected = receipt.approval_status === "rejected";
-  const isWaitingApproval = receipt.approval_status === "waiting_approval";
+  const isWaiting = receipt.approval_status === "waiting_approval";
+  const isDraft = receipt.approval_status === "draft";
 
-  const handleSubmit = async () => {
-    try {
-      setActionLoading(true);
-      await dispatch(submitReceipt(receiptId)).unwrap();
-      setMessage({ type: 'success', text: 'Receipt submitted successfully' });
-      dispatch(fetchReceiptDetail(receiptId));
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to submit receipt';
-      setMessage({ type: 'error', text: errorMessage });
-    } finally {
-      setActionLoading(false);
-    }
-  };
+  const totalAllocated = receipt.allocations
+    ? receipt.allocations.reduce((s, a) => s + (a.applied_amount ?? 0), 0)
+    : 0;
+  const remainingAmount = Math.max(0, receipt.amount - totalAllocated);
+  const totalAllocInput = Object.values(alloc).reduce((s, v) => s + v, 0);
+  const isFullyAllocated = receipt.allocation_status === "fully_allocated";
+  const isUnallocated = receipt.allocation_status === "unallocated";
 
-  const handleApprove = async () => {
-    try {
-      setActionLoading(true);
-      await dispatch(approveReceipt(receiptId)).unwrap();
-      setMessage({ type: 'success', text: 'Receipt approved successfully' });
-      dispatch(fetchReceiptDetail(receiptId));
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to approve receipt';
-      setMessage({ type: 'error', text: errorMessage });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleReject = async () => {
-    if (!rejectReason.trim()) {
-      setMessage({ type: 'error', text: 'Please enter rejection reason' });
-      return;
-    }
-    try {
-      setActionLoading(true);
-      await dispatch(rejectReceipt({ id: receiptId, reason: rejectReason })).unwrap();
-      setMessage({ type: 'success', text: 'Receipt rejected successfully' });
-      setRejectModalOpen(false);
-      setRejectReason("");
-      dispatch(fetchReceiptDetail(receiptId));
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to reject receipt';
-      setMessage({ type: 'error', text: errorMessage });
-    } finally {
-      setActionLoading(false);
-    }
-  };
+  const canSubmit = isDraft && ((isAccountant && isOwner) || isChiefAcc);
+  const canApprove = isWaiting && isChiefAcc;
+  const canReject = canApprove;
+  const canAllocate = isAccountant && isPosted && isApproved && !isFullyAllocated && remainingAmount > 0;
 
   const handleAllocate = () => {
-    if (isFullyAllocated) return;
     dispatch(fetchUnpaidInvoices(receipt.customer_id));
     setShowAllocPanel(true);
     setAlloc({});
   };
 
   const handleAutoAllocate = () => {
-    // Basic auto-allocate logic: distribute `remainingAmount` to oldest invoices first
-    // This is a client-side helper for the user
     let remaining = remainingAmount;
     const newAlloc: Record<number, number> = {};
-
-    // Assuming unpaidInvoices are sorted by date or ID (typically helpful to sort by due date)
-    // Here we just iterate as is
     for (const inv of unpaidInvoices) {
       if (remaining <= 0) break;
-      const amountNeeded = inv.unpaid || inv.total_after_tax;
-      const amountToApply = Math.min(remaining, amountNeeded);
-
-      if (amountToApply > 0) {
-        newAlloc[inv.invoice_id] = amountToApply;
-        remaining -= amountToApply;
-      }
+      const needed = inv.unpaid || inv.total_after_tax;
+      const apply = Math.min(remaining, needed);
+      if (apply > 0) { newAlloc[inv.invoice_id] = apply; remaining -= apply; }
     }
     setAlloc(newAlloc);
   };
 
   const handleApplyAllocation = async () => {
     const allocations = Object.entries(alloc)
-      .filter(([, val]) => val > 0)
-      .map(([id, val]) => ({
-        invoice_id: Number(id),
-        applied_amount: val,
-      }));
+      .filter(([, v]) => v > 0)
+      .map(([id, v]) => ({ invoice_id: Number(id), applied_amount: v }));
 
     if (allocations.length === 0) {
-      setMessage({ type: 'error', text: 'Please allocate at least one invoice' });
+      setMessage({ type: "error", text: "Vui lòng phân bổ ít nhất một hóa đơn" });
       return;
     }
 
-    // ✅ Validate each allocation
     for (const a of allocations) {
-      const invoice = unpaidInvoices?.find((inv) => inv.invoice_id === a.invoice_id);
-      if (!invoice) {
-        setMessage({ type: "error", text: "Invalid invoice selected" });
-        return;
-      }
-
-      const unpaid = invoice.unpaid ?? invoice.total_after_tax;
-
+      const inv = unpaidInvoices?.find((i) => i.invoice_id === a.invoice_id);
+      if (!inv) { setMessage({ type: "error", text: "Hóa đơn không hợp lệ" }); return; }
+      const unpaid = inv.unpaid ?? inv.total_after_tax;
       if (a.applied_amount > unpaid) {
-        setMessage({
-          type: "error",
-          text: `Allocation for invoice ${invoice.invoice_no} exceeds unpaid amount (${formatVND(unpaid)})`,
-        });
+        setMessage({ type: "error", text: `Phân bổ cho ${inv.invoice_no} vượt quá số nợ (${fmtMoney(unpaid)})` });
         return;
       }
-
-      if (a.applied_amount <= 0) {
-        setMessage({
-          type: "error",
-          text: `Allocation amount must be greater than 0`,
-        });
-        return;
-      }
+      if (a.applied_amount <= 0) { setMessage({ type: "error", text: "Số tiền phải lớn hơn 0" }); return; }
     }
 
-    const totalAlloc = allocations.reduce((sum, a) => sum + a.applied_amount, 0);
-
-    if (totalAlloc !== remainingAmount) {
-      setMessage({
-        type: "error",
-        text: `You must allocate exactly ${formatVND(remainingAmount)}`
-      });
+    if (totalAllocInput !== remainingAmount) {
+      setMessage({ type: "error", text: `Tổng phân bổ phải bằng đúng ${fmtMoney(remainingAmount)}` });
       return;
     }
+
     try {
       setActionLoading(true);
       await dispatch(allocateReceipt({ id: receiptId, allocations })).unwrap();
-      setMessage({ type: 'success', text: 'Allocations applied successfully' });
+      setMessage({ type: "success", text: "Phân bổ hóa đơn thành công" });
       setShowAllocPanel(false);
       setAlloc({});
       dispatch(fetchReceiptDetail(receiptId));
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to apply allocations';
-      setMessage({ type: 'error', text: errorMessage });
+      setMessage({ type: "error", text: err instanceof Error ? err.message : "Phân bổ thất bại" });
     } finally {
       setActionLoading(false);
     }
   };
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("vi-VN");
-  };
-
-  const totalAllocated = receipt.allocations
-    ? receipt.allocations.reduce((sum, a) => sum + a.applied_amount!, 0)
-    : 0;
-
-  const remainingAmount = Math.max(0, receipt.amount - totalAllocated);
-  const totalAllocInput = Object.values(alloc).reduce((s, v) => s + v, 0);
-  const allocationStatus = receipt.allocation_status;
-  const isUnallocated = allocationStatus === "unallocated";
-  const isFullyAllocated = allocationStatus === "fully_allocated";
-
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Toast Message */}
-        {message && (
-          <div className={`fixed top-6 right-6 z-50 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 transform transition-all duration-500 ${message.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
-            }`}>
-            {message.type === 'success' ? <Check size={18} /> : <AlertTriangle size={18} />}
-            <span className="font-medium">{message.text}</span>
-          </div>
-        )}
-
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 mb-6 text-sm">
-          <button
-            onClick={() => navigate("/receipts")}
-            className="flex items-center gap-1 text-gray-500 hover:text-gray-900 transition"
-          >
-            <ArrowLeft size={16} />
-            Receipts
-          </button>
-          <span className="text-gray-300">/</span>
-          <span className="text-gray-900 font-medium">{receipt.receipt_no}</span>
+    <>
+      {/* Toast */}
+      {message && (
+        <div className={`fixed top-6 right-6 z-50 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 ${message.type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"}`}>
+          {message.type === "success" ? <Check size={16} /> : <AlertTriangle size={16} />}
+          <span className="text-sm font-medium">{message.text}</span>
         </div>
+      )}
 
-        {/* Header Section */}
-        <div className="mb-8">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
-                  {receipt.receipt_no}
-                </h1>
-                {isFullyAllocated && (
-                  <span className="px-2.5 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-bold border border-green-200">
-                    FULLY ALLOCATED
-                  </span>
-                )}
-              </div>
-              <p className="text-gray-500 flex items-center gap-2">
-                <FileText size={14} />
-                Receipt ID: <span className="font-mono text-gray-700">#{receipt.id}</span>
-              </p>
-            </div>
-
-            <div className="flex gap-3 flex-wrap justify-end">
-              {/* Draft Actions */}
-              {isAccountant && isDraft && !isRejected && (
-                <button
-                  onClick={handleSubmit}
-                  disabled={actionLoading}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition font-medium shadow-sm"
-                >
-                  {actionLoading ? 'Processing...' : 'Submit for Approval'}
-                </button>
-              )}
-
-              {isAccountant && isDraft && isRejected && (
-                <button
-                  onClick={handleSubmit}
-                  disabled={actionLoading}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition font-medium shadow-sm"
-                >
-                  {actionLoading ? 'Processing...' : 'Resubmit'}
-                </button>
-              )}
-
-              {/* Approval Actions */}
-              {isChiefAcc && isWaitingApproval && (
-                <>
-                  <button
-                    onClick={() => setRejectModalOpen(true)}
-                    disabled={actionLoading}
-                    className="px-4 py-2 bg-white border border-red-200 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50 transition font-medium shadow-sm"
-                  >
-                    Reject
-                  </button>
-                  <button
-                    onClick={handleApprove}
-                    disabled={actionLoading}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition font-medium shadow-sm"
-                  >
-                    {actionLoading ? 'Processing...' : 'Approve'}
-                  </button>
-                </>
-              )}
-
-              {/* Allocation Actions */}
-              {isAccountant && isPosted && isApproved && isUnallocated && (
-                <button
-                  onClick={handleAllocate}
-                  disabled={actionLoading}
-                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 transition font-medium shadow-sm flex items-center gap-2"
-                >
-                  <Wallet size={18} />
-                  Allocate to Invoices
-                </button>
-              )}
-            </div>
+      <StandardFormLayout
+        title={receipt.receipt_no}
+        statusBadge={
+          <div className="flex items-center gap-2">
+            <StatusBadge status={receipt.approval_status} />
+            {receipt.status !== receipt.approval_status && (
+              <StatusBadge status={receipt.status} />
+            )}
+            {isFullyAllocated && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                Đã phân bổ đầy đủ
+              </span>
+            )}
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                Receipt Status
-              </h3>
-              <div className="flex items-center gap-2">
-                <span
-                  className={`inline-block w-2.5 h-2.5 rounded-full ${receipt.status === "draft"
-                      ? "bg-gray-400"
-                      : receipt.status === "posted"
-                        ? "bg-blue-500"
-                        : "bg-green-500"
-                    }`}
-                ></span>
-                <span className="text-sm font-bold text-gray-900">
-                  {receipt.status.toUpperCase()}
-                </span>
-              </div>
-              <p className="text-sm text-gray-500 mt-1 pl-4.5">
-                Date: {formatDate(receipt.receipt_date)}
-              </p>
-            </div>
-
-            <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                Approval Status
-              </h3>
-              <div className="flex items-center gap-2">
-                <div className={`
-                    px-2.5 py-0.5 rounded text-xs font-bold uppercase
-                    ${receipt.approval_status === "draft" ? "bg-gray-100 text-gray-600" : ""}
-                    ${receipt.approval_status === "waiting_approval" ? "bg-yellow-100 text-yellow-700" : ""}
-                    ${receipt.approval_status === "approved" ? "bg-green-100 text-green-700" : ""}
-                    ${receipt.approval_status === "rejected" ? "bg-red-100 text-red-700" : ""}
-                 `}>
-                  {receipt.approval_status.replace("_", " ")}
-                </div>
-              </div>
-              {receipt.submitted_at && (
-                <p className="text-sm text-gray-500 mt-1">
-                  Submitted: {formatDate(receipt.submitted_at)}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* LEFT: DETAILS & ALLOCATIONS */}
-          <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-              <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2 pb-2 border-b">
-                Receipt Information
-              </h2>
-
-              <div className="grid grid-cols-2 gap-x-8 gap-y-6">
+        }
+        actions={[
+          { label: "Quay lại", variant: "outline", onClick: () => navigate("/receipts") },
+          ...(canSubmit ? [{ label: isRejected ? "Gửi lại" : "Gửi duyệt", variant: "primary" as const, onClick: () => setActiveModal("submit") }] : []),
+          ...(canApprove ? [{ label: "Duyệt", variant: "success" as const, onClick: () => setActiveModal("approve") }] : []),
+          ...(canReject ? [{ label: "Từ chối", variant: "danger" as const, onClick: () => setActiveModal("reject") }] : []),
+          ...(canAllocate ? [{ label: "Phân bổ vào hóa đơn", variant: "primary" as const, onClick: handleAllocate }] : []),
+        ]}
+        sidebarContent={
+          <div className="space-y-4">
+            {/* Allocation summary */}
+            <FormSection title="Tóm tắt phân bổ" icon={<CreditCard className="w-4 h-4" />}>
+              <div className="space-y-3">
                 <div>
-                  <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Customer</p>
-                  <p className="text-base text-gray-900 font-medium">{receipt.customer?.name || "—"}</p>
-                  <p className="text-sm text-gray-500">{receipt.customer?.phone || "—"}</p>
-                </div>
-
-                <div>
-                  <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Payment Method</p>
-                  <p className="text-base text-gray-900 font-medium capitalize">{receipt.method || "—"}</p>
-                </div>
-
-                <div>
-                  <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Receipt Date</p>
-                  <p className="text-base text-gray-900 font-medium">{formatDate(receipt.receipt_date)}</p>
-                </div>
-
-                <div>
-                  <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Total Amount</p>
-                  <p className="text-lg text-indigo-700 font-bold font-mono">{formatVND(receipt.amount)}</p>
-                </div>
-              </div>
-
-              <div className="mt-8 pt-6 border-t border-gray-100 grid grid-cols-2 gap-6">
-                <div>
-                  <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Created By</p>
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-600 font-bold">
-                      {(receipt.creator?.full_name || receipt.creator?.username || "?")[0].toUpperCase()}
-                    </div>
-                    <p className="text-sm text-gray-900">{receipt.creator?.full_name || receipt.creator?.username}</p>
-                  </div>
-                </div>
-
-                {receipt.approver && (
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Approved By</p>
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-xs text-green-700 font-bold">
-                        {(receipt.approver.full_name || receipt.approver.username || "?")[0].toUpperCase()}
-                      </div>
-                      <p className="text-sm text-gray-900">{receipt.approver.full_name || receipt.approver.username}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {isRejected && receipt.reject_reason && (
-                <div className="mt-6 bg-red-50 border border-red-100 p-4 rounded-lg">
-                  <p className="text-xs text-red-600 uppercase font-semibold mb-1">Rejection Reason</p>
-                  <p className="text-sm text-red-800">{receipt.reject_reason}</p>
-                </div>
-              )}
-            </div>
-
-            {/* Existing Allocations List */}
-            <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-              <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2 pb-2 border-b">
-                Allocated Invoices
-                <span className="text-xs font-normal text-gray-500 ml-auto flex items-center gap-1 bg-gray-100 px-2 py-1 rounded">
-                  <Check size={12} className="text-green-600" />
-                  {receipt.allocations?.length || 0} invoices
-                </span>
-              </h2>
-
-              {receipt.allocations && receipt.allocations.length > 0 ? (
-                <div className="space-y-3">
-                  {receipt.allocations.map((alloc, idx) => {
-                    const invoice = alloc.invoice;
-                    const unpaid = (invoice?.total_after_tax || 0) - (alloc.applied_amount || 0);
-                    return (
-                      <div
-                        key={alloc.id || idx}
-                        className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition"
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <p className="text-sm font-bold text-gray-900">{invoice?.invoice_no}</p>
-                            <p className="text-xs text-gray-500">Total: {formatVND(invoice?.total_after_tax)}</p>
-                          </div>
-                          <div className="text-right">
-                            <span className="inline-block px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded">
-                              +{formatVND(alloc.applied_amount)}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Progress Bar for Allocation */}
-                        <div className="mt-2">
-                          <div className="flex justify-between text-xs text-gray-500 mb-1">
-                            <span>Payment Progress</span>
-                            <span>{unpaid <= 0 ? 'Paid' : 'Partially Paid'}</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
-                            <div
-                              className="bg-green-500 h-full rounded-full"
-                              style={{ width: `${Math.min(100, ((alloc.applied_amount || 0) / (invoice?.total_after_tax || 1) * 100))}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-400 border-2 border-dashed border-gray-100 rounded-lg">
-                  No invoices allocated yet.
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* RIGHT: SUMMARY */}
-          <div className="lg:col-span-1">
-            <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm sticky top-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-6 pb-2 border-b">
-                Allocation Summary
-              </h3>
-
-              <div className="space-y-5">
-                <div>
-                  <p className="text-xs text-gray-500 uppercase font-semibold">Total Receipt</p>
-                  <p className="text-2xl font-bold text-indigo-600 mt-1 font-mono">
-                    {formatVND(receipt.amount)}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase font-semibold">Allocated</p>
-                    <p className="text-lg font-semibold text-green-600 mt-1">
-                      {formatVND(totalAllocated)}
+                  <p className="text-xs text-gray-500 mb-0.5">Tổng phiếu thu</p>
+                  <p className="text-xl font-bold text-orange-600">{fmtMoney(receipt.amount)}</p>
+                  {currencyCode !== "VND" && (
+                    <p className="text-[10px] text-gray-400 mt-0.5">
+                      ≈ {Math.round(Number(receipt.amount || 0) * exchangeRate).toLocaleString("vi-VN")} ₫
                     </p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-0.5">Đã phân bổ</p>
+                    <p className="text-sm font-semibold text-green-600">{fmtMoney(totalAllocated)}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 uppercase font-semibold">Remaining</p>
-                    <p className={`text-lg font-semibold mt-1 ${remainingAmount === 0 ? 'text-gray-400' : 'text-orange-600'}`}>
-                      {formatVND(remainingAmount)}
+                    <p className="text-xs text-gray-500 mb-0.5">Còn lại</p>
+                    <p className={`text-sm font-semibold ${remainingAmount === 0 ? "text-gray-400" : "text-orange-600"}`}>
+                      {fmtMoney(remainingAmount)}
                     </p>
                   </div>
                 </div>
 
                 {receipt.amount > 0 && (
-                  <div className="pt-4">
-                    <div className="flex justify-between text-xs text-gray-500 mb-1">
-                      <span>Completion</span>
+                  <div>
+                    <div className="flex justify-between text-xs text-gray-400 mb-1">
+                      <span>Hoàn thành</span>
                       <span>{((totalAllocated / receipt.amount) * 100).toFixed(0)}%</span>
                     </div>
-                    <div className="w-full bg-gray-100 rounded-full h-2">
+                    <div className="w-full bg-gray-100 rounded-full h-1.5">
                       <div
-                        className={`h-2 rounded-full transition-all duration-500 ${remainingAmount === 0 ? 'bg-green-500' : 'bg-orange-500'
-                          }`}
+                        className={`h-1.5 rounded-full transition-all ${remainingAmount === 0 ? "bg-green-500" : "bg-orange-500"}`}
                         style={{ width: `${(totalAllocated / receipt.amount) * 100}%` }}
-                      ></div>
+                      />
                     </div>
                   </div>
                 )}
 
-                {isAccountant && isPosted && isApproved && isUnallocated && remainingAmount > 0 && (
-                  <div className="pt-4 mt-2">
-                    <button
-                      onClick={handleAllocate}
-                      className="w-full py-3 bg-orange-600 text-white font-bold rounded-lg shadow-lg shadow-orange-100 hover:bg-orange-700 transition"
-                    >
-                      Allocate Now
-                    </button>
+                {canAllocate && (
+                  <button
+                    onClick={handleAllocate}
+                    className="w-full h-8 mt-1 bg-orange-500 text-white text-sm font-medium rounded-md hover:bg-orange-600 transition-colors"
+                  >
+                    Phân bổ ngay
+                  </button>
+                )}
+              </div>
+            </FormSection>
+
+            {/* Workflow */}
+            <FormSection title="Luồng duyệt" icon={<Clock className="w-4 h-4" />}>
+              <div className="space-y-3">
+                <div className="flex items-start gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center shrink-0 mt-0.5">
+                    <FileText className="w-3 h-3 text-gray-500" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-700">Tạo</p>
+                    <p className="text-xs text-gray-500">{receipt.creator?.full_name || "—"}</p>
+                    <p className="text-[10px] text-gray-400">{fmtDate(receipt.receipt_date)}</p>
+                  </div>
+                </div>
+
+                {receipt.submitted_at && (
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-5 h-5 rounded-full bg-amber-50 flex items-center justify-center shrink-0 mt-0.5">
+                      <Clock className="w-3 h-3 text-amber-500" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-700">Gửi duyệt</p>
+                      <p className="text-[10px] text-gray-400">{fmtTime(receipt.submitted_at)}</p>
+                    </div>
                   </div>
                 )}
+
+                {receipt.approved_at && receipt.approver && (
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-5 h-5 rounded-full bg-emerald-50 flex items-center justify-center shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-700">Đã duyệt</p>
+                      <p className="text-xs text-gray-500">{receipt.approver.full_name}</p>
+                      <p className="text-[10px] text-gray-400">{fmtTime(receipt.approved_at)}</p>
+                    </div>
+                  </div>
+                )}
+
+                {isRejected && (
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-5 h-5 rounded-full bg-red-50 flex items-center justify-center shrink-0 mt-0.5">
+                      <AlertTriangle className="w-3 h-3 text-red-500" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-red-600">Từ chối</p>
+                      {receipt.reject_reason && (
+                        <p className="text-xs text-gray-500 mt-0.5 italic">"{receipt.reject_reason}"</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </FormSection>
+
+            {/* Assignment */}
+            <FormSection title="Phân công" icon={<UserCheck className="w-4 h-4" />}>
+              <div className="space-y-2.5">
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Người tạo</p>
+                  <p className="text-sm font-medium text-gray-800">{receipt.creator?.full_name || "—"}</p>
+                </div>
+                {receipt.approver && (
+                  <div>
+                    <p className="text-xs text-gray-500 mb-0.5">Người duyệt</p>
+                    <p className="text-sm font-medium text-gray-800">{receipt.approver.full_name}</p>
+                  </div>
+                )}
+              </div>
+            </FormSection>
+          </div>
+        }
+      >
+        {/* Rejection banner */}
+        {isRejected && receipt.reject_reason && (
+          <div className="flex items-start gap-3 px-4 py-3 bg-red-50 border border-red-100 rounded-lg">
+            <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-red-700">Phiếu thu bị từ chối</p>
+              <p className="text-sm text-red-600 mt-0.5">{receipt.reject_reason}</p>
+            </div>
+          </div>
+        )}
+
+        {/* ─── 1. RECEIPT INFO ─── */}
+        <FormSection title="Thông tin phiếu thu" icon={<Wallet className="w-4 h-4" />}>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Field label="Số phiếu thu" value={receipt.receipt_no} />
+            <Field label="Ngày phiếu" value={fmtDate(receipt.receipt_date)} />
+            <div>
+              <p className="text-xs text-gray-500 mb-0.5">
+                Số tiền{currencyCode !== "VND" && <span className="ml-1 text-orange-500">({currencyCode})</span>}
+              </p>
+              <p className="text-sm font-bold text-orange-600">{fmtMoney(receipt.amount)}</p>
+              {currencyCode !== "VND" && (
+                <p className="text-[10px] text-gray-400 mt-0.5">
+                  ≈ {Math.round(Number(receipt.amount || 0) * exchangeRate).toLocaleString("vi-VN")} ₫
+                </p>
+              )}
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-0.5">Phương thức</p>
+              <p className="text-sm font-medium text-gray-800 capitalize">{receipt.method || "—"}</p>
+            </div>
+          </div>
+        </FormSection>
+
+        {/* ─── 2. CUSTOMER ─── */}
+        <FormSection title="Thông tin khách hàng" icon={<User className="w-4 h-4" />}>
+          {receipt.customer ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="md:col-span-2">
+                <p className="text-xs text-gray-500 mb-0.5">Tên khách hàng</p>
+                <p className="text-base font-semibold text-gray-900">{receipt.customer.name}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-0.5 flex items-center gap-1">
+                  <Phone className="w-3 h-3" /> Điện thoại
+                </p>
+                <p className="text-sm text-gray-800">{receipt.customer.phone || "—"}</p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400 italic">Không có thông tin khách hàng.</p>
+          )}
+        </FormSection>
+
+        {/* ─── 3. ALLOCATED INVOICES ─── */}
+        <FormSection
+          title="Hóa đơn đã phân bổ"
+          icon={<FileText className="w-4 h-4" />}
+          description={`${receipt.allocations?.length || 0} hóa đơn`}
+          noPadding
+        >
+          {!receipt.allocations || receipt.allocations.length === 0 ? (
+            <div className="py-12 text-center text-gray-400">
+              <FileText className="w-8 h-8 mx-auto mb-2 text-gray-200" />
+              <p className="text-sm">Chưa có hóa đơn được phân bổ.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {receipt.allocations.map((a, idx) => {
+                const inv = a.invoice;
+                const pct = inv?.total_after_tax
+                  ? Math.min(100, ((a.applied_amount ?? 0) / inv.total_after_tax) * 100)
+                  : 0;
+                return (
+                  <div key={a.id || idx} className="px-5 py-4 hover:bg-gray-50/60 transition-colors">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{inv?.invoice_no || "—"}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Tổng HĐ: {fmtMoney(inv?.total_after_tax)}</p>
+                      </div>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-700">
+                        +{fmtMoney(a.applied_amount)}
+                      </span>
+                    </div>
+                    <div className="mt-2">
+                      <div className="flex justify-between text-[10px] text-gray-400 mb-1">
+                        <span>Tiến độ thanh toán</span>
+                        <span>{pct.toFixed(0)}%</span>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-1.5">
+                        <div className="bg-green-500 h-1.5 rounded-full" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </FormSection>
+
+        {/* Modals */}
+        <ActionConfirmModal
+          isOpen={activeModal === "submit"}
+          onClose={() => setActiveModal(null)}
+          title="Gửi duyệt phiếu thu"
+          description={`Gửi phiếu thu "${receipt.receipt_no}" để kế toán trưởng phê duyệt?`}
+          confirmText="Gửi duyệt"
+          variant="primary"
+          onConfirm={async () => {
+            setActionLoading(true);
+            try {
+              await dispatch(submitReceipt(receiptId)).unwrap();
+              dispatch(fetchReceiptDetail(receiptId));
+              setMessage({ type: "success", text: "Gửi duyệt thành công" });
+            } catch (err) {
+              setMessage({ type: "error", text: err instanceof Error ? err.message : "Thất bại" });
+            } finally {
+              setActionLoading(false);
+              setActiveModal(null);
+            }
+          }}
+        />
+
+        <ActionConfirmModal
+          isOpen={activeModal === "approve"}
+          onClose={() => setActiveModal(null)}
+          title="Duyệt phiếu thu"
+          description={`Duyệt phiếu thu "${receipt.receipt_no}"? Phiếu thu sẽ được phát hành và cập nhật sổ kế toán.`}
+          confirmText="Duyệt"
+          variant="success"
+          onConfirm={async () => {
+            setActionLoading(true);
+            try {
+              await dispatch(approveReceipt(receiptId)).unwrap();
+              dispatch(fetchReceiptDetail(receiptId));
+              setMessage({ type: "success", text: "Duyệt thành công" });
+            } catch (err) {
+              setMessage({ type: "error", text: err instanceof Error ? err.message : "Thất bại" });
+            } finally {
+              setActionLoading(false);
+              setActiveModal(null);
+            }
+          }}
+        />
+
+        <ActionConfirmModal
+          isOpen={activeModal === "reject"}
+          onClose={() => setActiveModal(null)}
+          title="Từ chối phiếu thu"
+          description={`Từ chối phiếu thu "${receipt.receipt_no}"? Vui lòng nhập lý do để thông báo cho kế toán.`}
+          confirmText="Từ chối"
+          variant="danger"
+          requireReason
+          reasonLabel="Lý do từ chối"
+          reasonPlaceholder="VD: Sai số tiền, sai khách hàng..."
+          onConfirm={async (reason) => {
+            setActionLoading(true);
+            try {
+              await dispatch(rejectReceipt({ id: receiptId, reason: reason ?? "" })).unwrap();
+              dispatch(fetchReceiptDetail(receiptId));
+              setMessage({ type: "success", text: "Từ chối thành công" });
+            } catch (err) {
+              setMessage({ type: "error", text: err instanceof Error ? err.message : "Thất bại" });
+            } finally {
+              setActionLoading(false);
+              setActiveModal(null);
+            }
+          }}
+        />
+      </StandardFormLayout>
+
+      {/* ─── ALLOCATION SLIDE-IN PANEL ─── */}
+      {showAllocPanel && (
+        <div className="fixed inset-0 bg-black/50 overflow-y-auto h-full w-full z-50 flex justify-end">
+          <div className="relative w-full max-w-lg bg-white shadow-2xl min-h-screen flex flex-col">
+            {/* Panel Header */}
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <div>
+                <h2 className="text-base font-semibold text-gray-900">Phân bổ hóa đơn</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Khách hàng: {receipt.customer?.name}</p>
+              </div>
+              <button
+                onClick={() => setShowAllocPanel(false)}
+                className="w-8 h-8 flex items-center justify-center hover:bg-gray-200 rounded-lg text-gray-500 transition"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Panel Body */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {/* Remaining hint */}
+              <div className="mb-6 bg-orange-50 border border-orange-100 rounded-lg px-4 py-3 flex justify-between items-center">
+                <div>
+                  <p className="text-xs text-orange-600 font-semibold uppercase">Có thể phân bổ</p>
+                  <p className="text-xl font-bold text-orange-700 mt-0.5">{fmtMoney(remainingAmount)}</p>
+                </div>
+                <button
+                  onClick={handleAutoAllocate}
+                  className="h-7 px-3 text-xs font-medium bg-white border border-orange-200 text-orange-600 rounded-md hover:bg-orange-50 transition"
+                >
+                  Tự động điền
+                </button>
+              </div>
+
+              {/* Invoices */}
+              <div className="space-y-3">
+                <p className="text-xs font-semibold text-gray-700 uppercase border-b pb-2">Hóa đơn chưa thanh toán</p>
+                {unpaidInvoices && unpaidInvoices.length > 0 ? (
+                  unpaidInvoices.map((inv) => {
+                    const cur = alloc[inv.invoice_id] || 0;
+                    const isAlloc = cur > 0;
+                    const unpaidAmt = inv.unpaid || inv.total_after_tax;
+                    return (
+                      <div
+                        key={inv.invoice_id}
+                        className={`p-4 rounded-lg border transition ${isAlloc ? "bg-orange-50 border-orange-200" : "bg-white border-gray-200"}`}
+                      >
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900">{inv.invoice_no}</p>
+                            <p className="text-xs text-gray-500 mt-0.5">Còn nợ: {fmtMoney(unpaidAmt)}</p>
+                          </div>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            placeholder="0"
+                            min="0"
+                            max={unpaidAmt}
+                            value={cur || ""}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value) || 0;
+                              setAlloc((prev) => ({ ...prev, [inv.invoice_id]: val }));
+                            }}
+                            className={`w-full pl-3 pr-14 h-9 text-sm rounded-md border font-mono focus:outline-none focus:ring-2 ${isAlloc ? "border-orange-300 focus:ring-orange-400" : "border-gray-300 focus:ring-gray-400"}`}
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-semibold">{currencySymbol}</span>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="py-8 text-center text-sm text-gray-400 bg-gray-50 rounded-lg">
+                    Không tìm thấy hóa đơn chưa thanh toán.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Panel Footer */}
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50">
+              <div className={`flex justify-between items-center mb-3 ${totalAllocInput === remainingAmount ? "text-green-600" : "text-red-600"}`}>
+                <span className="text-sm font-semibold">Tổng đã chọn</span>
+                <span className="text-lg font-bold font-mono">{fmtMoney(totalAllocInput)}</span>
+              </div>
+              {totalAllocInput !== remainingAmount && (
+                <p className="text-xs text-red-500 mb-3 text-center">
+                  Tổng phân bổ phải bằng đúng {fmtMoney(remainingAmount)}
+                </p>
+              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowAllocPanel(false)}
+                  className="flex-1 h-9 border border-gray-300 text-sm font-medium text-gray-700 rounded-md hover:bg-white transition"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleApplyAllocation}
+                  disabled={actionLoading || totalAllocInput !== remainingAmount}
+                  className="flex-1 h-9 bg-orange-500 text-white text-sm font-semibold rounded-md hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  {actionLoading ? "Đang lưu..." : "Xác nhận phân bổ"}
+                </button>
               </div>
             </div>
           </div>
         </div>
-
-        {/* ================= ALLOCATION MODAL ================= */}
-        {showAllocPanel && (
-          <div className="fixed inset-0 bg-black/50 overflow-y-auto h-full w-full z-50 flex justify-end transition-opacity">
-            <div className="relative w-full max-w-lg bg-white shadow-2xl min-h-screen flex flex-col animate-slide-in-right">
-
-              {/* Modal Header */}
-              <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">Allocate Invoices</h2>
-                  <p className="text-sm text-gray-500 mt-0.5">Customer: {receipt.customer?.name}</p>
-                </div>
-                <button
-                  onClick={() => setShowAllocPanel(false)}
-                  className="p-2 hover:bg-gray-200 rounded-full text-gray-500 transition"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-
-              {/* Modal Body */}
-              <div className="flex-1 overflow-y-auto p-6">
-                {/* Remaining Hint */}
-                <div className="mb-6 bg-blue-50 border border-blue-100 rounded-lg p-4 flex justify-between items-center">
-                  <div>
-                    <p className="text-xs text-blue-600 uppercase font-bold">Available to Allocate</p>
-                    <p className="text-2xl font-bold text-blue-700 font-mono mt-1">{formatVND(remainingAmount)}</p>
-                  </div>
-                  <button
-                    onClick={handleAutoAllocate}
-                    className="text-xs bg-white border border-blue-200 text-blue-600 px-3 py-1.5 rounded hover:bg-blue-50 font-medium transition"
-                  >
-                    Auto Fill
-                  </button>
-                </div>
-
-                {/* Invoices List */}
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-gray-800 border-b pb-2">Unpaid Invoices</h3>
-
-                  {unpaidInvoices && unpaidInvoices.length > 0 ? (
-                    unpaidInvoices.map((inv) => {
-                      const currentVal = alloc[inv.invoice_id] || 0;
-                      const isAllocated = currentVal > 0;
-                      const unpaidAmount = inv.unpaid || inv.total_after_tax;
-
-                      return (
-                        <div
-                          key={inv.invoice_id}
-                          className={`p-4 rounded-lg border transition ${isAllocated ? 'bg-orange-50 border-orange-200 shadow-sm' : 'bg-white border-gray-200'
-                            }`}
-                        >
-                          <div className="flex justify-between items-start mb-3">
-                            <div>
-                              <p className="font-bold text-gray-900">{inv.invoice_no}</p>
-                              <p className="text-xs text-gray-500">Unpaid: {formatVND(unpaidAmount)}</p>
-                            </div>
-                          </div>
-
-                          <div className="relative">
-                            <input
-                              type="number"
-                              placeholder="0"
-                              className={`w-full pl-3 pr-12 py-2 rounded border focus:outline-none focus:ring-2 font-mono ${isAllocated ? 'border-orange-300 focus:ring-orange-500 bg-white' : 'border-gray-300 focus:ring-gray-400'
-                                }`}
-                              min="0"
-                              max={unpaidAmount}
-                              value={currentVal || ''}
-                              onChange={(e) => {
-                                const val = parseFloat(e.target.value) || 0;
-                                setAlloc(prev => ({ ...prev, [inv.invoice_id]: val }));
-                              }}
-                            />
-                            <span className="absolute right-3 top-2.5 text-xs text-gray-400 font-bold">VND</span>
-                          </div>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="text-center py-8 text-gray-400 italic bg-gray-50 rounded-lg">
-                      No unpaid invoices found for this customer.
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Modal Footer */}
-              <div className="p-6 border-t border-gray-100 bg-gray-50 safe-bottom">
-                <div className={`flex justify-between items-center mb-4 ${totalAllocInput === remainingAmount ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                  <span className="font-semibold text-sm uppercase">Total Selected</span>
-                  <span className="font-bold font-mono text-xl">{formatVND(totalAllocInput)}</span>
-                </div>
-
-                {totalAllocInput !== remainingAmount && (
-                  <p className="text-xs text-red-500 text-center mb-4">
-                    ⚠️ Total allocation must strictly equal {formatVND(remainingAmount)}
-                  </p>
-                )}
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setShowAllocPanel(false)}
-                    className="flex-1 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-white transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleApplyAllocation}
-                    disabled={actionLoading || totalAllocInput !== remainingAmount}
-                    className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-100 transition"
-                  >
-                    {actionLoading ? 'Saving...' : 'Confirm Allocation'}
-                  </button>
-                </div>
-              </div>
-
-            </div>
-          </div>
-        )}
-
-        {/* ================= REJECT MODAL ================= */}
-        {rejectModalOpen && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
-              <div className="p-6 border-b border-gray-100">
-                <h2 className="text-xl font-bold text-gray-900">Reject Request</h2>
-                <p className="text-sm text-gray-500 mt-1">Provide a reason for rejection to notify the requester.</p>
-              </div>
-
-              <div className="p-6">
-                <textarea
-                  className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 min-h-[120px] resize-none"
-                  placeholder="Reason for rejection..."
-                  value={rejectReason}
-                  onChange={(e) => setRejectReason(e.target.value)}
-                  autoFocus
-                />
-              </div>
-
-              <div className="p-6 border-t border-gray-100 bg-gray-50 flex gap-3">
-                <button
-                  onClick={() => {
-                    setRejectModalOpen(false);
-                    setRejectReason("");
-                  }}
-                  className="flex-1 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-white transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleReject}
-                  disabled={!rejectReason.trim() || actionLoading}
-                  className="flex-1 py-2.5 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 disabled:opacity-50 transition"
-                >
-                  {actionLoading ? 'Rejecting...' : 'Confirm Reject'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+      )}
+    </>
   );
 }

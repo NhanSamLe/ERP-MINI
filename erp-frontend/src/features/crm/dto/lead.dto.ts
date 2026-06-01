@@ -1,14 +1,18 @@
 import { LeadStage } from "../../../types/enum";
 import { User } from "./activity.dto";
 import { Opportunity } from "./opportunity.dto";
+import { Partner } from "../../partner/store/partner.types";
 export interface CreateLeadDto {
   name: string;
   email?: string;
   phone?: string;
   source?: string;
   source_id?: number | null;
+  company_name?: string | null;
+  job_title?: string | null;
   industry?: string | null;
   company_size?: string | null;
+  annual_revenue?: number | null;
 }
 export interface UpdateLeadEvaluationDto {
   leadId: number;
@@ -23,8 +27,11 @@ export interface UpdateLeadBasicDto {
   phone?: string;
   source?: string;
   source_id?: number | null;
+  company_name?: string | null;
+  job_title?: string | null;
   industry?: string | null;
   company_size?: string | null;
+  annual_revenue?: number | null;
 }
 export interface ConvertLeadToOpportunityDto {
   leadId: number;
@@ -37,6 +44,15 @@ export interface MarkLeadLostDto {
   leadId: number;
   reason: string;
 }
+export interface LeadScoreReason {
+  rule_id: number;
+  rule_name: string;
+  field: string;
+  operator: string;
+  value: string | null;
+  actual: unknown;
+  score: number;
+}
 export interface Lead {
   id: number;
   name: string;
@@ -44,9 +60,20 @@ export interface Lead {
   phone?: string;
   source?: string;
   source_id?: number | null;
+  leadSource?: { id: number; name: string; description?: string | null; is_active?: boolean };
+  company_name?: string | null;
+  job_title?: string | null;
   industry?: string | null;
   company_size?: string | null;
+  annual_revenue?: number | null;
+  branch_id?: number | null;
+  customer_id?: number | null;
+  customer?: Partner | null;
   lead_score?: number | null;
+  score_grade?: "cold" | "warm" | "hot" | null;
+  score_reasons?: LeadScoreReason[] | null;
+  last_scored_at?: string | null;
+  last_activity_date?: string | null;
   assigned_to?: number;
   stage: LeadStage;
   contacted_at?: Date;        // Thời điểm sales liên hệ lần đầu
@@ -60,5 +87,6 @@ export interface Lead {
   expected_timeline?: string; // "Khi nào mua?" - VD: "this_week", "this_month", "next_quarter"
   assignedUser?: User;
   created_at: string;
+  updated_at?: string;
   opportunities?: Opportunity[];
 }

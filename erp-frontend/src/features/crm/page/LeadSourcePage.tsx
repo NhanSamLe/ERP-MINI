@@ -8,12 +8,11 @@ import {
   deleteLeadSource,
 } from "../store/leadSource/leadSource.thunks";
 import { LeadSource, CreateLeadSourceDto, UpdateLeadSourceDto } from "../dto/leadSource.dto";
-import { GenericTable } from "@/components/v2/tables";
+import { DataTable } from "@/components/ui/DataTable";
 import { GenericForm } from "@/components/v2/forms";
-import { useTable } from "@/components/v2/tables";
-import { leadSourceTableConfig } from "../configs/leadSource-table.config";
 import { leadSourceFormConfig } from "../configs/leadSource-form.config";
-import { Plus, Globe } from "lucide-react";
+import { Column } from "@/types/common";
+import { Plus, Globe, Power } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ActionConfirmModal } from "@/components/common";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -25,14 +24,9 @@ export default function LeadSourcePage() {
   const [showModal, setShowModal] = useState(false);
   const [editItem, setEditItem] = useState<LeadSource | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<LeadSource | null>(null);
-
-  const { data: tableData, paginationInfo, handleSearch, handleSort, handlePageChange, handlePageSizeChange, setData } = useTable({
-    data: leadSources,
-    searchFields: ["name"],
-  });
+  const [togglingId, setTogglingId] = useState<number | null>(null);
 
   useEffect(() => { dispatch(fetchLeadSources()); }, [dispatch]);
-  useEffect(() => { setData(leadSources); }, [leadSources, setData]);
 
   const handleCreate = async (dto: CreateLeadSourceDto) => {
     await dispatch(createLeadSource(dto));
@@ -52,6 +46,12 @@ export default function LeadSourcePage() {
     setDeleteTarget(null);
   };
 
+  const handleToggleActive = async (item: LeadSource) => {
+    setTogglingId(item.id);
+    await dispatch(updateLeadSource({ id: item.id, data: { is_active: !item.is_active } }));
+    setTogglingId(null);
+  };
+
   const handleEditClick = (item: LeadSource) => {
     setEditItem(item);
     setShowModal(true);
@@ -62,12 +62,43 @@ export default function LeadSourcePage() {
     setShowModal(true);
   };
 
-  const tableConfig = leadSourceTableConfig(handleEditClick, (item) => setDeleteTarget(item));
+  const columns: Column<LeadSource>[] = [
+    {
+      key: "id",
+      label: "ID",
+      sortable: true,
+    },
+    {
+      key: "name",
+      label: "Tên nguồn",
+      sortable: true,
+    },
+    {
+      key: "description",
+      label: "Mô tả",
+      render: (item) => (
+        <span className="text-gray-500">{item.description || "—"}</span>
+      ),
+    },
+    {
+      key: "is_active",
+      label: "Trạng thái",
+      render: (item) =>
+        item.is_active ? (
+          <span className="inline-flex items-center gap-1.5 text-green-600 font-medium text-sm">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
+            Hoạt động
+          </span>
+        ) : (
+          <span className="text-gray-400 text-sm">Không hoạt động</span>
+        ),
+    },
+  ];
 
   return (
     <div className="page-container">
-      {/* Header */}
       <div className="erp-card overflow-hidden">
+        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
           <div className="flex items-center gap-2.5">
             <span className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
@@ -86,16 +117,38 @@ export default function LeadSourcePage() {
           </Button>
         </div>
 
-        <GenericTable
-          data={tableData}
-          config={tableConfig}
-          loading={loading}
-          pagination={paginationInfo}
-          onPageChange={handlePageChange}
-          onPageSizeChange={handlePageSizeChange}
-          onSortChange={handleSort}
-          onSearchChange={handleSearch}
-        />
+        {/* Table */}
+        <div className="p-5">
+          <DataTable
+            columns={columns}
+            data={leadSources}
+            loading={loading}
+            searchable={true}
+            searchKeys={["name"]}
+            showActions={true}
+            onEdit={handleEditClick}
+            canEdit={() => true}
+            onDelete={(item) => setDeleteTarget(item)}
+            canDelete={() => true}
+            itemsPerPage={10}
+            extraActions={(item) => (
+              <button
+                onClick={() => handleToggleActive(item)}
+                disabled={togglingId === item.id}
+                title={item.is_active ? "Ngừng hoạt động" : "Kích hoạt"}
+                className={[
+                  "p-1.5 rounded transition-colors",
+                  item.is_active
+                    ? "text-gray-400 hover:text-amber-600 hover:bg-amber-50"
+                    : "text-gray-400 hover:text-emerald-600 hover:bg-emerald-50",
+                  togglingId === item.id ? "opacity-50 cursor-not-allowed" : "",
+                ].join(" ")}
+              >
+                <Power className="w-3.5 h-3.5" />
+              </button>
+            )}
+          />
+        </div>
       </div>
 
       {/* Create/Edit Modal */}
@@ -108,7 +161,11 @@ export default function LeadSourcePage() {
           </DialogHeader>
           <div className="mt-4">
             <GenericForm
-              initialValues={editItem ? { name: editItem.name, description: editItem.description || "" } : { name: "", description: "" }}
+              initialValues={
+                editItem
+                  ? { name: editItem.name, description: editItem.description || "", is_active: editItem.is_active }
+                  : { name: "", description: "", is_active: true }
+              }
               config={leadSourceFormConfig}
               mode={editItem ? "edit" : "create"}
               onSubmit={editItem ? handleUpdate : handleCreate}

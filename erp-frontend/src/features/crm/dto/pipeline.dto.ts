@@ -35,7 +35,7 @@ export interface UpdatePipelineDto {
 
 export interface CreatePipelineStageDto {
   name: string;
-  sequence: number;
+  sequence?: number;
   probability?: number;
   is_won?: boolean;
   is_lost?: boolean;

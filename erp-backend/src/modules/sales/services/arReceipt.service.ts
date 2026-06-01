@@ -1,5 +1,5 @@
 // arReceipt.service.ts
-import { ArInvoice, Partner, User } from "../../../models";
+import { ArInvoice, Currency, Partner, User } from "../../../models";
 import { ArReceipt } from "../models/arReceipt.model";
 import { ArReceiptAllocation } from "../models/arReceiptAllocation.model";
 import { generateReceiptNo } from "../../../core/utils/receipt.util";
@@ -60,7 +60,8 @@ export const arReceiptService = {
     const { count, rows } = await ArReceipt.findAndCountAll({
       where,
       include: [
-        { model: Partner, as: "customer", attributes: ["id", "name"] },
+        { model: Partner, as: "customer", attributes: ["id", "name", "phone"] },
+        { model: Currency, as: "currency", attributes: ["id", "code", "symbol", "name"] },
         { model: User, as: "creator", attributes: ["id", "username", "full_name"] },
         { model: User, as: "approver", attributes: ["id", "username", "full_name"] },
         {
@@ -91,6 +92,7 @@ export const arReceiptService = {
           as: "customer",
           attributes: ["id", "name", "phone"],
         },
+        { model: Currency, as: "currency", attributes: ["id", "code", "symbol", "name"] },
         {
           model: User,
           as: "creator",

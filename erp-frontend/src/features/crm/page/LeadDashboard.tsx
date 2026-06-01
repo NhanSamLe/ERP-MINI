@@ -9,7 +9,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Column } from "@/types/common";
 import { Lead } from "../dto/lead.dto";
-import { RefreshCw, Plus, Phone, Mail, User, Upload, Download, Search, Users } from "lucide-react";
+import { RefreshCw, Plus, Phone, Mail, User, Upload, Download, Search, Users, TableProperties } from "lucide-react";
 import { exportExcelReport } from "@/utils/excel/exportExcelReport";
 
 const STAGE_TABS = [
@@ -107,9 +107,23 @@ export default function LeadDashboard() {
           { header: "Email", key: "email", width: 25 },
           { header: "SĐT", key: "phone", width: 15 },
           { header: "Nguồn", key: "source", width: 15 },
+          { header: "Công ty", key: "company_name", width: 25 },
+          { header: "Chức vụ", key: "job_title", width: 20 },
+          { header: "Ngành", key: "industry", width: 18 },
+          { header: "Quy mô", key: "company_size", width: 15 },
+          { header: "Doanh thu năm", key: "annual_revenue", width: 18 },
           { header: "Giai đoạn", key: "stage", width: 15, formatter: (v: any) => String(v).toUpperCase() },
+          { header: "Điểm", key: "lead_score", width: 10 },
+          { header: "Hạng điểm", key: "score_grade", width: 12 },
           { header: "Người phụ trách", key: "assignedUser", width: 25, formatter: (v: any) => v?.full_name || "-" },
+          { header: "Qualified lúc", key: "qualified_at", width: 18, formatter: (v: any) => (v ? new Date(v).toLocaleString("vi-VN") : "") },
+          { header: "Qualified bởi", key: "qualified_by", width: 15 },
+          { header: "Ngày thua", key: "lost_at", width: 18, formatter: (v: any) => (v ? new Date(v).toLocaleString("vi-VN") : "") },
+          { header: "Lý do thua", key: "lost_reason", width: 30 },
+          { header: "Liên hệ lần đầu", key: "contacted_at", width: 18, formatter: (v: any) => (v ? new Date(v).toLocaleString("vi-VN") : "") },
+          { header: "Hoạt động gần nhất", key: "last_activity_date", width: 18, formatter: (v: any) => (v ? new Date(v).toLocaleString("vi-VN") : "") },
           { header: "Ngày tạo", key: "created_at", width: 15, formatter: (v: any) => (v ? new Date(v).toLocaleDateString("vi-VN") : "") },
+          { header: "Cập nhật", key: "updated_at", width: 18, formatter: (v: any) => (v ? new Date(v).toLocaleString("vi-VN") : "") },
         ],
         data: filtered,
         fileName: `Bao_Cao_Leads_${Date.now()}.xlsx`,
@@ -188,6 +202,32 @@ export default function LeadDashboard() {
         <span className={`px-2.5 py-0.5 inline-flex text-xs font-medium rounded-full ${getStageBadge(row.stage)}`}>
           {formatStage(row.stage)}
         </span>
+      ),
+    },
+    {
+      key: "lead_score",
+      label: "Điểm",
+      sortable: true,
+      render: (row) => {
+        const grade = row.score_grade ?? "cold";
+        const cls = grade === "hot" ? "bg-red-100 text-red-700" : grade === "warm" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-700";
+        return (
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-gray-900">{row.lead_score ?? 0}</span>
+            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}>{grade.toUpperCase()}</span>
+          </div>
+        );
+      },
+    },
+    {
+      key: "company_name",
+      label: "Công ty",
+      sortable: true,
+      render: (row) => (
+        <div className="text-sm">
+          <div className="font-medium text-gray-900">{row.company_name || "—"}</div>
+          <div className="text-xs text-gray-400">{row.job_title || row.industry || "—"}</div>
+        </div>
       ),
     },
     {
@@ -287,6 +327,12 @@ export default function LeadDashboard() {
             {/* Export */}
             <Button variant="outline" size="sm" leftIcon={<Download className="w-3.5 h-3.5" />} onClick={handleExport}>
               Xuất Excel
+            </Button>
+
+            {/* Bulk create */}
+            <Button variant="outline" size="sm" leftIcon={<TableProperties className="w-3.5 h-3.5" />}
+              onClick={() => navigate("/crm/leads/bulk-create")}>
+              Tạo hàng loạt
             </Button>
 
             {/* Create */}

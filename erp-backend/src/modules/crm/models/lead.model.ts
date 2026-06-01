@@ -26,6 +26,7 @@ export interface LeadAttrs {
   deleted_by?: number | null;
   // Phase 2 B2B enhancements
   branch_id?: number | null;
+  customer_id?: number | null;
   source_id?: number | null;
   company_name?: string | null;
   job_title?: string | null;
@@ -33,6 +34,9 @@ export interface LeadAttrs {
   company_size?: string | null;
   annual_revenue?: number | null;
   lead_score?: number;
+  score_grade?: "cold" | "warm" | "hot" | null;
+  score_reasons?: any[] | null;
+  last_scored_at?: Date | null;
   last_activity_date?: Date | null;
 }
 
@@ -59,6 +63,7 @@ export class Lead extends Model<LeadAttrs, LeadCreation> implements LeadAttrs {
   public deleted_by?: number | null;
   // Phase 2 B2B
   public branch_id?: number | null;
+  public customer_id?: number | null;
   public source_id?: number | null;
   public company_name?: string | null;
   public job_title?: string | null;
@@ -66,6 +71,9 @@ export class Lead extends Model<LeadAttrs, LeadCreation> implements LeadAttrs {
   public company_size?: string | null;
   public annual_revenue?: number | null;
   public lead_score?: number;
+  public score_grade?: "cold" | "warm" | "hot" | null;
+  public score_reasons?: any[] | null;
+  public last_scored_at?: Date | null;
   public last_activity_date?: Date | null;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -93,6 +101,7 @@ Lead.init(
     deleted_by: { type: DataTypes.BIGINT, allowNull: true },
     // Phase 2 B2B
     branch_id: { type: DataTypes.BIGINT, allowNull: true },
+    customer_id: { type: DataTypes.BIGINT, allowNull: true },
     source_id: { type: DataTypes.BIGINT, allowNull: true },
     company_name: { type: DataTypes.STRING(200), allowNull: true },
     job_title: { type: DataTypes.STRING(100), allowNull: true },
@@ -100,6 +109,9 @@ Lead.init(
     company_size: { type: DataTypes.STRING(50), allowNull: true },
     annual_revenue: { type: DataTypes.DECIMAL(18, 2), allowNull: true },
     lead_score: { type: DataTypes.INTEGER, defaultValue: 0 },
+    score_grade: { type: DataTypes.ENUM("cold", "warm", "hot"), allowNull: true },
+    score_reasons: { type: DataTypes.JSON, allowNull: true },
+    last_scored_at: { type: DataTypes.DATE, allowNull: true },
     last_activity_date: { type: DataTypes.DATE, allowNull: true },
   },
   { 

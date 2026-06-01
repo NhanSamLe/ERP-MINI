@@ -31,6 +31,7 @@ import CRMDashboardPage from "@/features/crm/page/CRMDashboardPage";
 import LeadSourcePage from "@/features/crm/page/LeadSourcePage";
 import PipelinePage from "@/features/crm/page/PipelinePage";
 import ScoringRulePage from "@/features/crm/page/ScoringRulePage";
+import LeadBulkCreatePage from "@/features/crm/page/LeadBulkCreatePage";
 const crmRoutes: RouteObject[] = [
   // {
   //   path: "/crm",
@@ -85,6 +86,14 @@ const crmRoutes: RouteObject[] = [
     element: (
       <ProtectedRoute allowedRoles={["CEO", "SALESMANAGER","SALES"]}>
         <LeadCreatePage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/crm/leads/bulk-create",
+    element: (
+      <ProtectedRoute allowedRoles={["CEO", "SALESMANAGER","SALES"]}>
+        <LeadBulkCreatePage />
       </ProtectedRoute>
     ),
   },

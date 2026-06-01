@@ -17,6 +17,7 @@ export interface SaleOrderLineDto {
   product?: Product
 
   quantity?: number;
+  uom_id?: number | null;
   unit_price?: number;
 
   tax_rate_id?: number | null;
@@ -77,6 +78,14 @@ export interface SaleOrderDto {
   total_before_tax: number;
   total_tax: number;
   total_after_tax: number;
+  currency_id?: number | null;
+  exchange_rate?: number;
+  currency?: {
+    id: number;
+    code: string;
+    symbol: string;
+    name?: string;
+  } | null;
 
   lines: SaleOrderLineDto[];
 
@@ -88,12 +97,15 @@ export interface CreateSaleOrderLineDto {
   product_id: number;
   description?: string;
   quantity: number;
+  uom_id?: number | null;
   unit_price: number;
   tax_rate_id?: number;
 }
 
 export interface CreateSaleOrderDto {
   customer_id: number;
+  currency_id?: number | null;
+  exchange_rate?: number;
   order_date: string;
   lines: CreateSaleOrderLineDto[];
   deletedLineIds?: number[];
@@ -101,6 +113,8 @@ export interface CreateSaleOrderDto {
 
 export interface UpdateSaleOrderDto {
   customer_id: number;
+  currency_id?: number | null;
+  exchange_rate?: number;
   order_date: string;
   deletedLineIds?: number[];
   lines: SaleOrderLineDto[];

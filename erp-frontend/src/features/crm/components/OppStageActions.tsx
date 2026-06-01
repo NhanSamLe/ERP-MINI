@@ -23,7 +23,6 @@ export default function OppStageActions({
   const [showStageMenu, setShowStageMenu] = useState(false);
   const [showLostModal, setShowLostModal] = useState(false);
   const [lostReason, setLostReason] = useState("");
-  const [targetStageId, setTargetStageId] = useState<number | null>(null);
 
   const currentStage = stages.find((s) => s.id === currentStageId);
   const otherStages = stages.filter((s) => s.id !== currentStageId);
@@ -33,7 +32,6 @@ export default function OppStageActions({
     if (stage.is_won) {
       onMarkWon();
     } else if (stage.is_lost) {
-      setTargetStageId(stage.id);
       setLostReason("");
       setShowLostModal(true);
     } else {

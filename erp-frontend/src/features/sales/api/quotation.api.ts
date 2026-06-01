@@ -11,6 +11,9 @@ export const quotationApi = {
   getAll: (): Promise<{ data: { data: QuotationDto[] } }> =>
     axiosClient.get(BASE),
 
+  getByOpportunity: (oppId: number): Promise<{ data: { data: QuotationDto[] } }> =>
+    axiosClient.get(`${BASE}/by-opportunity/${oppId}`),
+
   getById: (id: number): Promise<{ data: { data: QuotationDto } }> =>
     axiosClient.get(`${BASE}/${id}`),
 

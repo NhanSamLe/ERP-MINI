@@ -6,16 +6,10 @@ export const getLeads = async (req: Request, res: Response) => {
     const user = (req as any).user;
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
-    const isManager = ["SALESMANAGER"].includes(user.role);
-
-    const leads = isManager
-      ? await leadService.getAllLeads()
-      : await leadService.getMyLeads(user.id);
+    const leads = await leadService.getAllLeads(user);
 
     return res.json({
-      message: isManager
-        ? "Lấy toàn bộ Lead thành công"
-        : "Lấy Lead của user thành công",
+      message: "Lấy danh sách Lead thành công",
       data: leads,
     });
 
@@ -25,8 +19,9 @@ export const getLeads = async (req: Request, res: Response) => {
 };
 export const getLeadById = async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
     const leadId = Number(req.params.leadId);
-    const lead = await leadService.getLeadById(leadId);
+    const lead = await leadService.getLeadById(leadId, user);
     return res.json({
       message: "Lấy chi tiết Lead thành công",
       data: lead,
@@ -37,14 +32,33 @@ export const getLeadById = async (req: Request, res: Response) => {
 };
 export const createLead = async (req: Request, res: Response) => {
   try {
-    const assigned_to = (req as any).user.id;
-    const { name, email, phone, source } = req.body;
+    const user = (req as any).user;
+    const assigned_to = user.id;
+    const {
+      name,
+      email,
+      phone,
+      source,
+      source_id,
+      company_name,
+      job_title,
+      industry,
+      company_size,
+      annual_revenue,
+    } = req.body;
 
     const lead = await leadService.createLead({
       name,
       email,
       phone,
       source,
+      source_id,
+      company_name,
+      job_title,
+      industry,
+      company_size,
+      annual_revenue,
+      branch_id: user.branch_id ?? null,
       assigned_to,
     });
 
@@ -118,7 +132,8 @@ export const convertToCustomer = async (req: Request, res: Response) => {
 ================================ */
 export const markAsLost = async (req: Request, res: Response) => {
   try {
-    const { leadId, reason } = req.body;
+    const leadId = Number(req.params.leadId ?? req.body.leadId);
+    const { reason } = req.body;
     const userId = (req as any).user.id;
     const role = (req as any).user.role;
     const lead = await leadService.markAsLost(leadId, userId, role, reason);
@@ -137,10 +152,11 @@ export const markAsLost = async (req: Request, res: Response) => {
 ================================ */
 export const reassignLead = async (req: Request, res: Response) => {
   try {
-    const { leadId, newUserId } = req.body;
-    const managerId = (req as any).user.id;
+    const leadId = Number(req.params.leadId ?? req.body.leadId);
+    const { newUserId } = req.body;
+    const manager = (req as any).user;
 
-    const lead = await leadService.reassignLead(leadId, newUserId, managerId);
+    const lead = await leadService.reassignLead(leadId, newUserId, manager.id, manager.role);
 
     return res.json({
       message: "Lead đã được chuyển người phụ trách",
@@ -214,6 +230,26 @@ export const getTodayLead = async (req: Request, res: Response) => {
     return res.json({
       message: "Lấy danh sách Lead thành công",
       data: leads,
+    });
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message });
+  }
+};
+
+export const bulkCreateLeads = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { leads } = req.body;
+
+    if (!Array.isArray(leads) || leads.length === 0) {
+      return res.status(400).json({ message: "Danh sách leads không hợp lệ" });
+    }
+
+    const result = await leadService.bulkCreateLeads(leads, user.id, user.branch_id ?? null);
+
+    return res.status(201).json({
+      message: `Tạo ${result.successCount} leads thành công`,
+      data: result,
     });
   } catch (err: any) {
     return res.status(400).json({ message: err.message });

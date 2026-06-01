@@ -12,8 +12,8 @@ export const fetchAllLeads = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       return await leadService.getAllLeads();
-    } catch (error) {
-      return rejectWithValue(error);
+    } catch (error: any) {
+      return rejectWithValue(error?.response?.data?.message ?? error?.message ?? "Lỗi fetchAllLeads");
     }
   }
 );
@@ -24,8 +24,8 @@ export const fetchLeadById = createAsyncThunk(
   async (leadId: number, { rejectWithValue }) => {
     try {
       return await leadService.getLeadById(leadId);
-    } catch (error) {
-      return rejectWithValue(error);
+    } catch (error: any) {
+      return rejectWithValue(error?.response?.data?.message ?? error?.message ?? "Lỗi fetchLeadById");
     }
   }
 );
@@ -70,8 +70,12 @@ export const updateLeadEvaluation = createAsyncThunk(
 // Convert lead → customer
 export const convertLead = createAsyncThunk(
   "lead/convert",
-  async (leadId: number) => {
-    return await leadService.convertLead(leadId);
+  async (leadId: number, { rejectWithValue }) => {
+    try {
+      return await leadService.convertLead(leadId);
+    } catch (error: any) {
+      return rejectWithValue(error?.response?.data?.message ?? error?.message ?? "Chuyển đổi Lead thất bại");
+    }
   }
 );
 

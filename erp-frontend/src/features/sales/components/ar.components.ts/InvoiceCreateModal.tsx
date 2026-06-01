@@ -34,8 +34,8 @@ export default function CreateInvoiceModal({
         {/* HEADER */}
         <div className="flex items-center justify-between p-4 border-b bg-gray-50">
           <div>
-            <h2 className="text-lg font-bold text-gray-800">Create Invoice</h2>
-            <p className="text-sm text-gray-500">Select a sale order to invoice</p>
+            <h2 className="text-lg font-bold text-gray-800">Tạo Hóa đơn</h2>
+            <p className="text-sm text-gray-500">Chọn đơn hàng để lập hóa đơn</p>
           </div>
           <button
             onClick={onClose}
@@ -51,7 +51,7 @@ export default function CreateInvoiceModal({
             <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
             <input
               type="text"
-              placeholder="Search order # or customer..."
+              placeholder="Tìm số đơn hàng hoặc khách hàng..."
               className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -65,7 +65,7 @@ export default function CreateInvoiceModal({
           {filteredOrders.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-gray-500">
               <FileText size={48} className="opacity-20 mb-2" />
-              <p>No available orders found</p>
+              <p>Không có đơn hàng nào phù hợp</p>
             </div>
           ) : (
             filteredOrders.map((o) => (
@@ -89,7 +89,7 @@ export default function CreateInvoiceModal({
                     <p className="text-xs mt-0.5">{formatDateTime(o.order_date)}</p>
                   </div>
                   <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded border border-green-100">
-                    Ready to Invoice
+                    Sẵn sàng lập HĐ
                   </span>
                 </div>
               </div>
@@ -103,7 +103,7 @@ export default function CreateInvoiceModal({
             onClick={onClose}
             className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition"
           >
-            Cancel
+            Đóng
           </button>
         </div>
       </div>

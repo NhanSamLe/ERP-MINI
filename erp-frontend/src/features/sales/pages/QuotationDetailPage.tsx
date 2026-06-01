@@ -41,7 +41,7 @@ export default function QuotationDetailPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-gray-400">
           <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
-          <p className="text-sm font-medium">Loading quotation...</p>
+          <p className="text-sm font-medium">Đang tải báo giá...</p>
         </div>
       </div>
     );
@@ -53,12 +53,12 @@ export default function QuotationDetailPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-gray-400">
           <AlertTriangle className="w-8 h-8 text-red-400" />
-          <p className="text-sm font-medium">{error ?? "Quotation not found."}</p>
+          <p className="text-sm font-medium">{error ?? "Không tìm thấy báo giá."}</p>
           <button
             onClick={() => navigate("/sales/quotations")}
             className="mt-2 text-sm text-orange-600 hover:underline"
           >
-            Back to Quotations
+            Quay lại danh sách
           </button>
         </div>
       </div>
@@ -68,17 +68,31 @@ export default function QuotationDetailPage() {
   if (!q || !user) return null;
 
   /* ── derived ── */
-  const isExpired = q.status !== "accepted" && q.valid_until && new Date(q.valid_until) < new Date();
+  const isExpired = Boolean(q.status !== "accepted" && q.valid_until && new Date(q.valid_until) < new Date());
   const isRejected = q.approval_status === "rejected";
-  const canEdit = q.approval_status === "draft";
-  const canSubmit = q.approval_status === "draft";
+  const roleCode = user.role?.code;
+  const isSalesOwner = roleCode === "SALES" && q.created_by === user.id;
+  const isSalesManager = roleCode === "SALESMANAGER" || roleCode === "ADMIN";
+  const canEdit = q.approval_status === "draft" && (isSalesOwner || isSalesManager);
+  const canSubmit = q.approval_status === "draft" && (isSalesOwner || isSalesManager);
   const canApprove = q.approval_status === "waiting_approval" &&
-    (user.role?.code === "SALESMANAGER" || user.role?.code === "ADMIN");
+    isSalesManager;
   const canReject = canApprove;
-  const canAccept = q.approval_status === "approved" && q.status !== "accepted";
-  const canConvert = q.status === "accepted";
+  const currencyCode = q.currency?.code || "VND";
+  const currencySymbol = q.currency?.symbol || currencyCode;
+  const exchangeRate = Number(q.exchange_rate || 1);
+  const formatQuoteMoney = (value: number | null | undefined) =>
+    `${Number(value || 0).toLocaleString("vi-VN", { maximumFractionDigits: 2 })} ${currencySymbol}`;
+  const canAccept = q.approval_status === "approved" && q.status !== "accepted" && (isSalesOwner || isSalesManager);
+  const canConvert = q.status === "accepted" && (isSalesOwner || isSalesManager);
 
-  const discountAmt = q.discount_amount ?? (q.total_before_tax * ((q.discount_percent ?? 0) / 100));
+  // total_before_tax đã trừ chiết khấu, nên: discountAmt = total_before_tax * p / (100 - p)
+  const discountPct = q.discount_percent ?? 0;
+  const discountAmt = (q.discount_amount && Number(q.discount_amount) > 0)
+    ? Number(q.discount_amount)
+    : discountPct > 0
+      ? Math.round(Number(q.total_before_tax) * discountPct / (100 - discountPct))
+      : 0;
 
   /* ── convert to order ── */
   const handleConvert = async () => {
@@ -87,7 +101,7 @@ export default function QuotationDetailPage() {
       const result = await dispatch(convertQuotationToOrder(q.id)).unwrap();
       navigate(`/sales/orders/${result.id}`);
     } catch (err: any) {
-      setConvertError(err?.message ?? "Failed to convert quotation to order.");
+      setConvertError(err?.message ?? "Không thể chuyển báo giá thành đơn hàng.");
     }
   };
 
@@ -100,106 +114,111 @@ export default function QuotationDetailPage() {
           {q.status !== q.approval_status && <StatusBadge status={q.status} />}
           {isExpired && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-500">
-              <AlertTriangle className="w-3 h-3" /> Expired
+              <AlertTriangle className="w-3 h-3" /> Hết hạn
             </span>
           )}
         </div>
       }
       actions={[
-        { label: "Back", variant: "outline", onClick: () => navigate("/sales/quotations") },
-        ...(canEdit ? [{ label: "Edit", variant: "outline" as const, onClick: () => navigate(`/sales/quotations/${q.id}/edit`) }] : []),
-        ...(canSubmit ? [{ label: "Submit for Approval", variant: "primary" as const, onClick: () => setModal("submit") }] : []),
-        ...(canApprove ? [{ label: "Approve", variant: "success" as const, onClick: () => setModal("approve") }] : []),
-        ...(canReject ? [{ label: "Reject", variant: "danger" as const, onClick: () => setModal("reject") }] : []),
-        ...(canAccept ? [{ label: "Mark as Accepted", variant: "success" as const, onClick: () => setModal("accept") }] : []),
-        ...(canConvert ? [{ label: "Convert to Order", variant: "primary" as const, onClick: () => setModal("convert") }] : []),
+        { label: "Quay lại", variant: "outline", onClick: () => navigate("/sales/quotations") },
+        ...(canEdit ? [{ label: "Chỉnh sửa", variant: "outline" as const, onClick: () => navigate(`/sales/quotations/${q.id}/edit`) }] : []),
+        ...(canSubmit ? [{ label: "Trình duyệt", variant: "primary" as const, onClick: () => setModal("submit") }] : []),
+        ...(canApprove ? [{ label: "Phê duyệt", variant: "success" as const, onClick: () => setModal("approve") }] : []),
+        ...(canReject ? [{ label: "Từ chối", variant: "danger" as const, onClick: () => setModal("reject") }] : []),
+        ...(canAccept ? [{ label: "Đánh dấu đã chấp nhận", variant: "success" as const, onClick: () => setModal("accept") }] : []),
+        ...(canConvert ? [{ label: "Tạo Đơn hàng", variant: "primary" as const, onClick: () => setModal("convert") }] : []),
       ]}
       sidebarContent={
         <div className="space-y-4">
           {/* Financial Summary */}
-          <FormSection title="Financial Summary" icon={<CreditCard className="w-4 h-4" />}>
+          <FormSection title="Tóm tắt tài chính" icon={<CreditCard className="w-4 h-4" />}>
             <div className="space-y-2.5">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Subtotal</span>
-                <span className="font-medium text-gray-800">{formatVND(q.total_before_tax)}</span>
+                <span className="text-gray-500">Tạm tính</span>
+                <span className="font-medium text-gray-800">{formatQuoteMoney(q.total_before_tax)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">VAT / Tax</span>
-                <span className="font-medium text-gray-800">{formatVND(q.total_tax)}</span>
+                <span className="text-gray-500">Thuế VAT</span>
+                <span className="font-medium text-gray-800">{formatQuoteMoney(q.total_tax)}</span>
               </div>
               {discountAmt > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">
-                    Discount{q.discount_percent ? ` (${q.discount_percent}%)` : ""}
+                    Chiết khấu{discountPct > 0 ? ` (${discountPct}%)` : ""}
                   </span>
-                  <span className="font-medium text-emerald-600">-{formatVND(discountAmt)}</span>
+                  <span className="font-medium text-emerald-600">-{formatQuoteMoney(discountAmt)}</span>
                 </div>
               )}
               <div className="pt-2.5 mt-1 border-t border-gray-200">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-semibold text-gray-900">Grand Total</span>
-                  <span className="text-lg font-bold text-orange-600">{formatVND(q.total_after_tax)}</span>
+                  <span className="text-sm font-semibold text-gray-900">Tổng cộng</span>
+                  <span className="text-lg font-bold text-orange-600">{formatQuoteMoney(q.total_after_tax)}</span>
                 </div>
-                <p className="text-xs text-gray-400 mt-1 text-right">Incl. tax · VND</p>
+                {currencyCode !== "VND" && (
+                  <p className="text-xs text-gray-400 mt-1 text-right">
+                    ≈ {formatVND(q.total_after_tax * exchangeRate)}
+                  </p>
+                )}
+                <p className="text-xs text-gray-400 mt-1 text-right">Đã bao gồm thuế · {currencyCode}</p>
               </div>
             </div>
           </FormSection>
 
           {/* Linked Opportunity */}
           {q.opportunity && (
-            <FormSection title="Linked Opportunity" icon={<ArrowRightCircle className="w-4 h-4" />}>
+            <FormSection title="Cơ hội liên kết" icon={<ArrowRightCircle className="w-4 h-4" />}>
               <div className="space-y-2">
                 <p className="text-sm font-medium text-gray-800">{q.opportunity.name}</p>
                 <Link
                   to={`/crm/opportunities/${q.opportunity_id}`}
                   className="inline-flex items-center gap-1 text-xs text-orange-600 hover:text-orange-700"
                 >
-                  <ExternalLink className="w-3 h-3" /> View Opportunity
+                  <ExternalLink className="w-3 h-3" /> Xem cơ hội
                 </Link>
               </div>
             </FormSection>
           )}
 
           {/* Workflow */}
-          <FormSection title="Workflow" icon={<Clock className="w-4 h-4" />}>
+          <FormSection title="Quy trình duyệt" icon={<Clock className="w-4 h-4" />}>
             <div className="space-y-3">
               <TimelineStep icon={<FileText className="w-3 h-3 text-gray-500" />} bg="bg-gray-100"
-                label="Created" name={q.creator?.full_name} time={fmtTime(q.created_at)} />
+                label="Đã tạo" name={q.creator?.full_name} time={fmtTime(q.created_at)} />
               {q.submitted_at && (
                 <TimelineStep icon={<Clock className="w-3 h-3 text-amber-500" />} bg="bg-amber-50"
-                  label="Submitted" time={fmtTime(q.submitted_at)} />
+                  label="Đã trình duyệt" time={fmtTime(q.submitted_at)} />
               )}
               {q.approved_at && q.approver && (
                 <TimelineStep icon={<CheckCircle2 className="w-3 h-3 text-emerald-500" />} bg="bg-emerald-50"
-                  label="Approved" name={q.approver.full_name} time={fmtTime(q.approved_at)} />
+                  label="Đã phê duyệt" name={q.approver.full_name} time={fmtTime(q.approved_at)} />
               )}
               {q.sent_at && (
                 <TimelineStep icon={<CheckCircle2 className="w-3 h-3 text-blue-500" />} bg="bg-blue-50"
-                  label="Sent / Accepted" time={fmtTime(q.sent_at)} />
+                  label="Đã gửi / Chấp nhận" time={fmtTime(q.sent_at)} />
               )}
               {isRejected && (
                 <TimelineStep icon={<AlertTriangle className="w-3 h-3 text-red-500" />} bg="bg-red-50"
-                  label="Rejected" />
+                  label="Đã từ chối" />
               )}
             </div>
           </FormSection>
 
           {/* Assignment */}
-          <FormSection title="Assignment" icon={<UserCheck className="w-4 h-4" />}>
+          <FormSection title="Phân công" icon={<UserCheck className="w-4 h-4" />}>
             <div className="space-y-2.5">
               <div>
-                <p className="text-xs text-gray-500 mb-0.5">Created By</p>
+                <p className="text-xs text-gray-500 mb-0.5">Người tạo</p>
                 <p className="text-sm font-medium text-gray-800">{q.creator?.full_name ?? "—"}</p>
               </div>
               {q.approver && (
                 <div>
-                  <p className="text-xs text-gray-500 mb-0.5">Approved By</p>
+                  <p className="text-xs text-gray-500 mb-0.5">Người phê duyệt</p>
                   <p className="text-sm font-medium text-gray-800">{q.approver.full_name}</p>
                 </div>
               )}
               {q.branch && (
                 <div>
-                  <p className="text-xs text-gray-500 mb-0.5">Branch</p>
+                  <p className="text-xs text-gray-500 mb-0.5">Chi nhánh</p>
                   <p className="text-sm font-medium text-gray-800">{q.branch.name}</p>
                 </div>
               )}
@@ -220,7 +239,7 @@ export default function QuotationDetailPage() {
         <div className="flex items-start gap-3 px-4 py-3 bg-red-50 border border-red-100 rounded-lg">
           <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-red-700">Quotation Rejected</p>
+            <p className="text-sm font-semibold text-red-700">Báo giá đã bị từ chối</p>
             <p className="text-sm text-red-600 mt-0.5">{q.reject_reason}</p>
           </div>
         </div>
@@ -230,44 +249,52 @@ export default function QuotationDetailPage() {
       {canConvert && (
         <div className="flex items-center justify-between px-5 py-4 bg-orange-50 border border-orange-200 rounded-lg">
           <div>
-            <p className="text-sm font-semibold text-orange-800">Customer has accepted this quotation</p>
-            <p className="text-xs text-orange-600 mt-0.5">Convert it to a Sale Order to proceed with fulfillment.</p>
+            <p className="text-sm font-semibold text-orange-800">Khách hàng đã chấp nhận báo giá này</p>
+            <p className="text-xs text-orange-600 mt-0.5">Tạo đơn hàng để tiến hành thực hiện.</p>
           </div>
           <button
             onClick={() => setModal("convert")}
             className="inline-flex items-center gap-2 h-9 px-4 text-sm font-medium text-white bg-orange-500 rounded-md hover:bg-orange-600 transition-colors shadow-sm shrink-0"
           >
             <ArrowRightCircle className="w-4 h-4" />
-            Convert to Order
+            Tạo Đơn hàng
           </button>
         </div>
       )}
 
       {/* ── 1. Quotation Details ── */}
-      <FormSection title="Quotation Details" icon={<FileText className="w-4 h-4" />}>
+      <FormSection title="Thông tin Báo giá" icon={<FileText className="w-4 h-4" />}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Field label="Quote Number" value={q.quotation_no} />
-          <Field label="Version" value={`v${q.version}`} />
-          <Field label="Quotation Date" value={fmtDate(q.quotation_date)} />
-          <Field label="Valid Until" value={fmtDate(q.valid_until)} highlight={isExpired ?? false} />
-          <Field label="Approval Status" value={q.approval_status?.replace(/_/g, " ")} />
-          <Field label="Document Status" value={q.status} />
-          {q.discount_percent ? <Field label="Global Discount" value={`${q.discount_percent}%`} /> : null}
+          <Field label="Số báo giá" value={q.quotation_no} />
+          <Field label="Phiên bản" value={`v${q.version}`} />
+          <Field label="Ngày báo giá" value={fmtDate(q.quotation_date)} />
+          <Field label="Hiệu lực đến" value={fmtDate(q.valid_until)} highlight={isExpired ?? false} />
+          <Field label="Trạng thái duyệt" value={q.approval_status?.replace(/_/g, " ")} />
+          <Field label="Trạng thái tài liệu" value={q.status} />
+          <Field label="Tiền tệ" value={q.currency ? `${q.currency.code} (${q.currency.symbol})` : "VND"} />
+          {currencyCode !== "VND" && <Field label="Tỉ giá" value={`1 ${currencyCode} = ${Number(q.exchange_rate || 1).toLocaleString("vi-VN")} VND`} />}
+          {q.discount_percent ? (
+            <div>
+              <p className="text-xs text-gray-500 mb-0.5">Chiết khấu tổng</p>
+              <p className="text-sm font-medium text-gray-800">{q.discount_percent}%</p>
+              <p className="text-xs text-emerald-600 font-medium mt-0.5">-{formatQuoteMoney(discountAmt)}</p>
+            </div>
+          ) : null}
         </div>
       </FormSection>
 
       {/* ── 2. Customer Information ── */}
-      <FormSection title="Customer Information" icon={<User className="w-4 h-4" />}>
+      <FormSection title="Thông tin Khách hàng" icon={<User className="w-4 h-4" />}>
         {q.customer ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
             <div className="space-y-4">
               <div>
-                <p className="text-xs text-gray-500 mb-0.5">Customer Name</p>
+                <p className="text-xs text-gray-500 mb-0.5">Tên khách hàng</p>
                 <p className="text-base font-semibold text-gray-900">{q.customer.name}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs text-gray-500 mb-0.5 flex items-center gap-1"><Phone className="w-3 h-3" /> Phone</p>
+                  <p className="text-xs text-gray-500 mb-0.5 flex items-center gap-1"><Phone className="w-3 h-3" /> Điện thoại</p>
                   <p className="text-sm text-gray-800">{q.customer.phone || "—"}</p>
                 </div>
                 <div>
@@ -278,34 +305,34 @@ export default function QuotationDetailPage() {
             </div>
             <div className="space-y-4">
               <div>
-                <p className="text-xs text-gray-500 mb-0.5 flex items-center gap-1"><CreditCard className="w-3 h-3" /> Tax Code (MST)</p>
+                <p className="text-xs text-gray-500 mb-0.5 flex items-center gap-1"><CreditCard className="w-3 h-3" /> Mã số thuế</p>
                 <p className="text-sm font-medium text-gray-800">{q.customer.tax_code || "—"}</p>
               </div>
               {q.customer.address && (
                 <div>
-                  <p className="text-xs text-gray-500 mb-0.5 flex items-center gap-1"><MapPin className="w-3 h-3" /> Address</p>
+                  <p className="text-xs text-gray-500 mb-0.5 flex items-center gap-1"><MapPin className="w-3 h-3" /> Địa chỉ</p>
                   <p className="text-sm text-gray-700 leading-relaxed">{q.customer.address}</p>
                 </div>
               )}
             </div>
           </div>
         ) : (
-          <p className="text-sm text-gray-400 italic">Customer information not available.</p>
+          <p className="text-sm text-gray-400 italic">Không có thông tin khách hàng.</p>
         )}
       </FormSection>
 
       {/* ── 3. Line Items ── */}
       <FormSection
-        title="Quotation Lines"
+        title="Dòng báo giá"
         icon={<ShoppingCart className="w-4 h-4" />}
-        description={`${q.lines?.length ?? 0} product(s)`}
+        description={`${q.lines?.length ?? 0} sản phẩm`}
         noPadding
       >
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50/80">
-                {["#", "Product", "UoM", "Qty", "Unit Price", "Disc. %", "Tax (%)", "Subtotal", "Tax Amt", "Total"].map((h) => (
+                {["#", "Sản phẩm", "ĐVT", "SL", "Đơn giá", "CK%", "Thuế", "Tạm tính", "Tiền thuế", "Thành tiền"].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     {h}
                   </th>
@@ -315,7 +342,7 @@ export default function QuotationDetailPage() {
             <tbody className="divide-y divide-gray-100">
               {!q.lines || q.lines.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="py-12 text-center text-sm text-gray-400">No line items.</td>
+                  <td colSpan={10} className="py-12 text-center text-sm text-gray-400">Không có dòng sản phẩm.</td>
                 </tr>
               ) : (
                 q.lines.map((line, idx) => {
@@ -324,6 +351,7 @@ export default function QuotationDetailPage() {
                   const lineTotal = line.line_total_after_tax ?? (lineSubtotal + lineTax);
                   const discPct = line.discount_percent ?? 0;
                   const taxRate = line.taxRate?.rate ?? 0;
+                  const uomLabel = line.uom?.code || line.product?.uom?.code || "—";
 
                   return (
                     <tr key={idx} className="hover:bg-orange-50/30 transition-colors">
@@ -343,7 +371,7 @@ export default function QuotationDetailPage() {
                       </td>
                       <td className="px-4 py-3">
                         <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
-                          {line.product?.uom?.code || "—"}
+                          {uomLabel}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">
@@ -351,7 +379,7 @@ export default function QuotationDetailPage() {
                           {line.quantity ?? 0}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-800">{formatVND(line.unit_price ?? 0)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-800">{formatQuoteMoney(line.unit_price ?? 0)}</td>
                       <td className="px-4 py-3 text-center">
                         {discPct > 0
                           ? <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600">{discPct}%</span>
@@ -362,9 +390,9 @@ export default function QuotationDetailPage() {
                           ? <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-600">{taxRate}%</span>
                           : <span className="text-xs text-gray-400">0%</span>}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">{formatVND(lineSubtotal)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{lineTax > 0 ? formatVND(lineTax) : "—"}</td>
-                      <td className="px-4 py-3 text-sm font-semibold text-gray-900">{formatVND(lineTotal)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{formatQuoteMoney(lineSubtotal)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-500">{lineTax > 0 ? formatQuoteMoney(lineTax) : "—"}</td>
+                      <td className="px-4 py-3 text-sm font-semibold text-gray-900">{formatQuoteMoney(lineTotal)}</td>
                     </tr>
                   );
                 })
@@ -373,27 +401,27 @@ export default function QuotationDetailPage() {
             {q.lines && q.lines.length > 0 && (
               <tfoot className="border-t-2 border-gray-200">
                 <tr className="bg-gray-50/60">
-                  <td colSpan={7} className="px-4 py-3 text-right text-sm text-gray-600 font-medium">Subtotal (before tax)</td>
-                  <td className="px-4 py-3 text-sm font-semibold text-gray-800">{formatVND(q.total_before_tax)}</td>
+                  <td colSpan={7} className="px-4 py-3 text-right text-sm text-gray-600 font-medium">Tạm tính (chưa thuế)</td>
+                  <td className="px-4 py-3 text-sm font-semibold text-gray-800">{formatQuoteMoney(q.total_before_tax)}</td>
                   <td colSpan={2}></td>
                 </tr>
                 <tr className="bg-gray-50/60">
-                  <td colSpan={7} className="px-4 py-2 text-right text-sm text-gray-500">VAT / Tax</td>
-                  <td className="px-4 py-2 text-sm font-medium text-gray-600">{formatVND(q.total_tax)}</td>
+                  <td colSpan={7} className="px-4 py-2 text-right text-sm text-gray-500">Thuế VAT</td>
+                  <td className="px-4 py-2 text-sm font-medium text-gray-600">{formatQuoteMoney(q.total_tax)}</td>
                   <td colSpan={2}></td>
                 </tr>
                 {discountAmt > 0 && (
                   <tr className="bg-gray-50/60">
                     <td colSpan={7} className="px-4 py-2 text-right text-sm text-emerald-600">
-                      Discount{q.discount_percent ? ` (${q.discount_percent}%)` : ""}
+                      Chiết khấu{discountPct > 0 ? ` (${discountPct}%)` : ""}
                     </td>
-                    <td className="px-4 py-2 text-sm font-medium text-emerald-600">-{formatVND(discountAmt)}</td>
+                    <td className="px-4 py-2 text-sm font-medium text-emerald-600">-{formatQuoteMoney(discountAmt)}</td>
                     <td colSpan={2}></td>
                   </tr>
                 )}
                 <tr className="bg-orange-50/40">
-                  <td colSpan={7} className="px-4 py-3 text-right text-sm font-bold text-gray-900">GRAND TOTAL (incl. tax)</td>
-                  <td colSpan={3} className="px-4 py-3 text-base font-bold text-orange-600">{formatVND(q.total_after_tax)}</td>
+                  <td colSpan={7} className="px-4 py-3 text-right text-sm font-bold text-gray-900">TỔNG CỘNG (đã bao gồm thuế)</td>
+                  <td colSpan={3} className="px-4 py-3 text-base font-bold text-orange-600">{formatQuoteMoney(q.total_after_tax)}</td>
                 </tr>
               </tfoot>
             )}
@@ -403,17 +431,17 @@ export default function QuotationDetailPage() {
 
       {/* ── 4. Notes ── */}
       {(q.customer_notes || q.internal_notes) && (
-        <FormSection title="Notes" icon={<MessageSquare className="w-4 h-4" />}>
+        <FormSection title="Ghi chú" icon={<MessageSquare className="w-4 h-4" />}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {q.customer_notes && (
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Customer Notes</p>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Ghi chú khách hàng</p>
                 <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{q.customer_notes}</p>
               </div>
             )}
             {q.internal_notes && (
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Internal Notes</p>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Ghi chú nội bộ</p>
                 <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{q.internal_notes}</p>
               </div>
             )}
@@ -423,35 +451,35 @@ export default function QuotationDetailPage() {
 
       {/* ── Modals ── */}
       <ActionConfirmModal isOpen={modal === "submit"} onClose={() => setModal(null)}
-        title="Submit for Approval"
-        description={`Submit quotation "${q.quotation_no}" for manager approval? It will be locked from editing.`}
-        confirmText="Submit" variant="primary"
+        title="Trình duyệt báo giá"
+        description={`Trình duyệt "${q.quotation_no}" lên quản lý? Báo giá sẽ bị khoá khi đang chờ duyệt.`}
+        confirmText="Trình duyệt" variant="primary"
         onConfirm={async () => { await dispatch(submitQuotation(q.id)).unwrap(); setModal(null); }}
       />
       <ActionConfirmModal isOpen={modal === "approve"} onClose={() => setModal(null)}
-        title="Approve Quotation"
-        description={`Approve "${q.quotation_no}"? The quotation will be ready to send to the customer.`}
-        confirmText="Approve" variant="success"
+        title="Phê duyệt báo giá"
+        description={`Phê duyệt "${q.quotation_no}"? Báo giá sẽ sẵn sàng gửi cho khách hàng.`}
+        confirmText="Phê duyệt" variant="success"
         onConfirm={async () => { await dispatch(approveQuotation(q.id)).unwrap(); setModal(null); }}
       />
       <ActionConfirmModal isOpen={modal === "reject"} onClose={() => setModal(null)}
-        title="Reject Quotation"
-        description={`Reject "${q.quotation_no}"? Please provide a reason.`}
-        confirmText="Reject" variant="danger" requireReason
-        reasonLabel="Rejection Reason"
-        reasonPlaceholder="e.g. Price is too high, terms not met..."
+        title="Từ chối báo giá"
+        description={`Từ chối "${q.quotation_no}"? Vui lòng nhập lý do.`}
+        confirmText="Từ chối" variant="danger" requireReason
+        reasonLabel="Lý do từ chối"
+        reasonPlaceholder="VD: Giá quá cao, điều khoản không phù hợp..."
         onConfirm={async (reason) => { await dispatch(rejectQuotation({ id: q.id, reason: reason ?? "" })).unwrap(); setModal(null); }}
       />
       <ActionConfirmModal isOpen={modal === "accept"} onClose={() => setModal(null)}
-        title="Mark as Accepted"
-        description={`Confirm that the customer has accepted quotation "${q.quotation_no}"?`}
-        confirmText="Mark Accepted" variant="success"
+        title="Đánh dấu đã chấp nhận"
+        description={`Xác nhận khách hàng đã chấp nhận báo giá "${q.quotation_no}"?`}
+        confirmText="Chấp nhận" variant="success"
         onConfirm={async () => { await dispatch(markAcceptedQuotation(q.id)).unwrap(); setModal(null); }}
       />
       <ActionConfirmModal isOpen={modal === "convert"} onClose={() => setModal(null)}
-        title="Convert to Sale Order"
-        description={`Convert quotation "${q.quotation_no}" to a Sale Order? A new sale order will be created from this quotation's lines.`}
-        confirmText="Convert to Order" variant="primary"
+        title="Tạo Đơn hàng từ Báo giá"
+        description={`Chuyển "${q.quotation_no}" thành Đơn hàng bán? Một đơn hàng mới sẽ được tạo từ các dòng của báo giá này.`}
+        confirmText="Tạo Đơn hàng" variant="primary"
         onConfirm={async () => { setModal(null); await handleConvert(); }}
       />
     </StandardFormLayout>

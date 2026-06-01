@@ -34,6 +34,8 @@ export default function SaleOrderEditPage() {
   const normalizedOrder = {
     id: order.id,
     customer_id: order.customer_id,
+    currency_id: order.currency_id ?? null,
+    exchange_rate: order.exchange_rate ?? 1,
     order_date: order.order_date,
     deletedLineIds: [],
     lines: order.lines.map(l => ({

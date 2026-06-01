@@ -359,6 +359,7 @@ export function applyAssociations() {
     foreignKey: "customer_id",
     as: "customer",
   });
+  ArReceipt.belongsTo(Currency, { foreignKey: "currency_id", as: "currency" });
 
   Partner.hasMany(ArReceipt, {
     foreignKey: "customer_id",
@@ -922,10 +923,13 @@ export function applyAssociations() {
   // Lead ↔ LeadSource
   Lead.belongsTo(LeadSource, { foreignKey: "source_id", as: "leadSource" });
   LeadSource.hasMany(Lead, { foreignKey: "source_id", as: "leads" });
+  Lead.belongsTo(Partner, { foreignKey: "customer_id", as: "customer" });
+  Partner.hasMany(Lead, { foreignKey: "customer_id", as: "convertedLeads" });
 
   // Opportunity ↔ Pipeline/Stage
   Opportunity.belongsTo(Pipeline, { foreignKey: "pipeline_id", as: "pipeline" });
   Opportunity.belongsTo(PipelineStage, { foreignKey: "pipeline_stage_id", as: "pipelineStage" });
+  Opportunity.belongsTo(Currency, { foreignKey: "currency_id", as: "currency" });
 
   // =====================
   // PHASE 3: QUOTATION + SALES ENHANCEMENT
@@ -946,9 +950,10 @@ export function applyAssociations() {
   Quotation.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
   Quotation.belongsTo(Quotation, { foreignKey: "parent_id", as: "parent" });
 
-  // QuotationLine ↔ Product, TaxRate
+  // QuotationLine ↔ Product, TaxRate, Uom
   QuotationLine.belongsTo(Product, { foreignKey: "product_id", as: "product" });
   QuotationLine.belongsTo(TaxRate, { foreignKey: "tax_rate_id", as: "taxRate" });
+  QuotationLine.belongsTo(Uom, { foreignKey: "uom_id", as: "uom" });
 
   // SaleOrder ↔ Quotation, Currency, PaymentTerm
   SaleOrder.belongsTo(Quotation, { foreignKey: "quotation_id", as: "quotation" });
@@ -966,9 +971,10 @@ export function applyAssociations() {
   // PHASE 4: AR ENHANCEMENT + SALES RETURN
   // =====================
 
-  // ArInvoice ↔ PaymentTerm, Currency
+  // ArInvoice ↔ PaymentTerm, Currency, Partner
   ArInvoice.belongsTo(PaymentTerm, { foreignKey: "payment_term_id", as: "paymentTerm" });
   ArInvoice.belongsTo(Currency, { foreignKey: "currency_id", as: "currency" });
+  ArInvoice.belongsTo(Partner, { foreignKey: "customer_id", as: "customer" });
 
   // SalesReturnAuthorization (RMA)
   SalesReturnAuthorization.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });

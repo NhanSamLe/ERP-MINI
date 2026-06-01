@@ -34,6 +34,7 @@ export const useSaleOrderForm = (
         id: undefined,
         product_id: undefined,
         quantity: 1,
+        uom_id: undefined,
         unit_price: 0,
         tax_rate_id: undefined,
       },
@@ -62,6 +63,7 @@ export const useSaleOrderForm = (
       updated[index] = {
         ...updated[index],
         product_id:  product.id,
+        uom_id:      product.uom_id ?? null,
         unit_price:  product.sale_price ?? 0,
         tax_rate_id: product.tax_rate_id ?? undefined,
       };

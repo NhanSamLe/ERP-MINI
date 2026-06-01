@@ -7,11 +7,13 @@ const router = Router();
 router.use(authMiddleware([]));
 
 router.get("/", quotationController.getAll);
+router.get("/by-opportunity/:oppId", quotationController.getByOpportunity);
 router.get("/:id", quotationController.getById);
 router.post("/", quotationController.create);
 router.put("/:id", quotationController.update);
 router.patch("/:id/submit", quotationController.submit);
 router.patch("/:id/approve", quotationController.approve);
+router.patch("/:id/reject", quotationController.reject);
 router.patch("/:id/accept", quotationController.markAccepted);
 router.post("/:id/convert-to-order", quotationController.convertToOrder);
 

@@ -4,31 +4,131 @@ import { generateReceiptNo } from "../../../core/utils/receipt.util";
 import { sequelize } from "../../../config/db";
 import { SaleOrder } from "../models/saleOrder.model";
 import { SaleOrderLine } from "../models/saleOrderLine.model";
-import { PriceList, PriceListItem, Product, TaxRate, StockMove, StockMoveLine } from "../../../models";
+import { Currency, ExchangeRate, Opportunity, PriceList, PriceListItem, Product, TaxRate, StockMove, StockMoveLine, Uom, Partner, User, Branch } from "../../../models";
 import { Op } from "sequelize";
+
+async function getCurrencyRateToVnd(currencyId?: number | null, fallbackRate?: number | null) {
+  if (!currencyId) return Number(fallbackRate || 1);
+
+  const currency = await Currency.findByPk(currencyId);
+  if (!currency || currency.code === "VND") return 1;
+  if (fallbackRate && Number(fallbackRate) > 0) return Number(fallbackRate);
+
+  const vnd = await Currency.findOne({ where: { code: "VND" } });
+  if (!vnd) return 1;
+
+  const latest = await ExchangeRate.findOne({
+    where: { base_currency_id: vnd.id, quote_currency_id: currencyId },
+    order: [["valid_date", "DESC"]],
+  });
+  const vndToForeign = Number(latest?.rate || 0);
+  return vndToForeign > 0 ? 1 / vndToForeign : 1;
+}
+
+async function convertBetweenCurrencies(
+  amount: number,
+  sourceCurrencyId?: number | null,
+  targetCurrencyId?: number | null,
+  targetRate?: number | null
+) {
+  const sourceRate = await getCurrencyRateToVnd(sourceCurrencyId);
+  const targetRateToVnd = await getCurrencyRateToVnd(targetCurrencyId, targetRate);
+  return (amount * sourceRate) / targetRateToVnd;
+}
 
 export const quotationService = {
   async getAll(user: any) {
     const where: any = {};
-    if (user.role !== "ADMIN") {
+    if (user.role === "ADMIN") {
+      // ADMIN: xem tất cả mọi branch
+    } else if (user.role === "SALESMANAGER") {
+      // SALESMANAGER: xem toàn bộ trong branch của mình
       where.branch_id = user.branch_id;
+    } else {
+      // SALES và các role khác: chỉ xem báo giá do mình phụ trách
+      where.branch_id = user.branch_id;
+      where.sales_person_id = user.id;
     }
     return await Quotation.findAll({
       where,
-      include: [{ model: QuotationLine, as: "lines" }],
+      include: [
+        { model: QuotationLine, as: "lines" },
+        { model: Currency, as: "currency", attributes: ["id", "code", "symbol", "name"] },
+        { model: Partner, as: "customer", attributes: ["id", "name", "phone", "email"] },
+        { model: Opportunity, as: "opportunity", attributes: ["id", "name"] },
+        { model: User, as: "creator", attributes: ["id", "username", "full_name"] },
+      ],
+      order: [["created_at", "DESC"]],
+    });
+  },
+
+  async getByOpportunity(opportunityId: number, user: any) {
+    const where: any = { opportunity_id: opportunityId };
+    if (user.role === "ADMIN") {
+      // ADMIN: không filter branch
+    } else if (user.role === "SALESMANAGER") {
+      where.branch_id = user.branch_id;
+    } else {
+      where.branch_id = user.branch_id;
+      where.sales_person_id = user.id;
+    }
+    return await Quotation.findAll({
+      where,
+      include: [
+        { model: Currency, as: "currency", attributes: ["id", "code", "symbol"] },
+      ],
       order: [["created_at", "DESC"]],
     });
   },
 
   async getById(id: number, user: any) {
     const q = await Quotation.findByPk(id, {
-      include: [{ model: QuotationLine, as: "lines" }],
+      include: [
+        {
+          model: QuotationLine, as: "lines",
+          include: [
+            {
+              model: Product, as: "product",
+              attributes: ["id", "name", "sku", "image_url", "sale_price"],
+              include: [{ model: Uom, as: "uom", attributes: ["id", "name", "code"] }],
+            },
+            { model: TaxRate, as: "taxRate", attributes: ["id", "name", "rate"] },
+            { model: Uom, as: "uom", attributes: ["id", "name", "code"] },
+          ],
+        },
+        { model: Currency, as: "currency", attributes: ["id", "code", "symbol", "name"] },
+        { model: Partner, as: "customer", attributes: ["id", "name", "phone", "email", "tax_code", "address", "contact_person"] },
+        { model: Branch, as: "branch", attributes: ["id", "name"] },
+        { model: User, as: "creator", attributes: ["id", "username", "full_name"] },
+        { model: User, as: "approver", attributes: ["id", "username", "full_name"] },
+        { model: Opportunity, as: "opportunity", attributes: ["id", "name"] },
+      ],
     });
     if (!q) throw new Error("Quotation not found");
-    if (user.role !== "ADMIN" && q.branch_id !== user.branch_id) {
+    // Branch check: non-ADMIN chỉ được xem trong branch mình
+    if (user.role !== "ADMIN" && q.branch_id !== user.branch_id)
       throw new Error("Access denied (cross-branch)");
-    }
+    // SALES chỉ xem báo giá của mình
+    if (user.role === "SALES" && q.sales_person_id !== user.id)
+      throw new Error("Access denied: bạn không phụ trách báo giá này");
     return q;
+  },
+
+  /** SALESMANAGER chuyển báo giá sang sales khác trong cùng branch */
+  async reassign(id: number, newSalesId: number, manager: any) {
+    if (!["SALESMANAGER", "ADMIN"].includes(manager.role))
+      throw new Error("Chỉ Sales Manager hoặc Admin mới có thể chuyển đổi báo giá");
+    const q = await Quotation.findByPk(id);
+    if (!q) throw new Error("Quotation not found");
+    if (manager.role !== "ADMIN" && q.branch_id !== manager.branch_id)
+      throw new Error("Cross-branch denied");
+    const targetUser = await User.findByPk(newSalesId);
+    if (!targetUser) throw new Error("Sales user không tồn tại");
+    if (manager.role !== "ADMIN" && (targetUser as any).branch_id !== manager.branch_id)
+      throw new Error("Không thể chuyển cho sales ở branch khác");
+    const old = q.sales_person_id;
+    await q.update({ sales_person_id: newSalesId });
+    return { quotation: q, from: old, to: newSalesId };
   },
 
   async create(data: any, user: any) {
@@ -54,6 +154,17 @@ export const quotationService = {
       let totalBeforeTax = 0;
       let totalTax = 0;
       let totalAftertax = 0;
+      let currencyId = data.currency_id ?? null;
+      let exchangeRate = Number(data.exchange_rate || 0);
+
+      if (data.opportunity_id && (!currencyId || !exchangeRate)) {
+        const opp = await Opportunity.findByPk(data.opportunity_id, { transaction: t });
+        currencyId = currencyId ?? (opp?.currency_id ?? null);
+        exchangeRate = exchangeRate || Number(opp?.exchange_rate || 1);
+      }
+      if (!exchangeRate || exchangeRate <= 0) {
+        exchangeRate = await getCurrencyRateToVnd(currencyId);
+      }
 
       const quotation = await Quotation.create({
         branch_id: user.branch_id,
@@ -64,8 +175,8 @@ export const quotationService = {
         sales_person_id: data.sales_person_id || user.id,
         quotation_date: data.quotation_date || new Date().toISOString().slice(0, 10),
         valid_until: data.valid_until,
-        currency_id: data.currency_id,
-        exchange_rate: data.exchange_rate || 1,
+        currency_id: currencyId,
+        exchange_rate: exchangeRate,
         payment_term_id: data.payment_term_id,
         status: "draft",
         approval_status: "draft",
@@ -99,10 +210,13 @@ export const quotationService = {
           
           if (pli) {
             price = Number(pli.unit_price);
-            // THIẾU LOGIC: Chuyển đổi tiền tệ nếu PriceList khác currency của Báo giá
-            if (pli.priceList && pli.priceList.currency_id !== data.currency_id) {
-               // Giả định đơn giản: Quy đổi về Base (VND) rồi sang Target (USD)
-               // Ở đây ta chỉ log cảnh báo hoặc giả định PriceList luôn là Base Currency
+            if (pli.priceList && pli.priceList.currency_id !== currencyId) {
+              price = await convertBetweenCurrencies(
+                price,
+                pli.priceList.currency_id,
+                currencyId,
+                exchangeRate
+              );
             }
             if (discPercent === 0) discPercent = Number(pli.discount_percent);
           }
@@ -111,7 +225,14 @@ export const quotationService = {
         // Nếu vẫn = 0 thì lấy giá mặc định của Product
         if (price === 0) {
           const product = await Product.findByPk(line.product_id, { transaction: t });
-          if (product) price = Number(product.sale_price || 0);
+          if (product) {
+            price = await convertBetweenCurrencies(
+              Number(product.sale_price || 0),
+              null,
+              currencyId,
+              exchangeRate
+            );
+          }
         }
 
         const qty = Number(line.quantity || 0);
@@ -137,6 +258,7 @@ export const quotationService = {
         await QuotationLine.create({
           quotation_id: quotation.id,
           product_id: line.product_id,
+          uom_id: line.uom_id ?? null,
           description: line.description,
           quantity: qty,
           unit_price: price,
@@ -191,6 +313,19 @@ export const quotationService = {
       approval_status: "approved",
       approved_by: user.id,
       approved_at: new Date()
+    });
+    return q;
+  },
+
+  async reject(id: number, user: any, reason: string) {
+    const q = await this.getById(id, user);
+    if (q.approval_status !== "waiting_approval") throw new Error("Quote is not waiting for approval");
+    await q.update({
+      status: "rejected",
+      approval_status: "rejected",
+      reject_reason: reason,
+      approved_by: user.id,
+      approved_at: new Date(),
     });
     return q;
   },

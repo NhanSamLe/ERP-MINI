@@ -14,16 +14,28 @@ export function canManage(role: string, userId: number, ownerId: number) {
 }
 
 
-export async function getAllLeads() {
+export async function getAllLeads(user: any) {
+  const where: any = { is_deleted: false };
+  if (user.role === "ADMIN") {
+    // ADMIN: xem tất cả không giới hạn
+  } else if (user.role === "SALESMANAGER") {
+    // SALESMANAGER: xem tất cả lead trong branch của mình
+    where.branch_id = user.branch_id;
+  } else {
+    // SALES: chỉ xem lead được giao cho mình
+    where.branch_id = user.branch_id;
+    where.assigned_to = user.id;
+  }
   return Lead.findAll({
-    where: { is_deleted: false },
+    where,
     include: [
-      { model: model.User, as: "assignedUser", attributes: ["id", "full_name", "email", "phone"] }
+      { model: model.User, as: "assignedUser", attributes: ["id", "full_name", "email", "phone"] },
+      { model: model.LeadSource, as: "leadSource" },
+      { model: model.Partner, as: "customer" }
     ],
     order: [["created_at", "DESC"]],
   });
 }
-
 
 export async function getTodayLeads(role: string, userId?: number) {
   const today = new Date();
@@ -45,7 +57,9 @@ export async function getTodayLeads(role: string, userId?: number) {
   return Lead.findAll({
     where,
     include: [
-      { model: model.User, as: "assignedUser", attributes: ["id", "full_name", "email"] }
+      { model: model.User, as: "assignedUser", attributes: ["id", "full_name", "email"] },
+      { model: model.LeadSource, as: "leadSource" },
+      { model: model.Partner, as: "customer" }
     ],
     order: [["created_at", "DESC"]],
   });
@@ -56,12 +70,14 @@ export async function getMyLeads(userId: number) {
     where: { assigned_to: userId, is_deleted: false },
     include: [
       { model: model.User, as: "assignedUser", attributes: ["id", "full_name", "email"] },
+      { model: model.LeadSource, as: "leadSource" },
+      { model: model.Partner, as: "customer" },
     ],
     order: [["updated_at", "DESC"]],
   });
 }
 
-export async function getLeadById(leadId: number) {
+export async function getLeadById(leadId: number, user?: any) {
   const lead = await Lead.findOne({
     where: { id: leadId, is_deleted: false },
     include: [
@@ -69,6 +85,14 @@ export async function getLeadById(leadId: number) {
         model: model.User,
         as: "assignedUser",
         attributes: ["id", "full_name", "email"],
+      },
+      {
+        model: model.LeadSource,
+        as: "leadSource",
+      },
+      {
+        model: model.Partner,
+        as: "customer",
       },
       {
         model: model.Opportunity,
@@ -83,6 +107,11 @@ export async function getLeadById(leadId: number) {
             model: model.Partner,
             as: "customer",
           },
+          {
+            model: model.Currency,
+            as: "currency",
+            attributes: ["id", "code", "symbol", "name"],
+          },
         ],
       },
     ],
@@ -92,6 +121,13 @@ export async function getLeadById(leadId: number) {
   });
 
   if (!lead) throw new Error("Lead không tồn tại");
+  // Kiểm tra quyền nếu có truyền user
+  if (user) {
+    if (user.role !== "ADMIN" && lead.branch_id !== user.branch_id)
+      throw new Error("Access denied: cross-branch");
+    if (user.role === "SALES" && lead.assigned_to !== user.id)
+      throw new Error("Access denied: bạn không quản lý lead này");
+  }
   return lead;
 }
 
@@ -103,8 +139,12 @@ export async function createLead(data: {
   phone?: string;
   source?: string;
   source_id?: number | null;
+  company_name?: string | null;
+  job_title?: string | null;
   industry?: string | null;
   company_size?: string | null;
+  annual_revenue?: number | null;
+  branch_id?: number | null;
   assigned_to: number;
 }) {
   const lead = await Lead.create({
@@ -124,7 +164,7 @@ export async function createLead(data: {
   // Tự động tính điểm sau khi tạo
   await calculateLeadScore(lead.id).catch(e => console.error("Score Error", e));
 
-  return lead;
+  return getLeadById(lead.id);
 
 }
 
@@ -148,7 +188,7 @@ export async function updateLeadBasic(leadId: number, data: any, userId: number,
   // Tự động tính lại điểm sau khi cập nhật cơ bản
   await calculateLeadScore(lead.id).catch(e => console.error("Score Error", e));
 
-  return lead;
+  return getLeadById(leadId);
 }
 
 
@@ -174,6 +214,7 @@ export async function updateLeadEvaluation(
     ready_to_buy: data.ready_to_buy ?? false,
     expected_timeline: data.expected_timeline ?? "",
     contacted_at: lead.contacted_at || new Date(),
+    last_activity_date: new Date(),
   });
   await addTimeline({
     related_type: "lead",
@@ -183,7 +224,8 @@ export async function updateLeadEvaluation(
     description: `Lead được đánh giá: budget=${data.has_budget}, ready=${data.ready_to_buy}`,
     created_by: userId
   });
-  return lead;
+  await calculateLeadScore(lead.id).catch(e => console.error("Score Error", e));
+  return getLeadById(lead.id);
 }
 
 
@@ -194,40 +236,66 @@ export async function convertToCustomer(leadId: number, userId: number, role: st
     throw new Error("Lead đã lost, không thể convert");
   if (!canManage(role, userId, lead.assigned_to ?? 1))
     throw new Error("Bạn không có quyền chỉnh sửa lead này");
-  await lead.update({
-    stage: LeadStage.QUALIFIED,
-    qualified_at: new Date(),
-    qualified_by: userId
-  });
 
-  // Tối ưu: Kiểm tra xem đã có khách hàng nào trùng Email hoặc SĐT chưa
   let customer: any = null;
-  if (lead.email || lead.phone) {
-    const conditions = [];
-    if (lead.email) conditions.push({ email: lead.email });
-    if (lead.phone) conditions.push({ phone: lead.phone });
-
-    customer = await model.Partner.findOne({ 
-      where: { 
-        type: "customer", 
-        [Op.or]: conditions 
-      } 
-    });
+  if ((lead as any).customer_id) {
+    customer = await model.Partner.findByPk((lead as any).customer_id);
   }
 
-  // Nếu chưa có thì mới đẻ mới
   if (!customer) {
+    const duplicateConditions = [];
+    if (lead.email) duplicateConditions.push({ email: lead.email });
+    if (lead.phone) duplicateConditions.push({ phone: lead.phone });
+
+    if (duplicateConditions.length > 0) {
+      const existingCustomer = await model.Partner.findOne({
+        where: {
+          type: "customer",
+          [Op.or]: duplicateConditions,
+        },
+      });
+
+      if (existingCustomer) {
+        throw new Error(
+          `Email hoặc số điện thoại đã tồn tại ở Customer "${existingCustomer.name}" (#${existingCustomer.id}). Vui lòng kiểm tra trước khi chuyển đổi Lead.`
+        );
+      }
+
+      const existingLead = await Lead.findOne({
+        where: {
+          id: { [Op.ne]: lead.id },
+          is_deleted: false,
+          [Op.or]: duplicateConditions,
+        },
+      });
+
+      if (existingLead) {
+        throw new Error(
+          `Email hoặc số điện thoại đã trùng với Lead "${existingLead.name}" (#${existingLead.id}). Vui lòng xử lý trùng lặp trước khi chuyển đổi.`
+        );
+      }
+    }
+
     customer = await model.Partner.create({
       type: "customer",
-      is_customer: true, // Chốt danh tính là Khách hàng
-      name: lead.company_name || lead.name || "Unknown", // B2B ưu tiên lấy tên công ty
+      is_customer: true,
+      name: lead.company_name || lead.name || "Unknown",
+      contact_person: lead.company_name ? lead.name : null,
       phone: lead.phone ?? null,
       email: lead.email ?? null,
-      industry: lead.industry ?? null, // Đồng bộ thông tin ngành nghề
-      sales_person_id: lead.assigned_to ?? userId, // Giữ chân Sale đã chăm sóc
+      industry: lead.industry ?? null,
+      company_size: lead.company_size ?? null,
+      sales_person_id: lead.assigned_to ?? userId,
       status: PartnerStatus.ACTIVE,
     });
   }
+
+  await lead.update({
+    stage: LeadStage.QUALIFIED,
+    qualified_at: new Date(),
+    qualified_by: userId,
+    customer_id: customer.id,
+  });
   await addTimeline({
     related_type: "lead",
     related_id: leadId,
@@ -236,7 +304,8 @@ export async function convertToCustomer(leadId: number, userId: number, role: st
     description: `Lead ${lead.name} đã convert thành Customer`,
     created_by: userId
   });
-  return { lead, customer };
+  await calculateLeadScore(lead.id).catch(e => console.error("Score Error", e));
+  return { lead: await getLeadById(lead.id), customer };
 }
 
 export async function markAsLost(
@@ -265,14 +334,18 @@ export async function markAsLost(
     created_by: userId
   });
 
-  return lead;
+  await calculateLeadScore(lead.id).catch(e => console.error("Score Error", e));
+  return getLeadById(leadId);
 }
 
 export async function reassignLead(
   leadId: number,
   newUserId: number,
-  managerId: number
+  managerId: number,
+  managerRole: string
 ) {
+  if (!["SALESMANAGER", "ADMIN"].includes(managerRole))
+    throw new Error("Chỉ Sales Manager hoặc Admin mới có thể chuyển đổi lead");
   const lead = await Lead.findByPk(leadId);
   if (!lead || lead.is_deleted) throw new Error("Lead không tồn tại");
 
@@ -285,14 +358,12 @@ export async function reassignLead(
     related_id: leadId,
     event_type: "lead_reassigned",
     title: "Lead được giao lại",
-    description: `Từ User ${oldUser} → User ${newUserId}`,
+    description: `Từ User ${oldUser} → User ${newUserId} (bởi Manager ${managerId})`,
     created_by: managerId
   });
 
-
-  return Lead.findByPk(leadId, {
-    include: [{ model: model.User, as: "assignedUser" }],
-  });
+  await calculateLeadScore(lead.id).catch(e => console.error("Score Error", e));
+  return getLeadById(leadId);
 }
 
 export async function reopenLead(leadId: number, userId: number) {
@@ -315,7 +386,8 @@ export async function reopenLead(leadId: number, userId: number) {
     description: `Lead ${lead.name} đã được mở lại từ trạng thái LOST`,
     created_by: userId
   });
-  return lead;
+  await calculateLeadScore(lead.id).catch(e => console.error("Score Error", e));
+  return getLeadById(leadId);
 }
 export async function getLeadByStage(stage: LeadStage) {
   return Lead.findAll({
@@ -327,6 +399,7 @@ export async function getLeadByStage(stage: LeadStage) {
         as: "assignedUser",
         attributes: ["id", "full_name", "email", "phone"]
       },
+      { model: model.LeadSource, as: "leadSource" },
     ],
 
     order: [["updated_at", "DESC"]],
@@ -357,13 +430,62 @@ export async function deleteLead(leadId: number, userId: number, role: string) {
   return true;
 }
 
+export async function bulkCreateLeads(
+  items: Array<{
+    name: string;
+    email?: string;
+    phone?: string;
+    source_id?: number | null;
+    company_name?: string | null;
+    job_title?: string | null;
+    industry?: string | null;
+    company_size?: string | null;
+    annual_revenue?: number | null;
+  }>,
+  userId: number,
+  branchId: number | null
+) {
+  const successes: any[] = [];
+  const errors: { index: number; name: string; message: string }[] = [];
+
+  let idx = 0;
+  for (const item of items) {
+    try {
+      const payload: Parameters<typeof createLead>[0] = {
+        name: item.name,
+        assigned_to: userId,
+        branch_id: branchId,
+      };
+      if (item.email) payload.email = item.email;
+      if (item.phone) payload.phone = item.phone;
+      if (item.source_id != null) payload.source_id = item.source_id;
+      if (item.company_name != null) payload.company_name = item.company_name;
+      if (item.job_title != null) payload.job_title = item.job_title;
+      if (item.industry != null) payload.industry = item.industry;
+      if (item.company_size != null) payload.company_size = item.company_size;
+      if (item.annual_revenue != null) payload.annual_revenue = item.annual_revenue;
+
+      const lead = await createLead(payload);
+      successes.push(lead);
+    } catch (e: any) {
+      errors.push({ index: idx, name: item.name, message: e.message });
+    }
+    idx++;
+  }
+
+  return { successCount: successes.length, errorCount: errors.length, errors, leads: successes };
+}
+
 export async function markLeadContacted(leadId: number) {
   const lead = await Lead.findByPk(leadId);
   if (!lead || lead.is_deleted) return;
 
   if (!lead.contacted_at) {
-    await lead.update({ contacted_at: new Date() });
+    await lead.update({ contacted_at: new Date(), last_activity_date: new Date() });
+  } else {
+    await lead.update({ last_activity_date: new Date() });
   }
+  await calculateLeadScore(lead.id).catch(e => console.error("Score Error", e));
 }
 
 export async function importLeadsFromExcel(fileBuffer: Buffer, user: any, app: any) {
@@ -378,6 +500,14 @@ export async function importLeadsFromExcel(fileBuffer: Buffer, user: any, app: a
     throw new Error("File Excel trống hoặc không đúng định dạng");
   }
 
+  const getCell = (row: Record<string, any>, keys: string[]) => {
+    for (const key of keys) {
+      const value = row[key];
+      if (value !== undefined && value !== null && String(value).trim() !== "") return value;
+    }
+    return undefined;
+  };
+
   const leadsToCreate = [];
   const errors = [];
 
@@ -387,6 +517,11 @@ export async function importLeadsFromExcel(fileBuffer: Buffer, user: any, app: a
     const email = row["Email"] || row["email"];
     const phone = row["Phone"] || row["phone"] || row["SĐT"];
     const source = row["Source"] || row["source"] || "Excel Import";
+    const company_name = getCell(row, ["Company", "Company Name", "Công ty", "Cong ty", "Tên công ty", "Ten cong ty"]);
+    const job_title = getCell(row, ["Job Title", "Chức vụ", "Chuc vu", "Title"]);
+    const industry = getCell(row, ["Industry", "Ngành", "Nganh", "Ngành nghề", "Nganh nghe"]);
+    const company_size = getCell(row, ["Company Size", "Quy mô", "Quy mo", "Size"]);
+    const annualRevenue = getCell(row, ["Annual Revenue", "Doanh thu", "Doanh thu năm", "Doanh thu nam"]);
 
     if (!name) {
       errors.push(`Dòng ${i + 2}: Thiếu tên Lead`);
@@ -398,15 +533,31 @@ export async function importLeadsFromExcel(fileBuffer: Buffer, user: any, app: a
       email,
       phone,
       source,
+      company_name,
+      job_title,
+      industry,
+      company_size,
+      annual_revenue: annualRevenue !== undefined ? Number(annualRevenue) || null : null,
+      branch_id: user.branch_id ?? null,
       assigned_to: user.id,
       stage: LeadStage.NEW,
       is_deleted: false,
-      // branch_id: user.branch_id // Assuming lead needs branch? Model definition didn't show it but good practice.
     });
   }
 
   if (leadsToCreate.length > 0) {
-    await Lead.bulkCreate(leadsToCreate);
+    const createdLeads = await Lead.bulkCreate(leadsToCreate);
+    for (const lead of createdLeads) {
+      await addTimeline({
+        related_type: "lead",
+        related_id: lead.id,
+        event_type: "lead_imported",
+        title: "Lead imported",
+        description: `Lead ${lead.name} was imported from Excel`,
+        created_by: user.id,
+      });
+      await calculateLeadScore(lead.id).catch(e => console.error("Score Error", e));
+    }
 
     // Send Notification
     try {

@@ -29,6 +29,10 @@ export interface ArReceiptDto {
     phone: string;
   };
 
+  currency_id?: number | null;
+  currency?: { id: number; code: string; symbol: string; name?: string } | null;
+  exchange_rate?: number;
+
   amount: number;
   method: "cash" | "bank" | "transfer";
 

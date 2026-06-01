@@ -1,4 +1,3 @@
-
 import { ArInvoiceDto } from "../../dto/invoice.dto";
 import { User } from "@/types/User";
 import InvoiceDetailBreadcrumb from "./InvoiceDetailBreadcrumb";
@@ -30,7 +29,7 @@ export default function InvoiceDetailHeader({
             {invoice.invoice_no}
           </h1>
           <p className="text-gray-500">
-            Invoice ID: <span className="text-gray-700 font-mono">#{invoice.id}</span>
+            Mã hóa đơn: <span className="text-gray-700 font-mono">#{invoice.id}</span>
           </p>
         </div>
         <InvoiceActionButtons

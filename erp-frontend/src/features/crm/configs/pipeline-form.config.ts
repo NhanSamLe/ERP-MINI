@@ -4,7 +4,6 @@ import { CreatePipelineDto, UpdatePipelineDto } from "../dto/pipeline.dto";
 export const pipelineFormConfig: FormConfig<CreatePipelineDto | UpdatePipelineDto> = {
   sections: [
     {
-      title: "Thông tin Phễu bán hàng",
       columns: 1,
       fields: [
         {

@@ -68,7 +68,7 @@ export const deleteActivity = (activityId: number) =>
   axiosClient.delete(`/crm/activities/${activityId}`);
 
 export const reassignActivity = (activityId: number, newUserId: number) =>
-  axiosClient.patch("/crm/activities/reassign", { activityId, newUserId });
+  axiosClient.patch(`/crm/activities/reassign/${activityId}`, { newUserId });
 
 export const startTask = (activityId: number) =>
   axiosClient.patch(`/crm/activities/task/start/${activityId}`);

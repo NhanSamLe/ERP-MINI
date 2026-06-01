@@ -4,7 +4,6 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchQuotations } from "../store/quotation.slice";
 import { QuotationDto } from "../dto/quotation.dto";
 import { StatusBadge } from "@/components/common";
-import { formatVND } from "@/utils/currency.helper";
 import {
   FileText, Plus, Search, ChevronLeft, ChevronRight,
   Eye, Calendar, User, Package, Loader2, Inbox,
@@ -14,15 +13,17 @@ const fmtDate = (d?: string | null) =>
   d ? new Date(d).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
 
 const STATUS_TABS = [
-  { label: "All",      value: "" },
-  { label: "Draft",    value: "draft" },
-  { label: "Pending",  value: "waiting_approval" },
-  { label: "Approved", value: "approved" },
-  { label: "Accepted", value: "accepted" },
-  { label: "Rejected", value: "rejected" },
+  { label: "Tất cả",      value: "" },
+  { label: "Nháp",        value: "draft" },
+  { label: "Chờ duyệt",   value: "waiting_approval" },
+  { label: "Đã duyệt",    value: "approved" },
+  { label: "Đã chấp nhận", value: "accepted" },
+  { label: "Từ chối",     value: "rejected" },
 ];
 
 const ITEMS_PER_PAGE = 15;
+const formatQuotationMoney = (q: QuotationDto) =>
+  `${Number(q.total_after_tax || 0).toLocaleString("vi-VN", { maximumFractionDigits: 2 })} ${q.currency?.symbol || q.currency?.code || "VND"}`;
 
 export default function QuotationListPage() {
   const dispatch  = useAppDispatch();
@@ -70,10 +71,10 @@ export default function QuotationListPage() {
       {/* ── Summary cards ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: "Draft",    count: counts.draft,            color: "bg-gray-50 border-gray-200",    text: "text-gray-600" },
-          { label: "Pending Approval", count: counts.waiting_approval, color: "bg-amber-50 border-amber-100", text: "text-amber-700" },
-          { label: "Approved", count: counts.approved,         color: "bg-emerald-50 border-emerald-100", text: "text-emerald-700" },
-          { label: "Accepted", count: counts.accepted,         color: "bg-orange-50 border-orange-100",  text: "text-orange-700" },
+          { label: "Nháp",         count: counts.draft,            color: "bg-gray-50 border-gray-200",    text: "text-gray-600" },
+          { label: "Chờ phê duyệt", count: counts.waiting_approval, color: "bg-amber-50 border-amber-100", text: "text-amber-700" },
+          { label: "Đã duyệt",     count: counts.approved,         color: "bg-emerald-50 border-emerald-100", text: "text-emerald-700" },
+          { label: "Đã chấp nhận", count: counts.accepted,         color: "bg-orange-50 border-orange-100",  text: "text-orange-700" },
         ].map((c) => (
           <div key={c.label} className={`erp-card px-4 py-3 border ${c.color}`}>
             <p className="text-xs text-gray-500">{c.label}</p>
@@ -91,8 +92,8 @@ export default function QuotationListPage() {
               <FileText className="w-4 h-4 text-orange-500" />
             </span>
             <div>
-              <h1 className="text-base font-semibold text-gray-900">Quotations</h1>
-              <p className="text-xs text-gray-400 mt-0.5">Manage sales quotations</p>
+              <h1 className="text-base font-semibold text-gray-900">Báo giá</h1>
+              <p className="text-xs text-gray-400 mt-0.5">Quản lý báo giá bán hàng</p>
             </div>
             <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-600">
               {quotations.length}
@@ -103,7 +104,7 @@ export default function QuotationListPage() {
             className="inline-flex items-center gap-1.5 h-8 px-3 text-sm font-medium text-white bg-orange-500 rounded-md hover:bg-orange-600 transition-colors shadow-sm"
           >
             <Plus className="w-3.5 h-3.5" />
-            New Quotation
+            Tạo Báo giá
           </Link>
         </div>
 
@@ -132,7 +133,7 @@ export default function QuotationListPage() {
             <input
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              placeholder="Search quote no, customer..."
+              placeholder="Tìm số báo giá, khách hàng..."
               className="w-full h-8 pl-8 pr-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 placeholder:text-gray-400"
             />
           </div>
@@ -147,13 +148,13 @@ export default function QuotationListPage() {
         {loading ? (
           <div className="flex items-center justify-center py-16 gap-3 text-gray-400">
             <Loader2 className="w-5 h-5 animate-spin text-orange-500" />
-            <span className="text-sm">Loading quotations...</span>
+            <span className="text-sm">Đang tải báo giá...</span>
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50/80">
-                {["Quote No", "Customer", "Opportunity", "Date", "Valid Until", "Value", "Approval", "Status", ""].map((h) => (
+                {["Số báo giá", "Khách hàng", "Cơ hội", "Ngày tạo", "Hiệu lực đến", "Giá trị", "Duyệt", "Trạng thái", ""].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider first:pl-5 last:pr-5">
                     {h}
                   </th>
@@ -166,7 +167,7 @@ export default function QuotationListPage() {
                   <td colSpan={9} className="py-14 text-center">
                     <div className="flex flex-col items-center gap-2 text-gray-400">
                       <Inbox className="w-8 h-8" />
-                      <p className="text-sm">No quotations found.</p>
+                      <p className="text-sm">Không tìm thấy báo giá.</p>
                     </div>
                   </td>
                 </tr>
@@ -181,7 +182,7 @@ export default function QuotationListPage() {
         {!loading && filtered.length > ITEMS_PER_PAGE && (
           <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50/50">
             <p className="text-xs text-gray-500">
-              Showing {(page - 1) * ITEMS_PER_PAGE + 1}–{Math.min(page * ITEMS_PER_PAGE, filtered.length)} of {filtered.length}
+              Hiển thị {(page - 1) * ITEMS_PER_PAGE + 1}–{Math.min(page * ITEMS_PER_PAGE, filtered.length)} / {filtered.length}
             </p>
             <div className="flex items-center gap-1">
               <button
@@ -266,17 +267,17 @@ function QuotationRow({ q, navigate }: { q: QuotationDto; navigate: ReturnType<t
       <td className="px-4 py-3">
         <span className={`text-xs font-medium ${isExpired ? "text-red-500" : "text-gray-600"}`}>
           {fmtDate(q.valid_until)}
-          {isExpired && " (expired)"}
+          {isExpired && " (hết hạn)"}
         </span>
       </td>
 
       {/* Value */}
       <td className="px-4 py-3">
         <span className="text-sm font-semibold text-gray-800">
-          {formatVND(q.total_after_tax)}
+          {formatQuotationMoney(q)}
         </span>
         {(q.discount_percent ?? 0) > 0 && (
-          <p className="text-[10px] text-emerald-600">-{q.discount_percent}% disc.</p>
+          <p className="text-[10px] text-emerald-600">-{q.discount_percent}% CK</p>
         )}
       </td>
 

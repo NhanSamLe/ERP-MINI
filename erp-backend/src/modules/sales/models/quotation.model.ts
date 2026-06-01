@@ -5,7 +5,7 @@ export interface QuotationAttrs {
   id: number; branch_id: number; quotation_no: string; customer_id: number;
   opportunity_id: number | null; currency_id: number | null; exchange_rate: number;
   payment_term_id: number | null; quotation_date: string; valid_until: string | null;
-  status: "draft"|"sent"|"accepted"|"rejected"|"expired"|"cancelled";
+  status: "draft"|"sent"|"accepted"|"rejected"|"expired"|"cancelled"|"converted";
   approval_status: "draft"|"waiting_approval"|"approved"|"rejected";
   version: number; parent_id: number | null;
   total_before_tax: number; total_tax: number; total_after_tax: number;
@@ -19,7 +19,7 @@ export class Quotation extends Model<QuotationAttrs, QuotationCreation> implemen
   public id!: number; public branch_id!: number; public quotation_no!: string; public customer_id!: number;
   public opportunity_id!: number | null; public currency_id!: number | null; public exchange_rate!: number;
   public payment_term_id!: number | null; public quotation_date!: string; public valid_until!: string | null;
-  public status!: "draft"|"sent"|"accepted"|"rejected"|"expired"|"cancelled";
+  public status!: "draft"|"sent"|"accepted"|"rejected"|"expired"|"cancelled"|"converted";
   public approval_status!: "draft"|"waiting_approval"|"approved"|"rejected";
   public version!: number; public parent_id!: number | null;
   public total_before_tax!: number; public total_tax!: number; public total_after_tax!: number;
@@ -39,7 +39,7 @@ Quotation.init({
   payment_term_id: { type: DataTypes.BIGINT },
   quotation_date: { type: DataTypes.DATEONLY, allowNull: false },
   valid_until: { type: DataTypes.DATEONLY },
-  status: { type: DataTypes.ENUM("draft","sent","accepted","rejected","expired","cancelled"), defaultValue: "draft" },
+  status: { type: DataTypes.ENUM("draft","sent","accepted","rejected","expired","cancelled","converted"), defaultValue: "draft" },
   approval_status: { type: DataTypes.ENUM("draft","waiting_approval","approved","rejected"), defaultValue: "draft" },
   version: { type: DataTypes.INTEGER, defaultValue: 1 },
   parent_id: { type: DataTypes.BIGINT },

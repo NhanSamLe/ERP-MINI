@@ -1,12 +1,9 @@
 import { FormConfig, SelectOption } from "@/components/v2/forms";
 import { CreatePipelineStageDto, UpdatePipelineStageDto } from "../dto/pipeline.dto";
 
-export const createPipelineStageFormConfig = (
-  stageCount: number
-): FormConfig<CreatePipelineStageDto> => ({
+export const createPipelineStageFormConfig = (): FormConfig<CreatePipelineStageDto> => ({
   sections: [
     {
-      title: "Thêm giai đoạn mới",
       columns: 2,
       fields: [
         {
@@ -20,47 +17,36 @@ export const createPipelineStageFormConfig = (
             if (v.length < 2) return "Tên phải có ít nhất 2 ký tự";
             return undefined;
           },
-          gridColumn: "span 1",
-        },
-        {
-          name: "sequence",
-          label: "Thứ tự",
-          type: "number",
-          required: true,
-          defaultValue: stageCount + 1,
-          helpText: "Thứ tự hiển thị trong Pipeline (1, 2, 3...)",
-          gridColumn: "span 1",
+          gridColumn: "span 2",
         },
         {
           name: "probability",
           label: "Xác suất thắng (%)",
           type: "number",
           defaultValue: 0,
-          helpText: "0-100. VD: 10% với Leads mới, 75% với Gửi báo giá",
+          helpText: "0–100. VD: 10% với Leads mới, 75% với Gửi báo giá",
           gridColumn: "span 1",
         },
         {
           name: "color",
           label: "Mã màu",
           type: "text",
-          placeholder: "#3498db",
-          defaultValue: "#3498db",
-          helpText: "Mã hex color cho stage trên Kanban board",
+          placeholder: "#f97316",
+          defaultValue: "#f97316",
+          helpText: "Mã hex color cho stage",
           gridColumn: "span 1",
         },
         {
-          name: "is_won",
-          label: "Đánh dấu là Stage THẮNG",
-          type: "checkbox",
-          helpText: "Deal vào stage này sẽ tự động chuyển thành WON",
-          gridColumn: "span 1",
-        },
-        {
-          name: "is_lost",
-          label: "Đánh dấu là Stage THUA",
-          type: "checkbox",
-          helpText: "Deal vào stage này sẽ tự động chuyển thành LOST",
-          gridColumn: "span 1",
+          name: "stage_type",
+          label: "Loại giai đoạn",
+          type: "select",
+          options: [
+            { value: "normal", label: "Bình thường" },
+            { value: "won", label: "✓ Thắng (WON)" },
+            { value: "lost", label: "✗ Thua (LOST)" },
+          ],
+          helpText: "WON / LOST chỉ chọn được 1 loại",
+          gridColumn: "span 2",
         },
       ],
     },
@@ -76,22 +62,37 @@ const OPERATOR_OPTIONS: SelectOption[] = [
   { value: "contains", label: "Chứa" },
   { value: "greater_than", label: "Lớn hơn (>)" },
   { value: "less_than", label: "Nhỏ hơn (<)" },
+  { value: "greater_than_or_equal", label: "Lớn hơn hoặc bằng (>=)" },
+  { value: "less_than_or_equal", label: "Nhỏ hơn hoặc bằng (<=)" },
   { value: "is_true", label: "Đúng (true)" },
   { value: "is_false", label: "Sai (false)" },
+  { value: "not_empty", label: "Có dữ liệu" },
+  { value: "empty", label: "Trống" },
+  { value: "in", label: "Nằm trong danh sách" },
 ];
 
 const FIELD_OPTIONS: SelectOption[] = [
+  { value: "phone", label: "Số điện thoại" },
+  { value: "email", label: "Email" },
+  { value: "source", label: "Nguồn dạng text" },
   { value: "industry", label: "Ngành nghề" },
   { value: "company_size", label: "Quy mô công ty" },
+  { value: "annual_revenue", label: "Doanh thu năm" },
   { value: "source_id", label: "Nguồn Lead" },
   { value: "has_budget", label: "Có ngân sách" },
   { value: "ready_to_buy", label: "Sẵn sàng mua" },
+  { value: "expected_timeline", label: "Thời gian dự kiến" },
+  { value: "activity.call.connected_count", label: "Số cuộc gọi thành công" },
+  { value: "activity.email.replied_count", label: "Số email inbound/phản hồi" },
+  { value: "activity.meeting.count", label: "Số meeting" },
+  { value: "activity.meeting.completed_count", label: "Số meeting hoàn thành" },
+  { value: "activity.task.overdue_count", label: "Số task quá hạn" },
+  { value: "no_contact_after_hours", label: "Số giờ chưa liên hệ" },
 ];
 
 export const editPipelineStageFormConfig: FormConfig<UpdatePipelineStageDto> = {
   sections: [
     {
-      title: "Chỉnh sửa giai đoạn",
       columns: 2,
       fields: [
         {
@@ -99,13 +100,14 @@ export const editPipelineStageFormConfig: FormConfig<UpdatePipelineStageDto> = {
           label: "Tên giai đoạn",
           type: "text",
           required: true,
-          gridColumn: "span 1",
+          gridColumn: "span 2",
         },
         {
           name: "sequence",
-          label: "Thứ tự",
+          label: "Thứ tự (vị trí)",
           type: "number",
           required: true,
+          helpText: "Đặt số nhỏ hơn để chèn lên trước, lớn hơn để đẩy xuống sau",
           gridColumn: "span 1",
         },
         {
@@ -118,19 +120,19 @@ export const editPipelineStageFormConfig: FormConfig<UpdatePipelineStageDto> = {
           name: "color",
           label: "Mã màu",
           type: "text",
-          placeholder: "#3498db",
+          placeholder: "#f97316",
           gridColumn: "span 1",
         },
         {
-          name: "is_won",
-          label: "Stage THẮNG",
-          type: "checkbox",
-          gridColumn: "span 1",
-        },
-        {
-          name: "is_lost",
-          label: "Stage THUA",
-          type: "checkbox",
+          name: "stage_type",
+          label: "Loại giai đoạn",
+          type: "select",
+          options: [
+            { value: "normal", label: "Bình thường" },
+            { value: "won", label: "✓ Thắng (WON)" },
+            { value: "lost", label: "✗ Thua (LOST)" },
+          ],
+          helpText: "WON / LOST chỉ chọn được 1 loại",
           gridColumn: "span 1",
         },
       ],

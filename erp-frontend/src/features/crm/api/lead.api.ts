@@ -49,7 +49,7 @@ export const markLeadLost = (leadId: number, reason: string) =>
 // REASSIGN LEAD
 // =============================
 export const reassignLead = (leadId: number, newUserId: number) =>
-  axiosClient.patch(`/crm/leads/${leadId}/reassign`, { newUserId });
+  axiosClient.patch(`/crm/leads/${leadId}/reassign`, { leadId, newUserId });
 
 
 // =============================
@@ -68,6 +68,18 @@ export const deleteLead = (leadId: number) =>
 export const getTodayLead = () => {
   return axiosClient.get(`/crm/leads/today`)
 }
+
+export const bulkCreateLeads = (leads: Array<{
+  name: string;
+  email?: string;
+  phone?: string;
+  source_id?: number | null;
+  company_name?: string | null;
+  job_title?: string | null;
+  industry?: string | null;
+  company_size?: string | null;
+  annual_revenue?: number | null;
+}>) => axiosClient.post("/crm/leads/bulk", { leads });
 
 export const importLeads = (file: File) => {
   const formData = new FormData();

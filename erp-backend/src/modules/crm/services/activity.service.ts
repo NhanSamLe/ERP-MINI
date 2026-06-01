@@ -33,8 +33,8 @@ import {
 
 import { sendEmail2 } from "../../../core/utils/email";
 import { addTimeline } from "./timeLine.service";
-import { start } from "repl";
 import { markLeadContacted } from "./lead.service";
+import { calculateLeadScore } from "./scoringRule.service";
 // ========================================================================
 // HELPERS
 // ========================================================================
@@ -61,6 +61,16 @@ async function logTimeline(
     description: description ?? '',
     created_by: activity.owner_id ?? 1,
   });
+}
+
+async function recalculateLeadForActivity(activity: Activity | null) {
+  if (!activity || activity.related_type !== "lead") return;
+  await calculateLeadScore(activity.related_id).catch(e => console.error("Score Error", e));
+}
+
+async function markLeadContactedForActivity(activity: Activity | null) {
+  if (!activity || activity.related_type !== "lead") return;
+  await markLeadContacted(activity.related_id);
 }
 
 // ======================================================================================
@@ -101,6 +111,7 @@ export async function createActivity(dto: CreateActivityDto) {
 
   const des = `Tiêu đề: ${dto.subject || "Không có"}, Hạn chót: ${dto.due_at || "Chưa đặt"}`;
   await logTimeline(activity, "activity_created", "Tạo hoạt động mới", des);
+  await recalculateLeadForActivity(activity);
   return activity;
 }
 
@@ -124,6 +135,7 @@ export async function updateActivity(dto: UpdateActivityDto) {
   if (dto.notes && dto.notes !== activity.notes) changes.push(`Cập nhật ghi chú`);
 
   await logTimeline(activity, "activity_updated", `Cập nhật hoạt động: ${activity.subject}`, changes.length > 0 ? changes.join(", ") : "Cập nhật thông tin chung");
+  await recalculateLeadForActivity(activity);
   return activity;
 }
 
@@ -155,6 +167,7 @@ export async function deleteActivity(activityId: number, userId: number) {
     deleted_by: userId
   });
   await logTimeline(activity, "activity_deleted", "Xoá activity: " + activity.subject);
+  await recalculateLeadForActivity(activity);
   return true;
 }
 
@@ -237,7 +250,8 @@ export async function createCallActivity(dto: CreateCallActivityDto) {
     is_inbound: dto.is_inbound ?? null,
   });
   await logTimeline(activity, "call_created", `Tạo cuộc gọi: ${dto.subject}`, `Từ: ${dto.call_from} → Đến: ${dto.call_to}`);
-  await markLeadContacted(activity.related_id);
+  await markLeadContactedForActivity(activity);
+  await recalculateLeadForActivity(activity);
   return { activity, detail };
 }
 
@@ -266,6 +280,7 @@ export async function updateCallDetail(dto: UpdateCallDetailDto) {
       });
 
       await logTimeline(activity, "call_completed", "Cuộc gọi hoàn thành: " + activity.subject);
+      await recalculateLeadForActivity(activity);
     }
   }
 
@@ -294,6 +309,7 @@ export async function cancelCallActivity(activityId: number, reason?: string) {
     reason || ""
   );
 
+  await recalculateLeadForActivity(activity);
   return activity;
 }
 
@@ -333,6 +349,7 @@ export async function createEmailActivity(dto: CreateEmailActivityDto) {
   });
 
   await logTimeline(activity, "email_created", `Tạo Email: ${dto.subject}`, `Từ: ${dto.email_from || "Hệ thống"} → Đến: ${dto.email_to}`);
+  await recalculateLeadForActivity(activity);
 
   return activity;
 }
@@ -352,7 +369,8 @@ export async function sendEmailForActivity(dto: { activity_id: number }) {
 
     const activity = await Activity.findByPk(dto.activity_id);
     await logTimeline(activity!, "email_sent", "Email đã gửi: " + activity!.subject);
-    await markLeadContacted(activity!.related_id);
+    await markLeadContactedForActivity(activity);
+    await recalculateLeadForActivity(activity);
   } catch (err: any) {
     await email.update({ status: "failed", error_message: err.message });
   }
@@ -394,6 +412,7 @@ export async function cancelEmailActivity(activityId: number, userId: number) {
     `Huỷ bởi user ${userId}`
   );
 
+  await recalculateLeadForActivity(activity);
   return true;
 }
 
@@ -428,7 +447,8 @@ export async function createMeetingActivity(dto: CreateMeetingActivityDto) {
 
   const meetingDes = `Thời gian: ${dto.start_at} - ${dto.end_at}, Địa điểm: ${dto.location || "Online"}`;
   await logTimeline(activity, "meeting_created", `Tạo cuộc họp: ${dto.subject}`, meetingDes);
-  await markLeadContacted(activity.related_id);
+  await markLeadContactedForActivity(activity);
+  await recalculateLeadForActivity(activity);
   return activity;
 }
 
@@ -470,6 +490,8 @@ export async function updateMeetingDetail(dto: UpdateMeetingDetailDto) {
       );
     }
   }
+  const updatedActivity = await Activity.findByPk(dto.activity_id);
+  await recalculateLeadForActivity(updatedActivity);
   return detail;
 }
 
@@ -490,6 +512,7 @@ export async function cancelMeeting(dto: { activity_id: number; reason?: string 
   );
 
   await logTimeline(activity, "meeting_cancelled", "Huỷ cuộc họp: " + activity.subject, dto.reason);
+  await recalculateLeadForActivity(activity);
 }
 
 export async function completeMeeting(activityId: number) {
@@ -519,6 +542,7 @@ export async function completeMeeting(activityId: number) {
   });
 
   await logTimeline(activity, "meeting_completed", "Cuộc họp hoàn thành: " + activity.subject);
+  await recalculateLeadForActivity(activity);
 
   return {
     success: true,
@@ -550,6 +574,7 @@ export async function createTaskActivity(dto: CreateTaskActivityDto) {
 
   await logTimeline(activity, "task_created", `Tạo công việc: ${dto.subject}`, `Trạng thái: ${dto.status || "Not Started"}, Hạn chót: ${dto.due_at || "Chưa đặt"}`);
 
+  await recalculateLeadForActivity(activity);
   return activity;
 }
 
@@ -577,7 +602,8 @@ export async function startTask(activity_id: number, user_id: number) {
   await activity.update({ status: "in_progress" });
 
   await logTimeline(activity, "task_started", "Công việc bắt đầu: " + activity.subject);
-  await markLeadContacted(activity.related_id);
+  await markLeadContactedForActivity(activity);
+  await recalculateLeadForActivity(activity);
   return detail;
 }
 
@@ -598,6 +624,7 @@ export async function completeTask(activity_id: number, user_id: number) {
   });
 
   await logTimeline(activity, "task_completed", "Công việc hoàn thành: " + activity.subject);
+  await recalculateLeadForActivity(activity);
 
   return activity;
 }

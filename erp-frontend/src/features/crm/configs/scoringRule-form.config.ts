@@ -5,7 +5,6 @@ import { CreateScoringRuleDto, UpdateScoringRuleDto } from "../dto/scoringRule.d
 export const scoringRuleFormConfig: FormConfig<CreateScoringRuleDto | UpdateScoringRuleDto> = {
   sections: [
     {
-      title: "Thông tin luật chấm điểm",
       columns: 2,
       fields: [
         {
@@ -49,16 +48,15 @@ export const scoringRuleFormConfig: FormConfig<CreateScoringRuleDto | UpdateScor
         },
         {
           name: "score",
-          label: "Điểm cộng",
+          label: "Điểm cộng/trừ",
           type: "number",
           required: true,
           defaultValue: 10,
           validation: (v) => {
             if (v === null || v === undefined) return "Điểm là bắt buộc";
-            if (v < 0) return "Điểm không được âm";
             return undefined;
           },
-          helpText: "Số điểm cộng vào lead_score khi khớp luật",
+          helpText: "Dùng số dương để cộng điểm, số âm để trừ điểm khi khớp luật",
           gridColumn: "span 1",
         },
       ],

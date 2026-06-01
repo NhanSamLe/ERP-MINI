@@ -2,7 +2,7 @@
 import { SaleOrder } from "../models/saleOrder.model";
 import { SaleOrderLine } from "../models/saleOrderLine.model";
 import { TaxRate } from "../../master-data/models/taxRate.model";
-import { Branch, Partner, Product, User, sequelize } from "../../../models";
+import { Branch, Currency, Partner, Product, User, Uom, sequelize } from "../../../models";
 import { Quotation } from "../models/quotation.model";
 import { Opportunity } from "../../crm/models/opportunity.model";
 import { StockMove } from "../../inventory/models/stockMove.model";
@@ -94,10 +94,16 @@ export const saleOrderService = {
       include: [
         { model: SaleOrderLine, as: "lines" },
         {
+          model: Partner,
+          as: "customer",
+          attributes: ["id", "name", "phone", "email", "tax_code"],
+        },
+        {
           model: User,
           as: "creator",
           attributes: ["id", "username", "full_name"],
         },
+        { model: Currency, as: "currency", attributes: ["id", "code", "symbol", "name"] },
       ],
       order: [["id", "DESC"]],
     });
@@ -120,6 +126,11 @@ export const saleOrderService = {
           attributes: ["id", "name", "email", "phone", "tax_code", "address"],
         },
         {
+          model: Quotation,
+          as: "quotation",
+          attributes: ["id", "quotation_no"],
+        },
+        {
           model: User,
           as: "creator",
           attributes: ["id", "username", "full_name"],
@@ -129,6 +140,7 @@ export const saleOrderService = {
           as: "approver",
           attributes: ["id", "username", "full_name"],
         },
+        { model: Currency, as: "currency", attributes: ["id", "code", "symbol", "name"] },
         {
           model: SaleOrderLine,
           as: "lines",
@@ -136,12 +148,17 @@ export const saleOrderService = {
             {
               model: Product,
               as: "product",
-              attributes: ["id", "name", "image_url", "sale_price"],
+              attributes: ["id", "name", "sku", "image_url", "sale_price"],
               include: [
                 {
                   model: ProductImage,
                   as: "images",
                   attributes: ["id", "image_url"],
+                },
+                {
+                  model: Uom,
+                  as: "uom",
+                  attributes: ["id", "name", "code"],
                 },
               ],
             },
@@ -188,6 +205,7 @@ export const saleOrderService = {
           as: "approver",
           attributes: ["id", "username", "full_name"],
         },
+        { model: Currency, as: "currency", attributes: ["id", "code", "symbol", "name"] },
         {
           model: SaleOrderLine,
           as: "lines",
@@ -221,6 +239,12 @@ export const saleOrderService = {
    * ---------------------------------------------------- */
   async create(data: any, user: any) {
     return await sequelize.transaction(async (t) => {
+      const quotation = data.quotation_id
+        ? await Quotation.findByPk(data.quotation_id, { transaction: t })
+        : null;
+      const currencyId = data.currency_id ?? quotation?.currency_id ?? null;
+      const exchangeRate = Number(data.exchange_rate || quotation?.exchange_rate || 1);
+
       const order = await SaleOrder.create(
         {
           branch_id: user.branch_id,
@@ -232,17 +256,17 @@ export const saleOrderService = {
           status: "draft",
           // Phase 3 enhancements
           quotation_id: data.quotation_id || null,
-          currency_id: data.currency_id || null,
-          exchange_rate: data.exchange_rate || 1,
-          payment_term_id: data.payment_term_id || null,
-          discount_percent: data.discount_percent || 0,
-          discount_amount: data.discount_amount || 0,
+          currency_id: currencyId,
+          exchange_rate: exchangeRate,
+          payment_term_id: data.payment_term_id || quotation?.payment_term_id || null,
+          discount_percent: data.discount_percent || quotation?.discount_percent || 0,
+          discount_amount: data.discount_amount || quotation?.discount_amount || 0,
           customer_po_number: data.customer_po_number || null,
           delivery_address: data.delivery_address || null,
           expected_delivery_date: data.expected_delivery_date || null,
-          sales_person_id: data.sales_person_id || user.id,
-          internal_notes: data.internal_notes || null,
-          customer_notes: data.customer_notes || null,
+          sales_person_id: data.sales_person_id || quotation?.sales_person_id || user.id,
+          internal_notes: data.internal_notes || quotation?.internal_notes || null,
+          customer_notes: data.customer_notes || quotation?.customer_notes || null,
         },
         { transaction: t }
       );
@@ -256,6 +280,7 @@ export const saleOrderService = {
           {
             order_id: order.id,
             product_id: line.product_id,
+            uom_id: line.uom_id ?? null,
             description: line.description,
             quantity: line.quantity,
             unit_price: line.unit_price,
@@ -354,6 +379,7 @@ export const saleOrderService = {
           await existingLine.update(
             {
               product_id: line.product_id,
+              uom_id: line.uom_id ?? null,
               description: line.description,
               quantity,
               unit_price,
@@ -371,6 +397,7 @@ export const saleOrderService = {
             {
               order_id: order.id,
               product_id: line.product_id,
+              uom_id: line.uom_id ?? null,
               description: line.description,
               quantity,
               unit_price,
@@ -463,11 +490,15 @@ export const saleOrderService = {
       // KIỂM TRA CREDIT LIMIT
       const partner = await Partner.findByPk(order.customer_id, { transaction: t });
       if (partner && partner.credit_limit && Number(partner.credit_limit) > 0) {
-        const totalDebt = await SaleOrder.sum("total_after_tax", {
+        const confirmedOrders = await SaleOrder.findAll({
           where: { customer_id: partner.id, status: { [Op.in]: ["confirmed"] } },
           transaction: t,
         });
-        const currentDebt = Number(totalDebt || 0) + Number(order.total_after_tax || 0);
+        const totalDebt = confirmedOrders.reduce(
+          (sum, item) => sum + Number(item.total_after_tax || 0) * Number(item.exchange_rate || 1),
+          0
+        );
+        const currentDebt = totalDebt + Number(order.total_after_tax || 0) * Number(order.exchange_rate || 1);
         if (currentDebt > Number(partner.credit_limit)) {
           throw new Error(
             `Đơn hàng vượt quá Hạn Mức Công Nợ tối đa của khách hàng. (Mức nợ dự kiến: ${currentDebt} > Hạn mức: ${partner.credit_limit})`
