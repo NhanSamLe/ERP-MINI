@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useRef } from "react";
 import { Button } from "../../../components/ui/Button";
 import { Input } from "../../../components/ui/input";
 import { Textarea } from "../../../components/ui/textarea";
@@ -226,7 +226,7 @@ export default function CreatePurchaseOrderPage() {
 
   const handleSelectProduct = async (product: Product) => {
     if (lines.some((l) => l.product_id === product.id)) {
-      toast.warning("Product already added!");
+      toast.warn("Sản phẩm đã có trong danh sách!");
       return;
     }
     const tax = await dispatch(
@@ -933,3 +933,4 @@ export default function CreatePurchaseOrderPage() {
     </div>
   );
 }
+

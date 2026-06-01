@@ -7,6 +7,7 @@ import { Opportunity } from "../dto/opportunity.dto";
 import { Pipeline, PipelineStage } from "../dto/pipeline.dto";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
+import { formatStageProbability } from "../helpers/pipeline.helpers";
 import { formatVND } from "@/utils/currency.helper";
 import { exportExcelReport } from "@/utils/excel/exportExcelReport";
 import * as pipelineApi from "../api/pipeline.api";
@@ -137,7 +138,7 @@ export default function OpportunityBoardPage() {
       return s?.is_lost || o.stage === "lost";
     }).length;
     const active = total - won - lost;
-    const totalValue = filteredOpps.reduce((sum, o) => sum + Number(o.expected_value || 0), 0);
+    const totalValue = filteredOpps.reduce((sum, o) => sum + Number(o.expected_value || 0) * Number(o.exchange_rate || 1), 0);
     return { total, won, lost, active, totalValue };
   }, [filteredOpps, stages]);
 
@@ -387,7 +388,7 @@ export default function OpportunityBoardPage() {
         <div className="flex gap-4 overflow-x-auto pb-4 mt-4" style={{ minHeight: "65vh" }}>
           {filteredStages.map((stage) => {
             const list = grouped[stage.id] || [];
-            const total = list.reduce((sum, o) => sum + Number(o.expected_value || 0), 0);
+            const total = list.reduce((sum, o) => sum + Number(o.expected_value || 0) * Number(o.exchange_rate || 1), 0);
 
             return (
               <div
@@ -409,7 +410,9 @@ export default function OpportunityBoardPage() {
 
                 {/* Stage info badges */}
                 <div className="px-4 py-1.5 flex items-center gap-2">
-                  <span className="text-xs text-gray-400">{Math.round(stage.probability || 0)}% xác suất</span>
+                  {formatStageProbability(stage.probability) && (
+                    <span className="text-xs text-gray-400">{formatStageProbability(stage.probability)} xác suất</span>
+                  )}
                   {stage.is_won && <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">THẮNG</span>}
                   {stage.is_lost && <span className="text-[10px] font-semibold bg-red-100 text-red-600 px-1.5 py-0.5 rounded">THUA</span>}
                 </div>

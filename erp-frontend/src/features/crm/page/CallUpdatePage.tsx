@@ -1,32 +1,21 @@
-// src/features/crm/pages/CallUpdatePage.tsx
-
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-
-import {
-  getActivityDetail,
-  updateActivity,
-  updateCallDetail
-} from "../service/activity.service";
-
-import { Alert } from "@/components/ui/Alert";
-import { Button } from "@/components/ui/buttonn";
-import { Card, CardHeader, CardContent } from "@/components/ui/Card";
-import { Separator } from "@/components/ui/separator";
-import { FormInput } from "@/components/ui/FormInput";
-
-import {
-  ArrowLeft,
-  Phone,
-  Settings,
-  PhoneCall,
-  Mic,
-  Clock,
-  FileText,
-} from "lucide-react";
-
+import { toast } from "react-toastify";
+import { getActivityDetail, updateActivity, updateCallDetail } from "../service/activity.service";
 import { Activity } from "../dto/activity.dto";
 import { ResultType } from "@/types/enum";
+import { StandardFormLayout, FormSection } from "@/components/layout";
+import { StatusBadge } from "@/components/common";
+import { Phone, Clock, Mic, FileText, PhoneCall } from "lucide-react";
+
+const RESULT_OPTIONS: { value: ResultType; label: string }[] = [
+  { value: "connected",    label: "Đã kết nối" },
+  { value: "no_answer",   label: "Không nghe máy" },
+  { value: "busy",        label: "Bận" },
+  { value: "failed",      label: "Thất bại" },
+  { value: "call_back",   label: "Gọi lại sau" },
+  { value: "wrong_number",label: "Sai số" },
+];
 
 export default function CallUpdatePage() {
   const navigate = useNavigate();
@@ -35,269 +24,192 @@ export default function CallUpdatePage() {
 
   const [detail, setDetail] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const [alert, setAlert] = useState<{
-    type: "success" | "error" | "warning";
-    message: string;
-  } | null>(null);
+  const [subject, setSubject] = useState("");
+  const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
+  const [notes, setNotes] = useState("");
+  const [duration, setDuration] = useState("");
+  const [result, setResult] = useState<ResultType | "">("");
+  const [recordingUrl, setRecordingUrl] = useState("");
 
-  // ========================
-  // FORM STATE
-  // ========================
-  const [general, setGeneral] = useState({
-    subject: "",
-    priority: "medium" as "low" | "medium" | "high",
-    notes: "",
-  });
-
-  const [callInfo, setCallInfo] = useState({
-    duration: "",
-    result: null as ResultType | null,
-    recording_url: "",
-  });
-
-  const updateGeneral = <K extends keyof typeof general>(k: K, v: typeof general[K]) =>
-    setGeneral((p) => ({ ...p, [k]: v }));
-
-  const updateCallInfo = <K extends keyof typeof callInfo>(k: K, v: typeof callInfo[K]) =>
-    setCallInfo((p) => ({ ...p, [k]: v }));
-
-  // ========================
-  // LOAD DETAIL
-  // ========================
-  useEffect(() => {
-    loadDetail();
-  }, [activityId]);
+  useEffect(() => { loadDetail(); }, [activityId]);
 
   const loadDetail = async () => {
     try {
       setLoading(true);
       const res = await getActivityDetail(activityId);
       setDetail(res);
-
-      setGeneral({
-        subject: res.subject || "",
-        priority: res.priority || "medium",
-        notes: res.notes || "",
-      });
-
-      setCallInfo({
-        duration: res.call?.duration?.toString() || "",
-        result: (res.call?.result as ResultType) ?? null,
-        recording_url: res.call?.recording_url || "",
-      });
-
-    } catch (err: unknown) {
-      setAlert({
-        type: "error",
-        message: err instanceof Error ? err.message : "Không thể tải dữ liệu",
-      });
+      setSubject(res.subject || "");
+      setPriority(res.priority || "medium");
+      setNotes(res.notes || "");
+      setDuration(res.call?.duration?.toString() || "");
+      setResult((res.call?.result as ResultType) ?? "");
+      setRecordingUrl(res.call?.recording_url || "");
+    } catch {
+      toast.error("Không thể tải dữ liệu cuộc gọi");
     } finally {
       setLoading(false);
     }
   };
 
-  // ========================
-  // SAVE GENERAL INFO
-  // ========================
-  const handleSaveGeneral = async () => {
+  const handleSave = async () => {
+    if (!subject.trim()) { toast.error("Vui lòng nhập tiêu đề"); return; }
     try {
-      await updateActivity({
-        activityId,
-        subject: general.subject,
-        notes: general.notes || null,
-        priority: general.priority,
-      });
-
-      setAlert({ type: "success", message: "Đã lưu thông tin chung!" });
-    } catch (err: unknown) {
-      setAlert({
-        type: "error",
-        message:
-          err instanceof Error ? err.message : "Không thể lưu thông tin chung",
-      });
-    }
-  };
-
-  // ========================
-  // SAVE CALL DETAIL
-  // ========================
-  const handleSaveCallDetail = async () => {
-    try {
+      setSaving(true);
+      await updateActivity({ activityId, subject, notes: notes || null, priority });
       await updateCallDetail(activityId, {
         activity_id: activityId,
-        duration: callInfo.duration ? Number(callInfo.duration) : null,
-        result: callInfo.result || null,
-        recording_url: callInfo.recording_url || null,
+        duration: duration ? Number(duration) : null,
+        result: (result as ResultType) || null,
+        recording_url: recordingUrl || null,
       });
-
-      setAlert({ type: "success", message: "Đã lưu chi tiết cuộc gọi!" });
-
-    } catch (err: unknown) {
-      setAlert({
-        type: "error",
-        message:
-          err instanceof Error ? err.message : "Không thể lưu chi tiết cuộc gọi",
-      });
+      toast.success("Đã lưu thông tin cuộc gọi");
+    } catch {
+      toast.error("Không thể lưu, vui lòng thử lại");
+    } finally {
+      setSaving(false);
     }
   };
 
-  if (loading) return <div className="p-8 text-center">Đang tải...</div>;
-  if (!detail) return <div className="p-8 text-center">Không tìm thấy hoạt động</div>;
+  const isDone = detail?.status === "completed";
 
   return (
-    <div className="min-h-screen bg-gray-50">
-
-      {/* HEADER */}
-      <div className="bg-white border-b px-6 py-4 flex items-center gap-4 max-w-5xl mx-auto">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
-
-        <h1 className="text-xl font-semibold flex items-center gap-2">
-          <Phone className="w-6 h-6 text-orange-500" />
-          Cập nhật cuộc gọi
-        </h1>
-      </div>
-
-      {/* BODY */}
-      <div className="max-w-5xl mx-auto px-6 py-6 space-y-6">
-
-        {alert && (
-          <Alert
-            type={alert.type}
-            message={alert.message}
-            onClose={() => setAlert(null)}
-          />
-        )}
-
-        {/* ==============================
-            1️⃣ GENERAL INFORMATION
-        =============================== */}
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-3">
-            <Settings className="w-5 h-5 text-gray-500" />
-            <h2 className="text-lg font-semibold">Thông tin chung</h2>
-          </CardHeader>
-          <Separator />
-          <CardContent className="space-y-6 pt-5">
-
-            <FormInput
-              label="Tiêu đề cuộc gọi"
-              required
-              value={general.subject}
-              onChange={(v) => updateGeneral("subject", v)}
+    <StandardFormLayout
+      title={subject || "Cập nhật cuộc gọi"}
+      loading={loading}
+      statusBadge={detail ? <StatusBadge status={detail.status ?? "pending"} /> : undefined}
+      actions={[
+        { label: "Quay lại", variant: "outline", onClick: () => navigate(-1) },
+        {
+          label: saving ? "Đang lưu..." : "Lưu thay đổi",
+          variant: "primary",
+          onClick: handleSave,
+          isLoading: saving,
+          disabled: saving || isDone,
+        },
+      ]}
+      sidebarContent={
+        detail?.call ? (
+          <FormSection title="Thông tin cuộc gọi" icon={<PhoneCall className="w-4 h-4" />}>
+            <div className="space-y-3 text-sm">
+              <div>
+                <p className="text-xs text-gray-500 mb-0.5">Từ</p>
+                <p className="font-medium text-gray-800">{detail.call.call_from || "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-0.5">Đến</p>
+                <p className="font-medium text-gray-800">{detail.call.call_to || "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-0.5">Chiều</p>
+                <p className="font-medium text-gray-800">{detail.call.is_inbound ? "Inbound" : "Outbound"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-0.5">Trạng thái</p>
+                <StatusBadge status={detail.status ?? "pending"} />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-0.5">Liên kết</p>
+                <p className="font-medium text-gray-800 capitalize">{detail.related_type} #{detail.related_id}</p>
+              </div>
+            </div>
+          </FormSection>
+        ) : undefined
+      }
+    >
+      {/* General info */}
+      <FormSection title="Thông tin chung" icon={<Phone className="w-4 h-4" />}>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Tiêu đề <span className="text-red-500">*</span>
+            </label>
+            <input
+              value={subject}
+              onChange={e => setSubject(e.target.value)}
+              placeholder="Tiêu đề cuộc gọi..."
+              className="h-9 w-full rounded-md border border-gray-200 px-3 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-orange-400"
             />
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-2">Mức ưu tiên</label>
-              <select
-                value={general.priority}
-                onChange={(e) =>
-                  updateGeneral("priority", e.target.value as "low" | "medium" | "high")
-                }
-                className="border px-4 py-2 rounded-lg"
-              >
-                <option value="low">Thấp</option>
-                <option value="medium">Trung bình</option>
-                <option value="high">Cao</option>
-              </select>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Mức ưu tiên</label>
+            <select
+              value={priority}
+              onChange={e => setPriority(e.target.value as any)}
+              className="h-9 rounded-md border border-gray-200 px-3 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-orange-400"
+            >
+              <option value="low">Thấp</option>
+              <option value="medium">Trung bình</option>
+              <option value="high">Cao</option>
+            </select>
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-2 flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                Ghi chú
-              </label>
-              <textarea
-                rows={5}
-                value={general.notes}
-                onChange={(e) => updateGeneral("notes", e.target.value)}
-                className="w-full border rounded-lg px-4 py-3"
-              />
-            </div>
+          <div>
+            <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
+              <FileText className="w-3.5 h-3.5" /> Ghi chú
+            </label>
+            <textarea
+              rows={4}
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder="Ghi chú thêm..."
+              className="w-full resize-none rounded-md border border-gray-200 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-orange-400"
+            />
+          </div>
+        </div>
+      </FormSection>
 
-            {/* SAVE GENERAL BUTTON */}
-            <div className="flex justify-end pt-4">
-              <Button onClick={handleSaveGeneral}>
-                Lưu thông tin chung
-              </Button>
-            </div>
+      {/* Call detail */}
+      <FormSection title="Chi tiết cuộc gọi" icon={<PhoneCall className="w-4 h-4" />}>
+        <div className="space-y-4">
+          <div>
+            <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
+              <Clock className="w-3.5 h-3.5" /> Thời lượng (giây)
+            </label>
+            <input
+              type="number"
+              min={0}
+              value={duration}
+              onChange={e => setDuration(e.target.value.replace(/\D/g, ""))}
+              placeholder="VD: 120"
+              className="h-9 w-full rounded-md border border-gray-200 px-3 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-orange-400"
+            />
+            {duration && (
+              <p className="text-xs text-gray-400 mt-1">
+                ≈ {Math.floor(Number(duration) / 60)} phút {Number(duration) % 60} giây
+              </p>
+            )}
+          </div>
 
-          </CardContent>
-        </Card>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Kết quả cuộc gọi</label>
+            <select
+              value={result}
+              onChange={e => setResult(e.target.value as ResultType)}
+              className="h-9 w-full rounded-md border border-gray-200 px-3 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-orange-400"
+            >
+              <option value="">— Chọn kết quả —</option>
+              {RESULT_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
 
-        {/* ==============================
-            2️⃣ CALL DETAILS
-        =============================== */}
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-3">
-            <PhoneCall className="w-5 h-5 text-blue-500" />
-            <h2 className="text-lg font-semibold">Chi tiết cuộc gọi</h2>
-          </CardHeader>
-
-          <Separator />
-
-          <CardContent className="space-y-6 pt-5">
-
-            <div>
-              <label className="block text-sm font-medium mb-2 flex items-center gap-2">
-                <Clock className="w-4 h-4" />
-                Thời lượng (giây)
-              </label>
-              <FormInput
-                value={callInfo.duration}
-                onChange={(v) =>
-                  updateCallInfo("duration", v.replace(/\D/g, ""))
-                }
-                placeholder="VD: 120"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Kết quả cuộc gọi
-              </label>
-              <select
-                className="border px-4 py-2 rounded-lg"
-                value={callInfo.result || ""}
-                onChange={(e) =>
-                  updateCallInfo("result", e.target.value as ResultType)
-                }
-              >
-                <option value="">— Chọn kết quả —</option>
-                <option value="connected">Connected</option>
-                <option value="no_answer">No Answer</option>
-                <option value="busy">Busy</option>
-                <option value="failed">Failed</option>
-                <option value="call_back">Call Back</option>
-                <option value="wrong_number">Wrong Number</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2 flex items-center gap-2">
-                <Mic className="w-4 h-4" />
-                Link ghi âm
-              </label>
-              <FormInput
-                value={callInfo.recording_url}
-                onChange={(v) => updateCallInfo("recording_url", v)}
-                placeholder="https://..."
-              />
-            </div>
-
-            {/* SAVE CALL DETAIL BUTTON */}
-            <div className="flex justify-end pt-4">
-              <Button onClick={handleSaveCallDetail}>
-                Lưu chi tiết cuộc gọi
-              </Button>
-            </div>
-
-          </CardContent>
-        </Card>
-
-      </div>
-    </div>
+          <div>
+            <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
+              <Mic className="w-3.5 h-3.5" /> Link ghi âm
+            </label>
+            <input
+              value={recordingUrl}
+              onChange={e => setRecordingUrl(e.target.value)}
+              placeholder="https://..."
+              className="h-9 w-full rounded-md border border-gray-200 px-3 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-orange-400"
+            />
+          </div>
+        </div>
+      </FormSection>
+    </StandardFormLayout>
   );
 }

@@ -37,33 +37,14 @@ const menuItems: MenuItem[] = [
     name: "Sales",
     icon: ShoppingCart,
     path: "/sales",
-    allowedRoles: ["SALESMANAGER", "SALES", "CHACC", "ACCOUNT", "WHSTAFF"],
+    allowedRoles: ["SALESMANAGER", "SALES", "BRANCH_MANAGER", "CHACC", "ACCOUNT", "WHSTAFF", "WHMANAGER"],
     subItems: [
-      {
-        name: "Quotations",
-        path: "/sales/quotations",
-        allowedRoles: ["SALES", "SALESMANAGER", "ADMIN"],
-      },
-      {
-        name: "Orders",
-        path: "/sales/orders",
-        allowedRoles: ["SALES", "SALESMANAGER", "CEO", "WHSTAFF", "ACCOUNT"],
-      },
-      {
-        name: "Invoices",
-        path: "/invoices",
-        allowedRoles: ["ACCOUNT", "CHACC", "CEO"],
-      },
-      {
-        name: "Receipts",
-        path: "/receipts",
-        allowedRoles: ["ACCOUNT", "CHACC"],
-      },
-      {
-        name: "Customers",
-        path: "/partners?type=customer",
-        allowedRoles: ["SALES", "SALESMANAGER"],
-      },
+      { name: "Quotations", path: "/sales/quotations",      allowedRoles: ["SALES", "SALESMANAGER", "ADMIN"] },
+      { name: "Orders",     path: "/sales/orders",          allowedRoles: ["SALES", "SALESMANAGER", "CEO", "WHSTAFF", "ACCOUNT"] },
+      { name: "Returns",    path: "/sales/returns",         allowedRoles: ["SALES", "SALESMANAGER", "BRANCH_MANAGER", "WHSTAFF", "WHMANAGER", "ACCOUNT", "CHACC"] },
+      { name: "Invoices",   path: "/invoices",              allowedRoles: ["ACCOUNT", "CHACC", "CEO"] },
+      { name: "Receipts",   path: "/receipts",              allowedRoles: ["ACCOUNT", "CHACC"] },
+      { name: "Customers",  path: "/partners?type=customer",allowedRoles: ["SALES", "SALESMANAGER"] },
     ],
   },
   {
@@ -141,41 +122,14 @@ const menuItems: MenuItem[] = [
     path: "/inventory",
     allowedRoles: ["WHMANAGER", "WHSTAFF", "ADMIN"],
     subItems: [
-      {
-        name: "Products",
-        path: "/inventory/products",
-        allowedRoles: ["WHMANAGER", "WHSTAFF", "ADMIN"],
-      },
-      {
-        name: "Warehouses",
-        path: "/inventory/warehouses",
-        allowedRoles: ["ADMIN"],
-      },
-      {
-        name: "Locations",
-        path: "/inventory/locations",
-        allowedRoles: ["ADMIN", "WHMANAGER", "WHSTAFF"],
-      },
-      {
-        name: "Lots",
-        path: "/inventory/lots",
-        allowedRoles: ["ADMIN", "WHMANAGER", "WHSTAFF", "PURCHASE"],
-      },
-      {
-        name: "Category",
-        path: "/inventory/categories",
-        allowedRoles: ["WHMANAGER", "ADMIN", "WHSTAFF"],
-      },
-      {
-        name: "Stock",
-        path: "/inventory/stock",
-        allowedRoles: ["WHMANAGER", "WHSTAFF"],
-      },
-      {
-        name: "Stock Moves",
-        path: "/inventory/stock_move",
-        allowedRoles: ["WHMANAGER", "WHSTAFF"],
-      },
+      { name: "Products",    path: "/inventory/products",    allowedRoles: ["WHMANAGER", "WHSTAFF", "ADMIN"] },
+      { name: "Warehouses",  path: "/inventory/warehouses",  allowedRoles: ["ADMIN"] },
+      { name: "Locations",   path: "/inventory/locations",   allowedRoles: ["ADMIN", "WHMANAGER", "WHSTAFF"] },
+      { name: "Lots",        path: "/inventory/lots",        allowedRoles: ["ADMIN", "WHMANAGER", "WHSTAFF", "PURCHASE"] },
+      { name: "Category",    path: "/inventory/categories",  allowedRoles: ["WHMANAGER", "ADMIN", "WHSTAFF"] },
+      { name: "Stock",       path: "/inventory/stock",       allowedRoles: ["WHMANAGER", "WHSTAFF"] },
+      { name: "Stock Moves", path: "/inventory/stock_move",  allowedRoles: ["WHMANAGER", "WHSTAFF"] },
+      { name: "Hàng bán trả về", path: "/inventory/sales-returns", allowedRoles: ["WHMANAGER", "WHSTAFF"] },
       {
         name: "Physical Inventory",
         path: "/inventory/physical-inventories",

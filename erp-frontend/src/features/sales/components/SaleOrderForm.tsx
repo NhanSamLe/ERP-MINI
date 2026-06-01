@@ -1,22 +1,30 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Plus, Trash2, Calendar, User, ShoppingCart,
   Search, Building2, Phone, Mail, MapPin, CreditCard,
   Package, Inbox, AlertCircle, Edit3,
 } from "lucide-react";
+import ProductPickerItem from "./ProductPickerItem";
 import { CreateSaleOrderDto, UpdateSaleOrderDto } from "../dto/saleOrder.dto";
 import { Product } from "@/features/products/store/product.types";
 import { Partner } from "@/features/partner/store/partner.types";
+import { Currency } from "@/features/master-data/dto/currency.dto";
+import * as currencyService from "@/features/master-data/service/currency.service";
+import { Uom, UomConversion } from "@/features/master-data/dto/uom.dto";
+import * as uomService from "@/features/master-data/service/uom.service";
+import * as uomConversionService from "@/features/master-data/service/uomConversion.service";
+import { getValidUomsForProduct, previewQtyInStockUom } from "@/features/purchase/utils/uomHelper";
 import QuantityControl from "./QuantityControl";
 import { useSaleOrderForm } from "../hook/useSaleOrderForm";
 import { StandardFormLayout, FormSection } from "@/components/layout";
 import { SearchSelectionModal } from "@/components/common/SearchSelectionModal";
-import ProductPickerModal from "./ProductPickerModal";
 import { formatVND } from "@/utils/currency.helper";
 
 interface SaleOrderFormDto {
   id?: number;
   customer_id: number;
+  currency_id?: number | null;
+  exchange_rate?: number;
   order_date: string;
   lines: any[];
   deletedLineIds?: number[];
@@ -44,7 +52,7 @@ export default function SaleOrderForm({
   const {
     customerId, setCustomerId,
     orderDate, setOrderDate,
-    lines, removeLine, addLine,
+    lines, setLines, removeLine, addLine,
     selectProductForLine, updateLine,
     totals, calcLine,
     selectedProductIds, deletedLineIds,
@@ -54,11 +62,110 @@ export default function SaleOrderForm({
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [activeLineIndex, setActiveLineIndex] = useState<number | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
+  const [currencyId, setCurrencyId] = useState<number | null>(defaultValue?.currency_id ?? null);
+  const [exchangeRate, setExchangeRate] = useState<number>(defaultValue?.exchange_rate ?? 1);
+  const [uoms, setUoms] = useState<Uom[]>([]);
+  const [uomConversions, setUomConversions] = useState<UomConversion[]>([]);
+  const [focusedPriceIdx, setFocusedPriceIdx] = useState<number | null>(null);
 
   const selectedCustomer = customers.find((c) => c.id === customerId);
+  const selectedCurrency = currencies.find((c) => c.id === currencyId);
+  const currencyCode = selectedCurrency?.code || "VND";
+  const currencySymbol = selectedCurrency?.symbol || "VND";
+  const formatDocMoney = (value: number | null | undefined) =>
+    `${Number(value || 0).toLocaleString("vi-VN", { maximumFractionDigits: 2 })} ${currencySymbol}`;
+  const formatQty = (value: number) =>
+    Number(value).toLocaleString("vi-VN", { maximumFractionDigits: 4 });
+  const getUomConversionHint = (line: any) => {
+    const product = products.find((p) => p.id === line.product_id);
+    const selectedUomId = line.uom_id ?? product?.uom_id ?? null;
+    const stockUomId = product?.uom_id ?? null;
+    if (!product || !selectedUomId || !stockUomId) return null;
+
+    const selectedUom = uoms.find((u) => u.id === selectedUomId) || product.uom;
+    const stockUom = uoms.find((u) => u.id === stockUomId) || product.uom;
+    if (!selectedUom || !stockUom) return null;
+
+    if (selectedUomId === stockUomId) {
+      return `ĐVT gốc của sản phẩm: ${stockUom.name} (${stockUom.code})`;
+    }
+
+    const factor = previewQtyInStockUom(1, selectedUomId, stockUomId, uomConversions, product.id);
+    return `1 ${selectedUom.name} (${selectedUom.code}) = ${formatQty(factor)} ${stockUom.name} (${stockUom.code})`;
+  };
   const availableProducts = products.filter(
     (p) => !selectedProductIds.includes(p.id) || (activeLineIndex !== null && lines[activeLineIndex].product_id === p.id)
   );
+
+  useEffect(() => {
+    setCurrencyId(defaultValue?.currency_id ?? null);
+    setExchangeRate(defaultValue?.exchange_rate ?? 1);
+  }, [defaultValue?.currency_id, defaultValue?.exchange_rate]);
+
+  useEffect(() => {
+    currencyService.getCurrencies()
+      .then((data) => setCurrencies(data || []))
+      .catch(() => setCurrencies([]));
+    uomService.getAllUoms()
+      .then((data) => setUoms(data || []))
+      .catch(() => setUoms([]));
+    uomConversionService.getAllUomConversions()
+      .then((data) => setUomConversions(data || []))
+      .catch(() => setUomConversions([]));
+  }, []);
+
+  const fetchExchangeRate = async (cid: number | null, list = currencies) => {
+    if (!cid) return 1;
+    const selected = list.find((c) => c.id === cid);
+    if (!selected || selected.code === "VND") return 1;
+    try {
+      const data = await currencyService.getExchangeRates();
+      const rates: Array<{ quoteCurrency: { code: string }; rate: number }> = data?.rates || [];
+      const match = rates.find((r) => r.quoteCurrency.code === selected.code);
+      return match?.rate ? 1 / Number(match.rate) : 1;
+    } catch {
+      return 1;
+    }
+  };
+
+  const handleCurrencyChange = async (nextCurrencyId: number | null) => {
+    const oldRate = Number(exchangeRate || 1);
+    const nextRate = await fetchExchangeRate(nextCurrencyId);
+    setCurrencyId(nextCurrencyId);
+    setExchangeRate(nextRate);
+    setLines((prev) =>
+      prev.map((line) => ({
+        ...line,
+        unit_price: Number(((Number(line.unit_price || 0) * oldRate) / nextRate).toFixed(2)),
+      }))
+    );
+  };
+
+  const parsePrice = (str: string) =>
+    Number(str.replace(/\./g, "").replace(/,/g, "").replace(/[^\d]/g, "")) || 0;
+
+  const handleUomChange = (lineIdx: number, newUomId: number | null) => {
+    const line = lines[lineIdx];
+    const product = products.find((p) => p.id === line.product_id);
+    setLines((prev) => {
+      const next = [...prev];
+      const updated = { ...next[lineIdx], uom_id: newUomId };
+      if (product && newUomId && product.uom_id && uomConversions.length > 0) {
+        const factor = previewQtyInStockUom(1, newUomId, product.uom_id, uomConversions, product.id);
+        updated.unit_price = Math.round(Number(product.sale_price ?? 0) * factor / Number(exchangeRate || 1));
+      }
+      next[lineIdx] = updated;
+      return next;
+    });
+  };
+
+  const selectProductForDocumentCurrency = (index: number, product: Product) => {
+    selectProductForLine(index, {
+      ...product,
+      sale_price: Number((Number(product.sale_price ?? 0) / Number(exchangeRate || 1)).toFixed(2)),
+    });
+  };
 
   const handleOpenProductModal = (index: number) => {
     setActiveLineIndex(index);
@@ -67,26 +174,29 @@ export default function SaleOrderForm({
 
   const handleSubmit = () => {
     if (!customerId || customerId === 0) {
-      setValidationError("Please select a customer.");
+      setValidationError("Vui lòng chọn khách hàng.");
       return;
     }
     if (lines.length === 0) {
-      setValidationError("Please add at least one product line.");
+      setValidationError("Vui lòng thêm ít nhất một dòng sản phẩm.");
       return;
     }
     if (lines.some((l) => !l.product_id)) {
-      setValidationError("All line items must have a product selected.");
+      setValidationError("Tất cả dòng phải có sản phẩm được chọn.");
       return;
     }
     setValidationError(null);
 
     const payload: any = {
       customer_id: customerId,
+      currency_id: currencyId,
+      exchange_rate: exchangeRate,
       order_date: orderDate,
       lines: lines.map((l) => ({
         id: l.id,
         product_id: l.product_id ?? 0,
         quantity: l.quantity ?? 1,
+        uom_id: l.uom_id ?? null,
         unit_price: l.unit_price ?? 0,
         tax_rate_id: l.tax_rate_id ?? null,
       })),
@@ -98,11 +208,11 @@ export default function SaleOrderForm({
   return (
     <>
       <StandardFormLayout
-        title={mode === "create" ? "New Sale Order" : `Edit Order #${defaultValue?.id}`}
+        title={mode === "create" ? "Tạo Đơn hàng mới" : `Chỉnh sửa Đơn hàng #${defaultValue?.id}`}
         actions={[
-          { label: "Discard", variant: "outline", onClick: onCancel || (() => window.history.back()) },
+          { label: "Huỷ", variant: "outline", onClick: onCancel || (() => window.history.back()) },
           {
-            label: mode === "create" ? "Save Draft" : "Save Changes",
+            label: mode === "create" ? "Lưu nháp" : "Lưu thay đổi",
             variant: "primary",
             onClick: handleSubmit,
             isLoading: loading,
@@ -111,25 +221,30 @@ export default function SaleOrderForm({
         sidebarContent={
           <div className="space-y-4">
             {/* Financial Summary */}
-            <FormSection title="Order Summary" icon={<CreditCard className="w-4 h-4" />}>
+            <FormSection title="Tóm tắt" icon={<CreditCard className="w-4 h-4" />}>
               <div className="space-y-3">
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-500">Lines</span>
-                  <span className="font-semibold text-gray-800">{lines.filter((l) => l.product_id).length} item(s)</span>
+                  <span className="text-gray-500">Số dòng</span>
+                  <span className="font-semibold text-gray-800">{lines.filter((l) => l.product_id).length} sản phẩm</span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-500">Subtotal</span>
-                  <span className="font-semibold text-gray-800">{formatVND(totals.subtotal)}</span>
+                  <span className="text-gray-500">Tạm tính</span>
+                  <span className="font-semibold text-gray-800">{formatDocMoney(totals.subtotal)}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-500">Tax</span>
-                  <span className="font-semibold text-gray-800">{formatVND(totals.tax)}</span>
+                  <span className="text-gray-500">Thuế VAT</span>
+                  <span className="font-semibold text-gray-800">{formatDocMoney(totals.tax)}</span>
                 </div>
                 <div className="pt-3 mt-1 border-t border-gray-200">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-semibold text-gray-900">Total (incl. tax)</span>
-                    <span className="text-base font-bold text-orange-600">{formatVND(totals.total)}</span>
+                    <span className="text-sm font-semibold text-gray-900">Tổng cộng</span>
+                    <span className="text-base font-bold text-orange-600">{formatDocMoney(totals.total)}</span>
                   </div>
+                  {currencyCode !== "VND" && (
+                    <p className="text-xs text-gray-400 mt-1 text-right">
+                      ≈ {formatVND(totals.total * Number(exchangeRate || 1))}
+                    </p>
+                  )}
                 </div>
               </div>
             </FormSection>
@@ -144,7 +259,7 @@ export default function SaleOrderForm({
 
             {/* Customer quick info */}
             {selectedCustomer && (
-              <FormSection title="Customer" icon={<User className="w-4 h-4" />}>
+              <FormSection title="Khách hàng" icon={<User className="w-4 h-4" />}>
                 <div className="space-y-2 text-sm">
                   <p className="font-semibold text-gray-900">{selectedCustomer.name}</p>
                   {selectedCustomer.phone && (
@@ -162,7 +277,7 @@ export default function SaleOrderForm({
                   {selectedCustomer.tax_code && (
                     <div className="flex items-center gap-1.5 text-gray-500">
                       <CreditCard className="w-3 h-3 shrink-0" />
-                      <span>Tax: {selectedCustomer.tax_code}</span>
+                      <span>MST: {selectedCustomer.tax_code}</span>
                     </div>
                   )}
                 </div>
@@ -172,12 +287,12 @@ export default function SaleOrderForm({
         }
       >
         {/* ─── SECTION 1: Order Info ─── */}
-        <FormSection title="Order Information" icon={<Building2 className="w-4 h-4" />}>
+        <FormSection title="Thông tin Đơn hàng" icon={<Building2 className="w-4 h-4" />}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Customer selector */}
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-gray-700">
-                Customer <span className="text-red-500">*</span>
+                Khách hàng <span className="text-red-500">*</span>
               </label>
               {mode === "edit" ? (
                 <div className="flex items-center gap-2.5 h-9 px-3 bg-gray-50 border border-gray-200 rounded-md">
@@ -202,7 +317,7 @@ export default function SaleOrderForm({
                   <div className="flex items-center gap-2 min-w-0">
                     <User className="w-4 h-4 text-gray-400 shrink-0" />
                     <span className="truncate">
-                      {selectedCustomer ? selectedCustomer.name : "Search and select customer..."}
+                      {selectedCustomer ? selectedCustomer.name : "Tìm và chọn khách hàng..."}
                     </span>
                   </div>
                   <Search className="w-3.5 h-3.5 text-gray-400 shrink-0" />
@@ -213,7 +328,7 @@ export default function SaleOrderForm({
             {/* Order date */}
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-gray-700">
-                Order Date <span className="text-red-500">*</span>
+                Ngày đặt hàng <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
@@ -225,13 +340,37 @@ export default function SaleOrderForm({
                 />
               </div>
             </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-gray-700">Tiền tệ</label>
+              <select
+                value={currencyId ?? ""}
+                onChange={(e) => handleCurrencyChange(e.target.value ? Number(e.target.value) : null)}
+                className="w-full h-9 px-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-800"
+              >
+                <option value="">VND</option>
+                {currencies.map((c) => (
+                  <option key={c.id} value={c.id}>{c.code} ({c.symbol})</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-gray-700">Tỷ giá</label>
+              <div className="flex items-center h-9 px-3 text-sm border border-gray-200 rounded-md bg-gray-50 text-gray-700 select-none">
+                {currencyCode === "VND"
+                  ? <span className="text-gray-400">1 (mặc định VND)</span>
+                  : <span>1 {currencyCode} = {exchangeRate.toLocaleString("vi-VN", { maximumFractionDigits: 6 })} VND</span>
+                }
+              </div>
+            </div>
           </div>
 
           {/* Customer details card — shows when customer selected */}
           {selectedCustomer && (
             <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-orange-50/60 border border-orange-100 rounded-lg">
               <div>
-                <p className="text-xs text-gray-500 mb-0.5">Phone</p>
+                <p className="text-xs text-gray-500 mb-0.5">Điện thoại</p>
                 <p className="text-sm font-medium text-gray-800">{selectedCustomer.phone || "—"}</p>
               </div>
               <div>
@@ -239,16 +378,16 @@ export default function SaleOrderForm({
                 <p className="text-sm font-medium text-gray-800 truncate">{selectedCustomer.email || "—"}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 mb-0.5">Tax Code</p>
+                <p className="text-xs text-gray-500 mb-0.5">Mã số thuế</p>
                 <p className="text-sm font-medium text-gray-800">{selectedCustomer.tax_code || "—"}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 mb-0.5">Contact Person</p>
+                <p className="text-xs text-gray-500 mb-0.5">Người liên hệ</p>
                 <p className="text-sm font-medium text-gray-800">{selectedCustomer.contact_person || "—"}</p>
               </div>
               {selectedCustomer.address && (
                 <div className="col-span-2 md:col-span-4">
-                  <p className="text-xs text-gray-500 mb-0.5">Address</p>
+                  <p className="text-xs text-gray-500 mb-0.5">Địa chỉ</p>
                   <p className="text-sm text-gray-700 flex items-start gap-1">
                     <MapPin className="w-3.5 h-3.5 text-gray-400 mt-0.5 shrink-0" />
                     {selectedCustomer.address}
@@ -262,7 +401,7 @@ export default function SaleOrderForm({
                     onClick={() => setIsCustomerModalOpen(true)}
                     className="inline-flex items-center gap-1 text-xs text-orange-600 hover:text-orange-700"
                   >
-                    <Edit3 className="w-3 h-3" /> Change customer
+                    <Edit3 className="w-3 h-3" /> Đổi khách hàng
                   </button>
                 </div>
               )}
@@ -272,9 +411,9 @@ export default function SaleOrderForm({
 
         {/* ─── SECTION 2: Line Items ─── */}
         <FormSection
-          title="Order Lines"
+          title="Dòng đơn hàng"
           icon={<ShoppingCart className="w-4 h-4" />}
-          description={`${lines.filter((l) => l.product_id).length} product(s) added`}
+          description={`${lines.filter((l) => l.product_id).length} sản phẩm`}
           noPadding
           action={
             <button
@@ -283,30 +422,23 @@ export default function SaleOrderForm({
               className="inline-flex items-center gap-1.5 h-7 px-3 text-xs font-medium text-white bg-orange-500 rounded-md hover:bg-orange-600 transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
-              Add Line
+              Thêm dòng
             </button>
           }
         >
-          {/* Table — 7 cols: # | Product (name+SKU+UoM) | Qty | Unit Price | Tax | Amount | × */}
+          {/* Table — 8 cols: # | Product | UoM | Qty | Unit Price | Tax | Amount | × */}
           <div className="overflow-x-auto">
             <table className="w-full text-sm table-fixed">
-              <colgroup>
-                <col style={{ width: "36px" }} />    {/* # */}
-                <col />                               {/* Product — flex */}
-                <col style={{ width: "112px" }} />   {/* Qty */}
-                <col style={{ width: "192px" }} />   {/* Unit Price */}
-                <col style={{ width: "80px" }} />    {/* Tax % */}
-                <col style={{ width: "148px" }} />   {/* Amount */}
-                <col style={{ width: "40px" }} />    {/* Remove */}
-              </colgroup>
+              <colgroup><col style={{width:"36px"}} /><col /><col style={{width:"108px"}} /><col style={{width:"112px"}} /><col style={{width:"180px"}} /><col style={{width:"72px"}} /><col style={{width:"140px"}} /><col style={{width:"40px"}} /></colgroup>
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50/80">
                   <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">#</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Product</th>
-                  <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Qty</th>
-                  <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Unit Price</th>
-                  <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Tax</th>
-                  <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Sản phẩm</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">ĐVT</th>
+                  <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">SL</th>
+                  <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Đơn giá ({currencyCode})</th>
+                  <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Thuế</th>
+                  <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Thành tiền ({currencyCode})</th>
                   <th className="px-3 py-2.5"></th>
                 </tr>
               </thead>
@@ -314,10 +446,10 @@ export default function SaleOrderForm({
               <tbody className="divide-y divide-gray-100">
                 {lines.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-14 text-center">
+                    <td colSpan={8} className="py-14 text-center">
                       <div className="flex flex-col items-center gap-2 text-gray-400">
                         <Inbox className="w-8 h-8" />
-                        <p className="text-sm">No products added. Click "Add Line" to start.</p>
+                        <p className="text-sm">Chưa có sản phẩm. Nhấn "Thêm dòng" để bắt đầu.</p>
                       </div>
                     </td>
                   </tr>
@@ -355,23 +487,46 @@ export default function SaleOrderForm({
                                   <p className="text-sm font-medium text-gray-800 truncate group-hover/btn:text-orange-600 transition-colors">
                                     {product.name}
                                   </p>
-                                  <div className="flex items-center gap-1.5 mt-0.5">
-                                    <span className="text-xs text-gray-400">SKU: {product.sku}</span>
-                                    {product.uom?.code && (
-                                      <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-500">
-                                        {product.uom.code}
-                                      </span>
-                                    )}
-                                  </div>
+                                  <p className="text-xs text-gray-400 mt-0.5">SKU: {product.sku}</p>
                                 </>
                               ) : (
                                 <span className="text-sm text-gray-400 italic flex items-center gap-1">
                                   <Search className="w-3.5 h-3.5" />
-                                  Click to select product...
+                                  Nhấn để chọn sản phẩm...
                                 </span>
                               )}
                             </div>
                           </button>
+                        </td>
+
+                        {/* UoM */}
+                        <td className="px-4 py-3.5">
+                          {uoms.length > 0 ? (
+                            <div className="space-y-1">
+                              <select
+                                value={line.uom_id ?? product?.uom_id ?? ""}
+                                onChange={(e) => handleUomChange(index, e.target.value ? Number(e.target.value) : null)}
+                                disabled={!product}
+                                className="h-8 px-2 text-xs border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-700 w-full disabled:bg-gray-50 disabled:text-gray-400"
+                              >
+                                {(uomConversions.length > 0 && product?.uom_id
+                                  ? getValidUomsForProduct(uoms, uomConversions, product.uom_id, product.id)
+                                  : uoms
+                                ).map((u) => (
+                                  <option key={u.id} value={u.id}>{u.name} ({u.code})</option>
+                                ))}
+                              </select>
+                              {getUomConversionHint(line) && (
+                                <p className="max-w-[150px] text-[11px] leading-snug text-gray-500">
+                                  {getUomConversionHint(line)}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                              {product?.uom?.code || "—"}
+                            </span>
+                          )}
                         </td>
 
                         {/* Qty */}
@@ -385,22 +540,27 @@ export default function SaleOrderForm({
                           </div>
                         </td>
 
-                        {/* Unit Price — wide column with ₫ suffix */}
+                        {/* Unit Price */}
                         <td className="px-4 py-3.5">
                           <div className="relative">
                             <input
-                              type="number"
-                              min={0}
-                              step={1000}
-                              value={line.unit_price ?? 0}
-                              onChange={(e) => updateLine(index, "unit_price", parseFloat(e.target.value) || 0)}
-                              className="w-full h-8 pl-3 pr-6 text-right text-sm font-medium border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              type="text"
+                              inputMode="numeric"
+                              value={
+                                focusedPriceIdx === index
+                                  ? String(line.unit_price ?? 0)
+                                  : Number(line.unit_price ?? 0).toLocaleString("vi-VN")
+                              }
+                              onFocus={() => setFocusedPriceIdx(index)}
+                              onBlur={() => setFocusedPriceIdx(null)}
+                              onChange={(e) => updateLine(index, "unit_price", parsePrice(e.target.value))}
+                              className="w-full h-8 pl-3 pr-10 text-right text-sm font-medium border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                             />
-                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none select-none">₫</span>
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none select-none">{currencyCode}</span>
                           </div>
                           {product?.sale_price && product.sale_price !== line.unit_price && (
                             <p className="text-[10px] text-gray-400 text-right mt-0.5">
-                              List: {formatVND(product.sale_price)}
+                              Niêm yết: {Number(product.sale_price).toLocaleString("vi-VN")} ₫
                             </p>
                           )}
                         </td>
@@ -418,9 +578,9 @@ export default function SaleOrderForm({
 
                         {/* Amount */}
                         <td className="px-4 py-3.5 text-right">
-                          <p className="text-sm font-semibold text-gray-900">{formatVND(calc.total)}</p>
+                          <p className="text-sm font-semibold text-gray-900">{formatDocMoney(calc.total)}</p>
                           {calc.taxAmount > 0 && (
-                            <p className="text-[10px] text-gray-400 mt-0.5">Tax: {formatVND(calc.taxAmount)}</p>
+                            <p className="text-[10px] text-gray-400 mt-0.5">Thuế: {formatDocMoney(calc.taxAmount)}</p>
                           )}
                         </td>
 
@@ -448,8 +608,8 @@ export default function SaleOrderForm({
       <SearchSelectionModal
         isOpen={isCustomerModalOpen}
         onClose={() => setIsCustomerModalOpen(false)}
-        title="Select Customer"
-        description="Search by name, phone, email or tax code"
+        title="Chọn khách hàng"
+        description="Tìm theo tên, điện thoại, email hoặc mã số thuế"
         items={customers}
         searchKeys={["name", "phone", "email", "tax_code"]}
         onSelect={(c) => setCustomerId(c.id)}
@@ -482,17 +642,20 @@ export default function SaleOrderForm({
       />
 
       {/* ─── Product Picker Modal ─── */}
-      <ProductPickerModal
+      <SearchSelectionModal
         isOpen={isProductModalOpen}
         onClose={() => {
           setIsProductModalOpen(false);
           setActiveLineIndex(null);
         }}
-        products={availableProducts}
-        selectedProductIds={selectedProductIds}
+        title="Chọn sản phẩm"
+        description="Tìm theo tên sản phẩm hoặc mã SKU"
+        items={availableProducts}
+        searchKeys={["name", "sku"]}
         onSelect={(p) => {
-          if (activeLineIndex !== null) selectProductForLine(activeLineIndex, p);
+          if (activeLineIndex !== null) selectProductForDocumentCurrency(activeLineIndex, p);
         }}
+        renderItem={(p) => <ProductPickerItem p={p} />}
       />
     </>
   );

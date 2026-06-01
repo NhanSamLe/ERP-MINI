@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Plus, Edit2, Trash2, Search, Clock, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { toast } from "react-toastify";
 import {
   GlAccountDTO,
   GlAccountFilter,
@@ -32,7 +33,7 @@ const GlAccountPage: React.FC = () => {
       setData(rows);
     } catch (e: any) {
       console.error(e);
-      alert(e.message || "Lỗi tải danh sách tài khoản");
+      toast.error(e.message || "Lỗi tải danh sách tài khoản");
     } finally {
       setLoading(false);
     }
@@ -59,14 +60,14 @@ const GlAccountPage: React.FC = () => {
 
   const handleDelete = async (row: GlAccountDTO) => {
     if (!row.id) return;
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa tài khoản "${row.code} - ${row.name}"?`)) return;
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa tài khoản "${row.code} - ${row.name}"?`)) return; // confirm giữ nguyên
     try {
       setLoading(true);
       await deleteGlAccount(row.id);
       await loadData({ search });
     } catch (e: any) {
       console.error(e);
-      alert(e.message || "Không thể xóa tài khoản");
+      toast.error(e.message || "Không thể xóa tài khoản");
     } finally {
       setLoading(false);
     }
@@ -84,7 +85,7 @@ const GlAccountPage: React.FC = () => {
       await loadData({ search });
     } catch (e: any) {
       console.error(e);
-      alert(e.message || "Lưu tài khoản thất bại");
+      toast.error(e.message || "Lưu tài khoản thất bại");
     } finally {
       setSaving(false);
     }

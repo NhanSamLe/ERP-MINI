@@ -18,7 +18,7 @@ export default function QuotationCreatePage() {
   const { items: products }  = useAppSelector((s) => s.product);
   const { loading, error }   = useAppSelector((s) => s.quotation);
 
-  const [defaultCustomerId, setDefaultCustomerId] = useState<number | undefined>();
+  const [defaultValue, setDefaultValue] = useState<Partial<CreateQuotationDto> | undefined>();
 
   const opportunityId = params.get("opportunity_id")
     ? Number(params.get("opportunity_id"))
@@ -34,7 +34,11 @@ export default function QuotationCreatePage() {
         .then((res) => {
           const opp = res.data.data;
           if (opp?.customer_id) {
-            setDefaultCustomerId(opp.customer_id);
+            setDefaultValue({
+              customer_id: opp.customer_id,
+              currency_id: opp.currency_id ?? null,
+              exchange_rate: opp.exchange_rate ?? 1,
+            });
           }
         })
         .catch((err) => {
@@ -58,7 +62,7 @@ export default function QuotationCreatePage() {
   return (
     <QuotationForm
       mode="create"
-      defaultValue={defaultCustomerId ? { customer_id: defaultCustomerId } : undefined}
+      defaultValue={defaultValue}
       customers={customers}
       products={products}
       loading={loading}

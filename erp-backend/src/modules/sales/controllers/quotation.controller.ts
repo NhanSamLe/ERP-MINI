@@ -1,6 +1,17 @@
 import { Request, Response } from "express";
 import { quotationService } from "../services/quotation.service";
 
+export const getByOpportunity = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const oppId = parseInt(req.params.oppId || "0");
+    const quotations = await quotationService.getByOpportunity(oppId, user);
+    res.status(200).json({ success: true, data: quotations });
+  } catch (error: any) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+};
+
 export const getAll = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
@@ -59,6 +70,17 @@ export const approve = async (req: Request, res: Response) => {
     const user = (req as any).user;
     const qId = parseInt(req.params.id || "0");
     const quotation = await quotationService.approve(qId, user);
+    res.status(200).json({ success: true, data: quotation });
+  } catch (error: any) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+};
+
+export const reject = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const qId = parseInt(req.params.id || "0");
+    const quotation = await quotationService.reject(qId, user, req.body.reason);
     res.status(200).json({ success: true, data: quotation });
   } catch (error: any) {
     res.status(400).json({ success: false, error: error.message });

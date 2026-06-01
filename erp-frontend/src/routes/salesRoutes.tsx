@@ -14,6 +14,9 @@ import QuotationListPage from "@/features/sales/pages/QuotationListPage";
 import QuotationCreatePage from "@/features/sales/pages/QuotationCreatePage";
 import QuotationDetailPage from "@/features/sales/pages/QuotationDetailPage";
 import QuotationEditPage from "@/features/sales/pages/QuotationEditPage";
+import SalesReturnListPage from "@/features/sales/pages/SalesReturnListPage";
+import SalesReturnCreatePage from "@/features/sales/pages/SalesReturnCreatePage";
+import SalesReturnDetailPage from "@/features/sales/pages/SalesReturnDetailPage";
 const salesRoutes: RouteObject[] = [
   // ── Quotations ──
   {
@@ -88,6 +91,30 @@ const salesRoutes: RouteObject[] = [
   element: (
     <ProtectedRoute allowedRoles={["SALES", "SALESMANAGER"]}>
       <SaleOrderCreatePage />
+    </ProtectedRoute>
+  ),
+},
+{
+  path: "/sales/returns",
+  element: (
+    <ProtectedRoute allowedRoles={["SALES", "SALESMANAGER", "BRANCH_MANAGER", "WHSTAFF", "WHMANAGER", "ACCOUNT", "CHACC"]}>
+      <SalesReturnListPage />
+    </ProtectedRoute>
+  ),
+},
+{
+  path: "/sales/returns/create",
+  element: (
+    <ProtectedRoute allowedRoles={["SALES", "SALESMANAGER", "BRANCH_MANAGER"]}>
+      <SalesReturnCreatePage />
+    </ProtectedRoute>
+  ),
+},
+{
+  path: "/sales/returns/:kind/:id",
+  element: (
+    <ProtectedRoute allowedRoles={["SALES", "SALESMANAGER", "BRANCH_MANAGER", "WHSTAFF", "WHMANAGER", "ACCOUNT", "CHACC"]}>
+      <SalesReturnDetailPage />
     </ProtectedRoute>
   ),
 },

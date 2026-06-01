@@ -4,7 +4,9 @@ import * as pipelineService from "../services/pipeline.service";
 // ----------- PIPELINE -----------
 export const getAllPipelines = async (req: Request, res: Response) => {
   try {
-    const pipelines = await pipelineService.getAllPipelines();
+    const { is_active } = req.query;
+    const isActive = is_active === "true" ? true : is_active === "false" ? false : undefined;
+    const pipelines = await pipelineService.getAllPipelines(isActive);
     res.json({ message: "Lấy danh sách Phễu lọc thành công", data: pipelines });
   } catch (err: any) {
     res.status(400).json({ message: err.message });
@@ -46,6 +48,16 @@ export const updateStage = async (req: Request, res: Response) => {
     const stageId = Number(req.params.stageId);
     const stage = await pipelineService.updateStage(stageId, req.body);
     res.json({ message: "Cập nhật Bước Phễu thành công", data: stage });
+  } catch (err: any) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+export const deleteStage = async (req: Request, res: Response) => {
+  try {
+    const stageId = Number(req.params.stageId);
+    const result = await pipelineService.deleteStage(stageId);
+    res.json({ message: "Xóa giai đoạn thành công", data: result });
   } catch (err: any) {
     res.status(400).json({ message: err.message });
   }

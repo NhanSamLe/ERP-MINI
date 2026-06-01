@@ -3,7 +3,6 @@ import { SaleOrderDto } from "../dto/saleOrder.dto";
 import { StatusBadge } from "@/components/common";
 import { Link } from "react-router-dom";
 import { Eye, Edit, Send, CheckCircle, XCircle } from "lucide-react";
-import { formatVND } from "@/utils/currency.helper";
 import { formatDateTime } from "@/utils/time.helper";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
@@ -31,10 +30,12 @@ export default function SaleOrderTable({ items }: Props) {
   const canReject = (o: SaleOrderDto) => user?.role?.code === "SALESMANAGER" && o.approval_status === "waiting_approval";
 
   const refresh = () => dispatch(fetchSaleOrders());
+  const formatOrderMoney = (item: SaleOrderDto) =>
+    `${Number(item.total_after_tax || 0).toLocaleString("vi-VN", { maximumFractionDigits: 2 })} ${item.currency?.symbol || item.currency?.code || "VND"}`;
 
   if (items.length === 0) {
     return (
-      <div className="py-14 text-center text-sm text-gray-400">No orders found.</div>
+      <div className="py-14 text-center text-sm text-gray-400">Không tìm thấy đơn hàng.</div>
     );
   }
 
@@ -44,7 +45,7 @@ export default function SaleOrderTable({ items }: Props) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50/80">
-              {["Order No", "Customer", "Status", "Total", "Created By", "Date", "Actions"].map((h) => (
+              {["Số đơn hàng", "Khách hàng", "Trạng thái", "Tổng tiền", "Người tạo", "Ngày tạo", "Thao tác"].map((h) => (
                 <th
                   key={h}
                   className={`px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap ${h === "Actions" ? "text-right" : "text-left"}`}
@@ -73,7 +74,7 @@ export default function SaleOrderTable({ items }: Props) {
                 </td>
 
                 <td className="px-4 py-3 text-gray-800 font-medium whitespace-nowrap">
-                  {formatVND(item.total_after_tax)}
+                  {formatOrderMoney(item)}
                 </td>
 
                 <td className="px-4 py-3 text-gray-600">
@@ -148,9 +149,9 @@ export default function SaleOrderTable({ items }: Props) {
       <ActionConfirmModal
         isOpen={rejectModal.open}
         onClose={() => setRejectModal({ open: false, orderId: null })}
-        title="Reject Sale Order"
-        description="Please provide a reason for rejecting this sale order."
-        confirmText="Reject Order"
+        title="Từ chối đơn hàng"
+        description="Vui lòng nhập lý do từ chối đơn hàng này."
+        confirmText="Từ chối"
         variant="danger"
         requireReason
         onConfirm={(reason) => {

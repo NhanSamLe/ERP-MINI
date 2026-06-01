@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast } from "react-toastify";
 import type { PositionDTO } from "../dto/position.dto";
 import { Branch, fetchBranches } from "../../company/branch.service";
 
@@ -68,11 +69,11 @@ export default function PositionFormModal({
 
   const handleSubmit = () => {
   if (!form.branch_id) {
-    alert("Vui lòng chọn chi nhánh");
+    toast.error("Vui lòng chọn chi nhánh");
     return;
   }
   if (!form.name.trim()) {
-    alert("Tên chức danh là bắt buộc");
+    toast.error("Tên chức danh là bắt buộc");
     return;
   }
 

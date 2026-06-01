@@ -1,4 +1,3 @@
-
 import { useNavigate } from "react-router-dom";
 
 interface Props {
@@ -14,7 +13,7 @@ export default function InvoiceDetailBreadcrumb({ invoiceNo }: Props) {
         onClick={() => navigate("/ar/invoices")}
         className="text-gray-600 hover:text-gray-900 transition"
       >
-        Invoices
+        Hóa đơn
       </button>
       <span className="text-gray-400">/</span>
       <span className="text-gray-900 font-medium">{invoiceNo}</span>

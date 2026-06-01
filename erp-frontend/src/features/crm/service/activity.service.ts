@@ -153,6 +153,11 @@ export async function sendEmailForActivity(activityId: number) {
   return res.data;
 }
 
+export async function sendEmailWithAttachments(activityId: number, files: File[]) {
+  const res = await api.sendEmailWithAttachments(activityId, files);
+  return res.data;
+}
+
 
 export async function getTimeline(type: string, id: number) {
   const res = await api.getTimeline(type, id);

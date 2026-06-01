@@ -2,7 +2,7 @@ import { User } from "@/types/User";
 import { Product } from "@/features/products/store/product.types";
 
 export type QuotationStatus =
-  | "draft" | "sent" | "accepted" | "rejected" | "expired" | "cancelled";
+  | "draft" | "sent" | "accepted" | "rejected" | "expired" | "cancelled" | "converted";
 
 export type QuotationApprovalStatus =
   | "draft" | "waiting_approval" | "approved" | "rejected";
@@ -14,6 +14,8 @@ export interface QuotationLineDto {
   product?: Product;
   description?: string;
   quantity: number;
+  uom_id?: number | null;
+  uom?: { id: number; name: string; code: string } | null;
   unit_price: number;
   discount_percent?: number;
   discount_amount?: number;
@@ -46,6 +48,7 @@ export interface QuotationDto {
   parent_id?: number | null;
   currency_id?: number | null;
   exchange_rate?: number;
+  currency?: { id: number; code: string; symbol: string; name?: string } | null;
   payment_term_id?: number | null;
   total_before_tax: number;
   total_tax: number;
@@ -71,6 +74,7 @@ export interface CreateQuotationLineDto {
   product_id: number;
   description?: string;
   quantity: number;
+  uom_id?: number | null;
   unit_price: number;
   discount_percent?: number;
   discount_amount?: number;
@@ -80,6 +84,8 @@ export interface CreateQuotationLineDto {
 export interface CreateQuotationDto {
   customer_id: number;
   opportunity_id?: number | null;
+  currency_id?: number | null;
+  exchange_rate?: number;
   quotation_date: string;
   valid_until: string;
   discount_percent?: number;

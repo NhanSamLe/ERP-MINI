@@ -14,7 +14,9 @@ export interface ArInvoiceLineDto {
   id?: number;
 
   product_id: number;
-  product?: Product
+  product?: Product & {
+    uom?: { id: number; name: string; code: string } | null;
+  };
 
   description?: string;
 
@@ -40,27 +42,45 @@ export interface ArInvoiceDto {
   branch?: {
     id: number;
     name: string;
+    address?: string;
+    tax_code?: string;
+    phone?: string;
+    company?: {
+      id: number;
+      name: string;
+      tax_code?: string;
+      address?: string;
+      phone?: string;
+      email?: string;
+    };
   };
 
   invoice_no: string;
   invoice_date: string;
+  due_date?: string | null;
+
+  currency_id?: number | null;
+  currency?: { id: number; code: string; symbol: string; name?: string } | null;
+  exchange_rate?: number;
 
   approval_status: InvoiceApprovalStatus;
   status: InvoiceStatus;
 
-  created_by: number;
-  creator?: {
+  customer_id?: number | null;
+  customer?: {
     id: number;
-    username: string;
-    full_name?: string;
-  };
+    name: string;
+    phone?: string;
+    email?: string;
+    tax_code?: string;
+    address?: string;
+  } | null;
+
+  created_by: number;
+  creator?: { id: number; username: string; full_name?: string };
 
   approved_by?: number | null;
-  approver?: {
-    id: number;
-    username: string;
-    full_name?: string;
-  } | null;
+  approver?: { id: number; username: string; full_name?: string } | null;
 
   submitted_at?: string | null;
   approved_at?: string | null;
@@ -69,25 +89,20 @@ export interface ArInvoiceDto {
   total_before_tax: number;
   total_tax: number;
   total_after_tax: number;
+  paid_amount?: number;
 
-  // ✔ 1) Sale Order (thêm)
   order?: {
     id: number;
     order_no: string;
     order_date?: string;
-
-    // ✔ 2) Customer từ SaleOrder
     customer?: {
       id: number;
       name: string;
       phone?: string;
       email?: string;
-      tax_code?: string;
-      address?: string;
     };
   };
 
-  // ✔ 3) Invoice Lines
   lines: ArInvoiceLineDto[];
 }
 

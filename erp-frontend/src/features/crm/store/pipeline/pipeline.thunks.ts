@@ -9,9 +9,9 @@ import {
 
 export const fetchPipelines = createAsyncThunk(
   "pipeline/fetchAll",
-  async (_, { rejectWithValue }) => {
+  async (isActive: boolean | undefined = undefined, { rejectWithValue }) => {
     try {
-      const res = await pipelineApi.getAllPipelines();
+      const res = await pipelineApi.getAllPipelines(isActive);
       return res.data.data;
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.message || "Lỗi tải Pipelines");
@@ -63,6 +63,18 @@ export const updatePipelineStage = createAsyncThunk(
       return res.data.data;
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.message || "Lỗi cập nhật Stage");
+    }
+  }
+);
+
+export const deletePipelineStage = createAsyncThunk(
+  "pipeline/deleteStage",
+  async (stageId: number, { rejectWithValue }) => {
+    try {
+      const res = await pipelineApi.deleteStage(stageId);
+      return res.data.data as { stageId: number; pipelineId: number };
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || "Lỗi xóa Stage");
     }
   }
 );

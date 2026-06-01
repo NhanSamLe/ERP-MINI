@@ -1,4 +1,5 @@
-import { useState } from "react";
+﻿import { useState } from "react";
+import { toast } from "react-toastify";
 import { ArInvoiceDto } from "../../dto/invoice.dto";
 
 interface Props {
@@ -34,7 +35,7 @@ export default function InvoiceExportButtons({ invoice }: Props) {
 
       const element = document.getElementById("invoice-print-area");
       if (!element) {
-        alert("Invoice element not found");
+        toast.error("Không tìm thấy phần tử hóa đơn");
         return;
       }
 
@@ -56,10 +57,10 @@ export default function InvoiceExportButtons({ invoice }: Props) {
       pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
 
       pdf.save(`${invoice.invoice_no}.pdf`);
-      alert("PDF exported successfully!");
+      toast.success("Xuất PDF thành công!");
     } catch (error) {
       console.error("PDF export error:", error);
-      alert("Failed to export PDF. Please try again.");
+      toast.error("Xuất PDF thất bại, vui lòng thử lại");
     } finally {
       setExporting(null);
     }
@@ -128,10 +129,10 @@ export default function InvoiceExportButtons({ invoice }: Props) {
       XLSX.utils.book_append_sheet(workbook, worksheet, "Hóa Đơn");
 
       XLSX.writeFile(workbook, `${invoice.invoice_no}.xlsx`);
-      alert("Excel exported successfully!");
+      toast.success("Xuất Excel thành công!");
     } catch (error) {
       console.error("Excel export error:", error);
-      alert("Failed to export Excel. Please try again.");
+      toast.error("Xuất Excel thất bại, vui lòng thử lại");
     } finally {
       setExporting(null);
     }
@@ -141,13 +142,13 @@ export default function InvoiceExportButtons({ invoice }: Props) {
   const printInvoice = () => {
     const element = document.getElementById("invoice-print-area");
     if (!element) {
-      alert("Invoice element not found");
+      toast.error("Không tìm thấy phần tử hóa đơn");
       return;
     }
 
     const printWindow = window.open("", "", "width=900,height=600");
     if (!printWindow) {
-      alert("Please allow popups to print the invoice");
+      toast.warn("Vui lòng cho phép popup để in hóa đơn");
       return;
     }
 

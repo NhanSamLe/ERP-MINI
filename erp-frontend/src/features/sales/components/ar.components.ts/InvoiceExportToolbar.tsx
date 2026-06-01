@@ -1,41 +1,96 @@
-
+import { useState } from "react";
 import { ArInvoiceDto } from "../../dto/invoice.dto";
-import { useInvoiceExport } from "../../hook/useInvoiceExport";
+import { useInvoiceExport, InvoiceLang } from "../../hook/useInvoiceExport";
+import { FileDown, Sheet, Printer, Loader2, ChevronDown } from "lucide-react";
 
 interface Props {
   invoice: ArInvoiceDto;
 }
 
+const LANG_OPTIONS: { value: InvoiceLang; label: string; flag: string }[] = [
+  { value: "vi", label: "Tiếng Việt", flag: "🇻🇳" },
+  { value: "en", label: "English",    flag: "🇬🇧" },
+];
+
 export default function InvoiceExportToolbar({ invoice }: Props) {
-  const { exporting, exportToPDF, exportToExcel, printInvoice } =
-    useInvoiceExport(invoice);
+  const { exporting, exportToPDF, exportToExcel, printInvoice } = useInvoiceExport(invoice);
+  const [lang, setLang] = useState<InvoiceLang>("vi");
+  const [langOpen, setLangOpen] = useState(false);
+
+  const selected = LANG_OPTIONS.find((o) => o.value === lang)!;
 
   return (
-    <div className="flex gap-3 mb-6">
+    <div className="flex items-center gap-2 px-5 py-3 bg-gray-50/60 border border-gray-100 rounded-lg flex-wrap">
+      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide mr-1">
+        Xuất hóa đơn:
+      </span>
+
+      {/* Language selector */}
+      <div className="relative">
+        <button
+          onClick={() => setLangOpen((v) => !v)}
+          disabled={!!exporting}
+          className="inline-flex items-center gap-1.5 h-8 px-3 text-sm font-medium text-gray-700 border border-gray-300 bg-white rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          <span>{selected.flag}</span>
+          <span>{selected.label}</span>
+          <ChevronDown className="w-3 h-3 text-gray-400" />
+        </button>
+
+        {langOpen && (
+          <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-gray-200 rounded-md shadow-md py-1 min-w-[130px]">
+            {LANG_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => { setLang(opt.value); setLangOpen(false); }}
+                className={`w-full text-left flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-orange-50 transition-colors ${
+                  lang === opt.value ? "font-semibold text-orange-600" : "text-gray-700"
+                }`}
+              >
+                <span>{opt.flag}</span>
+                <span>{opt.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Export PDF */}
       <button
-        onClick={exportToPDF}
-        disabled={exporting === "pdf"}
-        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-red-400 transition font-medium flex items-center gap-2"
+        onClick={() => exportToPDF(lang)}
+        disabled={!!exporting}
+        className="inline-flex items-center gap-1.5 h-8 px-3 text-sm font-medium text-red-600 border border-red-200 bg-white rounded-md hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
-        <span>{exporting === "pdf" ? "⏳" : "📄"}</span>
-        {exporting === "pdf" ? "Exporting PDF..." : "Export PDF"}
+        {exporting === "pdf" ? (
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        ) : (
+          <FileDown className="w-3.5 h-3.5" />
+        )}
+        {exporting === "pdf" ? "Đang xuất..." : "PDF"}
       </button>
 
+      {/* Export Excel */}
       <button
         onClick={exportToExcel}
-        disabled={exporting === "excel"}
-        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-green-400 transition font-medium flex items-center gap-2"
+        disabled={!!exporting}
+        className="inline-flex items-center gap-1.5 h-8 px-3 text-sm font-medium text-green-700 border border-green-200 bg-white rounded-md hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
-        <span>{exporting === "excel" ? "⏳" : "📊"}</span>
-        {exporting === "excel" ? "Exporting Excel..." : "Export Excel"}
+        {exporting === "excel" ? (
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        ) : (
+          <Sheet className="w-3.5 h-3.5" />
+        )}
+        {exporting === "excel" ? "Đang xuất..." : "Excel"}
       </button>
 
+      {/* Print */}
       <button
-        onClick={printInvoice}
-        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium flex items-center gap-2"
+        onClick={() => printInvoice(lang)}
+        disabled={!!exporting}
+        className="inline-flex items-center gap-1.5 h-8 px-3 text-sm font-medium text-gray-600 border border-gray-200 bg-white rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
-        <span>🖨️</span>
-        Print
+        <Printer className="w-3.5 h-3.5" />
+        In hóa đơn
       </button>
     </div>
   );

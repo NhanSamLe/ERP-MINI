@@ -1,56 +1,38 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { fetchFilteredReceipts } from "../store/receipt.slice";
 import { ReceiptFilterDto, ArReceiptDto } from "../dto/receipt.dto";
-import { formatVND } from "@/utils/currency.helper";
-import PageHeader from "@/components/layout/PageHeader";
-import { Plus, Eye, Download } from "lucide-react";
 import { StatusBadge } from "@/components/common";
 import { exportExcelReport } from "@/utils/excel/exportExcelReport";
+import { Wallet, Plus, Download, Search, Eye } from "lucide-react";
+import { toast } from "react-toastify";
 
 export default function ReceiptListPage() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
-  const { items, loading, total, page, total_pages, error } = useAppSelector(
-    (state) => state.receipt,
-  );
+  const { items, loading, total, page, total_pages } = useAppSelector((s) => s.receipt);
+  const { user } = useAppSelector((s) => s.auth);
 
-  const { user } = useAppSelector((state) => state.auth);
-
-  // Filter State
   const [filters, setFilters] = useState<ReceiptFilterDto>({
     page: 1,
     page_size: 20,
     search: "",
     status: "",
     approval_status: "",
-    date_from: "",
-    date_to: "",
   });
 
-  // Load initial
-  useEffect(() => {
-    dispatch(fetchFilteredReceipts(filters));
-  }, [dispatch]);
+  useEffect(() => { dispatch(fetchFilteredReceipts(filters)); }, [dispatch]);
 
-  const handleSearchChange = (val: string) => {
-    const updated = { ...filters, search: val, page: 1 };
-    setFilters(updated);
-    // Debounce usually handled here, but for direct consistency I'll dispatch immediately or user can press enter
-    // For now simple immediate dispatch on change like SaleOrder/Invoice
-    dispatch(fetchFilteredReceipts(updated));
-  };
-
-  const handleStatusChange = (val: string) => {
-    const updated = { ...filters, status: val as any, page: 1 };
+  const update = (patch: Partial<ReceiptFilterDto>) => {
+    const updated = { ...filters, ...patch, page: 1 };
     setFilters(updated);
     dispatch(fetchFilteredReceipts(updated));
   };
 
   const handlePageChange = (newPage: number) => {
-    const updated: ReceiptFilterDto = { ...filters, page: newPage };
+    const updated = { ...filters, page: newPage };
     setFilters(updated);
     dispatch(fetchFilteredReceipts(updated));
   };
@@ -61,262 +43,202 @@ export default function ReceiptListPage() {
         title: "DANH SÁCH PHIẾU THU (RECEIPTS)",
         columns: [
           { header: "Số phiếu", key: "receipt_no", width: 15 },
-          {
-            header: "Ngày phiếu",
-            key: "receipt_date",
-            width: 15,
-            formatter: (val) =>
-              val ? new Date(String(val)).toLocaleDateString("vi-VN") : "",
-          },
-          {
-            header: "Khách hàng",
-            key: "customer",
-            width: 30,
-            formatter: (val: any) => val?.name || "-",
-          },
-          {
-            header: "Số tiền",
-            key: "amount",
-            width: 20,
-            format: "currency",
-            align: "right",
-          },
-          {
-            header: "Phương thức",
-            key: "method",
-            width: 15,
-            formatter: (val) => String(val).toUpperCase(),
-          },
-          {
-            header: "Trạng thái",
-            key: "status",
-            width: 15,
-            formatter: (val) => String(val).toUpperCase(),
-          },
-          {
-            header: "Duyệt",
-            key: "approval_status",
-            width: 15,
-            formatter: (val) => String(val).toUpperCase(),
-          },
+          { header: "Ngày phiếu", key: "receipt_date", width: 15, formatter: (v) => v ? new Date(String(v)).toLocaleDateString("vi-VN") : "" },
+          { header: "Khách hàng", key: "customer", width: 30, formatter: (v: any) => v?.name || "-" },
+          { header: "Số tiền", key: "amount", width: 20, format: "currency", align: "right" },
+          { header: "Phương thức", key: "method", width: 15, formatter: (v) => String(v).toUpperCase() },
+          { header: "Trạng thái", key: "status", width: 15, formatter: (v) => String(v).toUpperCase() },
+          { header: "Duyệt", key: "approval_status", width: 15, formatter: (v) => String(v).toUpperCase() },
         ],
         data: items,
-        fileName: `Bao_Cao_Phieu_Thu_${new Date().getTime()}.xlsx`,
-        footer: {
-          creator: user?.full_name || "Admin",
-        },
+        fileName: `Bao_Cao_Phieu_Thu_${Date.now()}.xlsx`,
+        footer: { creator: user?.full_name || "Admin" },
       });
-    } catch (err) {
-      console.error(err);
-      alert("Lỗi xuất file excel");
+    } catch {
+      toast.error("Lỗi xuất file Excel");
     }
   };
 
+  const canCreate = ["ACCOUNT", "CHACC"].includes(user?.role?.code ?? "");
+
+  // Compute display range
+  const from = total === 0 ? 0 : ((page - 1) * (filters.page_size ?? 20)) + 1;
+  const to = Math.min(page * (filters.page_size ?? 20), total);
+
   return (
-    <div className="p-6">
-      {/* Error Alert */}
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-          <p className="font-medium">Error</p>
-          <p className="text-sm mt-1">{error}</p>
-        </div>
-      )}
-
-      <div className="bg-white rounded-lg shadow-lg overflow-hidden border">
-        {/* ========== PAGE HEADER ========== */}
-        <PageHeader
-          title="Receipts"
-          description="Manage payment receipts"
-          action={
-            <div className="flex gap-2">
-              <button
-                onClick={handleExport}
-                className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-              >
-                <Download size={18} />
-                Export Excel
-              </button>
-              <Link
-                to="/receipts/create"
-                className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-              >
-                <Plus size={18} />
-                New Receipt
-              </Link>
+    <div className="page-container">
+      <div className="erp-card overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+          <div className="flex items-center gap-2.5">
+            <span className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
+              <Wallet className="w-4 h-4 text-orange-500" />
+            </span>
+            <div>
+              <h1 className="text-base font-semibold text-gray-900">Phiếu thu</h1>
+              <p className="text-xs text-gray-400 mt-0.5">Quản lý các phiếu thu thanh toán</p>
             </div>
-          }
-        />
+            <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-600">
+              {total}
+            </span>
+          </div>
 
-        {/* ========== FILTERS ========== */}
-        <div className="p-6 border-b bg-gray-50 space-y-4">
-          <div className="flex gap-4 flex-wrap items-end">
-            <div className="flex-1 min-w-64">
-              <label className="block text-sm font-medium mb-1">Search</label>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleExport}
+              className="inline-flex items-center gap-1.5 h-8 px-3 text-sm font-medium text-gray-600 border border-gray-300 bg-white rounded-md hover:bg-gray-50 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Xuất báo cáo
+            </button>
+            {canCreate && (
+              <button
+                onClick={() => navigate("/receipts/create")}
+                className="inline-flex items-center gap-1.5 h-8 px-3 text-sm font-medium text-white bg-orange-500 rounded-md hover:bg-orange-600 transition-colors shadow-sm"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Tạo phiếu thu
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
+          <div className="flex gap-3 flex-wrap items-end">
+            <div className="flex-1 min-w-56 relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
               <input
                 value={filters.search}
-                placeholder="Search by Receipt # or Customer..."
-                onChange={(e) => handleSearchChange(e.target.value)}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                placeholder="Số phiếu, khách hàng..."
+                onChange={(e) => update({ search: e.target.value })}
+                className="w-full pl-8 pr-3 h-8 text-sm border border-gray-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
               />
             </div>
 
-            <div className="min-w-48">
-              <label className="block text-sm font-medium mb-1">Status</label>
-              <select
-                value={filters.status}
-                onChange={(e) => handleStatusChange(e.target.value)}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-              >
-                <option value="">All Status</option>
-                <option value="draft">Draft</option>
-                <option value="posted">Posted</option>
-              </select>
-            </div>
+            <select
+              value={filters.status}
+              onChange={(e) => update({ status: e.target.value as any })}
+              className="h-8 px-3 text-sm border border-gray-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 min-w-40"
+            >
+              <option value="">Tất cả trạng thái</option>
+              <option value="draft">Nháp</option>
+              <option value="posted">Đã phát hành</option>
+            </select>
 
-            <div className="min-w-48">
-              <label className="block text-sm font-medium mb-1">Approval</label>
-              <select
-                value={filters.approval_status}
-                onChange={(e) => {
-                  const updated = {
-                    ...filters,
-                    approval_status: e.target.value as any,
-                    page: 1,
-                  };
-                  setFilters(updated);
-                  dispatch(fetchFilteredReceipts(updated));
-                }}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-              >
-                <option value="">All Approval</option>
-                <option value="draft">Draft</option>
-                <option value="waiting_approval">Waiting Approval</option>
-                <option value="approved">Approved</option>
-                <option value="rejected">Rejected</option>
-              </select>
-            </div>
+            <select
+              value={filters.approval_status}
+              onChange={(e) => update({ approval_status: e.target.value as any })}
+              className="h-8 px-3 text-sm border border-gray-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 min-w-40"
+            >
+              <option value="">Tất cả phê duyệt</option>
+              <option value="draft">Nháp</option>
+              <option value="waiting_approval">Chờ duyệt</option>
+              <option value="approved">Đã duyệt</option>
+              <option value="rejected">Từ chối</option>
+            </select>
           </div>
         </div>
 
-        {/* ========== TABLE ========== */}
+        {/* Table */}
         {loading ? (
-          <div className="p-6 text-center">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
-            <p className="mt-2 text-gray-500">Loading...</p>
+          <div className="py-16 flex flex-col items-center gap-3 text-gray-400">
+            <div className="w-6 h-6 border-2 border-orange-200 border-t-orange-500 rounded-full animate-spin" />
+            <span className="text-sm">Đang tải phiếu thu...</span>
           </div>
         ) : items.length === 0 ? (
-          <div className="p-6 text-center text-gray-500">
-            <p>No receipts found</p>
+          <div className="py-16 text-center text-gray-400">
+            <Wallet className="w-10 h-10 mx-auto mb-3 text-gray-200" />
+            <p className="text-sm font-medium">Không tìm thấy phiếu thu.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full text-sm">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">
-                    Receipt No
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">
-                    Customer
-                  </th>
-                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-700 uppercase">
-                    Amount
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">
-                    Method
-                  </th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase">
-                    Status
-                  </th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase">
-                    Approval
-                  </th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase">
-                    Action
-                  </th>
+                <tr className="border-b border-gray-100 bg-gray-50/80">
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Số phiếu thu</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Khách hàng</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Ngày phiếu</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Số tiền</th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Phương thức</th>
+                  <th className="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                  <th className="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Phê duyệt</th>
+                  <th className="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Thao tác</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
-                {items.map((receipt: ArReceiptDto) => (
-                  <tr
-                    key={receipt.id}
-                    className="hover:bg-orange-50 transition"
-                  >
-                    <td className="px-6 py-4 font-medium text-orange-600">
-                      <button
-                        onClick={() => navigate(`/receipts/${receipt.id}`)}
-                      >
-                        {receipt.receipt_no}
-                      </button>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {receipt.customer?.name}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {receipt.customer?.phone}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right font-semibold">
-                      {formatVND(receipt.amount)}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {receipt.method}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <StatusBadge status={receipt.status} variant="status" />
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <StatusBadge
-                        status={receipt.approval_status}
-                        variant="approval"
-                      />
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex justify-center gap-2">
+              <tbody className="divide-y divide-gray-100">
+                {items.map((receipt: ArReceiptDto) => {
+                  const sym = receipt.currency?.symbol || receipt.currency?.code || "VND";
+                  const amount = `${Number(receipt.amount || 0).toLocaleString("vi-VN", { maximumFractionDigits: 2 })} ${sym}`;
+                  return (
+                    <tr key={receipt.id} className="hover:bg-orange-50/30 transition-colors">
+                      <td className="px-5 py-3.5">
                         <button
                           onClick={() => navigate(`/receipts/${receipt.id}`)}
-                          className="p-1.5 border border-gray-300 rounded text-blue-600 hover:bg-blue-50 transition"
-                          title="View Details"
+                          className="font-semibold text-orange-600 hover:text-orange-700 hover:underline text-sm"
                         >
-                          <Eye size={16} />
+                          {receipt.receipt_no}
                         </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <p className="text-sm font-medium text-gray-900">{receipt.customer?.name || "—"}</p>
+                        {receipt.customer?.phone && (
+                          <p className="text-xs text-gray-400 mt-0.5">{receipt.customer.phone}</p>
+                        )}
+                      </td>
+                      <td className="px-5 py-3.5 text-sm text-gray-600">
+                        {receipt.receipt_date ? new Date(receipt.receipt_date).toLocaleDateString("vi-VN") : "—"}
+                      </td>
+                      <td className="px-5 py-3.5 text-right text-sm font-semibold text-gray-900">{amount}</td>
+                      <td className="px-5 py-3.5 text-sm text-gray-600 capitalize">{receipt.method || "—"}</td>
+                      <td className="px-5 py-3.5 text-center">
+                        <StatusBadge status={receipt.status} />
+                      </td>
+                      <td className="px-5 py-3.5 text-center">
+                        <StatusBadge status={receipt.approval_status} />
+                      </td>
+                      <td className="px-5 py-3.5 text-center">
+                        <button
+                          onClick={() => navigate(`/receipts/${receipt.id}`)}
+                          title="Xem chi tiết"
+                          className="p-1.5 rounded text-gray-400 hover:text-orange-600 hover:bg-orange-50 transition-colors"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
 
-        {/* ========== PAGINATION ========== */}
-        {!loading && (
-          <div className="px-6 py-4 border-t bg-gray-50 flex justify-between items-center">
-            <div className="text-sm text-gray-600">
-              Page <span className="font-semibold">{page}</span> of{" "}
-              <span className="font-semibold">{total_pages}</span>
-              {" • "}
-              <span className="font-semibold">{total}</span> total receipts
-            </div>
-
-            <div className="flex gap-2">
+        {/* Pagination */}
+        {!loading && total > 0 && (
+          <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50/50">
+            <p className="text-xs text-gray-500">
+              Hiển thị{" "}
+              <span className="font-semibold text-gray-700">{from}–{to}</span>{" "}
+              / <span className="font-semibold text-gray-700">{total}</span>
+            </p>
+            <div className="flex items-center gap-1">
               <button
                 disabled={page <= 1}
                 onClick={() => handlePageChange(page - 1)}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition font-medium text-sm"
+                className="h-7 px-3 text-xs font-medium border border-gray-300 rounded-md text-gray-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                ← Previous
+                ← Trước
               </button>
-
+              <span className="h-7 px-3 text-xs font-semibold flex items-center bg-orange-500 text-white rounded-md">
+                {page} / {total_pages}
+              </span>
               <button
                 disabled={page >= total_pages}
                 onClick={() => handlePageChange(page + 1)}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition font-medium text-sm"
+                className="h-7 px-3 text-xs font-medium border border-gray-300 rounded-md text-gray-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                Next →
+                Sau →
               </button>
             </div>
           </div>
@@ -325,3 +247,4 @@ export default function ReceiptListPage() {
     </div>
   );
 }
+

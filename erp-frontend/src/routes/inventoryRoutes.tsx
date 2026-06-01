@@ -11,6 +11,8 @@ import StockLotPage from "@/features/inventory/pages/StockLotPage";
 import PhysicalInventoryListPage from "@/features/inventory/pages/PhysicalInventoryListPage";
 import PhysicalInventoryDetailPage from "@/features/inventory/pages/PhysicalInventoryDetailPage";
 import StockReportPage from "@/features/reports/pages/StockReportPage";
+import SalesReturnWarehousePage from "@/features/inventory/pages/SalesReturnWarehousePage";
+import SalesReturnDetailPage from "@/features/sales/pages/SalesReturnDetailPage";
 
 const inventoryRoutes: RouteObject[] = [
   {
@@ -79,6 +81,24 @@ const inventoryRoutes: RouteObject[] = [
     element: (
       <ProtectedRoute allowedRoles={["WHMANAGER", "WHSTAFF"]}>
         <ViewStockMovePage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/inventory/sales-returns",
+    element: (
+      <ProtectedRoute allowedRoles={["WHMANAGER", "WHSTAFF"]}>
+        <SalesReturnWarehousePage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/inventory/sales-returns/:kind/:id",
+    element: (
+      <ProtectedRoute allowedRoles={["WHMANAGER", "WHSTAFF"]}>
+        <SalesReturnDetailPage />
       </ProtectedRoute>
     ),
   },

@@ -48,7 +48,7 @@ export default function LeadDetailPage() {
   const [evalEdit, setEvalEdit] = useState(false);
 
   const [basicForm, setBasicForm] = useState<UpdateLeadBasicDto>({
-    name: "", email: "", phone: "", source: "", industry: "", company_size: "",
+    name: "", email: "", phone: "", source: "", company_name: "", job_title: "", industry: "", company_size: "", annual_revenue: null,
   });
 
   const [evalForm, setEvalForm] = useState<UpdateLeadEvaluationDto>({
@@ -91,8 +91,11 @@ export default function LeadDetailPage() {
       email: lead.email ?? "",
       phone: lead.phone ?? "",
       source: lead.source ?? "",
+      company_name: lead.company_name ?? "",
+      job_title: lead.job_title ?? "",
       industry: lead.industry ?? "",
       company_size: lead.company_size ?? "",
+      annual_revenue: lead.annual_revenue ?? null,
     });
     setEvalForm({
       leadId,
@@ -135,12 +138,19 @@ export default function LeadDetailPage() {
 
   const handleConvert = async () => {
     try {
-      await dispatch(convertLead(leadId)).unwrap();
+      const result = await dispatch(convertLead(leadId)).unwrap();
+      const customerId = result?.customer?.id;
       setAlert({ type: "success", message: "Đã chuyển đổi thành Customer" });
       setShowConvert(false);
-      setTimeout(() => navigate("/crm/opportunities"), 600);
-    } catch {
-      setAlert({ type: "error", message: "Chuyển đổi thất bại" });
+      setTimeout(() => {
+        if (customerId) {
+          navigate(`/crm/opportunities/create?related_type=customer&related_id=${customerId}`);
+        } else {
+          navigate("/crm/opportunities/create");
+        }
+      }, 600);
+    } catch (error: any) {
+      setAlert({ type: "error", message: typeof error === "string" ? error : "Chuyển đổi thất bại" });
     }
   };
 
@@ -181,6 +191,17 @@ export default function LeadDetailPage() {
   const getActivityUrl = (a: Activity) => `/crm/activities/${a.activity_type}/${a.id}`;
 
   const opportunities: Opportunity[] = Array.isArray(lead?.opportunities) ? lead.opportunities : [];
+  const scoreReasons = Array.isArray(lead.score_reasons) ? lead.score_reasons : [];
+  const fmtDateTime = (value?: string | Date | null) =>
+    value ? new Date(value).toLocaleString("vi-VN") : "—";
+  const fmtMoney = (value?: number | null) =>
+    value == null ? "—" : Number(value).toLocaleString("vi-VN");
+  const scoreGradeLabel: Record<string, string> = { cold: "Cold", warm: "Warm", hot: "Hot" };
+  const scoreGradeClass: Record<string, string> = {
+    cold: "bg-slate-100 text-slate-700",
+    warm: "bg-amber-100 text-amber-700",
+    hot: "bg-red-100 text-red-700",
+  };
 
   // Early return if lead not loaded yet
   if (!lead) {
@@ -281,9 +302,19 @@ export default function LeadDetailPage() {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                   <InfoItem label="Email" value={lead.email || "—"} />
                   <InfoItem label="SĐT" value={lead.phone || "—"} />
-                  <InfoItem label="Nguồn" value={lead.source || "—"} />
+                  <InfoItem label="Nguồn" value={lead.leadSource?.name || lead.source || "—"} />
+                  <InfoItem label="Công ty" value={lead.company_name || "—"} />
+                  <InfoItem label="Chức vụ" value={lead.job_title || "—"} />
                   <InfoItem label="Ngành" value={lead.industry || "—"} />
                   <InfoItem label="Quy mô" value={lead.company_size || "—"} />
+                  <InfoItem label="Doanh thu năm" value={fmtMoney(lead.annual_revenue)} />
+                  <InfoItem label="Chi nhánh" value={lead.branch_id ? `#${lead.branch_id}` : "—"} />
+                  <InfoItem label="Liên hệ lần đầu" value={fmtDateTime(lead.contacted_at)} />
+                  <InfoItem label="Hoạt động gần nhất" value={fmtDateTime(lead.last_activity_date)} />
+                  <InfoItem label="Qualified lúc" value={fmtDateTime(lead.qualified_at)} />
+                  <InfoItem label="Qualified bởi" value={lead.qualified_by ? `#${lead.qualified_by}` : "—"} />
+                  <InfoItem label="Ngày tạo" value={fmtDateTime(lead.created_at)} />
+                  <InfoItem label="Cập nhật" value={fmtDateTime(lead.updated_at)} />
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -291,8 +322,11 @@ export default function LeadDetailPage() {
                   <FormInput label="Email" value={basicForm.email ?? ""} onChange={(v) => setBasicForm({ ...basicForm, email: v })} />
                   <FormInput label="SĐT" value={basicForm.phone ?? ""} onChange={(v) => setBasicForm({ ...basicForm, phone: v })} />
                   <FormInput label="Nguồn" value={basicForm.source ?? ""} onChange={(v) => setBasicForm({ ...basicForm, source: v })} />
+                  <FormInput label="Công ty" value={basicForm.company_name ?? ""} onChange={(v) => setBasicForm({ ...basicForm, company_name: v })} />
+                  <FormInput label="Chức vụ" value={basicForm.job_title ?? ""} onChange={(v) => setBasicForm({ ...basicForm, job_title: v })} />
                   <FormInput label="Ngành" value={basicForm.industry ?? ""} onChange={(v) => setBasicForm({ ...basicForm, industry: v })} />
                   <FormInput label="Quy mô" value={basicForm.company_size ?? ""} onChange={(v) => setBasicForm({ ...basicForm, company_size: v })} />
+                  <FormInput label="Doanh thu năm" type="number" value={basicForm.annual_revenue?.toString() ?? ""} onChange={(v) => setBasicForm({ ...basicForm, annual_revenue: v ? Number(v) : null })} />
                 </div>
               )}
             </CardContent>
@@ -398,6 +432,42 @@ export default function LeadDetailPage() {
 
         {/* Right column */}
         <div className="space-y-6">
+          {/* Score */}
+          <Card>
+            <CardHeader>
+              <h2 className="text-sm font-semibold text-gray-900">Lead Score</h2>
+              {lead.score_grade && (
+                <span className={`ml-auto px-2 py-0.5 rounded-full text-xs font-semibold ${scoreGradeClass[lead.score_grade]}`}>
+                  {scoreGradeLabel[lead.score_grade]}
+                </span>
+              )}
+            </CardHeader>
+            <Separator />
+            <CardContent className="pt-5">
+              <div className="flex items-end gap-2">
+                <span className="text-3xl font-bold text-gray-900">{lead.lead_score ?? 0}</span>
+                <span className="text-sm text-gray-400 mb-1">điểm</span>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">
+                Tính lần cuối: {fmtDateTime(lead.last_scored_at)}
+              </p>
+              <div className="mt-4 space-y-2">
+                {scoreReasons.length === 0 ? (
+                  <p className="text-sm text-gray-400">Chưa có rule nào khớp với Lead này.</p>
+                ) : (
+                  scoreReasons.map((reason) => (
+                    <div key={`${reason.rule_id}-${reason.field}`} className="flex justify-between gap-3 text-sm">
+                      <span className="text-gray-600 truncate">{reason.rule_name}</span>
+                      <span className={reason.score >= 0 ? "text-emerald-600 font-semibold" : "text-red-600 font-semibold"}>
+                        {reason.score >= 0 ? "+" : ""}{reason.score}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Owner */}
           <Card>
             <CardHeader>
@@ -440,7 +510,9 @@ export default function LeadDetailPage() {
                     <div className="text-left">
                       <p className="font-semibold text-sm text-gray-900">{o.name}</p>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        {o.expected_value?.toLocaleString("vi-VN")} VND
+                        {o.currency?.code && o.currency.code !== "VND"
+                          ? `${Number(o.expected_value || 0).toLocaleString("vi-VN")} ${o.currency.symbol || o.currency.code}`
+                          : `${Number(o.expected_value || 0).toLocaleString("vi-VN")} VND`}
                       </p>
                     </div>
                     <ChevronRight className="w-4 h-4 text-gray-400" />

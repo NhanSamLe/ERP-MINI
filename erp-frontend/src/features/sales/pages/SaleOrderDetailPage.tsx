@@ -49,24 +49,33 @@ export default function SaleOrderDetailPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-gray-400">
           <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
-          <p className="text-sm font-medium">Loading order details...</p>
+          <p className="text-sm font-medium">Đang tải chi tiết đơn hàng...</p>
         </div>
       </div>
     );
   }
 
-  if (!user) return <div className="p-10 text-center text-gray-500">Access Denied</div>;
+  if (!user) return <div className="p-10 text-center text-gray-500">Không có quyền truy cập</div>;
 
   /* ── derived ── */
   const subtotal = order.total_before_tax ?? 0;
   const taxAmount = order.total_tax ?? 0;
   const grandTotal = order.total_after_tax ?? 0;
+  const currencyCode = order.currency?.code || "VND";
+  const currencySymbol = order.currency?.symbol || currencyCode;
+  const exchangeRate = Number(order.exchange_rate || 1);
+  const formatOrderMoney = (value: number | null | undefined) =>
+    `${Number(value || 0).toLocaleString("vi-VN", { maximumFractionDigits: 2 })} ${currencySymbol}`;
   const isRejected = order.approval_status === "rejected";
-  const canEdit = order.approval_status === "draft";
-  const canSubmit = order.approval_status === "draft";
-  const canApprove = order.approval_status === "waiting_approval" && (user.role?.code === "SALESMANAGER" || user.role?.code === "ADMIN");
+  const roleCode = user.role?.code;
+  const isSalesOwner = roleCode === "SALES" && order.created_by === user.id;
+  const isSalesManager = roleCode === "SALESMANAGER" || roleCode === "ADMIN";
+  const isAccounting = roleCode === "ACCOUNT" || roleCode === "CHACC";
+  const canEdit = order.approval_status === "draft" && isSalesOwner;
+  const canSubmit = order.approval_status === "draft" && isSalesOwner;
+  const canApprove = order.approval_status === "waiting_approval" && isSalesManager;
   const canReject = canApprove;
-  const canInvoice = order.approval_status === "approved";
+  const canInvoice = order.approval_status === "approved" && isAccounting;
 
   const handleCreateInvoice = async () => {
     setInvoiceError(null);
@@ -90,42 +99,45 @@ export default function SaleOrderDetailPage() {
         </div>
       }
       actions={[
-        { label: "Back", variant: "outline", onClick: () => navigate("/sales/orders") },
-        ...(canEdit ? [{ label: "Edit Order", variant: "outline" as const, onClick: () => navigate(`/sales/orders/${order.id}/edit`) }] : []),
-        ...(canSubmit ? [{ label: "Submit for Approval", variant: "primary" as const, onClick: () => setActiveModal("submit") }] : []),
-        ...(canApprove ? [{ label: "Approve", variant: "success" as const, onClick: () => setActiveModal("approve") }] : []),
-        ...(canReject ? [{ label: "Reject", variant: "danger" as const, onClick: () => setActiveModal("reject") }] : []),
-        ...(canInvoice ? [{ label: "Generate Invoice", variant: "success" as const, onClick: handleCreateInvoice }] : []),
+        { label: "Quay lại", variant: "outline", onClick: () => navigate("/sales/orders") },
+        ...(canEdit ? [{ label: "Chỉnh sửa", variant: "outline" as const, onClick: () => navigate(`/sales/orders/${order.id}/edit`) }] : []),
+        ...(canSubmit ? [{ label: "Gửi duyệt", variant: "primary" as const, onClick: () => setActiveModal("submit") }] : []),
+        ...(canApprove ? [{ label: "Duyệt", variant: "success" as const, onClick: () => setActiveModal("approve") }] : []),
+        ...(canReject ? [{ label: "Từ chối", variant: "danger" as const, onClick: () => setActiveModal("reject") }] : []),
+        ...(canInvoice ? [{ label: "Tạo hóa đơn", variant: "success" as const, onClick: handleCreateInvoice }] : []),
       ]}
       sidebarContent={
         <div className="space-y-4">
           {/* Financial summary */}
-          <FormSection title="Financial Summary" icon={<CreditCard className="w-4 h-4" />}>
+          <FormSection title="Tóm tắt tài chính" icon={<CreditCard className="w-4 h-4" />}>
             <div className="space-y-2.5">
               <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-500">Subtotal</span>
-                <span className="font-medium text-gray-800">{formatVND(subtotal)}</span>
+                <span className="text-gray-500">Tạm tính</span>
+                <span className="font-medium text-gray-800">{formatOrderMoney(subtotal)}</span>
               </div>
               <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-500">VAT / Tax</span>
-                <span className="font-medium text-gray-800">{formatVND(taxAmount)}</span>
+                <span className="text-gray-500">Thuế VAT</span>
+                <span className="font-medium text-gray-800">{formatOrderMoney(taxAmount)}</span>
               </div>
               <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-500">Discount</span>
+                <span className="text-gray-500">Chiết khấu</span>
                 <span className="font-medium text-gray-800">—</span>
               </div>
               <div className="pt-2.5 mt-1 border-t border-gray-200">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-semibold text-gray-900">Grand Total</span>
-                  <span className="text-lg font-bold text-orange-600">{formatVND(grandTotal)}</span>
+                  <span className="text-sm font-semibold text-gray-900">Tổng cộng</span>
+                  <span className="text-lg font-bold text-orange-600">{formatOrderMoney(grandTotal)}</span>
                 </div>
-                <p className="text-xs text-gray-400 mt-1 text-right">Incl. tax · VND</p>
+                <p className="text-xs text-gray-400 mt-1 text-right">
+                  Đã bao gồm thuế · {currencyCode}
+                  {currencyCode !== "VND" ? ` · ≈ ${formatVND(grandTotal * exchangeRate)}` : ""}
+                </p>
               </div>
             </div>
           </FormSection>
 
           {/* Workflow info */}
-          <FormSection title="Workflow" icon={<Clock className="w-4 h-4" />}>
+          <FormSection title="Luồng duyệt" icon={<Clock className="w-4 h-4" />}>
             <div className="space-y-3">
               {/* Created */}
               <div className="flex items-start gap-2.5">
@@ -133,7 +145,7 @@ export default function SaleOrderDetailPage() {
                   <FileText className="w-3 h-3 text-gray-500" />
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-gray-700">Created</p>
+                  <p className="text-xs font-medium text-gray-700">Tạo</p>
                   <p className="text-xs text-gray-500">{order.creator?.full_name || "—"}</p>
                   <p className="text-[10px] text-gray-400">{fmtTime(order.created_at)}</p>
                 </div>
@@ -146,7 +158,7 @@ export default function SaleOrderDetailPage() {
                     <Clock className="w-3 h-3 text-amber-500" />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-gray-700">Submitted</p>
+                    <p className="text-xs font-medium text-gray-700">Gửi duyệt</p>
                     <p className="text-[10px] text-gray-400">{fmtTime(order.submitted_at)}</p>
                   </div>
                 </div>
@@ -159,7 +171,7 @@ export default function SaleOrderDetailPage() {
                     <CheckCircle2 className="w-3 h-3 text-emerald-500" />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-gray-700">Approved</p>
+                    <p className="text-xs font-medium text-gray-700">Đã duyệt</p>
                     <p className="text-xs text-gray-500">{order.approver.full_name}</p>
                     <p className="text-[10px] text-gray-400">{fmtTime(order.approved_at)}</p>
                   </div>
@@ -173,7 +185,7 @@ export default function SaleOrderDetailPage() {
                     <AlertTriangle className="w-3 h-3 text-red-500" />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-red-600">Rejected</p>
+                    <p className="text-xs font-medium text-red-600">Từ chối</p>
                     {order.reject_reason && (
                       <p className="text-xs text-gray-500 mt-0.5 italic">"{order.reject_reason}"</p>
                     )}
@@ -184,21 +196,21 @@ export default function SaleOrderDetailPage() {
           </FormSection>
 
           {/* Assignment */}
-          <FormSection title="Assignment" icon={<UserCheck className="w-4 h-4" />}>
+          <FormSection title="Phân công" icon={<UserCheck className="w-4 h-4" />}>
             <div className="space-y-2.5">
               <div>
-                <p className="text-xs text-gray-500 mb-0.5">Created By</p>
+                <p className="text-xs text-gray-500 mb-0.5">Người tạo</p>
                 <p className="text-sm font-medium text-gray-800">{order.creator?.full_name || "—"}</p>
               </div>
               {order.approver && (
                 <div>
-                  <p className="text-xs text-gray-500 mb-0.5">Approved By</p>
+                  <p className="text-xs text-gray-500 mb-0.5">Người duyệt</p>
                   <p className="text-sm font-medium text-gray-800">{order.approver.full_name}</p>
                 </div>
               )}
               {order.branch && (
                 <div>
-                  <p className="text-xs text-gray-500 mb-0.5">Branch</p>
+                  <p className="text-xs text-gray-500 mb-0.5">Chi nhánh</p>
                   <p className="text-sm font-medium text-gray-800">{order.branch.name}</p>
                 </div>
               )}
@@ -220,24 +232,24 @@ export default function SaleOrderDetailPage() {
         <div className="flex items-start gap-3 px-4 py-3 bg-red-50 border border-red-100 rounded-lg">
           <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-red-700">Order Rejected</p>
+            <p className="text-sm font-semibold text-red-700">Đơn hàng bị từ chối</p>
             <p className="text-sm text-red-600 mt-0.5">{order.reject_reason}</p>
           </div>
         </div>
       )}
 
       {/* ─── 1. ORDER DETAILS ─── */}
-      <FormSection title="Order Details" icon={<Building2 className="w-4 h-4" />}>
+      <FormSection title="Thông tin đơn hàng" icon={<Building2 className="w-4 h-4" />}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Field label="Order Number" value={order.order_no} />
-          <Field label="Order Date" value={fmtDate(order.order_date)} />
-          <Field label="Approval Status" value={order.approval_status?.replace(/_/g, " ")} />
-          <Field label="Delivery Status" value={order.status} />
+          <Field label="Số đơn hàng" value={order.order_no} />
+          <Field label="Ngày đặt hàng" value={fmtDate(order.order_date)} />
+          <Field label="Trạng thái duyệt" value={order.approval_status?.replace(/_/g, " ")} />
+          <Field label="Trạng thái giao" value={order.status} />
         </div>
         {/* Source Quotation link */}
         {(order as any).quotation_id && (
           <div className="mt-4 pt-4 border-t border-gray-100">
-            <p className="text-xs text-gray-500 mb-1">Source Quotation</p>
+            <p className="text-xs text-gray-500 mb-1">Báo giá gốc</p>
             <a
               href={`/sales/quotations/${(order as any).quotation_id}`}
               className="inline-flex items-center gap-1.5 text-sm font-medium text-orange-600 hover:text-orange-700"
@@ -250,19 +262,19 @@ export default function SaleOrderDetailPage() {
       </FormSection>
 
       {/* ─── 2. CUSTOMER INFORMATION ─── */}
-      <FormSection title="Customer Information" icon={<User className="w-4 h-4" />}>
+      <FormSection title="Thông tin khách hàng" icon={<User className="w-4 h-4" />}>
         {order.customer ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
             {/* Left column */}
             <div className="space-y-4">
               <div>
-                <p className="text-xs text-gray-500 mb-0.5">Customer Name</p>
+                <p className="text-xs text-gray-500 mb-0.5">Tên khách hàng</p>
                 <p className="text-base font-semibold text-gray-900">{order.customer.name}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-gray-500 mb-0.5 flex items-center gap-1">
-                    <Phone className="w-3 h-3" /> Phone
+                    <Phone className="w-3 h-3" /> Điện thoại
                   </p>
                   <p className="text-sm text-gray-800">{order.customer.phone || "—"}</p>
                 </div>
@@ -279,14 +291,14 @@ export default function SaleOrderDetailPage() {
             <div className="space-y-4">
               <div>
                 <p className="text-xs text-gray-500 mb-0.5 flex items-center gap-1">
-                  <CreditCard className="w-3 h-3" /> Tax Code (MST)
+                  <CreditCard className="w-3 h-3" /> Mã số thuế
                 </p>
                 <p className="text-sm font-medium text-gray-800">{order.customer.tax_code || "—"}</p>
               </div>
               {order.customer.address && (
                 <div>
                   <p className="text-xs text-gray-500 mb-0.5 flex items-center gap-1">
-                    <MapPin className="w-3 h-3" /> Address
+                    <MapPin className="w-3 h-3" /> Địa chỉ
                   </p>
                   <p className="text-sm text-gray-700 leading-relaxed">{order.customer.address}</p>
                 </div>
@@ -294,42 +306,44 @@ export default function SaleOrderDetailPage() {
             </div>
           </div>
         ) : (
-          <p className="text-sm text-gray-400 italic">Customer information not available.</p>
+          <p className="text-sm text-gray-400 italic">Không có thông tin khách hàng.</p>
         )}
       </FormSection>
 
       {/* ─── 3. ORDER LINES ─── */}
       <FormSection
-        title="Order Lines"
+        title="Dòng đơn hàng"
         icon={<ShoppingCart className="w-4 h-4" />}
-        description={`${order.lines?.length ?? 0} product(s)`}
+        description={`${order.lines?.length ?? 0} sản phẩm`}
         noPadding
       >
-        {/* Table — 6 cols: # | Product (name+SKU+UoM) | Qty | Unit Price | Tax | Amount */}
+        {/* Table — 7 cols: # | Sản phẩm | ĐVT | SL | Đơn giá | Thuế | Thành tiền */}
         <div className="overflow-x-auto">
           <table className="w-full text-sm table-fixed">
             <colgroup>
               <col style={{ width: "40px" }} />    {/* # */}
-              <col />                               {/* Product — flex */}
-              <col style={{ width: "80px" }} />    {/* Qty */}
-              <col style={{ width: "160px" }} />   {/* Unit Price */}
-              <col style={{ width: "96px" }} />    {/* Tax % */}
-              <col style={{ width: "164px" }} />   {/* Amount */}
+              <col />                               {/* Sản phẩm — flex */}
+              <col style={{ width: "72px" }} />    {/* ĐVT */}
+              <col style={{ width: "72px" }} />    {/* SL */}
+              <col style={{ width: "150px" }} />   {/* Đơn giá */}
+              <col style={{ width: "80px" }} />    {/* Thuế */}
+              <col style={{ width: "150px" }} />   {/* Thành tiền */}
             </colgroup>
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50/80">
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">#</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Product</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Qty</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Unit Price</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Tax</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Sản phẩm</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">ĐVT</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">SL</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Đơn giá</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Thuế</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Thành tiền</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {!order.lines || order.lines.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-sm text-gray-400">No line items.</td>
+                  <td colSpan={7} className="py-12 text-center text-sm text-gray-400">Không có dòng sản phẩm.</td>
                 </tr>
               ) : (
                 order.lines.map((line, idx) => {
@@ -339,13 +353,14 @@ export default function SaleOrderDetailPage() {
                   const taxRate = line.taxRate?.rate ?? 0;
                   const qty = Number(line.quantity ?? 0);
                   const displayQty = Number.isInteger(qty) ? qty : parseFloat(qty.toFixed(3));
+                  const uomCode = (line.product as any)?.uom?.code || "—";
 
                   return (
                     <tr key={idx} className="hover:bg-orange-50/30 transition-colors">
                       {/* # */}
                       <td className="px-4 py-4 text-xs text-gray-400">{idx + 1}</td>
 
-                      {/* Product — name + SKU + UoM badge inline */}
+                      {/* Sản phẩm */}
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded bg-gray-100 border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center">
@@ -355,33 +370,33 @@ export default function SaleOrderDetailPage() {
                           </div>
                           <div>
                             <p className="text-sm font-semibold text-gray-800">{line.product?.name ?? "—"}</p>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              {line.product?.sku && (
-                                <span className="text-xs text-gray-400">SKU: {line.product.sku}</span>
-                              )}
-                              {line.product?.uom?.code && (
-                                <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-500">
-                                  {line.product.uom.code}
-                                </span>
-                              )}
-                            </div>
+                            {line.product?.sku && (
+                              <span className="text-xs text-gray-400">SKU: {line.product.sku}</span>
+                            )}
                           </div>
                         </div>
                       </td>
 
-                      {/* Qty */}
+                      {/* ĐVT */}
+                      <td className="px-4 py-4 text-center">
+                        <span className="inline-flex px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                          {uomCode}
+                        </span>
+                      </td>
+
+                      {/* SL */}
                       <td className="px-4 py-4 text-center">
                         <span className="inline-flex items-center justify-center h-7 px-3 bg-gray-100 rounded-md text-sm font-semibold text-gray-800 min-w-[2.5rem]">
                           {displayQty}
                         </span>
                       </td>
 
-                      {/* Unit Price */}
+                      {/* Đơn giá */}
                       <td className="px-4 py-4 text-right">
-                        <span className="text-sm font-medium text-gray-800">{formatVND(line.unit_price ?? 0)}</span>
+                        <span className="text-sm font-medium text-gray-800">{formatOrderMoney(line.unit_price ?? 0)}</span>
                       </td>
 
-                      {/* Tax % */}
+                      {/* Thuế */}
                       <td className="px-4 py-4 text-center">
                         {taxRate > 0 ? (
                           <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-600">
@@ -392,11 +407,11 @@ export default function SaleOrderDetailPage() {
                         )}
                       </td>
 
-                      {/* Amount (after tax) */}
+                      {/* Thành tiền */}
                       <td className="px-4 py-4 text-right">
-                        <p className="text-sm font-semibold text-gray-900">{formatVND(lineTotalAfter)}</p>
+                        <p className="text-sm font-semibold text-gray-900">{formatOrderMoney(lineTotalAfter)}</p>
                         {lineTaxAmt > 0 && (
-                          <p className="text-[10px] text-gray-400 mt-0.5">Tax: {formatVND(lineTaxAmt)}</p>
+                          <p className="text-[10px] text-gray-400 mt-0.5">Thuế: {formatOrderMoney(lineTaxAmt)}</p>
                         )}
                       </td>
                     </tr>
@@ -413,9 +428,9 @@ export default function SaleOrderDetailPage() {
       <ActionConfirmModal
         isOpen={activeModal === "submit"}
         onClose={() => setActiveModal(null)}
-        title="Submit for Approval"
-        description={`Submit order "${order.order_no}" for manager approval? The order will be locked from editing after submission.`}
-        confirmText="Submit Order"
+        title="Gửi duyệt đơn hàng"
+        description={`Gửi đơn hàng "${order.order_no}" để quản lý phê duyệt? Đơn hàng sẽ bị khóa chỉnh sửa sau khi gửi.`}
+        confirmText="Gửi duyệt"
         variant="primary"
         onConfirm={async () => {
           await dispatch(submitSaleOrder(order.id)).unwrap();
@@ -426,9 +441,9 @@ export default function SaleOrderDetailPage() {
       <ActionConfirmModal
         isOpen={activeModal === "approve"}
         onClose={() => setActiveModal(null)}
-        title="Approve Sale Order"
-        description={`Approve order "${order.order_no}"? This confirms the sales terms and commits inventory reservation.`}
-        confirmText="Approve"
+        title="Duyệt đơn hàng"
+        description={`Duyệt đơn hàng "${order.order_no}"? Thao tác này xác nhận điều khoản bán hàng và đặt lịch xuất kho.`}
+        confirmText="Duyệt"
         variant="success"
         onConfirm={async () => {
           await dispatch(approveSaleOrder(order.id)).unwrap();
@@ -439,13 +454,13 @@ export default function SaleOrderDetailPage() {
       <ActionConfirmModal
         isOpen={activeModal === "reject"}
         onClose={() => setActiveModal(null)}
-        title="Reject Sale Order"
-        description={`Reject order "${order.order_no}"? Please provide a reason that will be shown to the sales team.`}
-        confirmText="Reject Order"
+        title="Từ chối đơn hàng"
+        description={`Từ chối đơn hàng "${order.order_no}"? Vui lòng nhập lý do để thông báo cho nhân viên bán hàng.`}
+        confirmText="Từ chối"
         variant="danger"
         requireReason
-        reasonLabel="Rejection Reason"
-        reasonPlaceholder="e.g. Price does not match agreed terms, insufficient stock..."
+        reasonLabel="Lý do từ chối"
+        reasonPlaceholder="VD: Giá không khớp thỏa thuận, không đủ hàng..."
         onConfirm={async (reason) => {
           await dispatch(rejectSaleOrder({ id: order.id, reason: reason ?? "" })).unwrap();
           setActiveModal(null);

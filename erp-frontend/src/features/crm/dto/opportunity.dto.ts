@@ -48,6 +48,11 @@ export interface Opportunity {
   actual_close_date?: string | null;
   currency_id?: number | null;
   exchange_rate?: number;
+  currency?: {
+    id?: number;
+    code: string;
+    symbol: string;
+  } | null;
   created_at: string;
   updated_at: string;
   lead: Lead | null;
@@ -64,5 +69,3 @@ export interface MarkWonResponse {
     type: "customer";
   };
 }
-
-    

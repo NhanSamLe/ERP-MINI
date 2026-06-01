@@ -10,9 +10,9 @@ function InvoiceListHeader({ onCreateNew, onExport }: Props) {
     <div className="bg-gradient-to-r from-orange-50 to-orange-100 border-b border-orange-200 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Invoice List</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Danh sách Hóa đơn</h1>
           <p className="text-gray-600 text-sm mt-1">
-            Manage all sales invoices
+            Quản lý tất cả hóa đơn bán hàng
           </p>
         </div>
 
@@ -23,7 +23,7 @@ function InvoiceListHeader({ onCreateNew, onExport }: Props) {
               className="bg-white border border-orange-300 text-orange-700 hover:bg-orange-50 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
             >
               <Download size={18} />
-              Export Excel
+              Xuất Excel
             </button>
           )}
 
@@ -32,7 +32,7 @@ function InvoiceListHeader({ onCreateNew, onExport }: Props) {
             className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
           >
             <Plus size={18} />
-            New Invoice
+            Tạo Hóa đơn
           </button>
         </div>
       </div>

@@ -87,6 +87,7 @@ export interface UpdateCallDetailDto {
 export interface UpdateEmailDetailDto {
   activity_id: number;
   subject?: string;
+  email_to?: string | null;
   cc?: string | null;
   bcc?: string | null;
   html_body?: string | null;

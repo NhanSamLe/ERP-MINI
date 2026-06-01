@@ -2,12 +2,15 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Plus, Trash2, Calendar, User, Search, Package,
-  Link2, FileText, MessageSquare, Inbox, Phone, Mail,
+  FileText, MessageSquare, Inbox, Phone, Mail,
   MapPin, CreditCard, Edit3, AlertCircle,
 } from "lucide-react";
+import ProductPickerItem from "./ProductPickerItem";
 import { Partner } from "@/features/partner/store/partner.types";
 import { Product } from "@/features/products/store/product.types";
 import { QuotationDto, CreateQuotationDto, UpdateQuotationDto, QuotationLineDto } from "../dto/quotation.dto";
+import { Currency } from "@/features/master-data/dto/currency.dto";
+import * as currencyService from "@/features/master-data/service/currency.service";
 import { StandardFormLayout, FormSection } from "@/components/layout";
 import { SearchSelectionModal } from "@/components/common/SearchSelectionModal";
 import { ActionConfirmModal } from "@/components/common";
@@ -15,6 +18,10 @@ import QuantityControl from "./QuantityControl";
 import { formatVND } from "@/utils/currency.helper";
 import { toDateInputValue } from "@/utils/time.helper";
 import { useSaleOrderCalculation } from "../hook/useSaleOrderCalculation";
+import { Uom, UomConversion } from "@/features/master-data/dto/uom.dto";
+import * as uomService from "@/features/master-data/service/uom.service";
+import * as uomConversionService from "@/features/master-data/service/uomConversion.service";
+import { getValidUomsForProduct, previewQtyInStockUom } from "@/features/purchase/utils/uomHelper";
 
 interface Props {
   mode: "create" | "edit";
@@ -41,12 +48,18 @@ export default function QuotationForm({
     toDateInputValue(defaultValue?.valid_until)
   );
   const [discountPercent, setDiscountPercent] = useState<number>(defaultValue?.discount_percent ?? 0);
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
+  const [currencyId, setCurrencyId] = useState<number | null>(defaultValue?.currency_id ?? null);
+  const [exchangeRate, setExchangeRate] = useState<number>(defaultValue?.exchange_rate ?? 1);
   const [customerNotes, setCustomerNotes] = useState(defaultValue?.customer_notes ?? "");
   const [internalNotes, setInternalNotes] = useState(defaultValue?.internal_notes ?? "");
   const [lines, setLines]                 = useState<QuotationLineDto[]>(defaultValue?.lines ?? []);
   const [deletedLineIds, setDeletedLineIds] = useState<number[]>([]);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [discardOpen, setDiscardOpen]     = useState(false);
+  const [uoms, setUoms]                   = useState<Uom[]>([]);
+  const [uomConversions, setUomConversions] = useState<UomConversion[]>([]);
+  const [focusedPriceIdx, setFocusedPriceIdx] = useState<number | null>(null);
 
   // ── modals ─────────────────────────────────────────
   const [customerModal, setCustomerModal]   = useState(false);
@@ -59,6 +72,80 @@ export default function QuotationForm({
       setCustomerId(defaultValue.customer_id);
     }
   }, [defaultValue?.customer_id]);
+
+  useEffect(() => {
+    setCurrencyId(defaultValue?.currency_id ?? null);
+    setExchangeRate(defaultValue?.exchange_rate ?? 1);
+  }, [defaultValue?.currency_id, defaultValue?.exchange_rate]);
+
+  useEffect(() => {
+    currencyService.getCurrencies()
+      .then((data) => setCurrencies(data || []))
+      .catch(() => setCurrencies([]));
+  }, []);
+
+  useEffect(() => {
+    uomService.getAllUoms()
+      .then((data) => setUoms(data || []))
+      .catch(() => setUoms([]));
+    uomConversionService.getAllUomConversions()
+      .then((data) => setUomConversions(data || []))
+      .catch(() => setUomConversions([]));
+  }, []);
+
+  const fetchExchangeRate = async (cid: number | null, list = currencies) => {
+    if (!cid) return 1;
+    const selected = list.find((c) => c.id === cid);
+    if (!selected || selected.code === "VND") return 1;
+    try {
+      const data = await currencyService.getExchangeRates();
+      const rates: Array<{ quoteCurrency: { code: string }; rate: number }> = data?.rates || [];
+      const match = rates.find((r) => r.quoteCurrency.code === selected.code);
+      return match?.rate ? 1 / Number(match.rate) : 1;
+    } catch {
+      return 1;
+    }
+  };
+
+  const selectedCurrency = currencies.find((c) => c.id === currencyId);
+  const currencyCode = selectedCurrency?.code || "VND";
+  const currencySymbol = selectedCurrency?.symbol || "VND";
+  const formatDocMoney = (value: number | null | undefined) =>
+    `${Number(value || 0).toLocaleString("vi-VN", { maximumFractionDigits: 2 })} ${currencySymbol}`;
+
+  const formatQty = (value: number) =>
+    Number(value).toLocaleString("vi-VN", { maximumFractionDigits: 4 });
+
+  const getUomConversionHint = (line: QuotationLineDto) => {
+    const product = products.find((p) => p.id === line.product_id);
+    const selectedUomId = line.uom_id ?? product?.uom_id ?? null;
+    const stockUomId = product?.uom_id ?? null;
+    if (!product || !selectedUomId || !stockUomId) return null;
+
+    const selectedUom = uoms.find((u) => u.id === selectedUomId) || product.uom;
+    const stockUom = uoms.find((u) => u.id === stockUomId) || product.uom;
+    if (!selectedUom || !stockUom) return null;
+
+    if (selectedUomId === stockUomId) {
+      return `ĐVT gốc của sản phẩm: ${stockUom.name} (${stockUom.code})`;
+    }
+
+    const factor = previewQtyInStockUom(1, selectedUomId, stockUomId, uomConversions, product.id);
+    return `1 ${selectedUom.name} (${selectedUom.code}) = ${formatQty(factor)} ${stockUom.name} (${stockUom.code})`;
+  };
+
+  const handleCurrencyChange = async (nextCurrencyId: number | null) => {
+    const oldRate = Number(exchangeRate || 1);
+    const nextRate = await fetchExchangeRate(nextCurrencyId);
+    setCurrencyId(nextCurrencyId);
+    setExchangeRate(nextRate);
+    setLines((prev) =>
+      prev.map((line) => ({
+        ...line,
+        unit_price: Number(((Number(line.unit_price || 0) * oldRate) / nextRate).toFixed(2)),
+      }))
+    );
+  };
 
   const selectedCustomer = customers.find((c) => c.id === customerId);
   const { calcLine } = useSaleOrderCalculation(products);
@@ -85,9 +172,35 @@ export default function QuotationForm({
     setLines((prev) => { const next = [...prev]; next[i] = { ...next[i], [field]: value }; return next; });
 
   const selectProduct = (i: number, p: Product) => {
-    updateLine(i, "product_id", p.id);
-    updateLine(i, "unit_price",  p.sale_price ?? 0);
-    updateLine(i, "tax_rate_id", p.tax_rate_id ?? null);
+    setLines((prev) => {
+      const next = [...prev];
+      next[i] = {
+        ...next[i],
+        product_id:  p.id,
+        uom_id:      p.uom_id ?? null,
+        unit_price:  Number((Number(p.sale_price ?? 0) / Number(exchangeRate || 1)).toFixed(2)),
+        tax_rate_id: p.tax_rate_id ?? null,
+      };
+      return next;
+    });
+  };
+
+  const parsePrice = (str: string) =>
+    Number(str.replace(/\./g, "").replace(/,/g, "").replace(/[^\d]/g, "")) || 0;
+
+  const handleUomChange = (lineIdx: number, newUomId: number | null) => {
+    const line = lines[lineIdx];
+    const product = products.find((p) => p.id === line.product_id);
+    setLines((prev) => {
+      const next = [...prev];
+      const updated = { ...next[lineIdx], uom_id: newUomId };
+      if (product && newUomId && product.uom_id && uomConversions.length > 0) {
+        const factor = previewQtyInStockUom(1, newUomId, product.uom_id, uomConversions, product.id);
+        updated.unit_price = Math.round(Number(product.sale_price ?? 0) * factor / Number(exchangeRate || 1));
+      }
+      next[lineIdx] = updated;
+      return next;
+    });
   };
 
   // ── totals ─────────────────────────────────────────
@@ -98,14 +211,16 @@ export default function QuotationForm({
 
   // ── submit ─────────────────────────────────────────
   const handleSubmit = async () => {
-    if (!customerId) { setValidationError("Please select a customer."); return; }
-    if (!validUntil) { setValidationError("Please set a valid-until date."); return; }
-    if (lines.length === 0) { setValidationError("Please add at least one product line."); return; }
-    if (lines.some((l) => !l.product_id)) { setValidationError("All lines must have a product selected."); return; }
+    if (!customerId) { setValidationError("Vui lòng chọn khách hàng."); return; }
+    if (!validUntil) { setValidationError("Vui lòng nhập ngày hiệu lực."); return; }
+    if (lines.length === 0) { setValidationError("Vui lòng thêm ít nhất một dòng sản phẩm."); return; }
+    if (lines.some((l) => !l.product_id)) { setValidationError("Tất cả dòng phải có sản phẩm được chọn."); return; }
     setValidationError(null);
 
     const payload: CreateQuotationDto | UpdateQuotationDto = {
       customer_id:      customerId,
+      currency_id:      currencyId,
+      exchange_rate:    exchangeRate,
       quotation_date:   quotationDate,
       valid_until:      validUntil,
       discount_percent: discountPercent || undefined,
@@ -115,6 +230,7 @@ export default function QuotationForm({
         id:               l.id,
         product_id:       l.product_id!,
         quantity:         l.quantity,
+        uom_id:           l.uom_id ?? null,
         unit_price:       l.unit_price,
         discount_percent: l.discount_percent ?? 0,
         tax_rate_id:      l.tax_rate_id ?? null,
@@ -127,39 +243,44 @@ export default function QuotationForm({
   return (
     <>
       <StandardFormLayout
-        title={mode === "create" ? "New Quotation" : `Edit ${defaultValue?.quotation_no ?? "Quotation"}`}
+        title={mode === "create" ? "Tạo Báo giá mới" : `Chỉnh sửa ${defaultValue?.quotation_no ?? "Báo giá"}`}
         actions={[
-          { label: "Discard", variant: "outline", onClick: () => setDiscardOpen(true) },
-          { label: mode === "create" ? "Save Draft" : "Save Changes", variant: "primary", onClick: handleSubmit, isLoading: loading },
+          { label: "Huỷ", variant: "outline", onClick: () => setDiscardOpen(true) },
+          { label: mode === "create" ? "Lưu nháp" : "Lưu thay đổi", variant: "primary", onClick: handleSubmit, isLoading: loading },
         ]}
         sidebarContent={
           <div className="space-y-4">
             {/* Order summary */}
-            <FormSection title="Quote Summary" icon={<CreditCard className="w-4 h-4" />}>
+            <FormSection title="Tóm tắt" icon={<CreditCard className="w-4 h-4" />}>
               <div className="space-y-2.5">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Lines</span>
-                  <span className="font-semibold text-gray-800">{lines.filter((l) => l.product_id).length} item(s)</span>
+                  <span className="text-gray-500">Số dòng</span>
+                  <span className="font-semibold text-gray-800">{lines.filter((l) => l.product_id).length} sản phẩm</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Subtotal</span>
-                  <span className="font-semibold text-gray-800">{formatVND(lineSubtotal)}</span>
+                  <span className="text-gray-500">Tạm tính</span>
+                  <span className="font-semibold text-gray-800">{formatDocMoney(lineSubtotal)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">VAT / Tax</span>
-                  <span className="font-semibold text-gray-800">{formatVND(lineTax)}</span>
+                  <span className="text-gray-500">Thuế VAT</span>
+                  <span className="font-semibold text-gray-800">{formatDocMoney(lineTax)}</span>
                 </div>
                 {discountPercent > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Discount ({discountPercent}%)</span>
-                    <span className="font-semibold text-emerald-600">-{formatVND(discountAmt)}</span>
+                    <span className="text-gray-500">Giảm giá ({discountPercent}%)</span>
+                    <span className="font-semibold text-emerald-600">-{formatDocMoney(discountAmt)}</span>
                   </div>
                 )}
                 <div className="pt-2.5 border-t border-gray-200">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-semibold text-gray-900">Total</span>
-                    <span className="text-base font-bold text-orange-600">{formatVND(grandTotal)}</span>
+                    <span className="text-sm font-semibold text-gray-900">Tổng cộng</span>
+                    <span className="text-base font-bold text-orange-600">{formatDocMoney(grandTotal)}</span>
                   </div>
+                  {currencyCode !== "VND" && (
+                    <p className="text-xs text-gray-400 mt-1 text-right">
+                      ≈ {formatVND(grandTotal * Number(exchangeRate || 1))}
+                    </p>
+                  )}
                 </div>
               </div>
             </FormSection>
@@ -182,7 +303,7 @@ export default function QuotationForm({
 
             {/* Customer quick info */}
             {selectedCustomer && (
-              <FormSection title="Customer" icon={<User className="w-4 h-4" />}>
+              <FormSection title="Khách hàng" icon={<User className="w-4 h-4" />}>
                 <div className="space-y-2 text-sm">
                   <p className="font-semibold text-gray-900">{selectedCustomer.name}</p>
                   {selectedCustomer.phone && (
@@ -208,12 +329,12 @@ export default function QuotationForm({
         }
       >
         {/* ── SECTION 1: Quotation Info ── */}
-        <FormSection title="Quotation Information" icon={<FileText className="w-4 h-4" />}>
+        <FormSection title="Thông tin Báo giá" icon={<FileText className="w-4 h-4" />}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Customer */}
+            {/* Khách hàng */}
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-gray-700">
-                Customer <span className="text-red-500">*</span>
+                Khách hàng <span className="text-red-500">*</span>
               </label>
               {mode === "edit" ? (
                 <div className="flex items-center gap-2.5 h-9 px-3 bg-gray-50 border border-gray-200 rounded-md">
@@ -237,7 +358,7 @@ export default function QuotationForm({
                   <div className="flex items-center gap-2 min-w-0">
                     <User className="w-4 h-4 text-gray-400 shrink-0" />
                     <span className="truncate">
-                      {selectedCustomer ? selectedCustomer.name : "Search and select customer..."}
+                      {selectedCustomer ? selectedCustomer.name : "Tìm và chọn khách hàng..."}
                     </span>
                   </div>
                   <Search className="w-3.5 h-3.5 text-gray-400 shrink-0" />
@@ -245,10 +366,10 @@ export default function QuotationForm({
               )}
             </div>
 
-            {/* Quotation Date */}
+            {/* Ngày báo giá */}
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-gray-700">
-                Quotation Date <span className="text-red-500">*</span>
+                Ngày báo giá <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
@@ -261,10 +382,10 @@ export default function QuotationForm({
               </div>
             </div>
 
-            {/* Valid Until */}
+            {/* Hiệu lực đến */}
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-gray-700">
-                Valid Until <span className="text-red-500">*</span>
+                Hiệu lực đến <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
@@ -278,35 +399,69 @@ export default function QuotationForm({
               </div>
             </div>
 
-            {/* Global Discount */}
+            {/* Chiết khấu tổng */}
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-gray-700">
-                Global Discount (%)
+                Chiết khấu tổng (%)
               </label>
               <div className="relative">
                 <input
-                  type="number"
-                  min={0} max={100} step={0.5}
-                  value={discountPercent}
-                  onChange={(e) => setDiscountPercent(parseFloat(e.target.value) || 0)}
+                  type="text"
+                  inputMode="decimal"
+                  value={discountPercent === 0 ? "" : String(discountPercent)}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9.]/g, "");
+                    const num = parseFloat(raw);
+                    setDiscountPercent(isNaN(num) ? 0 : Math.min(100, Math.max(0, num)));
+                  }}
+                  onBlur={(e) => {
+                    const num = parseFloat(e.target.value);
+                    setDiscountPercent(isNaN(num) ? 0 : Math.min(100, Math.max(0, num)));
+                  }}
                   placeholder="0"
-                  className="w-full h-9 px-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="w-full h-9 px-3 pr-8 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-gray-700">Tiền tệ</label>
+              <select
+                value={currencyId ?? ""}
+                onChange={(e) => handleCurrencyChange(e.target.value ? Number(e.target.value) : null)}
+                className="w-full h-9 px-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-800"
+              >
+                <option value="">VND</option>
+                {currencies.map((c) => (
+                  <option key={c.id} value={c.id}>{c.code} ({c.symbol})</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-gray-700">Tỉ giá</label>
+              <input
+                type="number"
+                min={0}
+                step={0.000001}
+                value={exchangeRate}
+                onChange={(e) => setExchangeRate(Number(e.target.value) || 1)}
+                className="w-full h-9 px-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+              />
             </div>
           </div>
 
           {/* Customer info card */}
           {selectedCustomer && (
             <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-orange-50/60 border border-orange-100 rounded-lg">
-              <div><p className="text-xs text-gray-500 mb-0.5">Phone</p><p className="text-sm font-medium text-gray-800">{selectedCustomer.phone || "—"}</p></div>
+              <div><p className="text-xs text-gray-500 mb-0.5">Điện thoại</p><p className="text-sm font-medium text-gray-800">{selectedCustomer.phone || "—"}</p></div>
               <div><p className="text-xs text-gray-500 mb-0.5">Email</p><p className="text-sm font-medium text-gray-800 truncate">{selectedCustomer.email || "—"}</p></div>
-              <div><p className="text-xs text-gray-500 mb-0.5">Tax Code</p><p className="text-sm font-medium text-gray-800">{selectedCustomer.tax_code || "—"}</p></div>
-              <div><p className="text-xs text-gray-500 mb-0.5">Contact Person</p><p className="text-sm font-medium text-gray-800">{selectedCustomer.contact_person || "—"}</p></div>
+              <div><p className="text-xs text-gray-500 mb-0.5">Mã số thuế</p><p className="text-sm font-medium text-gray-800">{selectedCustomer.tax_code || "—"}</p></div>
+              <div><p className="text-xs text-gray-500 mb-0.5">Người liên hệ</p><p className="text-sm font-medium text-gray-800">{selectedCustomer.contact_person || "—"}</p></div>
               {selectedCustomer.address && (
                 <div className="col-span-2 md:col-span-4">
-                  <p className="text-xs text-gray-500 mb-0.5">Address</p>
+                  <p className="text-xs text-gray-500 mb-0.5">Địa chỉ</p>
                   <p className="text-sm text-gray-700 flex items-start gap-1">
                     <MapPin className="w-3.5 h-3.5 text-gray-400 mt-0.5 shrink-0" />{selectedCustomer.address}
                   </p>
@@ -315,7 +470,7 @@ export default function QuotationForm({
               {mode === "create" && (
                 <div className="col-span-2 md:col-span-4 flex justify-end">
                   <button type="button" onClick={() => setCustomerModal(true)} className="inline-flex items-center gap-1 text-xs text-orange-600 hover:text-orange-700">
-                    <Edit3 className="w-3 h-3" /> Change customer
+                    <Edit3 className="w-3 h-3" /> Đổi khách hàng
                   </button>
                 </div>
               )}
@@ -325,9 +480,9 @@ export default function QuotationForm({
 
         {/* ── SECTION 2: Line Items ── */}
         <FormSection
-          title="Quotation Lines"
+          title="Dòng báo giá"
           icon={<Package className="w-4 h-4" />}
-          description={`${lines.filter((l) => l.product_id).length} product(s)`}
+          description={`${lines.filter((l) => l.product_id).length} sản phẩm`}
           noPadding
           action={
             <button
@@ -335,15 +490,26 @@ export default function QuotationForm({
               onClick={addLine}
               className="inline-flex items-center gap-1.5 h-7 px-3 text-xs font-medium text-white bg-orange-500 rounded-md hover:bg-orange-600 transition-colors"
             >
-              <Plus className="w-3.5 h-3.5" /> Add Line
+              <Plus className="w-3.5 h-3.5" /> Thêm dòng
             </button>
           }
         >
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
+              <colgroup>
+                <col style={{ width: "36px" }} />   {/* # */}
+                <col style={{ width: "220px" }} />  {/* Sản phẩm */}
+                <col style={{ width: "130px" }} />  {/* ĐVT */}
+                <col style={{ width: "130px" }} />  {/* SL */}
+                <col style={{ width: "170px" }} />  {/* Đơn giá */}
+                <col style={{ width: "90px" }} />   {/* CK% */}
+                <col style={{ width: "80px" }} />   {/* Thuế */}
+                <col />                              {/* Thành tiền — flex */}
+                <col style={{ width: "40px" }} />   {/* Xoá */}
+              </colgroup>
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50/80">
-                  {["#", "Product", "UoM", "Qty", "Unit Price (₫)", "Disc. %", "Tax (%)", "Amount (₫)", ""].map((h) => (
+                  {["#", "Sản phẩm", "ĐVT", "SL", `Đơn giá (${currencyCode})`, "CK%", "Thuế", `Thành tiền (${currencyCode})`, ""].map((h) => (
                     <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       {h}
                     </th>
@@ -356,7 +522,7 @@ export default function QuotationForm({
                     <td colSpan={9} className="py-14 text-center">
                       <div className="flex flex-col items-center gap-2 text-gray-400">
                         <Inbox className="w-8 h-8" />
-                        <p className="text-sm">No products added. Click "Add Line" to start.</p>
+                        <p className="text-sm">Chưa có sản phẩm. Nhấn "Thêm dòng" để bắt đầu.</p>
                       </div>
                     </td>
                   </tr>
@@ -384,15 +550,15 @@ export default function QuotationForm({
                                 ? <img src={product.image_url} alt="" className="w-full h-full object-cover" />
                                 : <Package className="w-4 h-4 text-gray-300" />}
                             </div>
-                            <div className="min-w-0">
+                            <div className="min-w-0 flex-1">
                               {product ? (
                                 <>
-                                  <p className="text-sm font-medium text-gray-800 truncate group-hover/btn:text-orange-600 transition-colors">{product.name}</p>
-                                  <p className="text-xs text-gray-400">SKU: {product.sku}</p>
+                                  <p className="text-sm font-medium text-gray-800 whitespace-normal break-words leading-snug group-hover/btn:text-orange-600 transition-colors">{product.name}</p>
+                                  <p className="text-xs text-gray-400 mt-0.5">SKU: {product.sku}</p>
                                 </>
                               ) : (
                                 <span className="text-sm text-gray-400 italic flex items-center gap-1">
-                                  <Search className="w-3.5 h-3.5" /> Click to select...
+                                  <Search className="w-3.5 h-3.5" /> Nhấn để chọn...
                                 </span>
                               )}
                             </div>
@@ -401,9 +567,32 @@ export default function QuotationForm({
 
                         {/* UoM */}
                         <td className="px-4 py-3">
-                          <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
-                            {product?.uom?.code || "—"}
-                          </span>
+                          {uoms.length > 0 ? (
+                            <div className="space-y-1">
+                              <select
+                                value={line.uom_id ?? product?.uom_id ?? ""}
+                                onChange={(e) => handleUomChange(i, e.target.value ? Number(e.target.value) : null)}
+                                disabled={!product}
+                                className="h-8 px-2 text-xs border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-700 min-w-[72px] disabled:bg-gray-50 disabled:text-gray-400"
+                              >
+                                {(uomConversions.length > 0 && product?.uom_id
+                                  ? getValidUomsForProduct(uoms, uomConversions, product.uom_id, product.id)
+                                  : uoms
+                                ).map((u) => (
+                                  <option key={u.id} value={u.id}>{u.name} ({u.code})</option>
+                                ))}
+                              </select>
+                              {getUomConversionHint(line) && (
+                                <p className="max-w-[150px] text-[11px] leading-snug text-gray-500">
+                                  {getUomConversionHint(line)}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                              {product?.uom?.code || "—"}
+                            </span>
+                          )}
                         </td>
 
                         {/* Qty */}
@@ -416,13 +605,22 @@ export default function QuotationForm({
                         {/* Unit Price */}
                         <td className="px-4 py-3">
                           <input
-                            type="number" min={0} step={1000}
-                            value={line.unit_price}
-                            onChange={(e) => updateLine(i, "unit_price", parseFloat(e.target.value) || 0)}
-                            className="w-32 h-8 px-2 text-right text-sm font-medium border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            type="text"
+                            inputMode="numeric"
+                            value={
+                              focusedPriceIdx === i
+                                ? String(line.unit_price)
+                                : Number(line.unit_price).toLocaleString("vi-VN")
+                            }
+                            onFocus={() => setFocusedPriceIdx(i)}
+                            onBlur={() => setFocusedPriceIdx(null)}
+                            onChange={(e) => updateLine(i, "unit_price", parsePrice(e.target.value))}
+                            className="w-32 h-8 px-2 text-right text-sm font-medium border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                           />
                           {product?.sale_price && product.sale_price !== line.unit_price && (
-                            <p className="text-[10px] text-gray-400 text-right mt-0.5">List: {formatVND(product.sale_price)}</p>
+                            <p className="text-[10px] text-gray-400 text-right mt-0.5">
+                              Niêm yết: {Number(product.sale_price).toLocaleString("vi-VN")} ₫
+                            </p>
                           )}
                         </td>
 
@@ -433,6 +631,10 @@ export default function QuotationForm({
                               type="number" min={0} max={100} step={0.5}
                               value={line.discount_percent ?? 0}
                               onChange={(e) => updateLine(i, "discount_percent", parseFloat(e.target.value) || 0)}
+                              onBlur={(e) => {
+                                const v = Math.min(100, Math.max(0, parseFloat(e.target.value) || 0));
+                                updateLine(i, "discount_percent", parseFloat(v.toFixed(2)));
+                              }}
                               className="w-full h-8 pl-2 pr-5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             />
                             <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
@@ -450,9 +652,9 @@ export default function QuotationForm({
 
                         {/* Amount */}
                         <td className="px-4 py-3 text-right">
-                          <p className="text-sm font-semibold text-gray-800">{formatVND(lineTotal)}</p>
+                          <p className="text-sm font-semibold text-gray-800">{formatDocMoney(lineTotal)}</p>
                           {lineDisc > 0 && (
-                            <p className="text-xs text-emerald-600">-{lineDisc}% disc.</p>
+                            <p className="text-xs text-emerald-600">-{lineDisc}% CK</p>
                           )}
                         </td>
 
@@ -473,27 +675,27 @@ export default function QuotationForm({
         </FormSection>
 
         {/* ── SECTION 3: Notes ── */}
-        <FormSection title="Notes" icon={<MessageSquare className="w-4 h-4" />}>
+        <FormSection title="Ghi chú" icon={<MessageSquare className="w-4 h-4" />}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-gray-700">Customer Notes</label>
-              <p className="text-xs text-gray-400">Visible on the quotation document sent to customer</p>
+              <label className="block text-sm font-medium text-gray-700">Ghi chú khách hàng</label>
+              <p className="text-xs text-gray-400">Hiển thị trên tài liệu báo giá gửi cho khách hàng</p>
               <textarea
                 value={customerNotes}
                 onChange={(e) => setCustomerNotes(e.target.value)}
                 rows={3}
-                placeholder="e.g. Payment terms: 30 days net..."
+                placeholder="VD: Điều khoản thanh toán: 30 ngày..."
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none placeholder:text-gray-400"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-gray-700">Internal Notes</label>
-              <p className="text-xs text-gray-400">Internal only — not printed on documents</p>
+              <label className="block text-sm font-medium text-gray-700">Ghi chú nội bộ</label>
+              <p className="text-xs text-gray-400">Chỉ dùng nội bộ — không in trên tài liệu</p>
               <textarea
                 value={internalNotes}
                 onChange={(e) => setInternalNotes(e.target.value)}
                 rows={3}
-                placeholder="e.g. Customer requested express delivery..."
+                placeholder="VD: Khách hàng yêu cầu giao hàng nhanh..."
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none placeholder:text-gray-400"
               />
             </div>
@@ -505,9 +707,9 @@ export default function QuotationForm({
       <ActionConfirmModal
         isOpen={discardOpen}
         onClose={() => setDiscardOpen(false)}
-        title="Discard Changes"
-        description="Are you sure you want to discard all unsaved changes?"
-        confirmText="Discard"
+        title="Huỷ thay đổi"
+        description="Bạn có chắc muốn huỷ tất cả các thay đổi chưa lưu?"
+        confirmText="Huỷ bỏ"
         variant="danger"
         onConfirm={() => onCancel ? onCancel() : navigate("/sales/quotations")}
       />
@@ -516,8 +718,8 @@ export default function QuotationForm({
       <SearchSelectionModal
         isOpen={customerModal}
         onClose={() => setCustomerModal(false)}
-        title="Select Customer"
-        description="Search by name, phone, email or tax code"
+        title="Chọn khách hàng"
+        description="Tìm theo tên, điện thoại, email hoặc mã số thuế"
         items={customers}
         searchKeys={["name", "phone", "email", "tax_code"]}
         onSelect={(c) => setCustomerId(c.id)}
@@ -542,36 +744,12 @@ export default function QuotationForm({
       <SearchSelectionModal
         isOpen={productModal}
         onClose={() => { setProductModal(false); setActiveLineIdx(null); }}
-        title="Select Product"
-        description="Search by product name or SKU"
+        title="Chọn sản phẩm"
+        description="Tìm theo tên sản phẩm hoặc mã SKU"
         items={availableProducts}
         searchKeys={["name", "sku"]}
         onSelect={(p) => { if (activeLineIdx !== null) selectProduct(activeLineIdx, p); }}
-        renderItem={(p) => (
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gray-100 border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center">
-              {p.image_url
-                ? <img src={p.image_url} alt="" className="w-full h-full object-cover" />
-                : <Package className="w-5 h-5 text-gray-300" />}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gray-800 truncate">{p.name}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs text-gray-500">SKU: {p.sku}</span>
-                    {p.uom?.code && <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-500">{p.uom.code}</span>}
-                    {p.taxRate && <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-600">Tax {p.taxRate.rate}%</span>}
-                  </div>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-bold text-orange-600">{formatVND(p.sale_price ?? 0)}</p>
-                  {p.min_stock_qty != null && <p className="text-[10px] text-gray-400">Stock: {p.min_stock_qty}</p>}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        renderItem={(p) => <ProductPickerItem p={p} />}
       />
     </>
   );

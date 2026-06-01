@@ -16,18 +16,14 @@ export default function InvoiceActionButtons({
   onApprove,
   onReject,
 }: Props) {
-  // Check if user has ACCOUNT role
-const isAccountRole = user?.role?.code === "ACCOUNT";
-const isApprovalRole = user?.role?.code === "CHACC";
+  const isAccountRole = user?.role?.code === "ACCOUNT";
+  const isApprovalRole = user?.role?.code === "CHACC";
 
-
-  // ACCOUNT role: Only SUBMIT (khi invoice ở trạng thái draft)
   const canSubmit =
     isAccountRole &&
     invoice.approval_status === "draft" &&
     invoice.status === "draft";
 
-  // CHACC role: APPROVE và REJECT (khi invoice ở trạng thái waiting_approval)
   const canApprove =
     isApprovalRole &&
     invoice.approval_status === "waiting_approval" &&
@@ -45,7 +41,7 @@ const isApprovalRole = user?.role?.code === "CHACC";
           onClick={onSubmit}
           className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition font-medium"
         >
-          Submit
+          Trình duyệt
         </button>
       )}
 
@@ -54,7 +50,7 @@ const isApprovalRole = user?.role?.code === "CHACC";
           onClick={onApprove}
           className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium"
         >
-          Approve
+          Phê duyệt
         </button>
       )}
 
@@ -63,7 +59,7 @@ const isApprovalRole = user?.role?.code === "CHACC";
           onClick={onReject}
           className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium"
         >
-          Reject
+          Từ chối
         </button>
       )}
     </div>

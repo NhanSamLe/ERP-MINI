@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { toast } from "react-toastify";
 import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 import {
   fetchPayrollPeriods,
@@ -113,12 +114,12 @@ const PayrollPeriodPage: React.FC = () => {
     const end = new Date(form.end_date);
 
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-      alert("Ngày không hợp lệ");
+      toast.error("Ngày không hợp lệ");
       return;
     }
 
     if (start > end) {
-      alert("Ngày bắt đầu phải trước ngày kết thúc");
+      toast.error("Ngày bắt đầu phải trước ngày kết thúc");
       return;
     }
 

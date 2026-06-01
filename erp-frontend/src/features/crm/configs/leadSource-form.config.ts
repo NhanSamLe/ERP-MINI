@@ -4,7 +4,6 @@ import { CreateLeadSourceDto, UpdateLeadSourceDto } from "../dto/leadSource.dto"
 export const leadSourceFormConfig: FormConfig<CreateLeadSourceDto | UpdateLeadSourceDto> = {
   sections: [
     {
-      title: "Thông tin nguồn Lead",
       columns: 1,
       fields: [
         {
@@ -26,6 +25,12 @@ export const leadSourceFormConfig: FormConfig<CreateLeadSourceDto | UpdateLeadSo
           type: "textarea",
           placeholder: "Mô tả ngắn gọn về nguồn khách hàng này...",
           rows: 3,
+        },
+        {
+          name: "is_active",
+          label: "Hoạt động",
+          type: "checkbox",
+          helpText: "Bỏ chọn để ngừng sử dụng nguồn này",
         },
       ],
     },

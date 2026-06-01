@@ -8,6 +8,7 @@ import { useTable } from '@/components/v2/tables';
 import { usePermission } from '@/hooks/usePermission';
 import { currencyTableConfig } from '../configs/currency-table.config';
 import { Plus, DollarSign, X } from 'lucide-react';
+import { toast } from 'react-toastify';
 import { Button } from '@/components/ui/Button';
 import { FormInput } from '@/components/ui/FormInput';
 
@@ -42,7 +43,7 @@ export default function CurrencyPageV2() {
 
   const handleAddCurrency = async () => {
     if (!currencyCode || currencyCode.length !== 3) {
-      alert('Please enter a valid 3-letter currency code');
+      toast.error("Mã tiền tệ phải có đúng 3 ký tự");
       return;
     }
     await dispatch(addCurrencyThunk(currencyCode.toUpperCase()));

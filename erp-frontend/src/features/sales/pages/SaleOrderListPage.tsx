@@ -94,8 +94,8 @@ export default function SaleOrderListPage() {
               <ShoppingCart className="w-4 h-4 text-orange-500" />
             </span>
             <div>
-              <h1 className="text-base font-semibold text-gray-900">Sale Orders</h1>
-              <p className="text-xs text-gray-400 mt-0.5">Manage and track all sale orders</p>
+              <h1 className="text-base font-semibold text-gray-900">Đơn hàng bán</h1>
+              <p className="text-xs text-gray-400 mt-0.5">Quản lý tất cả đơn hàng bán</p>
             </div>
             <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-600">
               {filteredItems.length}
@@ -108,7 +108,7 @@ export default function SaleOrderListPage() {
               className="inline-flex items-center gap-1.5 h-8 px-3 text-sm font-medium text-gray-600 border border-gray-300 bg-white rounded-md hover:bg-gray-50 transition-colors"
             >
               <Download className="w-3.5 h-3.5" />
-              Export
+              Xuất báo cáo
             </button>
 
             {canCreate && (
@@ -117,7 +117,7 @@ export default function SaleOrderListPage() {
                 className="inline-flex items-center gap-1.5 h-8 px-3 text-sm font-medium text-white bg-orange-500 rounded-md hover:bg-orange-600 transition-colors shadow-sm"
               >
                 <Plus className="w-3.5 h-3.5" />
-                New Order
+                Tạo đơn hàng
               </Link>
             )}
           </div>
@@ -137,7 +137,7 @@ export default function SaleOrderListPage() {
         {loading ? (
           <div className="py-16 flex flex-col items-center gap-3 text-gray-400">
             <div className="w-6 h-6 border-2 border-orange-200 border-t-orange-500 rounded-full animate-spin" />
-            <span className="text-sm">Loading orders...</span>
+            <span className="text-sm">Đang tải đơn hàng...</span>
           </div>
         ) : (
           <SaleOrderTable items={paginatedItems} />
@@ -147,11 +147,11 @@ export default function SaleOrderListPage() {
         {!loading && filteredItems.length > 0 && (
           <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50/50">
             <p className="text-xs text-gray-500">
-              Showing{" "}
+              Hiển thị{" "}
               <span className="font-semibold text-gray-700">
                 {(currentPage - 1) * itemsPerPage + 1}–{Math.min(currentPage * itemsPerPage, filteredItems.length)}
               </span>{" "}
-              of <span className="font-semibold text-gray-700">{filteredItems.length}</span>
+              / <span className="font-semibold text-gray-700">{filteredItems.length}</span>
             </p>
 
             <div className="flex items-center gap-1">
@@ -160,7 +160,7 @@ export default function SaleOrderListPage() {
                 onClick={() => setCurrentPage((p) => p - 1)}
                 className="h-7 px-3 text-xs font-medium border border-gray-300 rounded-md text-gray-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                ← Prev
+                ← Trước
               </button>
               <span className="h-7 px-3 text-xs font-semibold flex items-center bg-orange-500 text-white rounded-md">
                 {currentPage} / {totalPages}
@@ -170,7 +170,7 @@ export default function SaleOrderListPage() {
                 onClick={() => setCurrentPage((p) => p + 1)}
                 className="h-7 px-3 text-xs font-medium border border-gray-300 rounded-md text-gray-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                Next →
+                Sau →
               </button>
             </div>
           </div>
@@ -181,7 +181,7 @@ export default function SaleOrderListPage() {
         open={openReportModal}
         onClose={() => setOpenReportModal(false)}
         onExport={handleExport}
-        title="Export Sale Orders"
+        title="Xuất đơn hàng"
       />
     </div>
   );

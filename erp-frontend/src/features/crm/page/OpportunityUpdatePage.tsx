@@ -14,6 +14,7 @@ import * as currencyService from "../../master-data/service/currency.service";
 import { FormInput } from "@/components/ui/FormInput";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
+import { formatStageProbability } from "../helpers/pipeline.helpers";
 import { UiAlert } from "@/types/ui";
 import { toDateInputValue } from "@/utils/time.helper";
 import { ArrowLeft, Edit } from "lucide-react";
@@ -126,6 +127,7 @@ export default function OpportunityUpdatePage() {
   };
 
   const currentStage = stages.find((s) => s.id === detail?.pipeline_stage_id);
+  const currentStageProbabilityLabel = formatStageProbability(currentStage?.probability);
 
   const handleUpdate = async () => {
     const payload: UpdateOpportunityDto = {
@@ -163,11 +165,14 @@ export default function OpportunityUpdatePage() {
 
   return (
     <div className="page-container">
-      <div className="erp-card max-w-2xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+      <div className="erp-card mx-auto max-w-5xl overflow-hidden">
+        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
           <div className="flex items-center gap-2.5">
-            <button onClick={() => navigate(-1)} className="p-1.5 hover:bg-gray-100 rounded-md text-gray-400 hover:text-gray-600">
+            <button
+              onClick={() => navigate(-1)}
+              className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+              aria-label="Quay lại"
+            >
               <ArrowLeft className="w-4 h-4" />
             </button>
             <span className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
@@ -175,29 +180,28 @@ export default function OpportunityUpdatePage() {
             </span>
             <div>
               <h1 className="text-base font-semibold text-gray-900">Cập nhật Opportunity</h1>
-              <p className="text-xs text-gray-400 mt-0.5">#{oppId} — {detail.name}</p>
+              <p className="text-xs text-gray-500 mt-0.5">#{oppId} — {detail.name}</p>
             </div>
           </div>
         </div>
 
-        <div className="p-5 space-y-5">
+        <div className="space-y-6 p-5">
           {alert && <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />}
           {error && <Alert type="error" message={error} />}
 
-          {/* Pipeline & Stage (read-only) */}
           {detail.pipeline_id && (
-            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <p className="text-xs font-medium text-gray-500 mb-2">Pipeline & Giai đoạn (chỉ đọc)</p>
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500">Pipeline:</span>
-                  <span className="text-sm font-medium text-gray-800">{pipelineName}</span>
+            <div className="rounded-md border border-gray-200 bg-gray-50 p-4">
+              <p className="text-xs font-medium uppercase text-gray-500 mb-3">Pipeline & Giai đoạn</p>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2 text-sm text-gray-700">
+                  <span className="font-medium text-gray-900">Pipeline:</span>
+                  <span>{pipelineName}</span>
                 </div>
                 {currentStage && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500">Giai đoạn:</span>
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <span className="text-gray-500">Giai đoạn:</span>
                     <span
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-sm font-medium"
+                      className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-sm font-medium"
                       style={{
                         borderColor: currentStage.color || "#f97316",
                         backgroundColor: (currentStage.color || "#f97316") + "15",
@@ -207,7 +211,9 @@ export default function OpportunityUpdatePage() {
                       <span className="w-2 h-2 rounded-full" style={{ backgroundColor: currentStage.color || "#f97316" }} />
                       {currentStage.name}
                     </span>
-                    <span className="text-xs text-gray-400">({Math.round(currentStage.probability || 0)}%)</span>
+                    {currentStageProbabilityLabel && (
+                      <span className="text-xs text-gray-400">({currentStageProbabilityLabel})</span>
+                    )}
                     {currentStage.is_won && <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">WON</span>}
                     {currentStage.is_lost && <span className="text-[10px] font-semibold bg-red-100 text-red-600 px-2 py-0.5 rounded-full">LOST</span>}
                   </div>
@@ -216,58 +222,60 @@ export default function OpportunityUpdatePage() {
             </div>
           )}
 
-          <FormInput label="Tên Opportunity" value={form.name} onChange={(v) => updateField("name", v)} required />
-          <FormInput label="Giá trị kỳ vọng" value={form.expected_value} onChange={(v) => updateField("expected_value", v)} type="number" />
-          <FormInput label="Xác suất (%)" value={form.probability} onChange={(v) => updateField("probability", v)} type="number" />
-
-          {/* Currency */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Tiền tệ</label>
-            <select
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
-              value={currencyId || ""}
-              onChange={(e) => {
-                const cid = e.target.value ? Number(e.target.value) : null;
-                setCurrencyId(cid);
-                fetchExchangeRate(cid);
-              }}
-            >
-              <option value="">-- Mặc định (VND) --</option>
-              {currencies.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.code} — {c.name} ({c.symbol})
-                </option>
-              ))}
-            </select>
+          <div className="grid gap-4 md:grid-cols-2">
+            <FormInput label="Tên Opportunity" value={form.name} onChange={(v) => updateField("name", v)} required />
+            <FormInput label="Giá trị kỳ vọng" value={form.expected_value} onChange={(v) => updateField("expected_value", v)} type="number" />
+            <FormInput label="Xác suất (%)" value={form.probability} onChange={(v) => updateField("probability", v)} type="number" />
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">Tiền tệ</label>
+              <select
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition-colors focus:border-orange-500 focus:ring-2 focus:ring-orange-500"
+                value={currencyId || ""}
+                onChange={(e) => {
+                  const cid = e.target.value ? Number(e.target.value) : null;
+                  setCurrencyId(cid);
+                  fetchExchangeRate(cid);
+                }}
+              >
+                <option value="">-- Mặc định (VND) --</option>
+                {currencies.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.code} — {c.name} ({c.symbol})
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          {/* Exchange rate display */}
           {currencyId && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Tỉ giá (VND → {currencies.find(c => c.id === currencyId)?.code || "?"})</label>
-              <input
-                type="number"
-                step="0.01"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
-                value={exchangeRate}
-                onChange={(e) => setExchangeRate(Number(e.target.value))}
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                Tỉ giá {currencies.find(c => c.id === currencyId)?.code || "?"} → VND. 
-                Ví dụ: 1 {currencies.find(c => c.id === currencyId)?.code || "?"} = {Math.round(exchangeRate).toLocaleString('vi-VN')} VND
-              </p>
+            <div className="rounded-md border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
+              <div className="font-medium text-gray-900 mb-1">Tỷ giá</div>
+              <div>
+                1 {currencies.find((c) => c.id === currencyId)?.code || "?"} = {Math.round(exchangeRate).toLocaleString("vi-VN")} VND
+              </div>
             </div>
           )}
 
-          <FormInput label="Ngày chốt dự kiến" value={form.closing_date ?? ""} onChange={(v) => updateField("closing_date", v)} type="date" />
-          <FormInput label="Hành động tiếp theo" value={form.next_action} onChange={(v) => updateField("next_action", v)} placeholder="VD: Gọi lại khách hàng, gửi báo giá..." />
-          <FormInput label="Ngày hành động tiếp" value={form.next_action_date ?? ""} onChange={(v) => updateField("next_action_date", v)} type="date" />
-          <FormInput label="Ngày chốt thực tế" value={form.actual_close_date ?? ""} onChange={(v) => updateField("actual_close_date", v)} type="date" />
+          <div className="grid gap-4 md:grid-cols-2">
+            <FormInput label="Ngày chốt dự kiến" value={form.closing_date ?? ""} onChange={(v) => updateField("closing_date", v)} type="date" />
+            <FormInput label="Hành động tiếp theo" value={form.next_action} onChange={(v) => updateField("next_action", v)} placeholder="VD: Gọi lại khách hàng, gửi báo giá..." />
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <FormInput label="Ngày hành động tiếp" value={form.next_action_date ?? ""} onChange={(v) => updateField("next_action_date", v)} type="date" />
+            <FormInput label="Ngày chốt thực tế" value={form.actual_close_date ?? ""} onChange={(v) => updateField("actual_close_date", v)} type="date" />
+          </div>
+
           <FormInput label="Ghi chú" value={form.notes} onChange={(v) => updateField("notes", v)} textarea />
 
-          <Button variant="primary" fullWidth loading={loading} onClick={handleUpdate}>
-            Lưu thay đổi
-          </Button>
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+            <Button variant="outline" onClick={() => navigate(-1)}>
+              Hủy
+            </Button>
+            <Button variant="primary" loading={loading} onClick={handleUpdate}>
+              Lưu thay đổi
+            </Button>
+          </div>
         </div>
       </div>
     </div>

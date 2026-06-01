@@ -59,7 +59,7 @@ export default function CategoriesPage() {
 
   const handleAddCategory = async () => {
     if (!name.trim()) {
-      alert("Category name is required!");
+      toast.error("Vui lòng nhập tên danh mục!");
       return;
     }
 
@@ -90,7 +90,7 @@ export default function CategoriesPage() {
 
   const handleEditCategory = async () => {
     if (!name.trim() || !editId) {
-      alert("Category name is required!");
+      toast.error("Vui lòng nhập tên danh mục!");
       return;
     }
     try {

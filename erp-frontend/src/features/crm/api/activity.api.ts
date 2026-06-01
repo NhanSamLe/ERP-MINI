@@ -68,7 +68,7 @@ export const deleteActivity = (activityId: number) =>
   axiosClient.delete(`/crm/activities/${activityId}`);
 
 export const reassignActivity = (activityId: number, newUserId: number) =>
-  axiosClient.patch("/crm/activities/reassign", { activityId, newUserId });
+  axiosClient.patch(`/crm/activities/reassign/${activityId}`, { newUserId });
 
 export const startTask = (activityId: number) =>
   axiosClient.patch(`/crm/activities/task/start/${activityId}`);
@@ -102,6 +102,15 @@ export const sendEmailForActivity = (activityId: number) =>
   axiosClient.post("/crm/activities/email/send", {
     activity_id: activityId,
 });
+
+export const sendEmailWithAttachments = (activityId: number, files: File[]) => {
+  const form = new FormData();
+  form.append("activity_id", String(activityId));
+  files.forEach(f => form.append("attachments", f));
+  return axiosClient.post("/crm/activities/email/send-with-attachments", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+};
 
 export const getSalesDashboard = () => {
   return axiosClient.get("/crm/dashboard/sales");

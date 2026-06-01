@@ -12,14 +12,10 @@ export const getOpportunities  = async (req: Request, res: Response) => {
 
     const isManager = ["SALESMANAGER","ADMIN"].includes(user.role);
 
-    const opportunity = isManager
-      ? await opportunityService.getAllOpportunities()
-      : await opportunityService.getMyOpportunities(user.id);
+    const opportunity = await opportunityService.getAllOpportunities(user);
 
     return res.json({
-      message: isManager
-        ? "Lấy toàn bộ danh sách Opportunity thành công"
-        : "Lấy danh sách Opportunity của user thành công",
+      message: "Lấy danh sách Opportunity thành công",
       data: opportunity,
     });
 
@@ -45,8 +41,9 @@ export const getOpportunities  = async (req: Request, res: Response) => {
 ============================================================ */
 export const getOpportunityById = async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
     const oppId = Number(req.params.oppId);
-    const data = await opportunityService.getOpportunityById(oppId);
+    const data = await opportunityService.getOpportunityById(oppId, user);
 
     return res.json({
       message: "Lấy Opportunity thành công",
@@ -215,7 +212,8 @@ export const reassignOpportunity = async (req: Request, res: Response) => {
     const data = await opportunityService.reassignOpportunity(
       oppId,
       newUserId,
-      manager.id
+      manager.id,
+      manager.role
     );
 
     return res.json({

@@ -90,9 +90,9 @@ export const leadSlice = createSlice({
 
     // ========== CREATE LEAD ==========
     builder.addCase(createLead.fulfilled, (state, action) => {
-      state.allLeads.unshift(action.payload.data);
+      state.allLeads.unshift(action.payload);
       // state.myLeads.unshift(action.payload.data); 
-      state.todayLeads.unshift(action.payload.data);
+      state.todayLeads.unshift(action.payload);
     });
 
     // ========== UPDATE  ==========
@@ -113,10 +113,11 @@ export const leadSlice = createSlice({
 
     // ========== CONVERT LEAD => OPP ==========
     builder.addCase(convertLead.fulfilled, (state, action) => {
-      const updated = action.payload;
+      const updated = action.payload?.lead ?? action.payload;
       state.allLeads = state.allLeads.map((l) => (l.id === updated.id ? updated : l));
       // state.myLeads = state.myLeads.map((l) => (l.id === updated.id ? updated : l));
       state.todayLeads = state.todayLeads.map((l) => (l.id === updated.id ? updated : l));
+      if (state.currentLead?.id === updated.id) state.currentLead = updated;
     });
 
     // ========== MARK LOST ==========
@@ -128,8 +129,11 @@ export const leadSlice = createSlice({
     });
     // ========== REASSIGN ==========
     builder.addCase(reassignLead.fulfilled, (state, action) => {
-      const updated = action.payload.data;
+      const updated = action.payload;
       state.allLeads = state.allLeads.map((l) =>
+        l.id === updated.id ? updated : l
+      );
+      state.todayLeads = state.todayLeads.map((l) =>
         l.id === updated.id ? updated : l
       );
     });

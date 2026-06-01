@@ -9,6 +9,7 @@ module.exports = {
     await queryInterface.bulkInsert("roles", [
       { code: "ADMIN", name: "System Administrator", created_at: now, updated_at: now },
       { code: "CEO", name: "Chief Executive Officer", created_at: now, updated_at: now },
+      { code: "BRANCH_MANAGER", name: "Branch Manager", created_at: now, updated_at: now },
       { code: "SALESMANAGER", name: "Sales Manager", created_at: now, updated_at: now },
       { code: "SALES", name: "Sales Staff", created_at: now, updated_at: now },
       { code: "WHMANAGER", name: "Warehouse Manager", created_at: now, updated_at: now },

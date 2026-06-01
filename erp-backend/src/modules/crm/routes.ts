@@ -13,6 +13,7 @@ const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
 router.get("/leads", authMiddleware([]), leadController.getLeads);
+router.post("/leads/bulk", authMiddleware([]), leadController.bulkCreateLeads);
 router.post("/leads/import", authMiddleware([]), upload.single("file"), leadController.importLeads);
 router.get("/leads/today", authMiddleware([]), leadController.getTodayLead);
 router.get("/leads/stage/:stage", authMiddleware([]), leadController.getLeadByStage);
@@ -26,12 +27,14 @@ router.patch("/leads/:leadId/lost", authMiddleware([]), leadController.markAsLos
 router.patch("/leads/:leadId/reassign", authMiddleware([]), leadController.reassignLead);
 router.patch("/leads/:leadId/reopen", authMiddleware([]), leadController.reopenLead);
 router.delete("/leads/:leadId", authMiddleware([]), leadController.deleteLead);
-router.get("/leads/today", authMiddleware([]), leadController.getTodayLead);
 
 // Opportunity Routes
 // router.get("/opportunities/my", authMiddleware([]), opportunityController.getMyOpportunities);
 // router.get("/opportunities", authMiddleware([]), opportunityController.getAllOpportunities);
 router.get("/opportunities", authMiddleware([]), opportunityController.getOpportunities);
+router.get("/opportunities/pipeline-summary", authMiddleware([]), opportunityController.getPipelineSummary);
+router.get("/opportunities/closing-this-month", authMiddleware([]), opportunityController.getClosingThisMonth);
+router.get("/opportunities/unclosed", authMiddleware([]), opportunityController.getUnclosedOpportunities);
 router.get("/opportunities/:oppId", authMiddleware([]), opportunityController.getOpportunityById);
 router.post("/opportunities", authMiddleware([]), opportunityController.createOpportunity);
 router.patch("/opportunities/:oppId", authMiddleware([]), opportunityController.updateOpportunity);
@@ -40,10 +43,7 @@ router.patch("/opportunities/:oppId/stage", authMiddleware([]), opportunityContr
 router.patch("/opportunities/:oppId/won", authMiddleware([]), opportunityController.markWon);
 router.patch("/opportunities/:oppId/lost", authMiddleware([]), opportunityController.markLost);
 router.patch("/opportunities/:oppId/reassign", authMiddleware([]), opportunityController.reassignOpportunity);
-router.get("/opportunities/pipeline-summary", authMiddleware([]), opportunityController.getPipelineSummary);
 router.delete("/opportunities/:oppId", authMiddleware([]), opportunityController.deleteOpportunity);
-router.get("/opportunities/closing-this-month", authMiddleware([]), opportunityController.getClosingThisMonth);
-router.get("/opportunities/unclosed", authMiddleware([]), opportunityController.getUnclosedOpportunities);
 
 
 
@@ -137,6 +137,7 @@ router.post("/activities/email/cancel", authMiddleware([]), activityController.c
 
 router.post("/activities/meeting/complete", authMiddleware([]), activityController.completeMeeting);
 router.post("/activities/email/send", authMiddleware([]), activityController.sendEmailForActivity);
+router.post("/activities/email/send-with-attachments", authMiddleware([]), upload.array("attachments", 10), activityController.sendEmailWithAttachments);
 
 router.get("/dashboard/sales", authMiddleware([]), getSalesDashboard);
 
@@ -157,6 +158,7 @@ router.put("/pipelines/:id", authMiddleware([]), pipelineController.updatePipeli
 
 router.post("/pipelines/:id/stages", authMiddleware([]), pipelineController.addStage);
 router.put("/pipelines/stages/:stageId", authMiddleware([]), pipelineController.updateStage);
+router.delete("/pipelines/stages/:stageId", authMiddleware([]), pipelineController.deleteStage);
 
 // Scoring Rules
 router.get("/scoring-rules", authMiddleware([]), scoringRuleController.getAll);

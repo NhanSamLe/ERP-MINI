@@ -6,6 +6,7 @@ import {
   updatePipeline,
   addPipelineStage,
   updatePipelineStage,
+  deletePipelineStage,
 } from "./pipeline.thunks";
 
 const initialState: PipelineState = {
@@ -40,6 +41,12 @@ const pipelineSlice = createSlice({
           if (!p.stages) continue;
           const idx = p.stages.findIndex((st) => st.id === a.payload.id);
           if (idx !== -1) { p.stages[idx] = a.payload; break; }
+        }
+      })
+      .addCase(deletePipelineStage.fulfilled, (s, a) => {
+        const pipeline = s.pipelines.find((p) => p.id === a.payload.pipelineId);
+        if (pipeline?.stages) {
+          pipeline.stages = pipeline.stages.filter((st) => st.id !== a.payload.stageId);
         }
       });
   },

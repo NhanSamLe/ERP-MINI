@@ -39,7 +39,7 @@ export async function changePipelineStage(oppId: number, newStageId: number) {
 //  Đánh dấu thắng
 export async function markWon(oppId: number) {
   const res = await api.markWon(oppId);
-  return res.data.data;
+  return res.data.data?.opp ?? res.data.data;
 }
 //  Đánh dấu thua
 export async function markLost(oppId: number, reason: string) {

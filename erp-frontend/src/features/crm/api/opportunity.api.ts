@@ -14,10 +14,10 @@ export const createOpportunity = (data: CreateOpportunityDto) => {
   return axiosClient.post("/crm/opportunities", data);
 }
 export const updateOpportunity = (data: UpdateOpportunityDto) => {
-  return axiosClient.put(`/crm/opportunities/${data.oppId}`, data);
+  return axiosClient.patch(`/crm/opportunities/${data.oppId}`, data);
 }
 export const moveToNegotiation = (oppId: number) => {
-  return axiosClient.patch(`/crm/opportunities/${oppId}/negotiation`);
+  return axiosClient.post(`/crm/opportunities/${oppId}/negotiation`);
 }
 export const changePipelineStage = (oppId: number, newStageId: number) => {
   return axiosClient.patch(`/crm/opportunities/${oppId}/stage`, { newStageId });
@@ -42,8 +42,8 @@ export const deleteOpportunity = (oppId: number) => {
   return axiosClient.delete(`/crm/opportunities/${oppId}`)
 }
 export const getClosingThisMonth = () => {
-  return axiosClient.delete(`/crm/opportunities/closing-this-month`)
+  return axiosClient.get(`/crm/opportunities/closing-this-month`)
 }
 export const getUnclosedOpportunities = () => {
-  return axiosClient.delete(`/crm/opportunities/unclosed`)
+  return axiosClient.get(`/crm/opportunities/unclosed`)
 }
