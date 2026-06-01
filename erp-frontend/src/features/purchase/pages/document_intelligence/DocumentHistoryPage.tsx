@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight as ChevronRightIcon,
   FileText,
+  ShieldAlert,
 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
@@ -113,10 +114,19 @@ export default function DocumentHistoryPage() {
             <Plus className="w-5 h-5" />
             Tải lên mới
           </button>
+          <button
+            onClick={() =>
+              navigate("/purchase/document-intelligence/anomalies")
+            }
+            className="flex items-center gap-2 border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-lg font-medium transition-colors text-sm"
+          >
+            <ShieldAlert className="w-4 h-4 text-orange-500" />
+            Anomaly Dashboard
+          </button>
         </div>
 
         {/* ── Filter bar ── */}
-        <div className="bg-white rounded-xl shadow-sm border p-5">
+        <div className="bg-white rounded-xl shadow-sm border-l-4 border-l-orange-400 border p-5">
           <div className="flex flex-wrap gap-4 items-end">
             {/* Status filter */}
             <div className="w-52">
@@ -190,7 +200,7 @@ export default function DocumentHistoryPage() {
         {/* ── Table ── */}
         <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
+            <thead className="bg-orange-50/60 border-b border-orange-100">
               <tr>
                 <th className="px-6 py-4 text-left font-semibold text-gray-700">
                   Tên tệp
@@ -231,7 +241,7 @@ export default function DocumentHistoryPage() {
 
               {!loading &&
                 history.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
+                  <tr key={item.id} className="hover:bg-orange-50/40 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <FileText className="w-4 h-4 text-gray-400 shrink-0" />
@@ -296,7 +306,7 @@ export default function DocumentHistoryPage() {
           </table>
 
           {/* ── Pagination ── */}
-          <div className="px-6 py-4 border-t bg-gray-50 flex items-center justify-between text-sm text-gray-600">
+          <div className="px-6 py-4 border-t bg-orange-50/40 flex items-center justify-between text-sm text-gray-600">
             <span>
               Hiển thị{" "}
               <strong>

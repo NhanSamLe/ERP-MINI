@@ -7,10 +7,12 @@ import {
   createEmployee,
   updateEmployee,
   deleteEmployee,
+  resignEmployee,
 } from "../service/employee.service";
 
 import EmployeeFormModal from "../components/EmployeeFormModal";
 import UserFormModal from "..//components/UserFormModal";
+
 
 import {
   Plus,
@@ -22,6 +24,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import ResignEmployeeModal from "../components/ResignEmployeeModal";
 
 export default function EmployeePage() {
   const nav = useNavigate();
@@ -41,6 +44,8 @@ export default function EmployeePage() {
   const pageSize = 10;
   const [openUserForm, setOpenUserForm] = useState(false);
 const [userForEmployee, setUserForEmployee] = useState<EmployeeDTO | null>(null);
+const [openResign, setOpenResign] = useState(false);
+const [resignEmp, setResignEmp] = useState<EmployeeDTO | null>(null);
 
 
   const load = async () => {
@@ -164,7 +169,21 @@ const [userForEmployee, setUserForEmployee] = useState<EmployeeDTO | null>(null)
 
     return pages;
   };
+  const handleResign = async (data: {
+  resign_date: string;
+  resign_reason?: string;
+}) => {
+  if (!resignEmp) return;
 
+  try {
+    await resignEmployee(resignEmp.id, data);
+    await load();
+    setOpenResign(false);
+    setResignEmp(null);
+  } catch (err: any) {
+    alert(err?.response?.data?.message || "Không thể cập nhật nghỉ việc");
+  }
+};
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
       {/* Header */}
@@ -245,7 +264,13 @@ const [userForEmployee, setUserForEmployee] = useState<EmployeeDTO | null>(null)
                     <td className="px-4 py-3">{e.bank_name || "-"}</td>
                     <td className="px-4 py-3">{e.base_salary.toLocaleString()} ₫</td>
                     <td className="px-4 py-3">
-                      {e.status === "active" ? "Đang làm" : "Ngưng"}
+                      {
+  e.status === "active"
+    ? "Đang làm"
+    : e.status === "inactive"
+    ? "Tạm nghỉ"
+    : "Đã nghỉ việc"
+}
                     </td>
 
                     <td className="px-4 py-3 flex gap-2 justify-center">
@@ -265,6 +290,16 @@ const [userForEmployee, setUserForEmployee] = useState<EmployeeDTO | null>(null)
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
+                      <button
+  className="p-2 text-yellow-600 hover:bg-yellow-50 rounded"
+  onClick={() => {
+    setResignEmp(e);
+    setOpenResign(true);
+  }}
+  disabled={e.status === "resigned"}
+>
+  Nghỉ
+</button>
                     </td>
                   </tr>
                 ))
@@ -356,7 +391,15 @@ const [userForEmployee, setUserForEmployee] = useState<EmployeeDTO | null>(null)
     setUserForEmployee(null);
   }}
 />
-
+  <ResignEmployeeModal
+  open={openResign}
+  employeeName={resignEmp?.full_name}
+  onClose={() => {
+    setOpenResign(false);
+    setResignEmp(null);
+  }}
+  onSubmit={handleResign}
+/>
     </div>
   );
 }

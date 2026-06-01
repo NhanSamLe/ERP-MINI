@@ -10,6 +10,12 @@ export interface ApInvoiceAttrs {
   total_before_tax?: number;
   total_tax?: number;
   total_after_tax?: number;
+  // Phase 1 — payment tracking
+  paid_amount?: number;
+  payment_term_id?: number | null;
+  currency_id?: number | null;
+  exchange_rate?: number;
+  last_payment_date?: string | null;
   status: "draft" | "posted" | "partially_paid" | "paid" | "cancelled";
   approval_status: "draft" | "waiting_approval" | "approved" | "rejected";
   created_by: number;
@@ -46,6 +52,11 @@ export class ApInvoice
   public total_before_tax?: number;
   public total_tax?: number;
   public total_after_tax?: number;
+  public paid_amount?: number;
+  public payment_term_id?: number | null;
+  public currency_id?: number | null;
+  public exchange_rate?: number;
+  public last_payment_date?: string | null;
   public status!: "draft" | "posted" | "partially_paid" | "paid" | "cancelled";
   public approval_status!:
     | "draft"
@@ -79,6 +90,19 @@ ApInvoice.init(
     total_before_tax: { type: DataTypes.DECIMAL(18, 2) },
     total_tax: { type: DataTypes.DECIMAL(18, 2) },
     total_after_tax: { type: DataTypes.DECIMAL(18, 2) },
+    paid_amount: {
+      type: DataTypes.DECIMAL(18, 2),
+      allowNull: false,
+      defaultValue: 0,
+    },
+    payment_term_id: { type: DataTypes.BIGINT, allowNull: true },
+    currency_id: { type: DataTypes.BIGINT, allowNull: true },
+    exchange_rate: {
+      type: DataTypes.DECIMAL(18, 6),
+      allowNull: false,
+      defaultValue: 1.0,
+    },
+    last_payment_date: { type: DataTypes.DATEONLY, allowNull: true },
     status: {
       type: DataTypes.ENUM(
         "draft",
@@ -115,7 +139,7 @@ ApInvoice.init(
       allowNull: false,
       defaultValue: "pending",
     },
-    matching_details: { type: DataTypes.JSONB, allowNull: true },
+    matching_details: { type: DataTypes.JSON, allowNull: true },
   },
   {
     sequelize,

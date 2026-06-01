@@ -9,6 +9,10 @@ import {
   HistoryResponse,
   ThreeWayMatchResult,
   MatchingResult,
+  AnomalyQueryFilters,
+  AnomalyPaginatedResult,
+  BranchAnomalyStats,
+  AnomalyThresholdConfig,
 } from "../store/documentIntelligence/documentIntelligence.types";
 
 export const documentIntelligenceApi = {
@@ -114,5 +118,53 @@ export const documentIntelligenceApi = {
     if (supplierId) params.supplier_id = supplierId;
     const res = await axiosClient.get("documents/po-suggestions", { params });
     return res.data.data ?? [];
+  },
+
+  // ── Anomaly Detection APIs ──
+
+  /**
+   * Get paginated list of high-risk anomaly results.
+   */
+  getAnomalyResults: async (
+    filters: AnomalyQueryFilters,
+  ): Promise<AnomalyPaginatedResult> => {
+    const res = await axiosClient.get("document-intelligence/anomalies", {
+      params: filters,
+    });
+    return res.data;
+  },
+
+  /**
+   * Get branch anomaly statistics for a date range.
+   */
+  getAnomalyStats: async (
+    date_from: string,
+    date_to: string,
+  ): Promise<BranchAnomalyStats> => {
+    const res = await axiosClient.get("document-intelligence/anomalies/stats", {
+      params: { date_from, date_to },
+    });
+    return res.data;
+  },
+
+  /**
+   * Get the current anomaly threshold configuration for the branch.
+   */
+  getThresholdConfig: async (): Promise<AnomalyThresholdConfig> => {
+    const res = await axiosClient.get("document-intelligence/anomalies/config");
+    return res.data;
+  },
+
+  /**
+   * Update the anomaly threshold configuration for the branch.
+   */
+  updateThresholdConfig: async (
+    params: Partial<Omit<AnomalyThresholdConfig, "branchId">>,
+  ): Promise<AnomalyThresholdConfig> => {
+    const res = await axiosClient.put(
+      "document-intelligence/anomalies/config",
+      params,
+    );
+    return res.data;
   },
 };

@@ -10,6 +10,12 @@ export interface ApPaymentAttrs {
   method: "cash" | "bank" | "transfer";
   status: "draft" | "posted" | "completed" | "cancelled";
   approval_status: "draft" | "waiting_approval" | "approved" | "rejected";
+  // Phase 1 — allocation tracking + bank info
+  allocation_status: "unallocated" | "partially_allocated" | "fully_allocated";
+  currency_id?: number | null;
+  exchange_rate?: number;
+  bank_account_id?: number | null;
+  transaction_reference?: string | null;
   created_by: number;
   approved_by?: number | null;
   submitted_at?: Date | null;
@@ -36,6 +42,14 @@ export class ApPayment
     | "waiting_approval"
     | "approved"
     | "rejected";
+  public allocation_status!:
+    | "unallocated"
+    | "partially_allocated"
+    | "fully_allocated";
+  public currency_id?: number | null;
+  public exchange_rate?: number;
+  public bank_account_id?: number | null;
+  public transaction_reference?: string | null;
   public created_by!: number;
   public approved_by?: number | null;
   public submitted_at?: Date | null;
@@ -63,6 +77,23 @@ ApPayment.init(
       type: DataTypes.ENUM("draft", "waiting_approval", "approved", "rejected"),
       defaultValue: "draft",
     },
+    allocation_status: {
+      type: DataTypes.ENUM(
+        "unallocated",
+        "partially_allocated",
+        "fully_allocated",
+      ),
+      allowNull: false,
+      defaultValue: "unallocated",
+    },
+    currency_id: { type: DataTypes.BIGINT, allowNull: true },
+    exchange_rate: {
+      type: DataTypes.DECIMAL(18, 6),
+      allowNull: false,
+      defaultValue: 1.0,
+    },
+    bank_account_id: { type: DataTypes.BIGINT, allowNull: true },
+    transaction_reference: { type: DataTypes.STRING(100), allowNull: true },
     created_by: { type: DataTypes.BIGINT, allowNull: false },
     approved_by: { type: DataTypes.BIGINT },
     submitted_at: { type: DataTypes.DATE },
@@ -76,5 +107,5 @@ ApPayment.init(
     timestamps: true,
     createdAt: "created_at",
     updatedAt: "updated_at",
-  }
+  },
 );

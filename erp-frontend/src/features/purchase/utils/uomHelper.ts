@@ -95,3 +95,30 @@ export function previewQtyInStockUom(
   );
   return factor != null ? quantity * factor : quantity;
 }
+
+/**
+ * Convert price từ fromUom sang toUom.
+ * - purchaseUom → stockUom: dùng để tính sale_price (per stock UOM)
+ * - stockUom → purchaseUom: dùng để hiển thị price_in_purchase_uom
+ *
+ * Ví dụ: 7000/box, 1 box = 24 pcs
+ *   convertPrice(7000, box, pcs, conversions, productId) → 291.67/pcs
+ *   convertPrice(291.67, pcs, box, conversions, productId) → 7000/box
+ */
+export function convertPrice(
+  price: number,
+  fromUomId: number | null | undefined,
+  toUomId: number | null | undefined,
+  allConversions: UomConversion[],
+  productId?: number | null,
+): number {
+  if (!fromUomId || !toUomId || fromUomId === toUomId) return price;
+
+  // factor = how many toUom units in 1 fromUom
+  // e.g. box→pcs: factor=24 → 1 box = 24 pcs
+  // price per toUom = price per fromUom / factor
+  const factor = findFactor(allConversions, fromUomId, toUomId, productId);
+  if (factor == null) return price;
+
+  return price / factor;
+}

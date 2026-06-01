@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Button } from "../../../components/ui/Button";
-import { Input } from "../../../components/ui/input";
 import { Textarea } from "../../../components/ui/textarea";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../../store/store";
@@ -24,7 +23,27 @@ import { Partner } from "@/features/partner/store";
 import { Roles } from "@/types/enum";
 import { formatVND } from "@/utils/currency.helper";
 import { formatDateTime } from "@/utils/time.helper";
-import { AuditLogCard } from "../components/Common";
+import { AuditLogCard, StatusBadge } from "../components/Common";
+import {
+  ShoppingCart,
+  ArrowLeft,
+  Send,
+  CheckCircle,
+  XCircle,
+  Package,
+  Building2,
+  User,
+  Calendar,
+  Clock,
+  TrendingUp,
+  Mail,
+  Phone,
+  FileText,
+  Edit,
+  Hash,
+  ChevronRight,
+  Layers,
+} from "lucide-react";
 
 interface LineItem {
   id?: number;
@@ -45,6 +64,49 @@ interface LineItem {
   line_total_after_tax?: number;
 }
 
+/* ─── Small helpers ─── */
+function InfoRow({
+  icon,
+  label,
+  value,
+}: {
+  icon?: React.ReactNode;
+  label: string;
+  value?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between py-2 px-1">
+      <div className="flex items-center gap-2 text-gray-400 text-xs uppercase font-semibold tracking-wider min-w-0">
+        {icon && <span className="flex-shrink-0">{icon}</span>}
+        <span className="truncate">{label}</span>
+      </div>
+      <span className="text-sm font-medium text-gray-900 ml-4 text-right">
+        {value ?? "—"}
+      </span>
+    </div>
+  );
+}
+
+function SectionHeader({
+  icon,
+  title,
+  subtitle,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle?: string;
+}) {
+  return (
+    <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-100 bg-gray-50/60">
+      <span className="text-orange-500">{icon}</span>
+      <div>
+        <h2 className="text-sm font-semibold text-gray-700">{title}</h2>
+        {subtitle && <p className="text-xs text-gray-400">{subtitle}</p>}
+      </div>
+    </div>
+  );
+}
+
 export default function ViewPurchaseOrderPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -53,7 +115,6 @@ export default function ViewPurchaseOrderPage() {
   const purchaseOrder = useSelector(
     (state: RootState) => state.purchaseOrder.selectedPO,
   );
-
   const currentUser = useSelector((state: RootState) => state.auth.user);
 
   const [confirmSubmit, setConfirmSubmit] = useState(false);
@@ -61,10 +122,17 @@ export default function ViewPurchaseOrderPage() {
   const [confirmReject, setConfirmReject] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
-
-  // ✅ Audit log state
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [loadingAuditLogs, setLoadingAuditLogs] = useState(false);
+  const [date, setDate] = useState("");
+  const [reference, setReference] = useState("");
+  const [totalOrderTax, setTotalOrderTax] = useState(0);
+  const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
+  const [totalBeforeTax, setTotalBeforeTax] = useState(0);
+  const [totalAfterTax, setTotalAfterTax] = useState(0);
+  const [description, setDescription] = useState("");
+  const [supplierInfo, setSupplierInfo] = useState<Partner | null>(null);
+  const [lines, setLines] = useState<LineItem[]>([]);
 
   const refreshAuditLogs = async () => {
     if (!id) return;
@@ -75,24 +143,11 @@ export default function ViewPurchaseOrderPage() {
       ).unwrap();
       setAuditLogs(logs);
     } catch {
-      // silent
+      /* silent */
     } finally {
       setLoadingAuditLogs(false);
     }
   };
-
-  const [, setSupplierId] = useState("");
-  const [date, setDate] = useState("");
-  const [reference, setReference] = useState("");
-  const [totalOrderTax, setTotalOrderTax] = useState(0);
-  const [, setBranch] = useState("");
-  const [branches, setBranches] = useState<{ id: number; name: string }[]>([]);
-  const [totalBeforeTax, setTotalBeforeTax] = useState(0);
-  const [totalAfterTax, setTotalAfterTax] = useState(0);
-  const [description, setDescription] = useState("");
-  const [supplierInfo, setSupplierInfo] = useState<Partner | null>(null);
-
-  const [lines, setLines] = useState<LineItem[]>([]);
 
   useEffect(() => {
     dispatch(fetchAllBranchesThunk())
@@ -104,20 +159,11 @@ export default function ViewPurchaseOrderPage() {
   useEffect(() => {
     if (id) dispatch(fetchPurchaseOrderByIdThunk(Number(id)));
   }, [dispatch, id]);
-
-  // ✅ Load audit logs khi id thay đổi
   useEffect(() => {
     refreshAuditLogs();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const finalPO = purchaseOrder;
-  useEffect(() => {
-    if (finalPO?.branch_id && branches.length > 0) {
-      setBranch(finalPO.branch_id.toString());
-    }
-  }, [finalPO, branches]);
-
   const selectedBranchName =
     branches.find((b) => b.id === finalPO?.branch_id)?.name || "";
 
@@ -125,23 +171,18 @@ export default function ViewPurchaseOrderPage() {
     const linesToLoad = finalPO?.lines ?? [];
     if (linesToLoad.length === 0) return;
     const loadLines = async () => {
-      setSupplierId(finalPO?.supplier_id?.toString() || "");
-
       if (finalPO?.supplier_id) {
         try {
           const supplier = await dispatch(
             loadPartnerDetail(finalPO.supplier_id),
           ).unwrap();
           setSupplierInfo(supplier);
-        } catch (err) {
-          console.log(err);
+        } catch {
           setSupplierInfo(null);
         }
       }
-      if (finalPO?.order_date) {
-        const d = new Date(finalPO.order_date);
-        setDate(d.toISOString().split("T")[0]);
-      }
+      if (finalPO?.order_date)
+        setDate(new Date(finalPO.order_date).toISOString().split("T")[0]);
       setReference(finalPO?.po_no || "");
       setDescription(finalPO?.description || "");
       const enrichedLines = await Promise.all(
@@ -149,7 +190,6 @@ export default function ViewPurchaseOrderPage() {
           const product = await dispatch(
             fetchProductByIdThunk(Number(l.product_id)),
           ).unwrap();
-
           const tax = await dispatch(
             fetchTaxRatesByIdThunk(product.tax_rate_id || 0),
           ).unwrap();
@@ -158,7 +198,6 @@ export default function ViewPurchaseOrderPage() {
               Number(l.quantity || 0) *
               (tax?.rate || 0)) /
             100;
-
           return {
             id: l.id ?? undefined,
             temp_id: l.id ?? Date.now(),
@@ -169,6 +208,7 @@ export default function ViewPurchaseOrderPage() {
             sale_price: Number(l.unit_price || 0),
             quantity: Number(l.quantity || 0),
             uom_id: l.uom_id ?? null,
+            uom: (l as any).uom,
             discount: Number(l.discount ?? 0),
             tax_rate: tax?.rate || 0,
             tax_rate_id: product.tax_rate_id,
@@ -179,47 +219,29 @@ export default function ViewPurchaseOrderPage() {
           };
         }),
       );
-
       setLines(enrichedLines);
-
-      // tính totals
       const before = enrichedLines.reduce(
         (s, l) => s + (l.sale_price || 0) * l.quantity,
         0,
       );
       const tax = enrichedLines.reduce((s, l) => s + l.tax_amount, 0);
-      // const after = enrichedLines.reduce((s, l) => s + l.line_total, 0);
-
-      const after = finalPO?.total_after_tax ?? 0;
       setTotalBeforeTax(before);
       setTotalOrderTax(tax);
-      setTotalAfterTax(after);
+      setTotalAfterTax(finalPO?.total_after_tax ?? 0);
     };
-
     loadLines();
   }, [finalPO, dispatch]);
 
   const handleSubmitApproval = async () => {
     if (!finalPO) return;
-
     setSubmitting(true);
     try {
-      console.log(">>> Submitting PO id:", finalPO.id);
-      console.log(">>> PO status:", finalPO.status);
-
-      const result = await dispatch(
-        submitPurchaseOrderThunk(finalPO.id),
-      ).unwrap();
-
-      console.log(">>> Submit result:", result);
-
+      await dispatch(submitPurchaseOrderThunk(finalPO.id)).unwrap();
       toast.success("Purchase order submitted for approval!");
-
       await dispatch(fetchPurchaseOrderByIdThunk(finalPO.id)).unwrap();
       refreshAuditLogs();
       setConfirmSubmit(false);
     } catch (error) {
-      console.log(">>> Error caught:", error);
       toast.error(getErrorMessage(error));
     } finally {
       setSubmitting(false);
@@ -263,783 +285,691 @@ export default function ViewPurchaseOrderPage() {
     }
   };
 
-  return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 bg-gray-100 min-h-screen">
-      {/* HEADER */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-800">
-          Purchase Order Details
-        </h1>
+  const canSubmit =
+    finalPO &&
+    currentUser &&
+    currentUser.id === finalPO.creator.id &&
+    finalPO.status === PurchaseOrderStatus.DRAFT &&
+    finalPO.branch_id === currentUser.branch.id;
+  const canApproveReject =
+    currentUser?.role.code === Roles.PURCHASEMANAGER &&
+    finalPO?.status === PurchaseOrderStatus.WAITING_APPROVAL &&
+    finalPO?.branch_id === currentUser?.branch.id;
 
-        {finalPO &&
-          currentUser &&
-          currentUser.id === finalPO.creator.id &&
-          finalPO.status === PurchaseOrderStatus.DRAFT &&
-          finalPO.branch_id === currentUser.branch.id && (
-            <div className="flex gap-3">
-              <Button
-                className="bg-blue-600 hover:bg-blue-700 px-6"
-                onClick={() => navigate(`/purchase-orders/edit/${id}`)}
-              >
-                Edit Purchase Order
-              </Button>
-
-              <Button
-                className="bg-green-600 hover:bg-green-700 px-6"
-                onClick={() => setConfirmSubmit(true)}
-              >
-                Submit for Approval
-              </Button>
-            </div>
-          )}
-
-        {currentUser?.role.code === Roles.PURCHASEMANAGER &&
-          finalPO?.status === PurchaseOrderStatus.WAITING_APPROVAL &&
-          finalPO?.branch_id === currentUser?.branch.id && (
-            <div className="flex gap-3 mt-4">
-              {/* APPROVE BUTTON */}
-              <button
-                onClick={() => setConfirmApprove(true)}
-                className="flex items-center gap-2 px-5 py-2.5 
-               bg-emerald-600 text-white font-medium 
-               rounded-xl shadow-sm
-               hover:bg-emerald-700 hover:shadow-md 
-               active:scale-[0.97] transition-all"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-                Approve
-              </button>
-
-              {/* CANCEL BUTTON */}
-              <button
-                onClick={() => setConfirmReject(true)}
-                className="flex items-center gap-2 px-5 py-2.5 
-               bg-red-600 text-white font-medium 
-               rounded-xl shadow-sm
-               hover:bg-red-700 hover:shadow-md 
-               active:scale-[0.97] transition-all"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-                Cancel
-              </button>
-            </div>
-          )}
-      </div>
-
-      {/* MAIN TOP CARD */}
-      <div className="bg-white p-6 rounded-lg shadow space-y-6">
-        <h2 className="text-lg font-semibold text-gray-700 border-b pb-3">
-          General Information
-        </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {/* STATUS */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Status
-            </label>
-
-            <span
-              className={`
-      inline-flex items-center px-5 py-2.5 rounded-xl text-sm font-semibold
-      border shadow-sm
-      ${
-        finalPO?.status === PurchaseOrderStatus.DRAFT
-          ? "bg-gray-50 text-gray-700 border-gray-300"
-          : ""
-      }
-      ${
-        finalPO?.status === PurchaseOrderStatus.WAITING_APPROVAL
-          ? "bg-amber-50 text-amber-700 border-amber-300"
-          : ""
-      }
-      ${
-        finalPO?.status === PurchaseOrderStatus.CONFIRMED
-          ? "bg-blue-50 text-blue-700 border-blue-300"
-          : ""
-      }
-      ${
-        finalPO?.status === PurchaseOrderStatus.PARTIALLY_RECEIVED
-          ? "bg-purple-50 text-purple-700 border-purple-300"
-          : ""
-      }
-      ${
-        finalPO?.status === PurchaseOrderStatus.COMPLETED
-          ? "bg-emerald-50 text-emerald-700 border-emerald-300"
-          : ""
-      }
-      ${
-        finalPO?.status === PurchaseOrderStatus.CANCELLED
-          ? "bg-red-50 text-red-700 border-red-300"
-          : ""
-      }
-    `}
+  /* ─── Modal helper ─── */
+  const Modal = ({
+    open,
+    onClose,
+    icon,
+    iconBg,
+    title,
+    desc,
+    children,
+    footer,
+  }: any) => {
+    if (!open) return null;
+    return (
+      <div
+        style={{
+          minHeight: 400,
+          background: "rgba(0,0,0,0.45)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+        className="fixed inset-0 z-50"
+        onClick={(e) => e.target === e.currentTarget && onClose()}
+      >
+        <div className="bg-white w-[420px] rounded-2xl shadow-2xl overflow-hidden">
+          <div className="px-6 py-5 flex flex-col items-center text-center gap-3">
+            <div
+              className={`w-14 h-14 rounded-full flex items-center justify-center ${iconBg}`}
             >
-              ● {finalPO?.status?.replace("_", " ") || "N/A"}
+              {icon}
+            </div>
+            <h3 className="font-bold text-lg text-gray-900">{title}</h3>
+            {desc && <p className="text-sm text-gray-500">{desc}</p>}
+            {children}
+          </div>
+          <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
+            {footer}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50/60">
+      {/* ── Sticky top bar ── */}
+      <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm border-t-2 border-t-orange-500">
+        <div className="max-w-screen-2xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-sm min-w-0">
+            <span className="text-gray-400">Purchase</span>
+            <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
+            <span className="text-gray-400">Orders</span>
+            <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
+            <span className="font-semibold text-gray-900 truncate font-mono">
+              {finalPO?.po_no ?? `#${id}`}
             </span>
           </div>
-          {/* CREATED BY */}
-          <div>
-            <label className="text-sm font-medium text-gray-600">
-              Created By
-            </label>
-            <Input
-              className="mt-1"
-              value={finalPO?.creator.full_name || ""}
-              disabled
-            />
-          </div>
-
-          {/* DATE */}
-          <div>
-            <label className="text-sm font-medium text-gray-600">Date</label>
-            <Input className="mt-1" value={date} disabled />
-          </div>
-
-          {/* BRANCH */}
-          <div>
-            <label className="text-sm font-medium text-gray-600">Branch</label>
-            <Input className="mt-1" value={selectedBranchName} disabled />
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-br from-white via-blue-50 to-indigo-50 p-6 rounded-2xl border-2 border-blue-200 shadow-lg mt-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
-              <svg
-                className="w-6 h-6 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-            <h3 className="text-2xl font-bold text-gray-800">
-              Approval Information
-            </h3>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Creator Card */}
-            <div className="bg-white p-6 rounded-xl shadow-md border-2 border-blue-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
-              <div className="flex items-start gap-4">
-                {/* Avatar */}
-                <div className="relative flex-shrink-0">
-                  <img
-                    src={finalPO?.creator?.avatar_url}
-                    alt={finalPO?.creator?.full_name}
-                    className="w-20 h-20 rounded-xl object-cover border-4 border-blue-100 shadow-md"
-                  />
-                  <div className="absolute -bottom-2 -right-2 w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center border-3 border-white shadow-md">
-                    <svg
-                      className="w-4 h-4 text-white"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                      />
-                    </svg>
-                  </div>
-                </div>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-2">
-                    Created By
-                  </p>
-                  <h4 className="text-lg font-bold text-gray-800 mb-2 truncate">
-                    {finalPO?.creator?.full_name || "N/A"}
-                  </h4>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <svg
-                        className="w-4 h-4 text-blue-500 flex-shrink-0"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                        />
-                      </svg>
-                      <span className="text-sm truncate">
-                        {finalPO?.creator?.email || "N/A"}
-                      </span>
-                    </div>
-
-                    {finalPO?.creator?.phone && (
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <svg
-                          className="w-4 h-4 text-blue-500 flex-shrink-0"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                          />
-                        </svg>
-                        <span className="text-sm">{finalPO.creator.phone}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Approver Card */}
-            <div
-              className={`p-6 rounded-xl shadow-md border-2 transition-all duration-300 ${
-                finalPO?.approver
-                  ? "bg-white border-green-100 hover:shadow-xl hover:scale-[1.02]"
-                  : "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200"
-              }`}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {finalPO?.status && <StatusBadge status={finalPO.status} />}
+            {canSubmit && (
+              <>
+                <button
+                  onClick={() => navigate(`/purchase-orders/edit/${id}`)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-700 font-medium text-xs hover:bg-gray-50 transition"
+                >
+                  <Edit className="w-3.5 h-3.5" />
+                  Edit
+                </button>
+                <button
+                  onClick={() => setConfirmSubmit(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500 text-white font-medium text-xs shadow-sm hover:bg-orange-600 transition"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  Submit for Approval
+                </button>
+              </>
+            )}
+            {canApproveReject && (
+              <>
+                <button
+                  onClick={() => setConfirmApprove(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 text-white font-medium text-xs shadow-sm hover:bg-emerald-600 transition"
+                >
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  Approve
+                </button>
+                <button
+                  onClick={() => setConfirmReject(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500 text-white font-medium text-xs shadow-sm hover:bg-red-600 transition"
+                >
+                  <XCircle className="w-3.5 h-3.5" />
+                  Cancel
+                </button>
+              </>
+            )}
+            <button
+              onClick={() => navigate("/purchase/orders")}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-600 font-medium text-xs hover:bg-gray-50 transition"
             >
-              {finalPO?.approver ? (
-                <div className="flex items-start gap-4">
-                  {/* Avatar */}
-                  <div className="relative flex-shrink-0">
-                    <img
-                      src={finalPO.approver.avatar_url}
-                      alt={finalPO.approver.full_name}
-                      className="w-20 h-20 rounded-xl object-cover border-4 border-green-100 shadow-md"
-                    />
-                    <div className="absolute -bottom-2 -right-2 w-7 h-7 bg-green-500 rounded-full flex items-center justify-center border-3 border-white shadow-md">
-                      <svg
-                        className="w-4 h-4 text-white"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-2">
-                      Approved By
-                    </p>
-                    <h4 className="text-lg font-bold text-gray-800 mb-2 truncate">
-                      {finalPO.approver.full_name}
-                    </h4>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <svg
-                          className="w-4 h-4 text-green-500 flex-shrink-0"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                          />
-                        </svg>
-                        <span className="text-sm truncate">
-                          {finalPO.approver.email}
-                        </span>
-                      </div>
-
-                      {finalPO.approver.phone && (
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <svg
-                            className="w-4 h-4 text-green-500 flex-shrink-0"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                            />
-                          </svg>
-                          <span className="text-sm">
-                            {finalPO.approver.phone}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full py-8">
-                  <div className="w-20 h-20 bg-gray-200 rounded-xl flex items-center justify-center mb-4">
-                    <svg
-                      className="w-10 h-10 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                      />
-                    </svg>
-                  </div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                    Aprroved By
-                  </p>
-                  <p className="text-base font-semibold text-gray-500">
-                    No one has approved it yet
-                  </p>
-                  <p className="text-sm text-gray-400 mt-1 text-center">
-                    Waiting for assignment
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-          {/* Reject Reason Section */}
-          {finalPO?.reject_reason && (
-            <div className="mt-6">
-              <div className="bg-gradient-to-r from-red-50 to-rose-50 p-5 rounded-xl border-2 border-red-200 shadow-md">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
-                    <svg
-                      className="w-6 h-6 text-white"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="text-base font-bold text-red-700 mb-2 uppercase tracking-wide">
-                      Lý Do Từ Chối
-                    </h4>
-                    <p className="text-sm text-gray-700 leading-relaxed">
-                      {finalPO.reject_reason}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="bg-gray-50 p-5 rounded-xl border">
-          <h3 className="text-lg font-semibold mb-4 text-gray-700">
-            Supplier Information
-          </h3>
-
-          {supplierInfo ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              {/* Name */}
-              <div>
-                <p className="text-gray-500 text-xs mb-1">Name</p>
-                <p className="font-medium">{supplierInfo.name}</p>
-              </div>
-
-              {/* Contact Person */}
-              <div>
-                <p className="text-gray-500 text-xs mb-1">Contact Person</p>
-                <p className="font-medium">{supplierInfo.contact_person}</p>
-              </div>
-
-              {/* Phone */}
-              <div>
-                <p className="text-gray-500 text-xs mb-1">Phone</p>
-                <p className="font-medium">{supplierInfo.phone}</p>
-              </div>
-
-              {/* Email */}
-              <div>
-                <p className="text-gray-500 text-xs mb-1">Email</p>
-                <p className="font-medium">{supplierInfo.email}</p>
-              </div>
-
-              {/* Address (full width) */}
-              <div className="col-span-1 md:col-span-3">
-                <p className="text-gray-500 text-xs mb-1">Address</p>
-                <p className="font-medium whitespace-pre-line">
-                  {supplierInfo.address}
-                </p>
-              </div>
-
-              {/* Province */}
-              <div>
-                <p className="text-gray-500 text-xs mb-1">Province</p>
-                <p className="font-medium">{supplierInfo.province}</p>
-              </div>
-
-              {/* District */}
-              <div>
-                <p className="text-gray-500 text-xs mb-1">District</p>
-                <p className="font-medium">{supplierInfo.district}</p>
-              </div>
-
-              {/* Ward */}
-              <div>
-                <p className="text-gray-500 text-xs mb-1">Ward</p>
-                <p className="font-medium">{supplierInfo.ward}</p>
-              </div>
-
-              {/* Bank Name */}
-              <div>
-                <p className="text-gray-500 text-xs mb-1">Bank Name</p>
-                <p className="font-medium">{supplierInfo.bank_name}</p>
-              </div>
-
-              {/* Bank Account */}
-              <div>
-                <p className="text-gray-500 text-xs mb-1">Bank Account</p>
-                <p className="font-medium">{supplierInfo.bank_account}</p>
-              </div>
-            </div>
-          ) : (
-            <p className="text-gray-400 text-sm">Loading supplier info...</p>
-          )}
-        </div>
-
-        {/* TIMELINE */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
-          <div className="p-4 bg-gray-50 border rounded">
-            <div className="text-sm text-gray-700">
-              <span className="font-medium">Created At: </span>
-              {formatDateTime(finalPO?.created_at)}
-            </div>
-            <div className="text-sm text-gray-700 mt-1">
-              <span className="font-medium">Updated At: </span>
-              {formatDateTime(finalPO?.updated_at)}
-            </div>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-gray-600">
-              Reference
-            </label>
-            <Input className="mt-1" value={reference} disabled />
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Back
+            </button>
           </div>
         </div>
       </div>
 
-      {/* TABLE SECTION */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-700 border-b pb-3 mb-4">
-          Purchase Items
-        </h2>
+      <div className="max-w-screen-2xl mx-auto px-6 py-5">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start">
+          {/* ── Main Column ── */}
+          <div className="space-y-4 min-w-0">
+            {/* Line Items */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <SectionHeader
+                icon={<Package className="w-4 h-4" />}
+                title="Purchase Items"
+                subtitle={`${lines.length} item${lines.length !== 1 ? "s" : ""}`}
+              />
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100">
+                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider w-[40%]">
+                        Product
+                      </th>
+                      <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        Qty
+                      </th>
+                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        UOM
+                      </th>
+                      <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        Unit Price
+                      </th>
+                      <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        Tax
+                      </th>
+                      <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        Tax Amount
+                      </th>
+                      <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        Total (incl. tax)
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {lines.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={7}
+                          className="py-14 text-center text-gray-400 text-sm"
+                        >
+                          No items
+                        </td>
+                      </tr>
+                    ) : (
+                      lines.map((line) => (
+                        <tr
+                          key={line.id ?? line.temp_id}
+                          className="hover:bg-orange-50/30 transition-colors"
+                        >
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 border border-gray-100 flex-shrink-0">
+                                {line.product_image ? (
+                                  <img
+                                    src={line.product_image}
+                                    alt={line.product_name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <Package className="w-5 h-5 text-gray-400 m-auto mt-2.5" />
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-medium text-gray-900 truncate">
+                                  {line.product_name}
+                                </p>
+                                {line.sku && (
+                                  <p className="text-xs text-gray-400 font-mono">
+                                    SKU: {line.sku}
+                                  </p>
+                                )}
+                                {line.discount && line.discount > 0 && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-xs font-medium mt-0.5">
+                                    -{line.discount}%
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-gray-100 text-sm font-semibold text-gray-700">
+                              {line.quantity}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-left text-gray-600">
+                            {(line as any).uom?.name ?? "—"}
+                          </td>
+                          <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
+                            {formatVND(line.sale_price || 0)}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600 border border-blue-100">
+                              {line.tax_rate}% {line.tax_type}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right font-medium text-blue-600 tabular-nums">
+                            {formatVND(line.tax_amount)}
+                          </td>
+                          <td className="px-4 py-3 text-right font-bold text-gray-900 tabular-nums">
+                            {formatVND(
+                              line.line_total_after_tax ||
+                              line.line_total + line.tax_amount,
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-100 text-gray-700">
-                <th className="px-4 py-3 text-left w-10"></th>
-                <th className="px-4 py-3 text-left font-medium">Product</th>
-                <th className="px-4 py-3 text-center font-medium">Image</th>
-                <th className="px-4 py-3 text-center font-medium">Price</th>
-                <th className="px-4 py-3 text-center font-medium">Qty</th>
-                <th className="px-4 py-3 text-center font-medium">Discount</th>
-                <th className="px-4 py-3 text-center font-medium">Tax Type</th>
-                <th className="px-4 py-3 text-center font-medium">
-                  Tax Rate(%)
-                </th>
-                <th className="px-4 py-3 text-right font-medium">Tax Amount</th>
-                <th className="px-4 py-3 text-right font-medium">Line Total</th>
-                <th className="px-4 py-3 text-right font-medium">
-                  Total (incl. tax)
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {lines.length === 0 ? (
-                <tr>
-                  <td colSpan={11} className="text-center py-16 text-gray-500">
-                    Chưa có sản phẩm. Hãy tìm kiếm và thêm ở trên
-                  </td>
-                </tr>
-              ) : (
-                lines.map((line) => (
-                  <tr key={line.id} className="border-t hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <button
-                        className="text-red-500 hover:text-red-700"
-                        disabled
-                      ></button>
-                    </td>
+            {/* Supplier Info */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <SectionHeader
+                icon={<Building2 className="w-4 h-4" />}
+                title="Supplier Information"
+              />
+              <div className="p-5">
+                {supplierInfo ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div className="col-span-2 md:col-span-3">
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
+                        Company
+                      </p>
+                      <p className="font-bold text-gray-900 text-base">
+                        {supplierInfo.name}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
+                        Contact
+                      </p>
+                      <p className="text-sm text-gray-900">
+                        {supplierInfo.contact_person || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
+                        Phone
+                      </p>
+                      <div className="flex items-center gap-1.5 text-sm text-gray-900">
+                        <Phone className="w-3.5 h-3.5 text-gray-400" />
+                        {supplierInfo.phone || "—"}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
+                        Email
+                      </p>
+                      <div className="flex items-center gap-1.5 text-sm text-gray-900">
+                        <Mail className="w-3.5 h-3.5 text-gray-400" />
+                        <span className="truncate">
+                          {supplierInfo.email || "—"}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
+                        Bank
+                      </p>
+                      <p className="text-sm text-gray-900">
+                        {supplierInfo.bank_name || "—"}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-gray-400 text-sm">
+                    <Clock className="w-4 h-4 animate-spin" />
+                    Loading supplier info…
+                  </div>
+                )}
+              </div>
+            </div>
 
-                    <td className="px-4 py-3">
-                      <div>
-                        <div className="font-medium">{line.product_name}</div>
-                        {line.sku && (
-                          <div className="text-xs text-gray-500">
-                            SKU: {line.sku}
+            {/* Personnel */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                {
+                  title: "Created By",
+                  user: finalPO?.creator,
+                  color: "orange",
+                },
+                {
+                  title: "Approved By",
+                  user: finalPO?.approver,
+                  emptyText: "Waiting for approval",
+                  color: "green",
+                },
+              ].map(({ title, user, emptyText, color }) => (
+                <div
+                  key={title}
+                  className="bg-white rounded-xl border border-gray-200 p-5"
+                >
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
+                    {title}
+                  </p>
+                  {user ? (
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center flex-shrink-0">
+                        {(user as any).avatar_url ? (
+                          <img
+                            src={(user as any).avatar_url}
+                            alt={(user as any).full_name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <User className="w-5 h-5 text-gray-500" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-gray-900 text-sm">
+                          {(user as any).full_name}
+                        </p>
+                        {(user as any).email && (
+                          <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
+                            <Mail className="w-3 h-3 flex-shrink-0" />
+                            <span className="truncate">
+                              {(user as any).email}
+                            </span>
+                          </div>
+                        )}
+                        {(user as any).phone && (
+                          <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
+                            <Phone className="w-3 h-3 flex-shrink-0" />
+                            <span>{(user as any).phone}</span>
                           </div>
                         )}
                       </div>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <img
-                        src={line.product_image || "/placeholder.png"}
-                        alt={line.product_name}
-                        className="h-12 w-12 object-cover rounded-md mx-auto border"
-                      />
-                    </td>
-                    <td className="px-4 py-3 text-center capitalize">
-                      {formatVND(line.sale_price || 0)}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <Input
-                        type="number"
-                        className="w-20 mx-auto"
-                        value={line.quantity.toString()}
-                        disabled
-                      />
-                    </td>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-gray-400 text-sm italic">
+                      <Clock className="w-4 h-4" />
+                      {emptyText ?? "No data"}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
 
-                    {/* DISCOUNT */}
-                    <td className="px-4 py-3 text-center">
-                      {line.discount && line.discount > 0 ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-semibold">
-                          -{line.discount}%
-                        </span>
-                      ) : (
-                        <span className="text-gray-400 text-xs">—</span>
+            {/* Tracking */}
+            {finalPO && (
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <SectionHeader
+                  icon={<TrendingUp className="w-4 h-4" />}
+                  title="Tracking"
+                />
+                <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
+                  {[
+                    {
+                      label: "Receipt Status",
+                      status: (finalPO as any).receipt_status ?? "pending",
+                      fullColor: "bg-green-500",
+                      halfColor: "bg-orange-400",
+                    },
+                    {
+                      label: "Invoice Status",
+                      status: (finalPO as any).invoice_status ?? "not_invoiced",
+                      fullColor: "bg-green-500",
+                      halfColor: "bg-blue-400",
+                    },
+                  ].map(({ label, status, fullColor, halfColor }) => (
+                    <div key={label}>
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                        {label}
+                      </p>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                          <div
+                            className={`h-1.5 rounded-full transition-all ${status === "fully_received" ||
+                              status === "invoiced"
+                              ? `${fullColor} w-full`
+                              : status === "partial"
+                                ? `${halfColor} w-1/2`
+                                : "bg-gray-300 w-0"
+                              }`}
+                          />
+                        </div>
+                        <StatusBadge status={status} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {((finalPO as any).expected_delivery_date ||
+                  (finalPO as any).supplier_ref_no ||
+                  (finalPO as any).rfq_id) && (
+                    <div className="px-5 pb-5 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm border-t border-gray-100 pt-4">
+                      {(finalPO as any).expected_delivery_date && (
+                        <div>
+                          <p className="text-xs text-gray-400 mb-0.5">
+                            Expected Delivery
+                          </p>
+                          <p className="font-medium text-gray-800">
+                            {new Date(
+                              (finalPO as any).expected_delivery_date,
+                            ).toLocaleDateString("vi-VN")}
+                          </p>
+                        </div>
                       )}
-                    </td>
-
-                    <td className="px-4 py-3 text-center capitalize">
-                      {line.tax_type}
-                    </td>
-
-                    <td className="px-4 py-3 text-center">{line.tax_rate}%</td>
-
-                    <td className="px-4 py-3 text-right font-medium">
-                      {formatVND(line.tax_amount)}
-                    </td>
-
-                    <td className="px-4 py-3 text-right font-medium text-gray-700">
-                      {formatVND(line.line_total)}
-                    </td>
-
-                    {/* LINE TOTAL AFTER TAX */}
-                    <td className="px-4 py-3 text-right font-bold text-orange-600">
-                      {formatVND(
-                        line.line_total_after_tax ||
-                          line.line_total + line.tax_amount,
+                      {(finalPO as any).supplier_ref_no && (
+                        <div>
+                          <p className="text-xs text-gray-400 mb-0.5">
+                            Supplier Ref No
+                          </p>
+                          <p className="font-medium text-gray-800">
+                            {(finalPO as any).supplier_ref_no}
+                          </p>
+                        </div>
                       )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                      {(finalPO as any).rfq_id && (
+                        <div>
+                          <p className="text-xs text-gray-400 mb-0.5">From RFQ</p>
+                          <button
+                            onClick={() =>
+                              navigate(
+                                `/purchase/rfqs/${(finalPO as any).rfq_id}`,
+                              )
+                            }
+                            className="font-medium text-orange-600 hover:underline text-sm"
+                          >
+                            View RFQ →
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+              </div>
+            )}
+
+            {/* Cancellation reason */}
+            {finalPO?.reject_reason && (
+              <div className="flex items-start gap-3 px-5 py-4 bg-red-50 border border-red-200 rounded-xl">
+                <div className="w-8 h-8 rounded-lg bg-red-500 flex items-center justify-center flex-shrink-0">
+                  <XCircle className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-red-700 mb-1">
+                    Cancellation Reason
+                  </p>
+                  <p className="text-sm text-red-800 whitespace-pre-line">
+                    {finalPO.reject_reason}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Description */}
+            {description && (
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <SectionHeader
+                  icon={<FileText className="w-4 h-4" />}
+                  title="Notes"
+                />
+                <div className="p-5">
+                  <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
+                    {description}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Audit Log */}
+            <AuditLogCard
+              title="Change History"
+              logs={auditLogs}
+              loading={loadingAuditLogs}
+              variant="po"
+            />
+          </div>
+
+          {/* ── Sidebar ── */}
+          <aside className="space-y-3 lg:sticky lg:top-[3.5rem]">
+            {/* PO Info */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
+                <div className="flex items-center gap-2">
+                  <ShoppingCart className="w-4 h-4 text-orange-500" />
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Order Info
+                  </p>
+                </div>
+              </div>
+              <div className="p-4 space-y-0 divide-y divide-gray-50">
+                <InfoRow
+                  icon={<Hash className="w-3.5 h-3.5" />}
+                  label="Reference"
+                  value={<span className="font-mono text-xs">{reference}</span>}
+                />
+                <InfoRow
+                  icon={<Calendar className="w-3.5 h-3.5" />}
+                  label="Order Date"
+                  value={date}
+                />
+                <InfoRow
+                  icon={<Building2 className="w-3.5 h-3.5" />}
+                  label="Branch"
+                  value={selectedBranchName}
+                />
+                <InfoRow
+                  icon={<User className="w-3.5 h-3.5" />}
+                  label="Created By"
+                  value={finalPO?.creator?.full_name}
+                />
+                <InfoRow
+                  icon={<Clock className="w-3.5 h-3.5" />}
+                  label="Created At"
+                  value={formatDateTime(finalPO?.created_at)}
+                />
+                <InfoRow
+                  icon={<Clock className="w-3.5 h-3.5" />}
+                  label="Updated At"
+                  value={formatDateTime(finalPO?.updated_at)}
+                />
+              </div>
+            </div>
+
+            {/* Payment Summary */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-orange-500" />
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Payment Summary
+                  </p>
+                </div>
+              </div>
+              <div className="p-4 space-y-2.5">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Subtotal</span>
+                  <span className="font-medium text-gray-700 tabular-nums">
+                    {formatVND(totalBeforeTax)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Tax</span>
+                  <span className="font-medium text-blue-600 tabular-nums">
+                    {formatVND(totalOrderTax)}
+                  </span>
+                </div>
+                <div className="pt-2.5 border-t border-dashed border-gray-200 flex justify-between items-center">
+                  <span className="text-sm font-semibold text-gray-800">
+                    Total
+                  </span>
+                  <span className="text-base font-bold text-orange-600 tabular-nums">
+                    {formatVND(totalAfterTax)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Items count */}
+            <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <Layers className="w-3.5 h-3.5 text-orange-500" />
+                Line Items
+              </div>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-600">
+                {lines.length}
+              </span>
+            </div>
+          </aside>
         </div>
       </div>
 
-      {/* TOTALS */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div>
-          <label className="text-sm font-medium text-gray-600">
-            Total Before Tax
-          </label>
-          <Input className="mt-1" value={formatVND(totalBeforeTax)} disabled />
-        </div>
-
-        <div>
-          <label className="text-sm font-medium text-gray-600">
-            Order Tax Total
-          </label>
-          <Input className="mt-1" value={formatVND(totalOrderTax)} disabled />
-        </div>
-
-        <div>
-          <label className="text-sm font-medium text-gray-600">
-            Total After Tax
-          </label>
-          <Input className="mt-1" value={formatVND(totalAfterTax)} disabled />
-        </div>
-      </div>
-
-      {/* DESCRIPTION */}
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h2 className="text-lg font-semibold text-gray-700 mb-2">
-          Description
-        </h2>
-        <Textarea value={description} disabled rows={5} />
-      </div>
-
-      {/* AUDIT LOG */}
-      <AuditLogCard
-        title="Change History"
-        logs={auditLogs}
-        loading={loadingAuditLogs}
-        variant="po"
+      {/* ── Modals ── */}
+      <Modal
+        open={confirmSubmit}
+        onClose={() => setConfirmSubmit(false)}
+        icon={<Send className="w-7 h-7 text-orange-600" />}
+        iconBg="bg-orange-100"
+        title="Submit for Approval?"
+        desc="After submitting, you will no longer be able to edit this purchase order."
+        footer={
+          <>
+            <Button
+              onClick={() => setConfirmSubmit(false)}
+              disabled={submitting}
+              className="px-5 py-2 rounded-xl border border-gray-300 font-semibold text-gray-700 hover:bg-gray-50 text-sm"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmitApproval}
+              disabled={submitting}
+              className="px-5 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold text-sm"
+            >
+              {submitting ? "Submitting…" : "Yes, Submit"}
+            </Button>
+          </>
+        }
       />
 
-      {/* FOOTER BUTTON */}
-      <div className="flex justify-end">
-        <Button
-          className="bg-orange-500 hover:bg-orange-600 px-8"
-          onClick={() => navigate("/purchase/orders")}
-        >
-          Back to List
-        </Button>
-      </div>
+      <Modal
+        open={confirmApprove}
+        onClose={() => setConfirmApprove(false)}
+        icon={<CheckCircle className="w-7 h-7 text-emerald-600" />}
+        iconBg="bg-emerald-100"
+        title="Approve Purchase Order?"
+        desc="Once approved, this purchase order will be confirmed."
+        footer={
+          <>
+            <Button
+              onClick={() => setConfirmApprove(false)}
+              disabled={submitting}
+              className="px-5 py-2 rounded-xl border border-gray-300 font-semibold text-gray-700  hover:bg-gray-50 text-sm"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleApprove}
+              disabled={submitting}
+              className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-sm"
+            >
+              {submitting ? "Approving…" : "Approve"}
+            </Button>
+          </>
+        }
+      />
 
-      {confirmSubmit && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-sm">
-            <h2 className="text-lg font-bold mb-4">Submit for Approval?</h2>
-            <p className="text-gray-600 mb-6">
-              After submitting for approval, you will no longer be able to edit
-              this purchase order.
-            </p>
-
-            <div className="flex justify-end gap-3">
-              <Button
-                className="bg-gray-200 text-gray-700 hover:bg-gray-300"
-                onClick={() => setConfirmSubmit(false)}
-                disabled={submitting}
-              >
-                Cancel
-              </Button>
-
-              <Button
-                className="bg-green-600 hover:bg-green-700 text-white"
-                onClick={handleSubmitApproval}
-                disabled={submitting}
-              >
-                {submitting ? "Submitting..." : "Yes, Submit"}
-              </Button>
-            </div>
-          </div>
+      <Modal
+        open={confirmReject}
+        onClose={() => {
+          setConfirmReject(false);
+          setRejectReason("");
+        }}
+        icon={<XCircle className="w-6 h-6 text-red-600" />}
+        iconBg="bg-red-100"
+        title="Cancel Purchase Order"
+        desc="This action cannot be undone."
+        footer={
+          <>
+            <Button
+              onClick={() => {
+                setConfirmReject(false);
+                setRejectReason("");
+              }}
+              disabled={submitting}
+              className="px-5 py-2 rounded-xl border border-gray-300 font-semibold text-gray-700 hover:bg-gray-50 text-sm"
+            >
+              Close
+            </Button>
+            <Button
+              onClick={handleReject}
+              disabled={submitting || !rejectReason.trim()}
+              className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold text-sm disabled:opacity-50"
+            >
+              {submitting ? "Cancelling…" : "Cancel Order"}
+            </Button>
+          </>
+        }
+      >
+        <div className="w-full text-left">
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Reason <span className="text-red-500">*</span>
+          </label>
+          <Textarea
+            placeholder="Enter cancellation reason…"
+            value={rejectReason}
+            onChange={(value) => setRejectReason(value)}
+            rows={4}
+          />
         </div>
-      )}
-
-      {confirmApprove && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-sm">
-            <h2 className="text-lg font-bold mb-4">Approve Purchase Order?</h2>
-
-            <p className="text-gray-600 mb-6">
-              Once approved, this purchase order will be confirmed.
-            </p>
-
-            <div className="flex justify-end gap-3">
-              <Button
-                className="bg-gray-200 text-gray-700 hover:bg-gray-300"
-                onClick={() => setConfirmApprove(false)}
-                disabled={submitting}
-              >
-                Cancel
-              </Button>
-
-              <Button
-                className="bg-green-600 hover:bg-green-700 text-white"
-                onClick={handleApprove}
-                disabled={submitting}
-              >
-                {submitting ? "Approving..." : "Approve"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {confirmReject && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          {" "}
-          <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-sm">
-            {" "}
-            <h2 className="text-lg font-bold mb-4">
-              Cancel Purchase Order
-            </h2>{" "}
-            <p className="text-gray-600 mb-4">
-              Please provide a reason for cancellation.
-            </p>{" "}
-            <Textarea
-              placeholder="Enter reject reason..."
-              value={rejectReason}
-              onChange={(value) => setRejectReason(value)}
-              rows={4}
-              className="mb-6"
-            />{" "}
-            <div className="flex justify-end gap-3">
-              {" "}
-              <Button
-                className="bg-gray-200 text-gray-700 hover:bg-gray-300"
-                onClick={() => setConfirmReject(false)}
-                disabled={submitting}
-              >
-                {" "}
-                Close{" "}
-              </Button>{" "}
-              <Button
-                className="bg-red-600 hover:bg-red-700 text-white"
-                onClick={handleReject}
-                disabled={submitting}
-              >
-                {" "}
-                {submitting ? "Cancelling..." : "Cancel Order"}{" "}
-              </Button>{" "}
-            </div>{" "}
-          </div>{" "}
-        </div>
-      )}
+      </Modal>
     </div>
   );
 }

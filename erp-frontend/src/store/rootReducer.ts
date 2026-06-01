@@ -22,6 +22,7 @@ import { stockLocationReducer } from "../features/inventory/store";
 import { stockLotReducer } from "../features/inventory/store";
 import { physicalInventoryReducer } from "../features/inventory/store";
 import { chatReducer } from "../features/ai-chatbot/store/chatSlice";
+import { localRagReducer } from "../features/ai-local-rag/store/localRagSlice";
 import {
   leadReducer,
   opportunityReducer,
@@ -43,6 +44,8 @@ import apInvoiceRouter from "../features/purchase/store/apInvoice/apInvoice.slic
 import apPaymentReducer from "@/features/purchase/store/apPayment";
 import documentIntelligenceReducer from "@/features/purchase/store/documentIntelligence";
 import { narrativeReducer } from "@/features/ai-narrative/store/narrativeSlice";
+import { rfqReducer } from "@/features/purchase/store/rfq";
+import { purchaseReturnReducer } from "@/features/purchase/store/purchaseReturn";
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -65,6 +68,7 @@ const rootReducer = combineReducers({
   stockLot: stockLotReducer,
   physicalInventory: physicalInventoryReducer,
   chat: chatReducer,
+  localRag: localRagReducer,
   lead: leadReducer,
   opportunity: opportunityReducer,
   activity: activityReducer,
@@ -84,6 +88,8 @@ const rootReducer = combineReducers({
   apPayment: apPaymentReducer,
   documentIntelligence: documentIntelligenceReducer,
   narrative: narrativeReducer,
+  rfq: rfqReducer,
+  purchaseReturn: purchaseReturnReducer,
 });
 
 export default rootReducer;

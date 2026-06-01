@@ -5,6 +5,7 @@ import cors from "cors";
 import routes from "./routes";
 import { errorHandler } from "./core/middleware/error";
 import "./modules/master-data/services/currency.cron";
+import "./modules/purchase/services/purchase.cron";
 import { env } from "./config/env";
 import { ocrConfig } from "./modules/document-intelligence/services/ocrConfig.service";
 

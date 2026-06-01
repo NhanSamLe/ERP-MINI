@@ -84,6 +84,99 @@ export interface DuplicateWarning {
 }
 
 // =====================
+// Anomaly Detection
+// =====================
+export type AnomalySeverity = "low" | "medium" | "high" | "critical";
+export type RiskLevel = "low_risk" | "medium_risk" | "high_risk";
+
+export type AnomalyFlagType =
+  | "price_outlier_zscore"
+  | "price_outlier_iqr"
+  | "quantity_outlier_zscore"
+  | "quantity_outlier_5x"
+  | "invalid_quantity"
+  | "subtotal_mismatch"
+  | "total_mismatch"
+  | "line_amount_mismatch"
+  | "approval_threshold_proximity"
+  | "high_frequency_invoicing"
+  | "round_number_no_detail"
+  | "rejected_pattern_match"
+  | "period_end_spike"
+  | "new_vendor"
+  | "dormant_vendor_reactivation"
+  | "weekend_high_value"
+  | "future_dated_invoice"
+  | "stale_invoice"
+  | "vendor_tax_code_change"
+  | "multivariate_outlier"
+  | "insufficient_data";
+
+export interface AnomalyFlag {
+  type: AnomalyFlagType;
+  severity: AnomalySeverity;
+  description: string;
+  lineItemIndex?: number;
+  metadata?: Record<string, any>;
+}
+
+export interface AnomalyResult {
+  flags: AnomalyFlag[];
+  risk_score: number;
+  risk_level: RiskLevel;
+  math_consistent: boolean;
+  analyzed_at: string;
+  analysis_duration_ms: number;
+  skipped_reasons?: string[];
+}
+
+export interface AnomalyQueryFilters {
+  risk_level?: RiskLevel;
+  date_from?: string;
+  date_to?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface AnomalyListItem {
+  id: number;
+  document_id: number;
+  risk_score: number;
+  risk_level: RiskLevel;
+  flags: AnomalyFlag[];
+  math_consistent: boolean;
+  analyzed_at: string;
+  document?: {
+    id: number;
+    original_filename: string;
+    ocr_status: string;
+  };
+}
+
+export interface AnomalyPaginatedResult {
+  data: AnomalyListItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface BranchAnomalyStats {
+  totalByRiskLevel: Record<RiskLevel, number>;
+  topFlagTypes: Array<{ type: AnomalyFlagType; count: number }>;
+  weeklyTrend: Array<{ week: string; avgRiskScore: number; count: number }>;
+}
+
+export interface AnomalyThresholdConfig {
+  branchId: number;
+  zScoreThreshold: number;
+  iqrMultiplier: number;
+  frequencyThresholdPerHour: number;
+  approvalThresholdVnd: number;
+  highRiskScoreThreshold: number;
+  mediumRiskScoreThreshold: number;
+}
+
+// =====================
 // Enriched Result
 // =====================
 export interface EnrichedResult {
@@ -91,6 +184,8 @@ export interface EnrichedResult {
   vendor_match: VendorMatch | null;
   product_matches: ProductMatch[];
   duplicateWarning: DuplicateWarning | null;
+  anomaly_result: AnomalyResult | null;
+  warnings: string[];
 }
 
 // =====================

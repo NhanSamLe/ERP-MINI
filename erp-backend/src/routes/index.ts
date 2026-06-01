@@ -30,6 +30,14 @@ import glAccountRoutes from "../modules/finance/routes/glAccount.routes";
 import glJournalRoutes from "../modules/finance/routes/glJournal.routes";
 import apInvoiceRoutes from "../modules/purchase/routes/apInvoice.routes";
 import apPaymentRoutes from "../modules/purchase/routes/apPayment.route";
+import rfqRoutes from "../modules/purchase/routes/rfq.routes";
+import purchasePriceListRoutes from "../modules/purchase/routes/purchasePriceList.routes";
+import {
+  praRouter,
+  purchaseReturnRouter,
+  apDebitNoteRouter,
+  vendorRefundRouter,
+} from "../modules/purchase/routes/purchaseReturn.routes";
 import notificationRoutes from "../core/routes/notification.routes";
 import stockLocationRoutes from "../modules/inventory/routes/stockLocation.routes";
 import stockLotRoutes from "../modules/inventory/routes/stockLot.routes";
@@ -39,6 +47,7 @@ import documentRoutes, {
   matchingRouter,
 } from "../modules/document-intelligence/routes";
 import { narrativeRoutes } from "../modules/ai-narrative/routes";
+import aiRoutes from "../modules/ai/ai.routes";
 const router = express.Router();
 
 router.use("/auth", authRoutes);
@@ -74,6 +83,12 @@ router.use("/finance/gl-journals", glJournalRoutes);
 
 router.use("/ap/invoices", apInvoiceRoutes);
 router.use("/ap/payments", apPaymentRoutes);
+router.use("/purchase/rfqs", rfqRoutes);
+router.use("/purchase/price-lists", purchasePriceListRoutes);
+router.use("/purchase/return-authorizations", praRouter);
+router.use("/purchase/returns", purchaseReturnRouter);
+router.use("/purchase/debit-notes", apDebitNoteRouter);
+router.use("/purchase/vendor-refunds", vendorRefundRouter);
 
 import { reportRoutes } from "../modules/reports/routes";
 
@@ -84,7 +99,9 @@ router.use("/lots", stockLotRoutes);
 router.use("/physical-inventories", physicalInventoryRoutes);
 router.use("/chatbot", chatbotRoutes);
 router.use("/documents", documentRoutes);
+router.use("/document-intelligence", documentRoutes);
 router.use("/matching", matchingRouter);
 router.use("/ai-narrative", narrativeRoutes);
+router.use("/ai", aiRoutes);
 
 export default router;

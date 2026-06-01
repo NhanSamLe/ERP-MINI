@@ -1,4 +1,4 @@
-﻿import {
+import {
   Select,
   SelectTrigger,
   SelectValue,
@@ -17,6 +17,9 @@ import { fetchProductByIdThunk } from "../../../../products/store/product.thunks
 import { StockMove } from "../../../store/stock/stockmove/stockMove.types";
 import { LocationSelect } from "../../LocationSelect";
 import { UomSelect } from "../../UomSelect";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../../../../../components/ui/dialog";
+import { Card, CardHeader, CardTitle, CardContent } from "../../../../../components/ui/Card";
+import { Package, Trash2, Calendar, Clipboard, ShoppingCart, ListCollapse } from "lucide-react";
 
 export interface LineReceiptItem {
   id: number | undefined;
@@ -83,8 +86,6 @@ export default function EditReceiptModal({
   const [selectedPOId, setSelectedPOId] = useState<string>("");
   const [isInitializing, setIsInitializing] = useState(false);
 
-  //
-
   const selectedWarehouseName =
     warehouses.find((w) => w.id === data?.warehouse_to_id)?.name || "";
 
@@ -103,7 +104,6 @@ export default function EditReceiptModal({
       sku: line.product?.sku ?? "",
       image: line.product?.image_url ?? "",
       uom: line.product?.uom?.name ?? line.product?.uom?.code ?? "",
-      // Stock move line đã lưu theo stock UOM → dùng product.uom_id
       uom_id: line.uom_id ?? line.product?.uom_id ?? null,
       uomOptions: [
         ...(line.product?.uom ? [line.product.uom] : []),
@@ -112,7 +112,6 @@ export default function EditReceiptModal({
           ? [line.product.purchaseUom]
           : []),
       ],
-      // quantity trong stock move line đã là stock UOM quantity
       quantity: Number(line.quantity) ?? 0,
       location_to_id: line.location_to_id ?? null,
     }));
@@ -148,7 +147,6 @@ export default function EditReceiptModal({
         setLineItems([]);
         return;
       }
-      // Skip khi đang init từ data — lineItems đã được load từ data.lines
       if (isInitializing) {
         setIsInitializing(false);
         return;
@@ -164,12 +162,11 @@ export default function EditReceiptModal({
       }
 
       try {
-        // Gọi API song song cho từng product
         const fetchedProducts = await Promise.all(
           po.lines.map(async (line) => {
             const result = await dispatch(
               fetchProductByIdThunk(line.product_id),
-            ).unwrap(); // ép return type là Product
+            ).unwrap();
 
             return {
               id: undefined,
@@ -177,7 +174,6 @@ export default function EditReceiptModal({
               name: result.name,
               sku: result.sku,
               uom: result.uom?.name ?? result.uom?.code ?? "",
-              // Stock move luôn dùng stock UOM (uom_id của product)
               uom_id: result.uom_id ?? null,
               uomOptions: [
                 ...(result.uom ? [result.uom] : []),
@@ -187,8 +183,6 @@ export default function EditReceiptModal({
                   : []),
               ],
               image: result.image_url,
-              // Dùng qty_in_stock_uom (đã quy đổi về stock UOM)
-              // Fallback về line.quantity nếu PO cũ chưa có field này
               quantity: line.qty_in_stock_uom ?? line.quantity,
             } as LineReceiptItem;
           }),
@@ -243,214 +237,240 @@ export default function EditReceiptModal({
       referenceNo: selectedPOId,
     };
 
-    console.log("Final Form:", finalForm);
-    console.log("Items Lines:", lineItems);
     onSubmit({
       form: finalForm,
       lineItems,
     });
   };
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-      <div className="bg-white w-[900px] rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
-        {/* HEADER */}
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Edit Receipt</h2>
-          <button onClick={onClose} className="!text-black text-xl font-bold">
-            ✖
-          </button>
-        </div>
-
-        {/* Warehouse */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="font-medium">Warehouse *</label>
-            <Select
-              value={form.warehouse}
-              onValueChange={(v) =>
-                setForm((prev) => ({ ...prev, warehouse: v }))
-              }
-              defaultLabel={selectedWarehouseName}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select" />
-              </SelectTrigger>
-              <SelectContent>
-                {warehouses.map((w) => (
-                  <SelectItem key={w.id} value={String(w.id)}>
-                    {w.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="w-full sm:max-w-4xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader className="pb-4 border-b border-slate-100 flex flex-row items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-500 shadow-sm shrink-0">
+            <Package className="w-5 h-5" />
           </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Move Date</label>
-          <Input
-            type="date"
-            value={form.move_date}
-            onChange={(value) => setForm({ ...form, move_date: value })}
-            max={new Date().toISOString().split("T")[0]}
-          />
-        </div>
+          <div>
+            <DialogTitle className="text-lg font-bold text-slate-900">Edit Stock Receipt</DialogTitle>
+            <DialogDescription className="text-xs text-slate-400 mt-0.5">
+              Modify raw materials or products received from incoming purchase orders
+            </DialogDescription>
+          </div>
+        </DialogHeader>
 
-        {/* PO SELECT */}
-        <div className="mt-4">
-          <label className="font-medium">Purchase Order *</label>
-          <Select
-            value={selectedPOId}
-            onValueChange={setSelectedPOId}
-            defaultLabel={selectedPurchaseOrder}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select Purchase Order" />
-            </SelectTrigger>
-            <SelectContent>
-              {purchaseOrder.items?.map((po: PurchaseOrder) => (
-                <SelectItem key={po.id} value={po.id.toString()}>
-                  {po.po_no}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <div className="space-y-6 pt-4">
+          {/* Main info fields */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* Warehouse Select */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Warehouse *</label>
+              <Select
+                value={form.warehouse}
+                onValueChange={(v) =>
+                  setForm((prev) => ({ ...prev, warehouse: v }))
+                }
+                defaultLabel={selectedWarehouseName}
+              >
+                <SelectTrigger className="w-full h-10 bg-white border-slate-200 focus:ring-orange-500 focus:border-orange-500 rounded-lg">
+                  <SelectValue placeholder="Select warehouse" />
+                </SelectTrigger>
+                <SelectContent>
+                  {warehouses.map((w) => (
+                    <SelectItem key={w.id} value={String(w.id)}>
+                      {w.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        {/* Reference Number */}
-        <div className="mt-4">
-          <label className="font-medium">Reference Number</label>
-          <Input value={form.referenceNo} disabled />
-        </div>
+            {/* Move Date */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5 text-slate-400" /> Move Date *
+              </label>
+              <Input
+                type="date"
+                value={form.move_date}
+                onChange={(value) => setForm({ ...form, move_date: value })}
+                className="border-slate-200 focus:ring-orange-400 focus:border-orange-400 h-10"
+                max={new Date().toISOString().split("T")[0]}
+              />
+            </div>
 
-        <div className="mt-4">
-          <label className="font-medium">Move Number</label>
-          <Input value={form.move_no} disabled />
-        </div>
+            {/* Purchase Order Select */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                <ShoppingCart className="w-3.5 h-3.5 text-slate-400" /> Purchase Order *
+              </label>
+              <Select
+                value={selectedPOId}
+                onValueChange={setSelectedPOId}
+                defaultLabel={selectedPurchaseOrder}
+              >
+                <SelectTrigger className="w-full h-10 bg-white border-slate-200 focus:ring-orange-500 focus:border-orange-500 rounded-lg">
+                  <SelectValue placeholder="Select PO" />
+                </SelectTrigger>
+                <SelectContent>
+                  {purchaseOrder.items?.map((po: PurchaseOrder) => (
+                    <SelectItem key={po.id} value={po.id.toString()}>
+                      {po.po_no}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        {/* TABLE */}
-        <div className="mt-3 border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-100 text-left">
-              <tr>
-                <th className="p-2">Product</th>
-                <th className="p-2">SKU</th>
-                <th className="p-2">UOM</th>
-                <th className="p-2">Qty</th>
-                <th className="p-2">Location (To)</th>
-                <th className="p-2 w-[60px]"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {lineItems.length > 0 ? (
-                lineItems.map((p) => (
-                  <tr key={p.product_id} className="border-t">
-                    <td className="p-2 flex items-center gap-3">
-                      <img
-                        src={p.image}
-                        className="w-10 h-10 rounded object-cover"
-                      />
-                      {p.name}
-                    </td>
-                    <td className="p-2">{p.sku}</td>
-                    <td className="p-2 min-w-[120px]">
-                      <UomSelect
-                        value={p.uom_id}
-                        onChange={(uomId) =>
-                          setLineItems((prev) =>
-                            prev.map((x) =>
-                              x.product_id === p.product_id
-                                ? { ...x, uom_id: uomId }
-                                : x,
-                            ),
-                          )
-                        }
-                      />
-                    </td>
-                    <td className="p-2">
-                      <input
-                        type="number"
-                        value={p.quantity}
-                        min={1}
-                        className="w-20 border rounded px-2 py-1"
-                        onChange={(e) =>
-                          handleQuantityChange(
-                            p.product_id,
-                            Number(e.target.value),
-                          )
-                        }
-                      />
-                    </td>
-                    <td className="p-2 min-w-[130px]">
-                      <LocationSelect
-                        warehouseId={
-                          form.warehouse ? Number(form.warehouse) : null
-                        }
-                        value={p.location_to_id}
-                        onChange={(locId) =>
-                          setLineItems((prev) =>
-                            prev.map((x) =>
-                              x.product_id === p.product_id
-                                ? { ...x, location_to_id: locId }
-                                : x,
-                            ),
-                          )
-                        }
-                        types={["internal", "input"]}
-                        placeholder="— Select —"
-                      />
-                    </td>
-                    <td className="p-2 text-right">
-                      <button
-                        className="text-red-500 hover:underline"
-                        onClick={() =>
-                          setLineItems((prev) =>
-                            prev.filter((x) => x.product_id !== p.product_id),
-                          )
-                        }
-                      >
-                        Delete
-                      </button>
-                    </td>
+            {/* Reference Number */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                <Clipboard className="w-3.5 h-3.5 text-slate-400" /> Reference No
+              </label>
+              <Input 
+                value={form.referenceNo || "Auto-assigned"} 
+                disabled 
+                className="h-10 border-slate-200 bg-slate-50 text-slate-500 font-mono font-semibold"
+              />
+            </div>
+
+            {/* Move Number */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Move Number</label>
+              <Input 
+                value={form.move_no} 
+                disabled 
+                className="h-10 border-slate-200 bg-slate-50 text-slate-500 font-mono font-semibold"
+              />
+            </div>
+          </div>
+
+          {/* TABLE SECTION */}
+          <Card className="border-slate-100 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">
+            <CardHeader className="px-5 py-3.5 bg-slate-50/15 border-b border-slate-100 flex flex-row items-center gap-2">
+              <ListCollapse className="w-4.5 h-4.5 text-slate-700" />
+              <CardTitle className="text-sm font-semibold text-slate-800">Dispatch Item Lines</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50/80 text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-slate-100">
+                  <tr>
+                    <th className="py-3.5 px-5 text-left">Product</th>
+                    <th className="py-3.5 px-5 text-left">SKU</th>
+                    <th className="py-3.5 px-5 text-left w-28">UOM</th>
+                    <th className="py-3.5 px-5 text-right w-24">Qty</th>
+                    <th className="py-3.5 px-5 text-left w-40">Location (To)</th>
+                    <th className="py-3.5 px-5 text-center w-14"></th>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={6} className="p-4 text-center text-gray-500">
-                    No products selected
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {lineItems.length > 0 ? (
+                    lineItems.map((p) => (
+                      <tr key={p.product_id} className="hover:bg-slate-50/30 transition-colors align-middle">
+                        <td className="py-3 px-5 flex items-center gap-3">
+                          {p.image && (
+                            <img
+                              src={p.image}
+                              className="w-9 h-9 rounded-lg object-cover border border-slate-100 bg-slate-50 shadow-xxs shrink-0"
+                            />
+                          )}
+                          <span className="font-semibold text-slate-800">{p.name}</span>
+                        </td>
+                        <td className="py-3 px-5 font-mono text-xs font-bold text-slate-450 uppercase">{p.sku}</td>
+                        <td className="py-3 px-5">
+                          <UomSelect
+                            value={p.uom_id}
+                            onChange={(uomId) =>
+                              setLineItems((prev) =>
+                                prev.map((x) =>
+                                  x.product_id === p.product_id ? { ...x, uom_id: uomId } : x,
+                                ),
+                              )
+                            }
+                          />
+                        </td>
+                        <td className="py-3 px-5 text-right">
+                          <input
+                            type="number"
+                            value={p.quantity}
+                            min={1}
+                            step="any"
+                            className="w-20 h-9 border border-slate-200 rounded-lg px-2.5 text-right font-mono font-bold focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
+                            onChange={(e) =>
+                              handleQuantityChange(p.product_id, Number(e.target.value))
+                            }
+                          />
+                        </td>
+                        <td className="py-3 px-5">
+                          <LocationSelect
+                            warehouseId={
+                              form.warehouse ? Number(form.warehouse) : null
+                            }
+                            value={p.location_to_id}
+                            onChange={(locId) =>
+                              setLineItems((prev) =>
+                                prev.map((x) =>
+                                  x.product_id === p.product_id
+                                    ? { ...x, location_to_id: locId }
+                                    : x,
+                                ),
+                              )
+                            }
+                            types={["internal", "input"]}
+                            placeholder="— Select —"
+                          />
+                        </td>
+                        <td className="py-3 px-5 text-center">
+                          <button
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-rose-600 bg-white hover:bg-rose-50 hover:border-rose-100 transition-colors shadow-sm"
+                            onClick={() =>
+                              setLineItems((prev) =>
+                                prev.filter((x) => x.product_id !== p.product_id),
+                              )
+                            }
+                            title="Delete Line"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="py-12 text-center text-slate-400 italic">
+                        No purchase order selected or loaded product lines.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
 
-        {/* Notes */}
-        <div className="mt-4">
-          <label className="font-medium">Notes</label>
-          <Textarea
-            value={form.notes}
-            onChange={(v) => setForm((prev) => ({ ...prev, notes: v }))}
-            placeholder="Notes"
-            className="min-h-[80px]"
-          />
-        </div>
+          {/* Notes */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Internal Notes</label>
+            <Textarea
+              value={form.notes}
+              onChange={(v) => setForm((prev) => ({ ...prev, notes: v }))}
+              placeholder="Provide notes or special receipt instructions..."
+              className="min-h-[80px] border-slate-200 focus:ring-orange-400 focus:border-orange-400 rounded-lg text-sm placeholder:text-slate-400"
+            />
+          </div>
 
-        {/* FOOTER */}
-        <div className="flex justify-end gap-3 mt-6">
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            className="bg-orange-500 hover:bg-orange-600 text-white"
-            onClick={handleSubmit}
-          >
-            Update
-          </Button>
+          {/* FOOTER */}
+          <DialogFooter className="pt-4 border-t border-slate-100 flex-row justify-end gap-3">
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-orange-500 hover:bg-orange-600 text-white"
+              onClick={handleSubmit}
+            >
+              Update Receipt
+            </Button>
+          </DialogFooter>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

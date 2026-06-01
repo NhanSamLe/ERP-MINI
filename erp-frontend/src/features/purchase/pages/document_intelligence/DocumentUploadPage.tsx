@@ -10,6 +10,10 @@ import {
   XCircle,
   Loader2,
   ChevronRight,
+  ShieldAlert,
+  ShieldCheck,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
@@ -23,6 +27,10 @@ import {
   OcrLineItem,
   ConfirmPayload,
   ConfirmLineItem,
+  AnomalyResult,
+  AnomalyFlag,
+  AnomalySeverity,
+  RiskLevel,
 } from "../../store/documentIntelligence/documentIntelligence.types";
 import { documentIntelligenceApi } from "../../api/documentIntelligence.api";
 import { OcrStatus } from "../../constants/purchaseStatus.enum";
@@ -50,6 +58,200 @@ function ConfidenceBadge({ value }: { value: number }) {
     <span className="px-3 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-700">
       Confidence: {pct}%
     </span>
+  );
+}
+
+/* ─── Anomaly Result Panel ─── */
+function formatFlagType(type: string): string {
+  const map: Record<string, string> = {
+    price_outlier_zscore: "Price Outlier (Z-Score)",
+    price_outlier_iqr: "Price Outlier (IQR)",
+    quantity_outlier_zscore: "Quantity Outlier (Z-Score)",
+    quantity_outlier_5x: "Quantity Outlier (5×)",
+    invalid_quantity: "Invalid Quantity",
+    subtotal_mismatch: "Subtotal Mismatch",
+    total_mismatch: "Total Mismatch",
+    line_amount_mismatch: "Line Amount Mismatch",
+    approval_threshold_proximity: "Near Approval Threshold",
+    high_frequency_invoicing: "High Frequency Invoicing",
+    round_number_no_detail: "Round Number, No Detail",
+    rejected_pattern_match: "Rejected Pattern Match",
+    period_end_spike: "Period-End Spike",
+    new_vendor: "New Vendor",
+    dormant_vendor_reactivation: "Dormant Vendor",
+    weekend_high_value: "Weekend High Value",
+    future_dated_invoice: "Future-Dated Invoice",
+    stale_invoice: "Stale Invoice",
+    vendor_tax_code_change: "Tax Code Change",
+    multivariate_outlier: "Multivariate Outlier",
+    insufficient_data: "Insufficient Data",
+  };
+  return map[type] ?? type;
+}
+
+function SeverityBadge({ severity }: { severity: AnomalySeverity }) {
+  const config: Record<
+    AnomalySeverity,
+    { bg: string; text: string; label: string }
+  > = {
+    critical: { bg: "bg-red-100", text: "text-red-700", label: "Critical" },
+    high: { bg: "bg-orange-100", text: "text-orange-700", label: "High" },
+    medium: { bg: "bg-amber-100", text: "text-amber-700", label: "Medium" },
+    low: { bg: "bg-gray-100", text: "text-gray-600", label: "Low" },
+  };
+  const c = config[severity];
+  return (
+    <span
+      className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold ${c.bg} ${c.text}`}
+    >
+      {c.label}
+    </span>
+  );
+}
+
+function RiskLevelBadge({ level }: { level: RiskLevel }) {
+  const config: Record<RiskLevel, { bg: string; text: string; label: string }> =
+    {
+      high_risk: { bg: "bg-red-100", text: "text-red-700", label: "High Risk" },
+      medium_risk: {
+        bg: "bg-amber-100",
+        text: "text-amber-700",
+        label: "Medium Risk",
+      },
+      low_risk: {
+        bg: "bg-green-100",
+        text: "text-green-700",
+        label: "Low Risk",
+      },
+    };
+  const c = config[level];
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${c.bg} ${c.text}`}
+    >
+      {c.label}
+    </span>
+  );
+}
+
+interface AnomalyResultPanelProps {
+  anomalyResult: AnomalyResult;
+  warnings?: string[];
+}
+
+function AnomalyResultPanel({
+  anomalyResult,
+  warnings,
+}: AnomalyResultPanelProps) {
+  const [flagsExpanded, setFlagsExpanded] = useState(false);
+  const isHighRisk =
+    anomalyResult.risk_level === "high_risk" ||
+    warnings?.includes("high_risk_anomaly");
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-3">
+      {/* Header row */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <ShieldAlert className="w-4 h-4 text-orange-500" />
+          <span className="text-sm font-semibold text-gray-800">
+            Anomaly Detection
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <RiskLevelBadge level={anomalyResult.risk_level} />
+          <span className="text-xs text-gray-500">
+            Score:{" "}
+            <span className="font-semibold text-gray-700">
+              {(anomalyResult.risk_score * 100).toFixed(0)}%
+            </span>
+          </span>
+        </div>
+      </div>
+
+      {/* High risk warning banner */}
+      {isHighRisk && (
+        <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-red-800">
+              Manual Review Required
+            </p>
+            <p className="text-xs text-red-700 mt-0.5">
+              This invoice has been flagged as high risk and requires manual
+              review before approval.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Math consistency */}
+      <div className="flex items-center gap-2">
+        {anomalyResult.math_consistent ? (
+          <>
+            <ShieldCheck className="w-3.5 h-3.5 text-green-600" />
+            <span className="text-xs text-green-700">
+              Math consistent — totals verified
+            </span>
+          </>
+        ) : (
+          <>
+            <XCircle className="w-3.5 h-3.5 text-red-500" />
+            <span className="text-xs text-red-700">
+              Math inconsistency detected — totals do not match
+            </span>
+          </>
+        )}
+      </div>
+
+      {/* Flags list */}
+      {anomalyResult.flags.length > 0 && (
+        <div>
+          <button
+            onClick={() => setFlagsExpanded((v) => !v)}
+            className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-orange-600 transition-colors"
+          >
+            {flagsExpanded ? (
+              <ChevronUp className="w-3.5 h-3.5" />
+            ) : (
+              <ChevronDown className="w-3.5 h-3.5" />
+            )}
+            {anomalyResult.flags.length} anomaly flag
+            {anomalyResult.flags.length !== 1 ? "s" : ""} detected
+          </button>
+
+          {flagsExpanded && (
+            <div className="mt-2 space-y-1.5">
+              {anomalyResult.flags.map((flag: AnomalyFlag, idx: number) => (
+                <div
+                  key={idx}
+                  className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-gray-100"
+                >
+                  <SeverityBadge severity={flag.severity} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-gray-800">
+                      {formatFlagType(flag.type)}
+                      {flag.lineItemIndex != null && (
+                        <span className="ml-1 text-gray-400 font-normal">
+                          (line {flag.lineItemIndex + 1})
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs text-gray-600 mt-0.5">
+                      {flag.description}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {anomalyResult.flags.length === 0 && (
+        <p className="text-xs text-gray-500">No anomaly flags detected.</p>
+      )}
+    </div>
   );
 }
 
@@ -629,6 +831,14 @@ export default function DocumentUploadPage() {
               )}
             </div>
 
+            {/* Anomaly Detection Panel */}
+            {result.anomaly_result && (
+              <AnomalyResultPanel
+                anomalyResult={result.anomaly_result}
+                warnings={result.warnings}
+              />
+            )}
+
             {/* Editable invoice fields */}
             <div className="bg-white rounded-xl shadow-sm border p-5 space-y-4">
               <h3 className="font-semibold text-gray-800">
@@ -712,7 +922,7 @@ export default function DocumentUploadPage() {
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b">
+                  <thead className="bg-orange-50/60 border-b border-orange-100">
                     <tr>
                       <th className="px-4 py-3 text-left font-semibold text-gray-700">
                         Item Name
@@ -740,7 +950,7 @@ export default function DocumentUploadPage() {
                       </tr>
                     )}
                     {editItems.map((item, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50">
+                      <tr key={idx} className="hover:bg-orange-50/40 transition-colors">
                         <td className="px-4 py-3">
                           <input
                             type="text"

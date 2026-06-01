@@ -60,6 +60,21 @@ export function formatNumber(
     maximumFractionDigits: fractionDigits,
   }).format(num);
 }
+
+export function formatQuantity(
+  value: number | string | null | undefined,
+): string {
+  if (value == null || value === "") return "0";
+  const num = Number(value);
+  if (isNaN(num)) return "0";
+
+  // Format quantity as integer without decimal places
+  return new Intl.NumberFormat("vi-VN", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(num);
+}
+
 export function formatPercent(
   value: number | string,
   fractionDigits = 2,
@@ -78,11 +93,11 @@ export function formatPercent(
  */
 export function formatCurrency(
   value: number | null | undefined,
-  currencySymbol: string = "₫"
+  currencySymbol: string = "₫",
 ): string {
   if (value == null) return `0 ${currencySymbol}`;
   const num = Number(value);
   if (isNaN(num)) return `0 ${currencySymbol}`;
-  
+
   return `${num.toLocaleString("vi-VN")} ${currencySymbol}`;
 }

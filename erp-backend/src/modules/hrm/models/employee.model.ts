@@ -16,10 +16,12 @@ export interface EmployeeAttrs {
   base_salary: number;
   bank_account?: string;
   bank_name?: string;
-  status: "active" | "inactive";
+  status: "active" | "inactive" | "resigned";
+  resign_date?: Date;
+  resign_reason?: string;
 }
 
-type EmployeeCreation = Optional<EmployeeAttrs, "id" | "status">;
+type EmployeeCreation = Optional<EmployeeAttrs, "id" | "status" | "resign_date" | "resign_reason">;
 
 export class Employee extends Model<EmployeeAttrs, EmployeeCreation> implements EmployeeAttrs {
   public id!: number;
@@ -36,7 +38,9 @@ export class Employee extends Model<EmployeeAttrs, EmployeeCreation> implements 
   public base_salary!: number;
   public bank_account?: string;
   public bank_name?: string;
-  public status!: "active" | "inactive";
+  public status!: "active" | "inactive" | "resigned";
+  public resign_date?: Date;
+  public resign_reason?: string;
 }
 
 Employee.init(
@@ -55,7 +59,9 @@ Employee.init(
     base_salary: { type: DataTypes.DECIMAL(18,2), allowNull: false },
     bank_account: { type: DataTypes.STRING(50) },
     bank_name: { type: DataTypes.STRING(100) },
-    status: { type: DataTypes.ENUM("active","inactive"), defaultValue: "active" }
+    status: { type: DataTypes.ENUM("active", "inactive", "resigned"), defaultValue: "active" },
+    resign_date: { type: DataTypes.DATEONLY, allowNull: true },
+    resign_reason: { type: DataTypes.TEXT, allowNull: true },
   },
   { sequelize, tableName: "employees", timestamps: true, createdAt: "created_at", updatedAt: "updated_at" }
 );

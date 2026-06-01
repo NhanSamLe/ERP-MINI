@@ -47,11 +47,11 @@ PurchaseOrderAuditLog.init(
       allowNull: false,
     },
     old_values: {
-      type: DataTypes.JSONB,
+      type: DataTypes.JSON,
       allowNull: true,
     },
     new_values: {
-      type: DataTypes.JSONB,
+      type: DataTypes.JSON,
       allowNull: true,
     },
     changed_by: {

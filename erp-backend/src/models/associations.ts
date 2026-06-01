@@ -78,6 +78,17 @@ import { ArCreditNoteLine } from "../modules/sales/models/arCreditNoteLine.model
 import { ArRefund } from "../modules/sales/models/arRefund.model";
 import { InvoiceDocument } from "../modules/document-intelligence/models/invoiceDocument.model";
 import { OcrFieldMapping } from "../modules/document-intelligence/models/ocrFieldMapping.model";
+// Phase 5: Purchase Enhancement
+import { PurchaseRfq } from "../modules/purchase/models/purchaseRfq.model";
+import { PurchaseRfqLine } from "../modules/purchase/models/purchaseRfqLine.model";
+import { PurchaseReturnAuthorization } from "../modules/purchase/models/purchaseReturnAuthorization.model";
+import { PurchaseReturn } from "../modules/purchase/models/purchaseReturn.model";
+import { PurchaseReturnLine } from "../modules/purchase/models/purchaseReturnLine.model";
+import { ApDebitNote } from "../modules/purchase/models/apDebitNote.model";
+import { ApDebitNoteLine } from "../modules/purchase/models/apDebitNoteLine.model";
+import { VendorRefund } from "../modules/purchase/models/vendorRefund.model";
+import { PurchasePriceList } from "../modules/purchase/models/purchasePriceList.model";
+import { PurchasePriceListItem } from "../modules/purchase/models/purchasePriceListItem.model";
 export function applyAssociations() {
   // =====================
   // AUTH
@@ -112,10 +123,22 @@ export function applyAssociations() {
   });
 
   // RolePermission → Permission (for eager loading)
-  RolePermission.belongsTo(Permission, { foreignKey: "permission_id", as: "permission" });
-  Permission.hasMany(RolePermission, { foreignKey: "permission_id", as: "rolePermissions" });
-  RolePermission.belongsTo(Role, { foreignKey: "role_id", as: "permissionRole" });
-  Role.hasMany(RolePermission, { foreignKey: "role_id", as: "rolePermissions" });
+  RolePermission.belongsTo(Permission, {
+    foreignKey: "permission_id",
+    as: "permission",
+  });
+  Permission.hasMany(RolePermission, {
+    foreignKey: "permission_id",
+    as: "rolePermissions",
+  });
+  RolePermission.belongsTo(Role, {
+    foreignKey: "role_id",
+    as: "permissionRole",
+  });
+  Role.hasMany(RolePermission, {
+    foreignKey: "role_id",
+    as: "rolePermissions",
+  });
 
   // User ↔ Role (N-N) qua UserRole — DEFERRED: hiện tại dùng User.role_id (belongsTo)
   // Uncomment khi chuyển sang multi-role system
@@ -387,6 +410,16 @@ export function applyAssociations() {
   });
   Product.hasMany(PurchaseOrderLine, {
     foreignKey: "product_id",
+    as: "purchaseOrderLines",
+  });
+
+  // PurchaseOrderLine ↔ UOM
+  PurchaseOrderLine.belongsTo(Uom, {
+    foreignKey: "uom_id",
+    as: "uom",
+  });
+  Uom.hasMany(PurchaseOrderLine, {
+    foreignKey: "uom_id",
     as: "purchaseOrderLines",
   });
 
@@ -888,16 +921,28 @@ export function applyAssociations() {
   // =====================
 
   // FiscalYear ↔ FiscalPeriod
-  FiscalYear.hasMany(FiscalPeriod, { foreignKey: "fiscal_year_id", as: "periods" });
-  FiscalPeriod.belongsTo(FiscalYear, { foreignKey: "fiscal_year_id", as: "fiscalYear" });
+  FiscalYear.hasMany(FiscalPeriod, {
+    foreignKey: "fiscal_year_id",
+    as: "periods",
+  });
+  FiscalPeriod.belongsTo(FiscalYear, {
+    foreignKey: "fiscal_year_id",
+    as: "fiscalYear",
+  });
   FiscalPeriod.belongsTo(User, { foreignKey: "closed_by", as: "closedByUser" });
 
   // FiscalYear ↔ Company
   FiscalYear.belongsTo(Company, { foreignKey: "company_id", as: "company" });
 
   // GlEntry ↔ FiscalPeriod
-  GlEntry.belongsTo(FiscalPeriod, { foreignKey: "fiscal_period_id", as: "fiscalPeriod" });
-  FiscalPeriod.hasMany(GlEntry, { foreignKey: "fiscal_period_id", as: "entries" });
+  GlEntry.belongsTo(FiscalPeriod, {
+    foreignKey: "fiscal_period_id",
+    as: "fiscalPeriod",
+  });
+  FiscalPeriod.hasMany(GlEntry, {
+    foreignKey: "fiscal_period_id",
+    as: "entries",
+  });
 
   // GlEntry ↔ Branch
   GlEntry.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
@@ -905,11 +950,20 @@ export function applyAssociations() {
   // BankAccount associations
   BankAccount.belongsTo(Company, { foreignKey: "company_id", as: "company" });
   BankAccount.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
-  BankAccount.belongsTo(Currency, { foreignKey: "currency_id", as: "currency" });
-  BankAccount.belongsTo(GlAccount, { foreignKey: "gl_account_id", as: "glAccount" });
+  BankAccount.belongsTo(Currency, {
+    foreignKey: "currency_id",
+    as: "currency",
+  });
+  BankAccount.belongsTo(GlAccount, {
+    foreignKey: "gl_account_id",
+    as: "glAccount",
+  });
 
   // Partner enhancements
-  Partner.belongsTo(PaymentTerm, { foreignKey: "payment_term_id", as: "paymentTerm" });
+  Partner.belongsTo(PaymentTerm, {
+    foreignKey: "payment_term_id",
+    as: "paymentTerm",
+  });
   Partner.belongsTo(Currency, { foreignKey: "currency_id", as: "currency" });
   Partner.belongsTo(User, { foreignKey: "sales_person_id", as: "salesPerson" });
 
@@ -919,7 +973,10 @@ export function applyAssociations() {
 
   // Pipeline ↔ PipelineStage
   Pipeline.hasMany(PipelineStage, { foreignKey: "pipeline_id", as: "stages" });
-  PipelineStage.belongsTo(Pipeline, { foreignKey: "pipeline_id", as: "pipeline" });
+  PipelineStage.belongsTo(Pipeline, {
+    foreignKey: "pipeline_id",
+    as: "pipeline",
+  });
 
   // Lead ↔ LeadSource
   Lead.belongsTo(LeadSource, { foreignKey: "source_id", as: "leadSource" });
@@ -938,15 +995,27 @@ export function applyAssociations() {
 
   // Quotation ↔ Lines
   Quotation.hasMany(QuotationLine, { foreignKey: "quotation_id", as: "lines" });
-  QuotationLine.belongsTo(Quotation, { foreignKey: "quotation_id", as: "quotation" });
+  QuotationLine.belongsTo(Quotation, {
+    foreignKey: "quotation_id",
+    as: "quotation",
+  });
 
   // Quotation ↔ Partner, Branch, Currency, PaymentTerm, Opportunity, User
   Quotation.belongsTo(Partner, { foreignKey: "customer_id", as: "customer" });
   Quotation.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
   Quotation.belongsTo(Currency, { foreignKey: "currency_id", as: "currency" });
-  Quotation.belongsTo(PaymentTerm, { foreignKey: "payment_term_id", as: "paymentTerm" });
-  Quotation.belongsTo(Opportunity, { foreignKey: "opportunity_id", as: "opportunity" });
-  Quotation.belongsTo(User, { foreignKey: "sales_person_id", as: "salesPerson" });
+  Quotation.belongsTo(PaymentTerm, {
+    foreignKey: "payment_term_id",
+    as: "paymentTerm",
+  });
+  Quotation.belongsTo(Opportunity, {
+    foreignKey: "opportunity_id",
+    as: "opportunity",
+  });
+  Quotation.belongsTo(User, {
+    foreignKey: "sales_person_id",
+    as: "salesPerson",
+  });
   Quotation.belongsTo(User, { foreignKey: "created_by", as: "creator" });
   Quotation.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
   Quotation.belongsTo(Quotation, { foreignKey: "parent_id", as: "parent" });
@@ -957,14 +1026,29 @@ export function applyAssociations() {
   QuotationLine.belongsTo(Uom, { foreignKey: "uom_id", as: "uom" });
 
   // SaleOrder ↔ Quotation, Currency, PaymentTerm
-  SaleOrder.belongsTo(Quotation, { foreignKey: "quotation_id", as: "quotation" });
+  SaleOrder.belongsTo(Quotation, {
+    foreignKey: "quotation_id",
+    as: "quotation",
+  });
   SaleOrder.belongsTo(Currency, { foreignKey: "currency_id", as: "currency" });
-  SaleOrder.belongsTo(PaymentTerm, { foreignKey: "payment_term_id", as: "paymentTerm" });
-  SaleOrder.belongsTo(User, { foreignKey: "sales_person_id", as: "salesPerson" });
+  SaleOrder.belongsTo(PaymentTerm, {
+    foreignKey: "payment_term_id",
+    as: "paymentTerm",
+  });
+  SaleOrder.belongsTo(User, {
+    foreignKey: "sales_person_id",
+    as: "salesPerson",
+  });
 
   // PriceList ↔ PriceListItem
-  PriceList.hasMany(PriceListItem, { foreignKey: "price_list_id", as: "items" });
-  PriceListItem.belongsTo(PriceList, { foreignKey: "price_list_id", as: "priceList" });
+  PriceList.hasMany(PriceListItem, {
+    foreignKey: "price_list_id",
+    as: "items",
+  });
+  PriceListItem.belongsTo(PriceList, {
+    foreignKey: "price_list_id",
+    as: "priceList",
+  });
   PriceList.belongsTo(Currency, { foreignKey: "currency_id", as: "currency" });
   PriceListItem.belongsTo(Product, { foreignKey: "product_id", as: "product" });
 
@@ -978,43 +1062,342 @@ export function applyAssociations() {
   ArInvoice.belongsTo(Partner, { foreignKey: "customer_id", as: "customer" });
 
   // SalesReturnAuthorization (RMA)
-  SalesReturnAuthorization.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
-  SalesReturnAuthorization.belongsTo(SaleOrder, { foreignKey: "sale_order_id", as: "saleOrder" });
-  SalesReturnAuthorization.belongsTo(ArInvoice, { foreignKey: "invoice_id", as: "invoice" });
-  SalesReturnAuthorization.belongsTo(Partner, { foreignKey: "customer_id", as: "customer" });
-  SalesReturnAuthorization.belongsTo(User, { foreignKey: "created_by", as: "creator" });
-  SalesReturnAuthorization.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
+  SalesReturnAuthorization.belongsTo(Branch, {
+    foreignKey: "branch_id",
+    as: "branch",
+  });
+  SalesReturnAuthorization.belongsTo(SaleOrder, {
+    foreignKey: "sale_order_id",
+    as: "saleOrder",
+  });
+  SalesReturnAuthorization.belongsTo(ArInvoice, {
+    foreignKey: "invoice_id",
+    as: "invoice",
+  });
+  SalesReturnAuthorization.belongsTo(Partner, {
+    foreignKey: "customer_id",
+    as: "customer",
+  });
+  SalesReturnAuthorization.belongsTo(User, {
+    foreignKey: "created_by",
+    as: "creator",
+  });
+  SalesReturnAuthorization.belongsTo(User, {
+    foreignKey: "approved_by",
+    as: "approver",
+  });
 
   // SalesReturn ↔ RMA, Lines
-  SalesReturn.hasMany(SalesReturnLine, { foreignKey: "return_id", as: "lines" });
-  SalesReturnLine.belongsTo(SalesReturn, { foreignKey: "return_id", as: "salesReturn" });
-  SalesReturn.belongsTo(SalesReturnAuthorization, { foreignKey: "rma_id", as: "rma" });
+  SalesReturn.hasMany(SalesReturnLine, {
+    foreignKey: "return_id",
+    as: "lines",
+  });
+  SalesReturnLine.belongsTo(SalesReturn, {
+    foreignKey: "return_id",
+    as: "salesReturn",
+  });
+  SalesReturn.belongsTo(SalesReturnAuthorization, {
+    foreignKey: "rma_id",
+    as: "rma",
+  });
   SalesReturn.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
   SalesReturn.belongsTo(Partner, { foreignKey: "customer_id", as: "customer" });
-  SalesReturn.belongsTo(Warehouse, { foreignKey: "warehouse_id", as: "warehouse" });
-  SalesReturn.belongsTo(SaleOrder, { foreignKey: "sale_order_id", as: "saleOrder" });
-  SalesReturnLine.belongsTo(Product, { foreignKey: "product_id", as: "product" });
+  SalesReturn.belongsTo(Warehouse, {
+    foreignKey: "warehouse_id",
+    as: "warehouse",
+  });
+  SalesReturn.belongsTo(SaleOrder, {
+    foreignKey: "sale_order_id",
+    as: "saleOrder",
+  });
+  SalesReturnLine.belongsTo(Product, {
+    foreignKey: "product_id",
+    as: "product",
+  });
 
   // ArCreditNote ↔ Lines
-  ArCreditNote.hasMany(ArCreditNoteLine, { foreignKey: "credit_note_id", as: "lines" });
-  ArCreditNoteLine.belongsTo(ArCreditNote, { foreignKey: "credit_note_id", as: "creditNote" });
+  ArCreditNote.hasMany(ArCreditNoteLine, {
+    foreignKey: "credit_note_id",
+    as: "lines",
+  });
+  ArCreditNoteLine.belongsTo(ArCreditNote, {
+    foreignKey: "credit_note_id",
+    as: "creditNote",
+  });
   ArCreditNote.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
-  ArCreditNote.belongsTo(SalesReturn, { foreignKey: "sales_return_id", as: "salesReturn" });
-  ArCreditNote.belongsTo(ArInvoice, { foreignKey: "original_invoice_id", as: "originalInvoice" });
-  ArCreditNote.belongsTo(Partner, { foreignKey: "customer_id", as: "customer" });
-  ArCreditNote.belongsTo(Currency, { foreignKey: "currency_id", as: "currency" });
-  ArCreditNoteLine.belongsTo(Product, { foreignKey: "product_id", as: "product" });
-  ArCreditNoteLine.belongsTo(TaxRate, { foreignKey: "tax_rate_id", as: "taxRate" });
+  ArCreditNote.belongsTo(SalesReturn, {
+    foreignKey: "sales_return_id",
+    as: "salesReturn",
+  });
+  ArCreditNote.belongsTo(ArInvoice, {
+    foreignKey: "original_invoice_id",
+    as: "originalInvoice",
+  });
+  ArCreditNote.belongsTo(Partner, {
+    foreignKey: "customer_id",
+    as: "customer",
+  });
+  ArCreditNote.belongsTo(Currency, {
+    foreignKey: "currency_id",
+    as: "currency",
+  });
+  ArCreditNoteLine.belongsTo(Product, {
+    foreignKey: "product_id",
+    as: "product",
+  });
+  ArCreditNoteLine.belongsTo(TaxRate, {
+    foreignKey: "tax_rate_id",
+    as: "taxRate",
+  });
 
   // ArRefund
   ArRefund.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
-  ArRefund.belongsTo(ArCreditNote, { foreignKey: "credit_note_id", as: "creditNote" });
+  ArRefund.belongsTo(ArCreditNote, {
+    foreignKey: "credit_note_id",
+    as: "creditNote",
+  });
   ArRefund.belongsTo(Partner, { foreignKey: "customer_id", as: "customer" });
-  ArRefund.belongsTo(BankAccount, { foreignKey: "bank_account_id", as: "bankAccount" });
+  ArRefund.belongsTo(BankAccount, {
+    foreignKey: "bank_account_id",
+    as: "bankAccount",
+  });
   ArRefund.belongsTo(GlEntry, { foreignKey: "gl_entry_id", as: "glEntry" });
 
   // ArReceipt ↔ BankAccount
-  ArReceipt.belongsTo(BankAccount, { foreignKey: "bank_account_id", as: "bankAccount" });
+  ArReceipt.belongsTo(BankAccount, {
+    foreignKey: "bank_account_id",
+    as: "bankAccount",
+  });
+
+  // =====================
+  // PHASE 5: PURCHASE ENHANCEMENT — RFQ + Return + Debit Note + Vendor Refund
+  // =====================
+
+  // PurchaseRfq ↔ Lines
+  PurchaseRfq.hasMany(PurchaseRfqLine, { foreignKey: "rfq_id", as: "lines" });
+  PurchaseRfqLine.belongsTo(PurchaseRfq, { foreignKey: "rfq_id", as: "rfq" });
+
+  // PurchaseRfq ↔ Branch, Partner, Currency, PaymentTerm, User
+  PurchaseRfq.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
+  PurchaseRfq.belongsTo(Partner, { foreignKey: "supplier_id", as: "supplier" });
+  PurchaseRfq.belongsTo(Currency, {
+    foreignKey: "currency_id",
+    as: "currency",
+  });
+  PurchaseRfq.belongsTo(PaymentTerm, {
+    foreignKey: "payment_term_id",
+    as: "paymentTerm",
+  });
+  PurchaseRfq.belongsTo(User, { foreignKey: "buyer_id", as: "buyer" });
+  PurchaseRfq.belongsTo(User, { foreignKey: "created_by", as: "creator" });
+  PurchaseRfq.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
+  PurchaseRfq.belongsTo(PurchaseRfq, { foreignKey: "parent_id", as: "parent" });
+
+  // PurchaseRfqLine ↔ Product, TaxRate, Uom
+  PurchaseRfqLine.belongsTo(Product, {
+    foreignKey: "product_id",
+    as: "product",
+  });
+  PurchaseRfqLine.belongsTo(TaxRate, {
+    foreignKey: "tax_rate_id",
+    as: "taxRate",
+  });
+  PurchaseRfqLine.belongsTo(Uom, { foreignKey: "uom_id", as: "uom" });
+
+  // PurchaseOrder ↔ RFQ
+  PurchaseOrder.belongsTo(PurchaseRfq, { foreignKey: "rfq_id", as: "rfq" });
+  PurchaseRfq.hasMany(PurchaseOrder, {
+    foreignKey: "rfq_id",
+    as: "purchaseOrders",
+  });
+
+  // PurchaseOrder ↔ Currency, PaymentTerm, Buyer
+  PurchaseOrder.belongsTo(Currency, {
+    foreignKey: "currency_id",
+    as: "currency",
+  });
+  PurchaseOrder.belongsTo(PaymentTerm, {
+    foreignKey: "payment_term_id",
+    as: "paymentTerm",
+  });
+  PurchaseOrder.belongsTo(User, { foreignKey: "buyer_id", as: "buyer" });
+
+  // PurchaseReturnAuthorization (PRA)
+  PurchaseReturnAuthorization.belongsTo(Branch, {
+    foreignKey: "branch_id",
+    as: "branch",
+  });
+  PurchaseReturnAuthorization.belongsTo(PurchaseOrder, {
+    foreignKey: "purchase_order_id",
+    as: "purchaseOrder",
+  });
+  PurchaseReturnAuthorization.belongsTo(ApInvoice, {
+    foreignKey: "ap_invoice_id",
+    as: "apInvoice",
+  });
+  PurchaseReturnAuthorization.belongsTo(Partner, {
+    foreignKey: "supplier_id",
+    as: "supplier",
+  });
+  PurchaseReturnAuthorization.belongsTo(User, {
+    foreignKey: "created_by",
+    as: "creator",
+  });
+  PurchaseReturnAuthorization.belongsTo(User, {
+    foreignKey: "approved_by",
+    as: "approver",
+  });
+
+  // PurchaseReturn ↔ Lines
+  PurchaseReturn.hasMany(PurchaseReturnLine, {
+    foreignKey: "return_id",
+    as: "lines",
+  });
+  PurchaseReturnLine.belongsTo(PurchaseReturn, {
+    foreignKey: "return_id",
+    as: "purchaseReturn",
+  });
+  PurchaseReturn.belongsTo(PurchaseReturnAuthorization, {
+    foreignKey: "pra_id",
+    as: "pra",
+  });
+  PurchaseReturn.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
+  PurchaseReturn.belongsTo(Partner, {
+    foreignKey: "supplier_id",
+    as: "supplier",
+  });
+  PurchaseReturn.belongsTo(Warehouse, {
+    foreignKey: "warehouse_id",
+    as: "warehouse",
+  });
+  PurchaseReturn.belongsTo(PurchaseOrder, {
+    foreignKey: "purchase_order_id",
+    as: "purchaseOrder",
+  });
+  PurchaseReturn.belongsTo(User, { foreignKey: "created_by", as: "creator" });
+  PurchaseReturn.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
+  PurchaseReturnLine.belongsTo(Product, {
+    foreignKey: "product_id",
+    as: "product",
+  });
+  PurchaseReturnLine.belongsTo(PurchaseOrderLine, {
+    foreignKey: "po_line_id",
+    as: "poLine",
+  });
+  PurchaseReturnLine.belongsTo(Uom, {
+    foreignKey: "uom_id",
+    as: "uom",
+  });
+  Uom.hasMany(PurchaseReturnLine, {
+    foreignKey: "uom_id",
+    as: "purchaseReturnLines",
+  });
+
+  // ApDebitNote ↔ Lines
+  ApDebitNote.hasMany(ApDebitNoteLine, {
+    foreignKey: "debit_note_id",
+    as: "lines",
+  });
+  ApDebitNoteLine.belongsTo(ApDebitNote, {
+    foreignKey: "debit_note_id",
+    as: "debitNote",
+  });
+  ApDebitNote.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
+  ApDebitNote.belongsTo(PurchaseReturn, {
+    foreignKey: "purchase_return_id",
+    as: "purchaseReturn",
+  });
+  ApDebitNote.belongsTo(ApInvoice, {
+    foreignKey: "original_ap_invoice_id",
+    as: "originalApInvoice",
+  });
+  ApDebitNote.belongsTo(Partner, { foreignKey: "supplier_id", as: "supplier" });
+  ApDebitNote.belongsTo(Currency, {
+    foreignKey: "currency_id",
+    as: "currency",
+  });
+  ApDebitNote.belongsTo(GlEntry, { foreignKey: "gl_entry_id", as: "glEntry" });
+  ApDebitNote.belongsTo(User, { foreignKey: "created_by", as: "creator" });
+  ApDebitNote.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
+  ApDebitNoteLine.belongsTo(Product, {
+    foreignKey: "product_id",
+    as: "product",
+  });
+  ApDebitNoteLine.belongsTo(PurchaseReturnLine, {
+    foreignKey: "return_line_id",
+    as: "returnLine",
+  });
+  ApDebitNoteLine.belongsTo(TaxRate, {
+    foreignKey: "tax_rate_id",
+    as: "taxRate",
+  });
+
+  // VendorRefund
+  VendorRefund.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
+  VendorRefund.belongsTo(ApDebitNote, {
+    foreignKey: "debit_note_id",
+    as: "debitNote",
+  });
+  VendorRefund.belongsTo(Partner, {
+    foreignKey: "supplier_id",
+    as: "supplier",
+  });
+  VendorRefund.belongsTo(BankAccount, {
+    foreignKey: "bank_account_id",
+    as: "bankAccount",
+  });
+  VendorRefund.belongsTo(Currency, {
+    foreignKey: "currency_id",
+    as: "currency",
+  });
+  VendorRefund.belongsTo(GlEntry, { foreignKey: "gl_entry_id", as: "glEntry" });
+  VendorRefund.belongsTo(User, { foreignKey: "created_by", as: "creator" });
+  VendorRefund.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
+
+  // PurchasePriceList ↔ Items
+  PurchasePriceList.hasMany(PurchasePriceListItem, {
+    foreignKey: "price_list_id",
+    as: "items",
+  });
+  PurchasePriceListItem.belongsTo(PurchasePriceList, {
+    foreignKey: "price_list_id",
+    as: "priceList",
+  });
+  PurchasePriceList.belongsTo(Partner, {
+    foreignKey: "supplier_id",
+    as: "supplier",
+  });
+  PurchasePriceList.belongsTo(Currency, {
+    foreignKey: "currency_id",
+    as: "currency",
+  });
+  PurchasePriceList.belongsTo(User, {
+    foreignKey: "created_by",
+    as: "creator",
+  });
+  PurchasePriceListItem.belongsTo(Product, {
+    foreignKey: "product_id",
+    as: "product",
+  });
+  PurchasePriceListItem.belongsTo(Partner, {
+    foreignKey: "supplier_id",
+    as: "supplier",
+  });
+  PurchasePriceListItem.belongsTo(Uom, { foreignKey: "uom_id", as: "uom" });
+
+  // AP Payment ↔ BankAccount, Currency
+  ApPayment.belongsTo(BankAccount, {
+    foreignKey: "bank_account_id",
+    as: "bankAccount",
+  });
+  ApPayment.belongsTo(Currency, { foreignKey: "currency_id", as: "currency" });
+
+  // AP Invoice ↔ PaymentTerm, Currency
+  ApInvoice.belongsTo(PaymentTerm, {
+    foreignKey: "payment_term_id",
+    as: "paymentTerm",
+  });
+  ApInvoice.belongsTo(Currency, { foreignKey: "currency_id", as: "currency" });
 }
 
 // ===============================

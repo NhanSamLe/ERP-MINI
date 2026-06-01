@@ -18,6 +18,7 @@ export const uploadRateLimit = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: false,
 });
 
 /**
@@ -39,4 +40,5 @@ export const statusCheckRateLimit = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: false,
 });
