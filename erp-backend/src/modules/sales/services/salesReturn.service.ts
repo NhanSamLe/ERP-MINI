@@ -9,6 +9,7 @@ import {
   Product,
   SaleOrder,
   SaleOrderLine,
+  StockBalance,
   SalesReturn,
   SalesReturnAuthorization,
   SalesReturnLine,
@@ -57,7 +58,13 @@ function requireManager(user: any) {
 
 function requireAccountant(user: any) {
   if (user.role !== Role.ACCOUNT) {
-    throw new Error("Only accountant can create credit notes or refunds");
+    throw new Error("Only accountant can create refunds");
+  }
+}
+
+function requireCreditNoteCreator(user: any) {
+  if (![Role.ACCOUNT, Role.CHACC].includes(user.role)) {
+    throw new Error("Only accountant or chief accountant can create credit notes");
   }
 }
 
@@ -123,8 +130,8 @@ async function buildReturnLines(order: any, inputLines: any[]) {
     const quantityRejected = Number(line.quantity_rejected || 0);
     if (quantityReturned <= 0) throw new Error("Returned quantity must be greater than 0");
     if (quantityReceived < 0 || quantityRejected < 0) throw new Error("Received/rejected quantity cannot be negative");
-    if (quantityReceived + quantityRejected > quantityReturned) {
-      throw new Error("Received plus rejected quantity cannot exceed returned quantity");
+    if (Math.abs(quantityReceived + quantityRejected - quantityReturned) > 0.0001) {
+      throw new Error("Received plus rejected quantity must equal returned quantity");
     }
 
     const alreadyReturned = returnedByProduct.get(Number(line.product_id)) ?? 0;
@@ -146,6 +153,100 @@ async function buildReturnLines(order: any, inputLines: any[]) {
       tax_rate_id: orderLine.tax_rate_id ?? null,
     };
   });
+}
+
+async function increaseReturnStock(ret: any, transaction: any) {
+  if (!ret.warehouse_id) {
+    throw new Error("Return warehouse is required before completing returned goods receipt");
+  }
+
+  for (const line of ret.lines ?? []) {
+    const quantityAccepted = Number(line.quantity_received || 0);
+    if (quantityAccepted <= 0) continue;
+
+    const where: any = {
+      warehouse_id: ret.warehouse_id,
+      product_id: line.product_id,
+      location_id: null,
+      lot_id: null,
+    };
+
+    const balance = await StockBalance.findOne({
+      where,
+      lock: transaction.LOCK.UPDATE,
+      transaction,
+    });
+
+    if (balance) {
+      const oldQty = Number(balance.quantity || 0);
+      const unitCost = Number(balance.unit_cost || line.unit_price || 0);
+      const newQty = oldQty + quantityAccepted;
+      await balance.update(
+        {
+          quantity: newQty,
+          unit_cost: unitCost,
+          total_value: newQty * unitCost,
+        },
+        { transaction },
+      );
+    } else {
+      await StockBalance.create(
+        {
+          warehouse_id: ret.warehouse_id,
+          product_id: line.product_id,
+          location_id: null,
+          lot_id: null,
+          quantity: quantityAccepted,
+          unit_cost: Number(line.unit_price || 0),
+          total_value: quantityAccepted * Number(line.unit_price || 0),
+        },
+        { transaction },
+      );
+    }
+  }
+}
+
+async function resolveReturnDeliveryStatus(
+  saleOrderId: number,
+  fallbackStatus: any,
+  transaction: any,
+): Promise<"pending" | "partial" | "delivered" | "partially_returned" | "returned"> {
+  const order = await SaleOrder.findByPk(saleOrderId, {
+    include: [{ model: SaleOrderLine, as: "lines" }],
+    transaction,
+  }) as any;
+  if (!order) return fallbackStatus || "delivered";
+
+  const orderedByProduct = new Map<number, number>();
+  for (const line of order.lines ?? []) {
+    const productId = Number(line.product_id || 0);
+    if (!productId) continue;
+    orderedByProduct.set(productId, (orderedByProduct.get(productId) ?? 0) + Number(line.quantity || 0));
+  }
+  if (orderedByProduct.size === 0) return fallbackStatus || "delivered";
+
+  const completedReturns = await SalesReturn.findAll({
+    where: { sale_order_id: saleOrderId, status: "completed" },
+    include: [{ model: SalesReturnLine, as: "lines" }],
+    transaction,
+  }) as any[];
+
+  const receivedByProduct = new Map<number, number>();
+  for (const ret of completedReturns) {
+    for (const line of ret.lines ?? []) {
+      const productId = Number(line.product_id || 0);
+      if (!productId) continue;
+      receivedByProduct.set(productId, (receivedByProduct.get(productId) ?? 0) + Number(line.quantity_received || 0));
+    }
+  }
+
+  const totalReceived = Array.from(receivedByProduct.values()).reduce((sum, qty) => sum + qty, 0);
+  if (totalReceived <= 0) return fallbackStatus || "delivered";
+
+  const fullyReturned = Array.from(orderedByProduct.entries()).every(
+    ([productId, orderedQty]) => (receivedByProduct.get(productId) ?? 0) >= orderedQty - 0.0001,
+  );
+  return fullyReturned ? "returned" : "partially_returned";
 }
 
 export const salesReturnService = {
@@ -268,15 +369,31 @@ export const salesReturnService = {
     return ret;
   },
 
+  async getReturnByRmaId(rmaId: number, user: any) {
+    user = await withBranchContext(user);
+    const ret = await SalesReturn.findOne({
+      where: { rma_id: rmaId, branch_id: user.branch_id },
+      include: RETURN_INCLUDE,
+      order: [["id", "DESC"]],
+    });
+    return ret || null;
+  },
+
   async createReturnFromRma(rmaId: number, data: any, user: any) {
     requireWarehouse(user);
     const rma = await this.getRma(rmaId, user);
     if (rma.approval_status !== "approved") throw new Error("Return request must be approved first");
+    if (!data.warehouse_id) throw new Error("Return warehouse is required");
+    const warehouse = await Warehouse.findByPk(Number(data.warehouse_id));
+    if (!warehouse) throw new Error("Return warehouse not found");
+    if (Number((warehouse as any).branch_id) !== Number(rma.branch_id)) {
+      throw new Error("Return warehouse must belong to the same branch as the RMA");
+    }
     const order = await getOrderForReturn(rma.sale_order_id, user);
     const lines = await buildReturnLines(order, data.lines);
     const total = lines.reduce((sum, line) => sum + line.line_total, 0);
 
-    return sequelize.transaction(async (t) => {
+    const returnId = await sequelize.transaction(async (t) => {
       const ret = await SalesReturn.create(
         {
           branch_id: rma.branch_id,
@@ -285,7 +402,7 @@ export const salesReturnService = {
           sale_order_id: rma.sale_order_id,
           customer_id: rma.customer_id,
           return_date: data.return_date || new Date().toISOString().slice(0, 10),
-          warehouse_id: data.warehouse_id || null,
+          warehouse_id: Number(data.warehouse_id),
           status: "received",
           approval_status: "approved",
           total_return_amount: total,
@@ -314,8 +431,9 @@ export const salesReturnService = {
       );
 
       await rma.update({ status: "processing", total_return_amount: total }, { transaction: t });
-      return this.getReturn(ret.id, user);
+      return ret.id;
     });
+    return this.getReturn(returnId, user);
   },
 
   async inspectReturn(id: number, data: any, user: any) {
@@ -324,14 +442,14 @@ export const salesReturnService = {
     if (!["received", "inspected"].includes(ret.status)) throw new Error("Only received returns can be inspected");
     const lines = data.lines ?? [];
 
-    return sequelize.transaction(async (t) => {
+    await sequelize.transaction(async (t) => {
       for (const line of lines) {
         const row = await SalesReturnLine.findOne({ where: { id: line.id, return_id: id }, transaction: t });
         if (!row) throw new Error("Return line not found");
         const quantityReceived = Number(line.quantity_received ?? row.quantity_received);
         const quantityRejected = Number(line.quantity_rejected ?? row.quantity_rejected);
-        if (quantityReceived + quantityRejected > Number(row.quantity_returned)) {
-          throw new Error("Received plus rejected quantity cannot exceed returned quantity");
+        if (Math.abs(quantityReceived + quantityRejected - Number(row.quantity_returned)) > 0.0001) {
+          throw new Error("Received plus rejected quantity must equal returned quantity");
         }
         await row.update(
           {
@@ -344,23 +462,52 @@ export const salesReturnService = {
         );
       }
       await ret.update({ status: "inspected" }, { transaction: t });
-      return this.getReturn(id, user);
     });
+    return this.getReturn(id, user);
   },
 
   async completeReturn(id: number, user: any) {
     requireWarehouse(user);
     const ret = await this.getReturn(id, user);
     if (ret.status !== "inspected") throw new Error("Return must be inspected before completion");
-    await ret.update({ status: "completed" });
-    if (ret.rma_id) {
-      await SalesReturnAuthorization.update({ status: "completed" }, { where: { id: ret.rma_id } });
-    }
+    await sequelize.transaction(async (t) => {
+      const lockedReturn = await SalesReturn.findByPk(id, {
+        include: [{ model: SalesReturnLine, as: "lines" }],
+        lock: t.LOCK.UPDATE,
+        transaction: t,
+      }) as any;
+      if (!lockedReturn) throw new Error("Sales return not found");
+      if (lockedReturn.status !== "inspected") throw new Error("Return must be inspected before completion");
+
+      await increaseReturnStock(lockedReturn, t);
+      await lockedReturn.update({ status: "completed" }, { transaction: t });
+      if (lockedReturn.sale_order_id) {
+        const order = await SaleOrder.findByPk(lockedReturn.sale_order_id, {
+          attributes: ["id", "delivery_status"],
+          transaction: t,
+        }) as any;
+        const nextDeliveryStatus = await resolveReturnDeliveryStatus(
+          lockedReturn.sale_order_id,
+          order?.delivery_status || "delivered",
+          t,
+        );
+        await SaleOrder.update(
+          { delivery_status: nextDeliveryStatus },
+          { where: { id: lockedReturn.sale_order_id }, transaction: t },
+        );
+      }
+      if (lockedReturn.rma_id) {
+        await SalesReturnAuthorization.update(
+          { status: "completed" },
+          { where: { id: lockedReturn.rma_id }, transaction: t },
+        );
+      }
+    });
     return this.getReturn(id, user);
   },
 
   async createCreditNoteFromReturn(returnId: number, user: any) {
-    requireAccountant(user);
+    requireCreditNoteCreator(user);
     const ret = await this.getReturn(returnId, user);
     if (ret.status !== "completed") throw new Error("Return must be completed before creating credit note");
     const existed = await ArCreditNote.findOne({ where: { sales_return_id: returnId } });
@@ -394,7 +541,7 @@ export const salesReturnService = {
       });
     }
 
-    return sequelize.transaction(async (t) => {
+    const creditId = await sequelize.transaction(async (t) => {
       const credit = await ArCreditNote.create(
         {
           branch_id: ret.branch_id,
@@ -421,11 +568,13 @@ export const salesReturnService = {
         creditLines.map((line) => ({ ...line, credit_note_id: credit.id })),
         { transaction: t },
       );
-      return this.getCreditNote(credit.id, user);
+      return credit.id;
     });
+    return this.getCreditNote(creditId, user);
   },
 
   async getCreditNotes(user: any) {
+    user = await withBranchContext(user);
     return ArCreditNote.findAll({
       where: { branch_id: user.branch_id },
       include: [
@@ -438,6 +587,7 @@ export const salesReturnService = {
   },
 
   async getCreditNote(id: number, user: any) {
+    user = await withBranchContext(user);
     const note = await ArCreditNote.findByPk(id, {
       include: [
         { model: ArCreditNoteLine, as: "lines", include: [{ model: Product, as: "product", attributes: ["id", "sku", "name"] }] },
@@ -464,10 +614,19 @@ export const salesReturnService = {
     if (note.approval_status !== "approved" || note.status !== "posted") {
       throw new Error("Credit note must be posted before refund");
     }
-    const refunded = await ArRefund.sum("amount", { where: { credit_note_id: creditNoteId, status: "posted" } });
+    const existingRefund = await ArRefund.findOne({
+      where: {
+        credit_note_id: creditNoteId,
+        status: { [Op.in]: ["draft", "posted"] },
+      },
+      order: [["id", "DESC"]],
+    });
+    if (existingRefund) {
+      throw new Error("This sales return already has a refund request or has already been refunded");
+    }
     const amount = Number(data.amount || note.total_after_tax);
     if (amount <= 0) throw new Error("Refund amount must be greater than 0");
-    if (Number(refunded || 0) + amount > Number(note.total_after_tax) + 0.0001) {
+    if (amount > Number(note.total_after_tax) + 0.0001) {
       throw new Error("Refund amount exceeds available credit");
     }
 
@@ -478,6 +637,8 @@ export const salesReturnService = {
       customer_id: note.customer_id,
       refund_date: data.refund_date || new Date().toISOString().slice(0, 10),
       amount,
+      currency_id: note.currency_id || null,
+      exchange_rate: Number(note.exchange_rate || 1),
       method: data.method || "bank",
       bank_account_id: data.bank_account_id || null,
       status: "draft",
@@ -491,10 +652,12 @@ export const salesReturnService = {
   },
 
   async getRefund(id: number, user: any) {
+    user = await withBranchContext(user);
     const refund = await ArRefund.findByPk(id, {
       include: [
         { model: ArCreditNote, as: "creditNote", attributes: ["id", "credit_note_no", "total_after_tax"] },
         { model: Partner, as: "customer", attributes: ["id", "name", "email", "phone"] },
+        { model: Currency, as: "currency", attributes: ["id", "code", "symbol"] },
       ],
     });
     if (!refund) throw new Error("Refund not found");
@@ -502,10 +665,32 @@ export const salesReturnService = {
     return refund;
   },
 
+  async getRefunds(user: any) {
+    user = await withBranchContext(user);
+    return ArRefund.findAll({
+      where: { branch_id: user.branch_id },
+      include: [
+        { model: ArCreditNote, as: "creditNote", attributes: ["id", "credit_note_no", "total_after_tax"] },
+        { model: Partner, as: "customer", attributes: ["id", "name", "email", "phone"] },
+        { model: Currency, as: "currency", attributes: ["id", "code", "symbol"] },
+      ],
+      order: [["id", "DESC"]],
+    });
+  },
+
   async approveRefund(id: number, user: any) {
     requireChiefAccountant(user);
     const refund = await this.getRefund(id, user);
-    await refund.update({ status: "posted", approval_status: "approved", approved_by: user.id });
+    if (refund.status === "posted" && refund.approval_status === "approved") return refund;
+    await sequelize.transaction(async (t) => {
+      await refund.update({ status: "posted", approval_status: "approved", approved_by: user.id }, { transaction: t });
+      if (refund.credit_note_id) {
+        await ArCreditNote.update(
+          { status: "applied" },
+          { where: { id: refund.credit_note_id }, transaction: t },
+        );
+      }
+    });
     return this.getRefund(id, user);
   },
 };

@@ -17,6 +17,7 @@ import QuotationEditPage from "@/features/sales/pages/QuotationEditPage";
 import SalesReturnListPage from "@/features/sales/pages/SalesReturnListPage";
 import SalesReturnCreatePage from "@/features/sales/pages/SalesReturnCreatePage";
 import SalesReturnDetailPage from "@/features/sales/pages/SalesReturnDetailPage";
+import SalesReturnAccountingPage from "@/features/finance/page/SalesReturnAccountingPage";
 const salesRoutes: RouteObject[] = [
   // ── Quotations ──
   {
@@ -115,6 +116,14 @@ const salesRoutes: RouteObject[] = [
   element: (
     <ProtectedRoute allowedRoles={["SALES", "SALESMANAGER", "BRANCH_MANAGER", "WHSTAFF", "WHMANAGER", "ACCOUNT", "CHACC"]}>
       <SalesReturnDetailPage />
+    </ProtectedRoute>
+  ),
+},
+{
+  path: "/sales/returns-accounting",
+  element: (
+    <ProtectedRoute allowedRoles={["ACCOUNT", "CHACC"]}>
+      <SalesReturnAccountingPage />
     </ProtectedRoute>
   ),
 },

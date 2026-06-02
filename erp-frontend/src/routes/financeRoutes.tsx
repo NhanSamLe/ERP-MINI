@@ -39,6 +39,7 @@ const financeRoutes: RouteObject[] = [
       </ProtectedRoute>
     ),
   },
+
   {
     path: "/finance/entries/:entryId",
     element: (

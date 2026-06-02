@@ -1157,6 +1157,7 @@ export function applyAssociations() {
     as: "creditNote",
   });
   ArRefund.belongsTo(Partner, { foreignKey: "customer_id", as: "customer" });
+  ArRefund.belongsTo(Currency, { foreignKey: "currency_id", as: "currency" });
   ArRefund.belongsTo(BankAccount, {
     foreignKey: "bank_account_id",
     as: "bankAccount",

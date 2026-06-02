@@ -41,7 +41,8 @@ const menuItems: MenuItem[] = [
     subItems: [
       { name: "Quotations", path: "/sales/quotations",      allowedRoles: ["SALES", "SALESMANAGER", "ADMIN"] },
       { name: "Orders",     path: "/sales/orders",          allowedRoles: ["SALES", "SALESMANAGER", "CEO", "WHSTAFF", "ACCOUNT"] },
-      { name: "Returns",    path: "/sales/returns",         allowedRoles: ["SALES", "SALESMANAGER", "BRANCH_MANAGER", "WHSTAFF", "WHMANAGER", "ACCOUNT", "CHACC"] },
+      { name: "Returns",    path: "/sales/returns",         allowedRoles: ["SALES", "SALESMANAGER", "BRANCH_MANAGER", "WHSTAFF", "WHMANAGER"] },
+      { name: "Credit Notes & Refunds", path: "/sales/returns-accounting", allowedRoles: ["ACCOUNT", "CHACC"] },
       { name: "Invoices",   path: "/invoices",              allowedRoles: ["ACCOUNT", "CHACC", "CEO"] },
       { name: "Receipts",   path: "/receipts",              allowedRoles: ["ACCOUNT", "CHACC"] },
       { name: "Customers",  path: "/partners?type=customer",allowedRoles: ["SALES", "SALESMANAGER"] },

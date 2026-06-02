@@ -2,6 +2,8 @@ import { salesReturnApi } from "../api/salesReturn.api";
 import {
   CreateRmaDto,
   CreateSalesReturnFromRmaDto,
+  ArCreditNoteDto,
+  ArRefundDto,
   SalesReturnAuthorizationDto,
   SalesReturnDto,
 } from "../dto/salesReturn.dto";
@@ -36,6 +38,11 @@ export async function rejectRma(id: number, reason: string): Promise<SalesReturn
   return res.data.data;
 }
 
+export async function getReturnByRmaId(rmaId: number): Promise<SalesReturnDto | null> {
+  const res = await salesReturnApi.getReturnByRmaId(rmaId);
+  return res.data.data;
+}
+
 export async function createReturnFromRma(
   id: number,
   data: CreateSalesReturnFromRmaDto
@@ -66,5 +73,33 @@ export async function completeReturn(id: number): Promise<SalesReturnDto> {
 
 export async function createCreditNote(id: number) {
   const res = await salesReturnApi.createCreditNote(id);
+  return res.data.data;
+}
+
+export async function getCreditNotes(): Promise<ArCreditNoteDto[]> {
+  const res = await salesReturnApi.getCreditNotes();
+  return res.data.data;
+}
+
+export async function approveCreditNote(id: number): Promise<ArCreditNoteDto> {
+  const res = await salesReturnApi.approveCreditNote(id);
+  return res.data.data;
+}
+
+export async function createRefund(
+  id: number,
+  data: { amount: number; method: "cash" | "bank" | "transfer"; notes?: string | null },
+): Promise<ArRefundDto> {
+  const res = await salesReturnApi.createRefund(id, data);
+  return res.data.data;
+}
+
+export async function getRefunds(): Promise<ArRefundDto[]> {
+  const res = await salesReturnApi.getRefunds();
+  return res.data.data;
+}
+
+export async function approveRefund(id: number): Promise<ArRefundDto> {
+  const res = await salesReturnApi.approveRefund(id);
   return res.data.data;
 }
