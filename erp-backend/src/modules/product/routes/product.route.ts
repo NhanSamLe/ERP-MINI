@@ -38,7 +38,14 @@ router.get(
 
 router.get(
   "/search",
-  authMiddleware([Role.PURCHASE, Role.WHSTAFF]),
+  authMiddleware([
+    Role.ADMIN,
+    Role.PURCHASE,
+    Role.PURCHASEMANAGER,
+    Role.WHSTAFF,
+    Role.SALES,
+    Role.SALESMANAGER,
+  ]),
   productController.searchProducts,
 );
 router.get(

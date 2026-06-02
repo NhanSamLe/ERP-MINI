@@ -42,6 +42,7 @@ import {
 } from "../utils/uomHelper";
 import { Uom } from "@/features/master-data/dto/uom.dto";
 import { formatVND } from "@/utils/currency.helper";
+import { purchasePriceListApi } from "../api/purchasePriceList.api";
 
 interface LineItem {
   id: number;
@@ -61,6 +62,7 @@ interface LineItem {
   tax_rate: number;
   tax_amount: number;
   line_total: number;
+  price_source?: "price_list" | "supplier_info" | "cost_price" | "manual";
 }
 
 export default function CreatePurchaseOrderPage() {
@@ -191,30 +193,55 @@ export default function CreatePurchaseOrderPage() {
     setTotalAfterTax(afterTax);
   };
 
-  const handleSupplierChange = (newSupplierId: string) => {
+  const handleSupplierChange = async (newSupplierId: string) => {
     setSupplierId(newSupplierId);
     if (lines.length === 0) return;
-    const updatedLines = lines.map((line) => {
-      const cached = productCache[Number(line.product_id)];
-      if (!cached) return line;
-      const newPriceInPurchaseUom = resolvePrice(cached, newSupplierId);
-      const newPriceInStockUom = convertPriceToStockUom(
-        newPriceInPurchaseUom,
-        line.uom_id,
-        line.stock_uom_id,
-        Number(line.product_id),
-      );
-      const qtyForCalc = line.quantity_in_stock_uom || line.quantity;
-      const taxAmount = qtyForCalc * newPriceInStockUom * (line.tax_rate / 100);
-      const lineTotal = qtyForCalc * newPriceInStockUom + taxAmount;
-      return {
-        ...line,
-        price_in_purchase_uom: newPriceInPurchaseUom,
-        sale_price: newPriceInStockUom,
-        tax_amount: taxAmount,
-        line_total: lineTotal,
-      };
-    });
+    const updatedLines = await Promise.all(
+      lines.map(async (line) => {
+        const cached = productCache[Number(line.product_id)];
+        if (!cached) return line;
+
+        let newPriceInPurchaseUom = resolvePrice(cached, newSupplierId);
+        let priceSource: any = "supplier_info";
+        let discountPercent = 0;
+
+        if (newSupplierId) {
+          try {
+            const pRes = await purchasePriceListApi.evaluatePrice({
+              product_id: Number(line.product_id),
+              supplier_id: Number(newSupplierId),
+              quantity: line.quantity,
+            });
+            newPriceInPurchaseUom = pRes.unit_price;
+            discountPercent = pRes.discount_percent;
+            priceSource = pRes.source;
+          } catch (e) {
+            console.error("Evaluate price failed, using local fallback", e);
+          }
+        }
+
+        const newPriceInStockUom = convertPriceToStockUom(
+          newPriceInPurchaseUom,
+          line.uom_id,
+          line.stock_uom_id,
+          Number(line.product_id),
+        );
+        const qtyForCalc = line.quantity_in_stock_uom || line.quantity;
+        const baseTotal = qtyForCalc * newPriceInStockUom;
+        const discountedTotal = baseTotal * (1 - discountPercent / 100);
+        const taxAmount = discountedTotal * (line.tax_rate / 100);
+        const lineTotal = discountedTotal + taxAmount;
+
+        return {
+          ...line,
+          price_in_purchase_uom: newPriceInPurchaseUom,
+          sale_price: newPriceInStockUom,
+          tax_amount: taxAmount,
+          line_total: lineTotal,
+          price_source: priceSource,
+        };
+      })
+    );
     setLines(updatedLines);
     recalcTotals(updatedLines);
     const newPriceInputs: Record<number, string> = {};
@@ -234,7 +261,28 @@ export default function CreatePurchaseOrderPage() {
     ).unwrap();
     const rate = Number(tax?.rate || 0);
     const qty = 1;
-    const priceInPurchaseUom = resolvePrice(product, supplierId);
+    
+    setProductCache((prev) => ({ ...prev, [Number(product.id)]: product }));
+
+    let priceInPurchaseUom = resolvePrice(product, supplierId);
+    let priceSource: any = "supplier_info";
+    let discountPercent = 0;
+
+    if (supplierId) {
+      try {
+        const pRes = await purchasePriceListApi.evaluatePrice({
+          product_id: Number(product.id),
+          supplier_id: Number(supplierId),
+          quantity: qty,
+        });
+        priceInPurchaseUom = pRes.unit_price;
+        discountPercent = pRes.discount_percent;
+        priceSource = pRes.source;
+      } catch (e) {
+        console.error("Evaluate price failed, using local fallback", e);
+      }
+    }
+
     const purchaseUomId = product.purchase_uom_id ?? product.uom_id ?? null;
     const stockUomId = product.uom_id ?? null;
     let qtyInStockUom = qty;
@@ -253,8 +301,11 @@ export default function CreatePurchaseOrderPage() {
       stockUomId,
       Number(product.id),
     );
-    const taxAmount = qtyInStockUom * priceInStockUom * (rate / 100);
-    const lineTotal = qtyInStockUom * priceInStockUom + taxAmount;
+    const baseTotal = qtyInStockUom * priceInStockUom;
+    const discountedTotal = baseTotal * (1 - discountPercent / 100);
+    const taxAmount = discountedTotal * (rate / 100);
+    const lineTotal = discountedTotal + taxAmount;
+
     const newLine: LineItem = {
       id: Date.now(),
       product_id: product.id,
@@ -273,8 +324,8 @@ export default function CreatePurchaseOrderPage() {
       tax_rate: rate,
       tax_amount: taxAmount,
       line_total: lineTotal,
+      price_source: priceSource,
     };
-    setProductCache((prev) => ({ ...prev, [Number(product.id)]: product }));
     const updatedLines = [...lines, newLine];
     setLines(updatedLines);
     recalcTotals(updatedLines);
@@ -286,7 +337,7 @@ export default function CreatePurchaseOrderPage() {
     setShowDropdown(false);
   };
 
-  const updateLine = (
+  const updateLine = async (
     id: number,
     field: keyof LineItem,
     value: number | null,
@@ -295,9 +346,40 @@ export default function CreatePurchaseOrderPage() {
       removeLine(id);
       return;
     }
+
+    let fetchedPrice = null;
+    if ((field === "quantity" || field === "uom_id") && supplierId) {
+      const line = lines.find((l) => l.id === id);
+      if (line) {
+        const newQty = field === "quantity" ? (value || 1) : line.quantity;
+        try {
+          const pRes = await purchasePriceListApi.evaluatePrice({
+            product_id: Number(line.product_id),
+            supplier_id: Number(supplierId),
+            quantity: newQty,
+          });
+          fetchedPrice = pRes;
+        } catch (e) {
+          console.error("Evaluate price failed on updateLine", e);
+        }
+      }
+    }
+
     const updatedLines = lines.map((line) => {
       if (line.id !== id) return line;
       const updated = { ...line, [field]: value };
+
+      if (fetchedPrice) {
+        updated.price_in_purchase_uom = fetchedPrice.unit_price;
+        updated.price_source = fetchedPrice.source;
+        updated.sale_price = convertPriceToStockUom(
+          fetchedPrice.unit_price,
+          updated.uom_id,
+          updated.stock_uom_id,
+          Number(updated.product_id)
+        );
+      }
+
       if (field === "uom_id") {
         const newUomId = value as number | null;
         const qtyInStockUom =
@@ -313,13 +395,16 @@ export default function CreatePurchaseOrderPage() {
         updated.quantity_in_stock_uom = qtyInStockUom;
         const selectedUom = uoms.find((u: Uom) => u.id === newUomId);
         updated.uom_name = selectedUom?.name ?? "";
-        const newPriceInPurchaseUom = convertPriceFromStockUom(
-          line.sale_price || 0,
-          newUomId,
-          line.stock_uom_id,
-          Number(line.product_id),
-        );
-        updated.price_in_purchase_uom = newPriceInPurchaseUom;
+        
+        if (!fetchedPrice) {
+          const newPriceInPurchaseUom = convertPriceFromStockUom(
+            line.sale_price || 0,
+            newUomId,
+            line.stock_uom_id,
+            Number(line.product_id),
+          );
+          updated.price_in_purchase_uom = newPriceInPurchaseUom;
+        }
       }
       if (field === "price_in_purchase_uom") {
         updated.sale_price = convertPriceToStockUom(
@@ -328,6 +413,7 @@ export default function CreatePurchaseOrderPage() {
           updated.stock_uom_id,
           Number(updated.product_id),
         );
+        updated.price_source = "manual";
       }
       if (field === "quantity") {
         const newQty = value || 1;
@@ -353,7 +439,7 @@ export default function CreatePurchaseOrderPage() {
     });
     setLines(updatedLines);
     recalcTotals(updatedLines);
-    if (field === "uom_id") {
+    if (field === "uom_id" || fetchedPrice) {
       const changedLine = updatedLines.find((l) => l.id === id);
       if (changedLine)
         setPriceInputs((prev) => ({
@@ -835,26 +921,47 @@ export default function CreatePurchaseOrderPage() {
 
                             {/* Unit Price */}
                             <td className="px-4 py-3 text-right">
-                              <input
-                                type="number"
-                                min={0}
-                                value={
-                                  priceInputs[line.id] ??
-                                  String(line.price_in_purchase_uom ?? 0)
-                                }
-                                onChange={(e) => {
-                                  setPriceInputs((prev) => ({
-                                    ...prev,
-                                    [line.id]: e.target.value,
-                                  }));
-                                  updateLine(
-                                    line.id,
-                                    "price_in_purchase_uom",
-                                    Number(e.target.value),
-                                  );
-                                }}
-                                className="w-32 text-right border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
-                              />
+                              <div className="flex flex-col items-end gap-1">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  value={
+                                    priceInputs[line.id] ??
+                                    String(line.price_in_purchase_uom ?? 0)
+                                  }
+                                  onChange={(e) => {
+                                    setPriceInputs((prev) => ({
+                                      ...prev,
+                                      [line.id]: e.target.value,
+                                    }));
+                                    updateLine(
+                                      line.id,
+                                      "price_in_purchase_uom",
+                                      Number(e.target.value),
+                                    );
+                                  }}
+                                  className="w-32 text-right border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono"
+                                />
+                                {line.price_source && (
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium border ${
+                                    line.price_source === "price_list"
+                                      ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                                      : line.price_source === "supplier_info"
+                                      ? "bg-blue-50 text-blue-600 border-blue-100"
+                                      : line.price_source === "cost_price"
+                                      ? "bg-amber-50 text-amber-600 border-amber-100"
+                                      : "bg-gray-100 text-gray-500 border-gray-200"
+                                  }`}>
+                                    {line.price_source === "price_list"
+                                      ? "Bảng giá mua"
+                                      : line.price_source === "supplier_info"
+                                      ? "Giá mặc định NCC"
+                                      : line.price_source === "cost_price"
+                                      ? "Giá vốn"
+                                      : "Nhập tay"}
+                                  </span>
+                                )}
+                              </div>
                             </td>
 
                             {/* Qty */}

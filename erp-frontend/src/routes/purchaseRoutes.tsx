@@ -34,6 +34,9 @@ import PurchaseReturnCreatePage from "@/features/purchase/pages/purchaseReturn/P
 import PurchaseReturnDetailPage from "@/features/purchase/pages/purchaseReturn/PurchaseReturnDetailPage";
 import PurchaseReturnEditPage from "@/features/purchase/pages/purchaseReturn/PurchaseReturnEditPage";
 import PurchaseReturnListPage from "@/features/purchase/pages/purchaseReturn/PurchaseReturnListPage";
+import PriceListListPage from "@/features/purchase/pages/price-lists/PriceListListPage";
+import PriceListCreatePage from "@/features/purchase/pages/price-lists/PriceListCreatePage";
+import PriceListDetailPage from "@/features/purchase/pages/price-lists/PriceListDetailPage";
 
 const purchaseRoutes: RouteObject[] = [
   {
@@ -41,6 +44,44 @@ const purchaseRoutes: RouteObject[] = [
     element: (
       <ProtectedRoute allowedRoles={[Roles.PURCHASE, Roles.PURCHASEMANAGER]}>
         <PurchaseDashboard />
+      </ProtectedRoute>
+    ),
+  },
+  // ─── Price Lists ──────────────────────────────────────────────────────────
+  {
+    path: "purchase/price-lists",
+    element: (
+      <ProtectedRoute
+        allowedRoles={[
+          Roles.PURCHASE,
+          Roles.PURCHASEMANAGER,
+          Roles.ACCOUNT,
+          Roles.CEO,
+        ]}
+      >
+        <PriceListListPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "purchase/price-lists/create",
+    element: (
+      <ProtectedRoute allowedRoles={[Roles.PURCHASEMANAGER]}>
+        <PriceListCreatePage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "purchase/price-lists/:id",
+    element: (
+      <ProtectedRoute
+        allowedRoles={[
+          Roles.PURCHASE,
+          Roles.PURCHASEMANAGER,
+          Roles.ACCOUNT,
+        ]}
+      >
+        <PriceListDetailPage />
       </ProtectedRoute>
     ),
   },
