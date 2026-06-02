@@ -50,6 +50,7 @@ import { Uom } from "@/features/master-data/dto/uom.dto";
 import { PurchaseOrderStatus } from "../constants/purchaseStatus.enum";
 import { formatVND } from "@/utils/currency.helper";
 import { StatusBadge } from "../components/Common";
+import { purchasePriceListApi } from "../api/purchasePriceList.api";
 
 interface LineItem {
   id?: number;
@@ -70,6 +71,7 @@ interface LineItem {
   tax_rate: number;
   tax_amount: number;
   line_total: number;
+  price_source?: "price_list" | "supplier_info" | "cost_price" | "manual";
 }
 
 export default function EditPurchaseOrderPage() {
@@ -165,6 +167,40 @@ export default function EditPurchaseOrderPage() {
     setTotalAfterTax(after);
   };
 
+  const resolvePrice = (
+    product: Product,
+    currentSupplierId: string,
+  ): number => {
+    const allSupplierInfos =
+      (product as any).supplierInfos ?? product.supplierInfo ?? [];
+    const supplierPrice = allSupplierInfos.find(
+      (s: any) => s.supplier_id === Number(currentSupplierId),
+    )?.price;
+    if (supplierPrice !== undefined && supplierPrice !== null) {
+      return Number(supplierPrice);
+    }
+    const costPrice = Number(product.cost_price ?? 0);
+    const purchaseUomId = product.purchase_uom_id ?? product.uom_id ?? null;
+    const stockUomId = product.uom_id ?? null;
+    return convertPrice(costPrice, stockUomId, purchaseUomId, conversions, Number(product.id));
+  };
+
+  const convertPriceToStockUom = (
+    price: number,
+    purchaseUomId: number | null | undefined,
+    stockUomId: number | null | undefined,
+    productId: number,
+  ): number =>
+    convertPrice(price, purchaseUomId, stockUomId, conversions, productId);
+
+  const convertPriceFromStockUom = (
+    price: number,
+    purchaseUomId: number | null | undefined,
+    stockUomId: number | null | undefined,
+    productId: number,
+  ): number =>
+    convertPrice(price, stockUomId, purchaseUomId, conversions, productId);
+
   const handleSelectProduct = async (product: Product) => {
     if (lines.some((l) => l.product_id === product.id)) {
       toast.warn("Sản phẩm đã có trong danh sách!");
@@ -175,17 +211,28 @@ export default function EditPurchaseOrderPage() {
     ).unwrap();
     const rate = Number(tax?.rate || 0);
     const qty = 1;
-    const allSupplierInfos =
-      (product as any).supplierInfos ?? product.supplierInfo ?? [];
-    const supplierPrice = allSupplierInfos.find(
-      (s: any) => s.supplier_id === Number(supplierId),
-    )?.price;
+    
+    let priceInPurchaseUom = resolvePrice(product, supplierId);
+    let priceSource: any = "supplier_info";
+    let discountPercent = 0;
+
+    if (supplierId) {
+      try {
+        const pRes = await purchasePriceListApi.evaluatePrice({
+          product_id: Number(product.id),
+          supplier_id: Number(supplierId),
+          quantity: qty,
+        });
+        priceInPurchaseUom = pRes.unit_price;
+        discountPercent = pRes.discount_percent;
+        priceSource = pRes.source;
+      } catch (e) {
+        console.error("Evaluate price failed, using local fallback", e);
+      }
+    }
+
     const purchaseUomId = product.purchase_uom_id ?? product.uom_id ?? null;
     const stockUomId = product.uom_id ?? null;
-    const priceInPurchaseUom =
-      supplierPrice !== undefined && supplierPrice !== null
-        ? Number(supplierPrice)
-        : convertPrice(Number(product.cost_price ?? 0), stockUomId, purchaseUomId, conversions, Number(product.id));
     const priceInStockUom = convertPrice(
       priceInPurchaseUom,
       purchaseUomId,
@@ -200,8 +247,11 @@ export default function EditPurchaseOrderPage() {
       conversions,
       Number(product.id),
     );
-    const taxAmount = priceInStockUom * qtyInStockUom * (rate / 100);
-    const lineTotal = priceInStockUom * qtyInStockUom + taxAmount;
+    const baseTotal = priceInStockUom * qtyInStockUom;
+    const discountedTotal = baseTotal * (1 - discountPercent / 100);
+    const taxAmount = discountedTotal * (rate / 100);
+    const lineTotal = discountedTotal + taxAmount;
+
     const newLine: LineItem = {
       id: undefined,
       temp_id: Date.now(),
@@ -221,6 +271,7 @@ export default function EditPurchaseOrderPage() {
       tax_rate: rate,
       tax_amount: taxAmount,
       line_total: lineTotal,
+      price_source: priceSource,
     };
     const updatedLines = [...lines, newLine];
     setLines(updatedLines);
@@ -299,6 +350,7 @@ export default function EditPurchaseOrderPage() {
             tax_type: tax?.type || "VAT",
             tax_amount: taxAmount,
             line_total: lineTotal,
+            price_source: ((finalPO as any)?.price_list_id ? "price_list" : "supplier_info") as "price_list" | "supplier_info",
           };
         }),
       );
@@ -314,7 +366,63 @@ export default function EditPurchaseOrderPage() {
     loadLines();
   }, [finalPO, dispatch]);
 
-  const updateLine = (
+  const handleSupplierChange = async (newSupplierId: string) => {
+    setSupplierId(newSupplierId);
+    if (lines.length === 0) return;
+    const updatedLines = await Promise.all(
+      lines.map(async (line) => {
+        let newPriceInPurchaseUom = Number(line.price_in_purchase_uom ?? 0);
+        let priceSource: any = line.price_source ?? "supplier_info";
+        let discountPercent = 0;
+
+        if (newSupplierId) {
+          try {
+            const pRes = await purchasePriceListApi.evaluatePrice({
+              product_id: Number(line.product_id),
+              supplier_id: Number(newSupplierId),
+              quantity: line.quantity,
+            });
+            newPriceInPurchaseUom = pRes.unit_price;
+            discountPercent = pRes.discount_percent;
+            priceSource = pRes.source;
+          } catch (e) {
+            console.error("Evaluate price failed on Supplier change", e);
+          }
+        }
+
+        const newPriceInStockUom = convertPriceToStockUom(
+          newPriceInPurchaseUom,
+          line.uom_id,
+          line.stock_uom_id,
+          Number(line.product_id),
+        );
+        const qtyForCalc = line.quantity_in_stock_uom || line.quantity;
+        const baseTotal = qtyForCalc * newPriceInStockUom;
+        const discountedTotal = baseTotal * (1 - discountPercent / 100);
+        const taxAmount = discountedTotal * (line.tax_rate / 100);
+        const lineTotal = discountedTotal + taxAmount;
+
+        return {
+          ...line,
+          price_in_purchase_uom: newPriceInPurchaseUom,
+          sale_price: newPriceInStockUom,
+          tax_amount: taxAmount,
+          line_total: lineTotal,
+          price_source: priceSource,
+        };
+      })
+    );
+    setLines(updatedLines);
+    recalcTotals(updatedLines);
+    const newPriceInputs: Record<number, string> = {};
+    updatedLines.forEach((l) => {
+      if (l.temp_id !== undefined)
+        newPriceInputs[l.temp_id] = String(l.price_in_purchase_uom ?? 0);
+    });
+    setPriceInputs(newPriceInputs);
+  };
+
+  const updateLine = async (
     temp_id: number,
     field: keyof LineItem,
     value: number,
@@ -323,9 +431,40 @@ export default function EditPurchaseOrderPage() {
       removeLine(temp_id);
       return;
     }
+
+    let fetchedPrice = null;
+    if ((field === "quantity" || field === "uom_id") && supplierId) {
+      const line = lines.find((l) => l.temp_id === temp_id);
+      if (line) {
+        const newQty = field === "quantity" ? (value || 1) : line.quantity;
+        try {
+          const pRes = await purchasePriceListApi.evaluatePrice({
+            product_id: Number(line.product_id),
+            supplier_id: Number(supplierId),
+            quantity: newQty,
+          });
+          fetchedPrice = pRes;
+        } catch (e) {
+          console.error("Evaluate price failed on updateLine", e);
+        }
+      }
+    }
+
     const updatedLines = lines.map((line) => {
       if (line.temp_id !== temp_id) return line;
       const updated = { ...line, [field]: value };
+
+      if (fetchedPrice) {
+        updated.price_in_purchase_uom = fetchedPrice.unit_price;
+        updated.price_source = fetchedPrice.source;
+        updated.sale_price = convertPriceToStockUom(
+          fetchedPrice.unit_price,
+          updated.uom_id,
+          updated.stock_uom_id,
+          Number(updated.product_id)
+        );
+      }
+
       if (field === "quantity") {
         const newQty = value || 1;
         updated.quantity_in_stock_uom =
@@ -349,6 +488,7 @@ export default function EditPurchaseOrderPage() {
           conversions,
           Number(updated.product_id),
         );
+        updated.price_source = "manual";
       }
       const qtyForCalc = updated.quantity_in_stock_uom || updated.quantity;
       const taxAmount =
@@ -598,7 +738,7 @@ export default function EditPurchaseOrderPage() {
                     </label>
                     <Select
                       value={supplierId}
-                      onValueChange={(v) => setSupplierId(v)}
+                      onValueChange={handleSupplierChange}
                       defaultLabel={selectedSupplierName}
                     >
                       <SelectTrigger className="h-9 text-sm">
@@ -817,7 +957,7 @@ export default function EditPurchaseOrderPage() {
                               </div>
                             </td>
                             <td className="px-4 py-3 text-right">
-                              <div className="flex flex-col items-end gap-0.5">
+                              <div className="flex flex-col items-end gap-1">
                                 <input
                                   type="number"
                                   min={0}
@@ -861,11 +1001,25 @@ export default function EditPurchaseOrderPage() {
                                       );
                                     }
                                   }}
-                                  className="w-32 text-right border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                                  className="w-32 text-right border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono"
                                 />
-                                {line.uom_name && (
-                                  <span className="text-xs text-gray-400">
-                                    per {line.uom_name}
+                                {line.price_source && (
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium border ${
+                                    line.price_source === "price_list"
+                                      ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                                      : line.price_source === "supplier_info"
+                                      ? "bg-blue-50 text-blue-600 border-blue-100"
+                                      : line.price_source === "cost_price"
+                                      ? "bg-amber-50 text-amber-600 border-amber-100"
+                                      : "bg-gray-100 text-gray-500 border-gray-200"
+                                  }`}>
+                                    {line.price_source === "price_list"
+                                      ? "Bảng giá mua"
+                                      : line.price_source === "supplier_info"
+                                      ? "Giá mặc định NCC"
+                                      : line.price_source === "cost_price"
+                                      ? "Giá vốn"
+                                      : "Nhập tay"}
                                   </span>
                                 )}
                               </div>

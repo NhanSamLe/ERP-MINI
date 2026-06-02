@@ -86,6 +86,11 @@ const menuItems: MenuItem[] = [
         allowedRoles: ["PURCHASE", "PURCHASEMANAGER"],
       },
       {
+        name: "Price Lists",
+        path: "/purchase/price-lists",
+        allowedRoles: ["PURCHASE", "PURCHASEMANAGER", "ACCOUNT"],
+      },
+      {
         name: "Return Auth.",
         path: "/purchase/return-authorizations",
         allowedRoles: ["PURCHASE", "PURCHASEMANAGER", "ACCOUNT", "CHACC"],
