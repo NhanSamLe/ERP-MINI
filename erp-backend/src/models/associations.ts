@@ -90,6 +90,7 @@ import { ApDebitNoteLine } from "../modules/purchase/models/apDebitNoteLine.mode
 import { VendorRefund } from "../modules/purchase/models/vendorRefund.model";
 import { PurchasePriceList } from "../modules/purchase/models/purchasePriceList.model";
 import { PurchasePriceListItem } from "../modules/purchase/models/purchasePriceListItem.model";
+import { BlogPost } from "../modules/blog/models/blogPost.model";
 export function applyAssociations() {
   // =====================
   // AUTH
@@ -1411,6 +1412,15 @@ export function applyAssociations() {
     as: "paymentTerm",
   });
   ApInvoice.belongsTo(Currency, { foreignKey: "currency_id", as: "currency" });
+
+  // =====================
+  // BLOG POSTS
+  // =====================
+  BlogPost.belongsTo(User, { foreignKey: "author_id", as: "author", onDelete: "CASCADE" });
+  User.hasMany(BlogPost, { foreignKey: "author_id", as: "blogPosts" });
+
+  BlogPost.belongsTo(Product, { foreignKey: "product_id", as: "product", onDelete: "SET NULL" });
+  Product.hasMany(BlogPost, { foreignKey: "product_id", as: "blogPosts" });
 }
 
 // ===============================

@@ -12,10 +12,13 @@ import categoryRoutes from "./categoryRoutes";
 import userRoutes from "./userRoutes";
 import partnerRoutes from "./partnerRoutes";
 import aiNarrativeRoutes from "./aiNarrativeRoutes";
+import blogRoutes from "./blogRoutes";
 import Layout from "../components/layout/Layout";
 import MainPage from "../pages/MainPage";
 import UnauthorizedPage from "../pages/UnauthorizedPage";
 import KioskPage from "../features/hrm/page/KioskPage";
+import PublicBlogListPage from "../features/blog/page/PublicBlogListPage";
+import PublicBlogDetailPage from "../features/blog/page/PublicBlogDetailPage";
 
 // const routes = [
 //   ...authRoutes,
@@ -42,12 +45,21 @@ const appRoutes = [
   ...userRoutes,
   ...partnerRoutes,
   ...aiNarrativeRoutes,
+  ...blogRoutes,
 ];
 const routes = [
   ...authRoutes,
   {
     path: "/",
     element: <MainPage />,
+  },
+  {
+    path: "/public/blog",
+    element: <PublicBlogListPage />,
+  },
+  {
+    path: "/public/blog/:slug",
+    element: <PublicBlogDetailPage />,
   },
   {
     path: "/unauthorized",

@@ -120,6 +120,7 @@ export default function MainPage() {
               <a href="#features" className="text-gray-700 hover:text-orange-500 transition">Tính năng</a>
               <a href="#pricing" className="text-gray-700 hover:text-orange-500 transition">Bảng giá</a>
               <a href="#about" className="text-gray-700 hover:text-orange-500 transition">Về chúng tôi</a>
+              <a href="/public/blog" className="text-gray-700 hover:text-orange-500 transition">Blog</a>
               <a href="/login" className="text-gray-700 hover:text-orange-500 transition">Đăng nhập</a>
               <a 
                 href="/login" 
@@ -144,6 +145,7 @@ export default function MainPage() {
               <a href="#features" className="block text-gray-700 hover:text-orange-500">Tính năng</a>
               <a href="#pricing" className="block text-gray-700 hover:text-orange-500">Bảng giá</a>
               <a href="#about" className="block text-gray-700 hover:text-orange-500">Về chúng tôi</a>
+              <a href="/public/blog" className="block text-gray-700 hover:text-orange-500">Blog</a>
               <a href="/login" className="block text-gray-700 hover:text-orange-500">Đăng nhập</a>
               <a 
                 href="/login" 
@@ -367,7 +369,7 @@ export default function MainPage() {
               <h4 className="text-white font-semibold mb-4">Công ty</h4>
               <ul className="space-y-2 text-sm">
                 <li><a href="#" className="hover:text-orange-400">Về chúng tôi</a></li>
-                <li><a href="#" className="hover:text-orange-400">Blog</a></li>
+                <li><a href="/public/blog" className="hover:text-orange-400">Blog</a></li>
                 <li><a href="#" className="hover:text-orange-400">Tuyển dụng</a></li>
               </ul>
             </div>

@@ -91,6 +91,8 @@ import { Notification } from "../core/models/notification.model";
 // AI Chatbot
 import { Conversation } from "../modules/ai-chatbot/models/conversation.model";
 import { ChatMessage } from "../modules/ai-chatbot/models/message.model";
+// Blog
+import { BlogPost } from "../modules/blog/models/blogPost.model";
 // Document Intelligence
 import { InvoiceDocument } from "../modules/document-intelligence/models/invoiceDocument.model";
 import { OcrFieldMapping } from "../modules/document-intelligence/models/ocrFieldMapping.model";
@@ -248,6 +250,7 @@ export {
   Notification,
   Conversation,
   ChatMessage,
+  BlogPost,
   InvoiceDocument,
   OcrFieldMapping,
   // Phase 5: Purchase Enhancement

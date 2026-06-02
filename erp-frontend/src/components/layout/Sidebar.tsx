@@ -342,6 +342,12 @@ const menuItems: MenuItem[] = [
     allowedRoles: ["CEO", "ADMIN", "CHACC", "ACCOUNT", "BRANCH_MANAGER"],
   },
   {
+    name: "AI Blog",
+    icon: FileText,
+    path: "/blog",
+    allowedRoles: ["CEO", "ADMIN", "SALESMANAGER", "SALES"],
+  },
+  {
     name: "Admin",
     icon: UserCog,
     allowedRoles: ["ADMIN"],
