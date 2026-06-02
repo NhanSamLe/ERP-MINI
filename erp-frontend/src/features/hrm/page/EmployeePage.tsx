@@ -11,8 +11,8 @@ import {
 } from "../service/employee.service";
 
 import EmployeeFormModal from "../components/EmployeeFormModal";
-import UserFormModal from "..//components/UserFormModal";
-
+import UserFormModal from "../components/UserFormModal";
+import RegisterFaceModal from "../components/RegisterFaceModal";
 
 import {
   Plus,
@@ -22,6 +22,7 @@ import {
   Users,
   ChevronLeft,
   ChevronRight,
+  Camera,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ResignEmployeeModal from "../components/ResignEmployeeModal";
@@ -46,6 +47,8 @@ export default function EmployeePage() {
 const [userForEmployee, setUserForEmployee] = useState<EmployeeDTO | null>(null);
 const [openResign, setOpenResign] = useState(false);
 const [resignEmp, setResignEmp] = useState<EmployeeDTO | null>(null);
+const [openRegisterFace, setOpenRegisterFace] = useState(false);
+const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
 
 
   const load = async () => {
@@ -233,6 +236,7 @@ const [resignEmp, setResignEmp] = useState<EmployeeDTO | null>(null);
                 <th className="px-4 py-3">Ngân hàng</th>
                 <th className="px-4 py-3">Lương</th>
                 <th className="px-4 py-3">Trạng thái</th>
+                <th className="px-4 py-3 text-center">AI Face</th>
                 <th className="px-4 py-3 text-center">Thao tác</th>
               </tr>
             </thead>
@@ -272,6 +276,17 @@ const [resignEmp, setResignEmp] = useState<EmployeeDTO | null>(null);
     : "Đã nghỉ việc"
 }
                     </td>
+                    <td className="px-4 py-3 text-center">
+                      {e.faces && e.faces.length > 0 ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">
+                          Đã Đăng Ký
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-rose-100 text-rose-800">
+                          Chưa Có
+                        </span>
+                      )}
+                    </td>
 
                     <td className="px-4 py-3 flex gap-2 justify-center">
                       <button
@@ -280,6 +295,7 @@ const [resignEmp, setResignEmp] = useState<EmployeeDTO | null>(null);
                           setEditing(e);
                           setOpenForm(true);
                         }}
+                        title="Sửa thông tin"
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
@@ -287,19 +303,33 @@ const [resignEmp, setResignEmp] = useState<EmployeeDTO | null>(null);
                       <button
                         className="p-2 text-red-600 hover:bg-red-50 rounded"
                         onClick={() => handleDelete(e)}
+                        title="Xóa nhân viên"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
+
                       <button
-  className="p-2 text-yellow-600 hover:bg-yellow-50 rounded"
-  onClick={() => {
-    setResignEmp(e);
-    setOpenResign(true);
-  }}
-  disabled={e.status === "resigned"}
->
-  Nghỉ
-</button>
+                        className={`p-2 rounded ${e.faces && e.faces.length > 0 ? "text-emerald-600 hover:bg-emerald-50" : "text-purple-600 hover:bg-purple-50"}`}
+                        onClick={() => {
+                          setFaceEmp(e);
+                          setOpenRegisterFace(true);
+                        }}
+                        disabled={e.status === "resigned"}
+                        title={e.faces && e.faces.length > 0 ? "Cập nhật quét lại mặt AI" : "Đăng ký quét mặt AI"}
+                      >
+                        <Camera className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        className="p-2 text-yellow-600 hover:bg-yellow-50 rounded text-xs font-medium"
+                        onClick={() => {
+                          setResignEmp(e);
+                          setOpenResign(true);
+                        }}
+                        disabled={e.status === "resigned"}
+                      >
+                        Nghỉ
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -400,6 +430,15 @@ const [resignEmp, setResignEmp] = useState<EmployeeDTO | null>(null);
   }}
   onSubmit={handleResign}
 />
+      <RegisterFaceModal
+        open={openRegisterFace}
+        employee={faceEmp}
+        onClose={() => {
+          setOpenRegisterFace(false);
+          setFaceEmp(null);
+        }}
+        onSuccess={load}
+      />
     </div>
   );
 }

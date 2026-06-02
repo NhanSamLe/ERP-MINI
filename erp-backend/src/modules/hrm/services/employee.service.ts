@@ -3,6 +3,7 @@ import { Employee } from "../models/employee.model";
 import { Department } from "../models/department.model";
 import { Position } from "../models/position.model";
 import { PayrollRunLine } from "../models/payrollRunLine.model";
+import { EmployeeFace } from "../models/employeeFace.model";
 import { Branch } from "../../company/models/branch.model";
 
 export interface EmployeeFilter {
@@ -50,6 +51,7 @@ export async function listEmployees(filter: EmployeeFilter, user: UserJwt) {
       { model: Department, as: "department", attributes: ["id", "code", "name"] },
       { model: Position, as: "position", attributes: ["id", "name"] },
       { model: Branch, as: "branch", attributes: ["id", "name"] },
+      { model: EmployeeFace, as: "faces", attributes: ["id"] },
     ],
     order: [["full_name", "ASC"]],
   });

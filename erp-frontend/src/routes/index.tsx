@@ -15,6 +15,7 @@ import aiNarrativeRoutes from "./aiNarrativeRoutes";
 import Layout from "../components/layout/Layout";
 import MainPage from "../pages/MainPage";
 import UnauthorizedPage from "../pages/UnauthorizedPage";
+import KioskPage from "../features/hrm/page/KioskPage";
 
 // const routes = [
 //   ...authRoutes,
@@ -51,6 +52,10 @@ const routes = [
   {
     path: "/unauthorized",
     element: <UnauthorizedPage />,
+  },
+  {
+    path: "/kiosk",
+    element: <KioskPage />,
   },
   {
     path: "/",

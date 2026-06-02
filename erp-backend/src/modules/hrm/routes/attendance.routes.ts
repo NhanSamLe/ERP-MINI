@@ -16,4 +16,7 @@ router.post("/", authMiddleware(["HR_STAFF"]), ctrl.create);
 router.put("/:id", authMiddleware(["HR_STAFF"]), ctrl.update); 
 router.delete("/:id", authMiddleware(["HR_STAFF"]), ctrl.remove); 
 
+// 👉 Chấm công AI bằng Kiosk (Công khai)
+router.post("/check-in-ai", ctrl.checkInAI);
+
 export default router;

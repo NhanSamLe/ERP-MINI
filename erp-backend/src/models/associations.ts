@@ -53,6 +53,7 @@ import { TaskActivity } from "../modules/crm/models/taskActivity.model";
 import { EmailActivity } from "../modules/crm/models/emailActivity.model";
 import { Attendance } from "../modules/hrm/models/attendance.model";
 import { PayrollItem } from "../modules/hrm/models/payrollItem.model";
+import { EmployeeFace } from "../modules/hrm/models/employeeFace.model";
 import { Permission } from "../modules/auth/models/permission.model";
 import { RolePermission } from "../modules/auth/models/rolePermission.model";
 import { UserRole } from "../modules/auth/models/userRole.model";
@@ -194,6 +195,17 @@ export function applyAssociations() {
   Attendance.belongsTo(Employee, {
     foreignKey: "employee_id",
     as: "employee", // 👈 alias CHÍNH XÁC là "employee"
+  });
+
+  // ✅ Employee ↔ EmployeeFace
+  Employee.hasMany(EmployeeFace, {
+    foreignKey: "employee_id",
+    as: "faces",
+    onDelete: "CASCADE",
+  });
+  EmployeeFace.belongsTo(Employee, {
+    foreignKey: "employee_id",
+    as: "employee",
   });
 
   // =====================

@@ -8,6 +8,7 @@ import {
   deleteEmployee,
   resignEmployee,
   getOwnProfile,
+  registerFace,
 } from "../controllers/employee.controller";
 
 const router = Router();
@@ -20,6 +21,8 @@ router.delete("/:id", authMiddleware(["HR_STAFF"]), deleteEmployee);
 
 // Offboarding: POST /hrm/employees/:id/resign
 router.post("/:id/resign", authMiddleware(["HR_STAFF"]), resignEmployee);
+
+router.post("/:id/register-face", authMiddleware(["HR_STAFF"]), registerFace);
 
 router.get("/me/profile", authMiddleware([]), getOwnProfile);
 

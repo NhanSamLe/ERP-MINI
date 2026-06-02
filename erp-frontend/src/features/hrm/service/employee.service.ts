@@ -36,3 +36,7 @@ export async function resignEmployee(
   const res = await employeeApi.resign(id, data);
   return res.data;
 }
+export async function registerFace(id: number, faceVector: number[]) {
+  const res = await employeeApi.registerFace(id, faceVector);
+  return res.data;
+}

@@ -116,3 +116,31 @@ export async function getOwnProfile(req: Request, res: Response) {
     return res.status(400).json({ message: err.message });
   }
 }
+
+export async function registerFace(req: Request, res: Response) {
+  try {
+    const id = Number(req.params.id);
+    if (Number.isNaN(id)) return res.status(400).json({ message: "Invalid id" });
+
+    const { faceVector } = req.body;
+    if (!faceVector || !Array.isArray(faceVector)) {
+      return res.status(400).json({ message: "faceVector (mảng 128 số float) là bắt buộc" });
+    }
+
+    const { EmployeeFace, Employee } = await import("../../../models/index");
+    
+    const emp = await Employee.findByPk(id);
+    if (!emp) return res.status(404).json({ message: "Nhân viên không tồn tại" });
+
+    await EmployeeFace.destroy({ where: { employee_id: id } });
+
+    await EmployeeFace.create({
+      employee_id: id,
+      face_vector: JSON.stringify(faceVector)
+    });
+
+    return res.json({ message: "Đăng ký khuôn mặt thành công!" });
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message || "Internal server error" });
+  }
+}

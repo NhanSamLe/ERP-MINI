@@ -14,6 +14,7 @@ export interface EmployeeDTO {
   bank_account?: string | null;
   bank_name?: string | null;
   status: "active" | "inactive" | "resigned";
+  faces?: Array<{ id: number }> | null;
 }
 export interface EmployeeFormPayload {
   emp_code: string;

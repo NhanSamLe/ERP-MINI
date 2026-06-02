@@ -78,6 +78,7 @@ import { PayrollRun } from "../modules/hrm/models/payrollRun.model";
 import { PayrollRunLine } from "../modules/hrm/models/payrollRunLine.model";
 import { Attendance } from "../modules/hrm/models/attendance.model";
 import { PayrollItem } from "../modules/hrm/models/payrollItem.model";
+import { EmployeeFace } from "../modules/hrm/models/employeeFace.model";
 // Finance & GL
 import { GlAccount } from "../modules/finance/models/glAccount.model";
 import { GlJournal } from "../modules/finance/models/glJournal.model";
@@ -218,6 +219,7 @@ export {
   PayrollRunLine,
   Attendance,
   PayrollItem,
+  EmployeeFace,
   GlAccount,
   GlJournal,
   GlEntry,
