@@ -25,7 +25,7 @@ export interface SaleOrderAttrs {
   payment_term_id?: number | null;
   discount_percent?: number;
   discount_amount?: number;
-  delivery_status?: "pending" | "partial" | "delivered";
+  delivery_status?: "pending" | "partial" | "delivered" | "partially_returned" | "returned";
   invoice_status?: "not_invoiced" | "partial" | "invoiced";
   customer_po_number?: string | null;
   delivery_address?: string | null;
@@ -61,7 +61,7 @@ export class SaleOrder extends Model<SaleOrderAttrs, SaleOrderCreation> implemen
   public payment_term_id?: number | null;
   public discount_percent?: number;
   public discount_amount?: number;
-  public delivery_status?: "pending" | "partial" | "delivered";
+  public delivery_status?: "pending" | "partial" | "delivered" | "partially_returned" | "returned";
   public invoice_status?: "not_invoiced" | "partial" | "invoiced";
   public customer_po_number?: string | null;
   public delivery_address?: string | null;
@@ -99,7 +99,7 @@ SaleOrder.init(
     payment_term_id: { type: DataTypes.BIGINT, allowNull: true },
     discount_percent: { type: DataTypes.DECIMAL(5, 2), defaultValue: 0 },
     discount_amount: { type: DataTypes.DECIMAL(18, 2), defaultValue: 0 },
-    delivery_status: { type: DataTypes.ENUM("pending", "partial", "delivered"), defaultValue: "pending" },
+    delivery_status: { type: DataTypes.ENUM("pending", "partial", "delivered", "partially_returned", "returned"), defaultValue: "pending" },
     invoice_status: { type: DataTypes.ENUM("not_invoiced", "partial", "invoiced"), defaultValue: "not_invoiced" },
     customer_po_number: { type: DataTypes.STRING(100), allowNull: true },
     delivery_address: { type: DataTypes.TEXT, allowNull: true },

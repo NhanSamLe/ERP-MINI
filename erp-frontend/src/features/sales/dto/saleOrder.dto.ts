@@ -63,7 +63,7 @@ export interface SaleOrderDto {
 
   approval_status: ApprovalStatus;
   status: SaleOrderStatus;
-  delivery_status?: "pending" | "partial" | "delivered";
+  delivery_status?: "pending" | "partial" | "delivered" | "partially_returned" | "returned";
   invoice_status?: "not_invoiced" | "partial" | "invoiced";
 
   created_by: number;

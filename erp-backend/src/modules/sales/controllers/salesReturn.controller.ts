@@ -60,6 +60,15 @@ export const SalesReturnController = {
     }
   },
 
+  async getReturnByRmaId(req: Request, res: Response) {
+    try {
+      const data = await salesReturnService.getReturnByRmaId(Number(req.params.id), (req as any).user);
+      return res.json({ data });
+    } catch (err: any) {
+      return res.status(statusOf(err)).json({ message: err.message });
+    }
+  },
+
   async createReturnFromRma(req: Request, res: Response) {
     try {
       const data = await salesReturnService.createReturnFromRma(Number(req.params.id), req.body, (req as any).user);
@@ -153,6 +162,15 @@ export const SalesReturnController = {
   async getRefund(req: Request, res: Response) {
     try {
       const data = await salesReturnService.getRefund(Number(req.params.id), (req as any).user);
+      return res.json({ data });
+    } catch (err: any) {
+      return res.status(statusOf(err)).json({ message: err.message });
+    }
+  },
+
+  async getRefunds(req: Request, res: Response) {
+    try {
+      const data = await salesReturnService.getRefunds((req as any).user);
       return res.json({ data });
     } catch (err: any) {
       return res.status(statusOf(err)).json({ message: err.message });

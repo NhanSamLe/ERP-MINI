@@ -4,6 +4,7 @@ import { CreateRmaDto, CreateSalesReturnFromRmaDto } from "../dto/salesReturn.dt
 export const salesReturnApi = {
   getRmas: () => axiosClient.get("/sales/returns/rmas"),
   getRma: (id: number) => axiosClient.get(`/sales/returns/rmas/${id}`),
+  getReturnByRmaId: (rmaId: number) => axiosClient.get(`/sales/returns/rmas/${rmaId}/return`),
   createRma: (data: CreateRmaDto) => axiosClient.post("/sales/returns/rmas", data),
   submitRma: (id: number) => axiosClient.post(`/sales/returns/rmas/${id}/submit`),
   approveRma: (id: number) => axiosClient.post(`/sales/returns/rmas/${id}/approve`),
@@ -20,4 +21,6 @@ export const salesReturnApi = {
   getCreditNotes: () => axiosClient.get("/sales/returns/credit-notes"),
   approveCreditNote: (id: number) => axiosClient.post(`/sales/returns/credit-notes/${id}/approve`),
   createRefund: (id: number, data: unknown) => axiosClient.post(`/sales/returns/credit-notes/${id}/create-refund`, data),
+  getRefunds: () => axiosClient.get("/sales/returns/refunds"),
+  approveRefund: (id: number) => axiosClient.post(`/sales/returns/refunds/${id}/approve`),
 };

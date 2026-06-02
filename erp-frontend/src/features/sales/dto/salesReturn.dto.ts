@@ -80,3 +80,42 @@ export interface CreateSalesReturnFromRmaDto {
     condition?: "good" | "damaged" | "defective";
   }>;
 }
+
+export interface ArCreditNoteDto {
+  id: number;
+  branch_id: number;
+  credit_note_no: string;
+  sales_return_id?: number | null;
+  original_invoice_id?: number | null;
+  customer_id: number;
+  credit_note_date: string;
+  status: "draft" | "posted" | "applied" | "cancelled";
+  approval_status: "draft" | "waiting_approval" | "approved" | "rejected";
+  total_before_tax: number;
+  total_tax: number;
+  total_after_tax: number;
+  currency_id?: number | null;
+  exchange_rate: number;
+  notes?: string | null;
+  customer?: { id: number; name: string; email?: string; phone?: string };
+  currency?: { id: number; code: string; symbol?: string };
+}
+
+export interface ArRefundDto {
+  id: number;
+  branch_id: number;
+  refund_no: string;
+  credit_note_id?: number | null;
+  customer_id: number;
+  refund_date: string;
+  amount: number;
+  currency_id?: number | null;
+  exchange_rate: number;
+  method: "cash" | "bank" | "transfer";
+  status: "draft" | "posted";
+  approval_status: "draft" | "waiting_approval" | "approved" | "rejected";
+  notes?: string | null;
+  creditNote?: Pick<ArCreditNoteDto, "id" | "credit_note_no" | "total_after_tax">;
+  customer?: { id: number; name: string; email?: string; phone?: string };
+  currency?: { id: number; code: string; symbol?: string };
+}
