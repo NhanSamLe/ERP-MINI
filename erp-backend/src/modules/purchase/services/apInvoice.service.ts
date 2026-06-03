@@ -15,6 +15,7 @@ import { Transaction, Op } from "sequelize";
 import { GlJournal } from "../../finance/models/glJournal.model";
 import { GlEntry } from "../../finance/models/glEntry.model";
 import { GlEntryLine } from "../../finance/models/glEntryLine.model";
+import { GlAccount } from "../../finance/models/glAccount.model";
 import { notificationService } from "../../../core/services/notification.service";
 import { DuplicateDetectorService } from "../../document-intelligence/services/duplicateDetector.service";
 import { ThreeWayMatcherService } from "../../document-intelligence/services/threeWayMatcher.service";
@@ -752,9 +753,19 @@ export const apInvoiceService = {
         { transaction: t },
       );
 
-      const INVENTORY_ACC_ID = 8;
-      const VAT_INPUT_ACC_ID = 4;
-      const AP_ACC_ID = 5;
+      const [invAcc, vatAcc, apAcc] = await Promise.all([
+        GlAccount.findOne({ where: { code: "156" }, transaction: t }),
+        GlAccount.findOne({ where: { code: "1331" }, transaction: t }),
+        GlAccount.findOne({ where: { code: "331" }, transaction: t }),
+      ]);
+
+      if (!invAcc || !vatAcc || !apAcc) {
+        throw new Error("Missing GL Accounts 156 / 1331 / 331");
+      }
+
+      const INVENTORY_ACC_ID = invAcc.id;
+      const VAT_INPUT_ACC_ID = vatAcc.id;
+      const AP_ACC_ID = apAcc.id;
 
       const totalBeforeTax = Number(invoice.total_before_tax || 0);
       const totalTax = Number(invoice.total_tax || 0);

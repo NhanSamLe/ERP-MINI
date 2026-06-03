@@ -7,6 +7,7 @@ import { Transaction } from "sequelize";
 import { GlJournal } from "../../finance/models/glJournal.model";
 import { GlEntry } from "../../finance/models/glEntry.model";
 import { GlEntryLine } from "../../finance/models/glEntryLine.model";
+import { GlAccount } from "../../finance/models/glAccount.model";
 import { ApPaymentAllocation, Partner, sequelize } from "../../../models";
 import { Op, QueryTypes } from "sequelize";
 import { notificationService } from "../../../core/services/notification.service";
@@ -237,9 +238,21 @@ export const apPaymentService = {
         { transaction: t },
       );
 
-      // GL: cash->111 (id=1), bank/transfer->112 (id=2)
-      const creditAccountId = payment.method === "cash" ? 1 : 2;
-      const debitAccountId = 3; // 331 - Phải trả NCC
+      // GL: cash->111, bank/transfer->112
+      const creditAccCode = payment.method === "cash" ? "111" : "112";
+      const debitAccCode = "331";
+
+      const [debitAcc, creditAcc] = await Promise.all([
+        GlAccount.findOne({ where: { code: debitAccCode }, transaction: t }),
+        GlAccount.findOne({ where: { code: creditAccCode }, transaction: t }),
+      ]);
+
+      if (!debitAcc || !creditAcc) {
+        throw new Error(`Missing GL Accounts ${debitAccCode} / ${creditAccCode}`);
+      }
+
+      const creditAccountId = creditAcc.id;
+      const debitAccountId = debitAcc.id;
 
       const journalCode = payment.method === "cash" ? "CASH" : "BANK";
       const journal = await GlJournal.findOne({

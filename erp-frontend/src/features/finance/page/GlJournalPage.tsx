@@ -9,6 +9,7 @@ import {
   Download,
   FileText,
 } from "lucide-react";
+import { glJournalApi } from "../api/glJournal.api";
 
 // Mock data types
 interface GlJournalDTO {
@@ -19,20 +20,6 @@ interface GlJournalDTO {
   status?: string;
   createdAt?: string;
 }
-
-// Mock service
-const fetchGlJournals = async (): Promise<GlJournalDTO[]> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve([
-        { id: 1, code: "SALES", name: "Nhật ký bán hàng", description: "Ghi nhận các giao dịch bán hàng", status: "active", createdAt: "2024-01-15" },
-        { id: 2, code: "PURCHASE", name: "Nhật ký mua hàng", description: "Ghi nhận các giao dịch mua hàng", status: "active", createdAt: "2024-01-15" },
-        { id: 3, code: "CASH", name: "Nhật ký tiền mặt", description: "Ghi nhận các giao dịch tiền mặt", status: "active", createdAt: "2024-01-15" },
-        { id: 4, code: "BANK", name: "Nhật ký ngân hàng", description: "Ghi nhận các giao dịch ngân hàng", status: "active", createdAt: "2024-01-15" },
-      ]);
-    }, 800);
-  });
-};
 
 const GlJournalPage: React.FC = () => {
   const navigate = useNavigate(); // ✅ thêm
@@ -45,9 +32,9 @@ const GlJournalPage: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const rows = await fetchGlJournals();
-      setData(rows);
-      setFilteredData(rows);
+      const res = await glJournalApi.getAll();
+      setData(res.data);
+      setFilteredData(res.data);
     } catch (e: any) {
       console.error(e);
       toast.error(e.message || "Lỗi tải danh sách nhật ký");

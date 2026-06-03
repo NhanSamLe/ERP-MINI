@@ -215,7 +215,7 @@ const menuItems: MenuItem[] = [
       {
         name: "Reports",
         path: "/finance/reports",
-        allowedRoles: ["ACCOUNT", "CEO"],
+        allowedRoles: ["ACCOUNT", "CHACC", "CEO", "ADMIN"],
       },
     ],
   },

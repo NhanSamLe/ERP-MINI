@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Search, RefreshCcw, FileText, Filter, X, Calendar, CheckCircle2, Clock } from "lucide-react";
+import { Search, RefreshCcw, FileText, Filter, X, Calendar, CheckCircle2, Clock, Plus } from "lucide-react";
 import { glEntryApi } from "../api/glEntry.api";
+import GlEntryFormModal from "../components/GlEntryFormModal";
 
 type GlEntryDTO = {
   id: number;
@@ -10,6 +11,8 @@ type GlEntryDTO = {
   entry_date: string;
   memo?: string;
   status: "draft" | "posted";
+  reference_type?: string;
+  reference_id?: number;
 };
 
 const GlEntryListPage: React.FC = () => {
@@ -24,6 +27,7 @@ const GlEntryListPage: React.FC = () => {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const load = async () => {
     if (!jid) return;
@@ -90,6 +94,13 @@ const GlEntryListPage: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setModalOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium hover:from-blue-500 hover:to-indigo-500 transition-all shadow-sm hover:shadow-md"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Tạo bút toán</span>
+              </button>
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${
@@ -216,15 +227,18 @@ const GlEntryListPage: React.FC = () => {
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
                     Memo
                   </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                    Tham chiếu
+                  </th>
                   <th className="px-6 py-4 text-center text-xs font-semibold text-slate-700 uppercase tracking-wider">
                     Trạng thái
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {loading ? (
+                 {loading ? (
                   <tr>
-                    <td className="px-6 py-16 text-center" colSpan={4}>
+                    <td className="px-6 py-16 text-center" colSpan={5}>
                       <div className="flex flex-col items-center gap-3">
                         <RefreshCcw className="w-8 h-8 text-blue-600 animate-spin" />
                         <p className="text-slate-600 font-medium">Đang tải dữ liệu...</p>
@@ -233,7 +247,7 @@ const GlEntryListPage: React.FC = () => {
                   </tr>
                 ) : rows.length === 0 ? (
                   <tr>
-                    <td className="px-6 py-16 text-center" colSpan={4}>
+                    <td className="px-6 py-16 text-center" colSpan={5}>
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center">
                           <FileText className="w-8 h-8 text-slate-400" />
@@ -267,6 +281,20 @@ const GlEntryListPage: React.FC = () => {
                       </td>
                       <td className="px-6 py-4">
                         <span className="text-slate-600 line-clamp-2">{r.memo || "—"}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        {r.reference_type ? (
+                          <div className="flex flex-col">
+                            <span className="text-xs font-bold text-blue-600 uppercase">
+                              {r.reference_type === "ar_invoice" || r.reference_type === "AR_INVOICE" ? "Hóa đơn bán (AR)" : "Hóa đơn mua (AP)"}
+                            </span>
+                            <span className="text-sm font-medium text-slate-700">
+                              ID: #{r.reference_id}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex justify-center">
@@ -306,6 +334,13 @@ const GlEntryListPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      <GlEntryFormModal
+        open={modalOpen}
+        journalId={jid}
+        onClose={() => setModalOpen(false)}
+        onSuccess={load}
+      />
     </div>
   );
 };

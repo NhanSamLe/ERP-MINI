@@ -97,6 +97,18 @@ Partner.init(
     createdAt: "created_at", 
     updatedAt: "updated_at",
     hooks: {
+      beforeSave: async (partner: Partner, options) => {
+        if (partner.type === "customer") {
+          partner.is_customer = true;
+          partner.is_supplier = false;
+        } else if (partner.type === "supplier") {
+          partner.is_customer = false;
+          partner.is_supplier = true;
+        } else if (partner.type === "internal") {
+          partner.is_customer = false;
+          partner.is_supplier = false;
+        }
+      },
       afterDestroy: async (partner: Partner, options) => {
         const { Activity } = require("../../../models/index");
         if (Activity) {

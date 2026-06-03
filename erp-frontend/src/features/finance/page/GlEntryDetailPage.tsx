@@ -1,8 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, RefreshCcw, AlertTriangle, Download, Calendar, FileText, CheckCircle2, Clock } from "lucide-react";
+import { ArrowLeft, RefreshCcw, AlertTriangle, Download, Calendar, FileText, CheckCircle2, Clock, Check, RefreshCw } from "lucide-react";
 import { glEntryApi } from "../api/glEntry.api";
 import { exportExcelReport } from "../../../utils/excel/exportExcelReport";
+import { useSelector } from "react-redux";
+import { RootState } from "../../../store/store";
+import { toast } from "react-toastify";
 
 type GlEntryLineDTO = {
   id: number;
@@ -23,6 +26,8 @@ type GlEntryDetailDTO = {
   status: "draft" | "posted";
   journal?: { id: number; code: string; name: string };
   lines: GlEntryLineDTO[];
+  reference_type?: string;
+  reference_id?: number;
 };
 
 const GlEntryDetailPage: React.FC = () => {
@@ -33,12 +38,46 @@ const GlEntryDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [row, setRow] = useState<GlEntryDetailDTO | null>(null);
 
+  const { user } = useSelector((state: RootState) => state.auth);
+  const roleCode = typeof user?.role === "object" ? user.role.code : user?.role;
+  const isChiefOrAdmin = roleCode === "CHACC" || roleCode === "ADMIN";
+
   const load = async () => {
     if (!id) return;
     try {
       setLoading(true);
       const res = await glEntryApi.getDetail(id);
       setRow(res.data);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApprove = async () => {
+    if (!id) return;
+    try {
+      setLoading(true);
+      await glEntryApi.updateStatus(id, "posted");
+      toast.success("Duyệt ghi sổ bút toán thành công!");
+      load();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || err.message || "Lỗi duyệt bút toán");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUnpost = async () => {
+    if (!id) return;
+    try {
+      setLoading(true);
+      await glEntryApi.updateStatus(id, "draft");
+      toast.success("Hủy ghi sổ bút toán thành công!");
+      load();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || err.message || "Lỗi hủy ghi sổ");
     } finally {
       setLoading(false);
     }
@@ -152,7 +191,7 @@ const GlEntryDetailPage: React.FC = () => {
                   </span>
                 </div>
                 
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-600">
+                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-600">
                   <div className="inline-flex items-center gap-1.5">
                     <FileText className="w-4 h-4 text-slate-400" />
                     <span className="font-medium">{row.journal?.code}</span>
@@ -163,11 +202,36 @@ const GlEntryDetailPage: React.FC = () => {
                     <Calendar className="w-4 h-4 text-slate-400" />
                     <span>{new Date(row.entry_date).toLocaleDateString('vi-VN')}</span>
                   </div>
+                  {row.reference_type && (
+                    <div className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100 font-semibold text-xs">
+                      <span>Tham chiếu: {row.reference_type === "ar_invoice" || row.reference_type === "AR_INVOICE" ? "Hóa đơn bán (AR)" : "Hóa đơn mua (AP)"} (ID: #{row.reference_id})</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
+              {row.status === "draft" && isChiefOrAdmin && (
+                <button
+                  onClick={handleApprove}
+                  disabled={loading}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-500 transition-all shadow-sm hover:shadow-md disabled:opacity-50"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Duyệt Ghi Sổ</span>
+                </button>
+              )}
+              {row.status === "posted" && isChiefOrAdmin && (
+                <button
+                  onClick={handleUnpost}
+                  disabled={loading}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 text-white font-medium hover:bg-rose-500 transition-all shadow-sm hover:shadow-md disabled:opacity-50"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  <span>Hủy Ghi Sổ</span>
+                </button>
+              )}
               <button
                 onClick={exportExcel}
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-700 font-medium hover:bg-slate-50 hover:border-slate-400 transition-all"

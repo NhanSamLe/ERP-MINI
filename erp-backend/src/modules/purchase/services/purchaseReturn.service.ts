@@ -8,6 +8,7 @@ import { VendorRefund } from "../models/vendorRefund.model";
 import { GlEntry } from "../../finance/models/glEntry.model";
 import { GlEntryLine } from "../../finance/models/glEntryLine.model";
 import { GlJournal } from "../../finance/models/glJournal.model";
+import { GlAccount } from "../../finance/models/glAccount.model";
 import { Partner } from "../../../models";
 import { User } from "../../auth/models/user.model";
 import { Branch } from "../../company/models/branch.model";
@@ -707,19 +708,27 @@ export const apDebitNoteService = {
         { transaction: t },
       );
 
+      const [apAcc, invAcc] = await Promise.all([
+        GlAccount.findOne({ where: { code: "331" }, transaction: t }),
+        GlAccount.findOne({ where: { code: "156" }, transaction: t }),
+      ]);
+      if (!apAcc || !invAcc) {
+        throw new Error("Missing GL Accounts 331 / 156");
+      }
+
       const amount = Number(dn.total_after_tax);
       await GlEntryLine.bulkCreate(
         [
           {
             entry_id: entry.id,
-            account_id: 3,
+            account_id: apAcc.id,
             partner_id: dn.supplier_id,
             debit: amount,
             credit: 0,
           }, // 331 AP
           {
             entry_id: entry.id,
-            account_id: 4,
+            account_id: invAcc.id,
             partner_id: dn.supplier_id,
             debit: 0,
             credit: amount,
@@ -878,19 +887,30 @@ export const vendorRefundService = {
       );
 
       const amount = Number(refund.amount);
-      const cashAccountId = refund.method === "cash" ? 1 : 2; // 111 cash / 112 bank
+      const cashAccCode = refund.method === "cash" ? "111" : "112";
+      const apAccCode = "331";
+
+      const [cashAcc, apAcc] = await Promise.all([
+        GlAccount.findOne({ where: { code: cashAccCode }, transaction: t }),
+        GlAccount.findOne({ where: { code: apAccCode }, transaction: t }),
+      ]);
+
+      if (!cashAcc || !apAcc) {
+        throw new Error(`Missing GL Accounts ${cashAccCode} / ${apAccCode}`);
+      }
+
       await GlEntryLine.bulkCreate(
         [
           {
             entry_id: entry.id,
-            account_id: cashAccountId,
+            account_id: cashAcc.id,
             partner_id: refund.supplier_id,
             debit: amount,
             credit: 0,
           },
           {
             entry_id: entry.id,
-            account_id: 3,
+            account_id: apAcc.id,
             partner_id: refund.supplier_id,
             debit: 0,
             credit: amount,
