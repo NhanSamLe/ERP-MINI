@@ -63,8 +63,8 @@ function WarningBanner() {
         <line x1="12" y1="17" x2="12.01" y2="17" />
       </svg>
       <span>
-        Hành động này không thể hoàn tác. Nhân viên sẽ bị chấm dứt hợp đồng
-        kể từ ngày được chọn.
+        This action cannot be undone. The employee will be terminated starting
+        from the selected date.
       </span>
     </div>
   );
@@ -107,7 +107,7 @@ export default function ResignEmployeeModal({
   const validate = useCallback((): boolean => {
     const newErrors: FormErrors = {};
     if (!resignDate) {
-      newErrors.resign_date = "Vui lòng chọn ngày nghỉ việc";
+      newErrors.resign_date = "Please select a resignation date";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -127,7 +127,7 @@ export default function ResignEmployeeModal({
       onClose();
     } catch (err) {
       setSubmitError(
-        err instanceof Error ? err.message : "Đã xảy ra lỗi, vui lòng thử lại"
+        err instanceof Error ? err.message : "An error occurred, please try again"
       );
     } finally {
       setLoading(false);
@@ -455,10 +455,10 @@ export default function ResignEmployeeModal({
 
             <div className="resign-header-text">
               <h2 id="resign-title" className="resign-title">
-                Xác nhận nghỉ việc
+                Confirm Resignation
               </h2>
               <p className="resign-subtitle">
-                Nhập thông tin để hoàn tất thủ tục cho nhân viên
+                Enter information to complete the employee resignation process
               </p>
               {employeeName && (
                 <div className="resign-employee">
@@ -472,7 +472,7 @@ export default function ResignEmployeeModal({
               className="resign-close"
               onClick={onClose}
               disabled={loading}
-              aria-label="Đóng"
+              aria-label="Close"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <line x1="18" y1="6" x2="6" y2="18" />
@@ -487,7 +487,7 @@ export default function ResignEmployeeModal({
             {/* Date field */}
             <div className="resign-field">
               <label htmlFor="resign-date" className="resign-label">
-                Ngày nghỉ việc
+                Resignation Date
                 <span style={{ color: "#dc2626" }} aria-hidden="true"> *</span>
               </label>
               <div className="resign-input-wrap">
@@ -526,15 +526,15 @@ export default function ResignEmployeeModal({
             {/* Reason field */}
             <div className="resign-field">
               <label htmlFor="resign-reason" className="resign-label">
-                Lý do nghỉ việc
-                <span className="resign-optional">(tuỳ chọn)</span>
+                Reason for Resignation
+                <span className="resign-optional">(optional)</span>
               </label>
               <textarea
                 id="resign-reason"
                 className="resign-textarea"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="Nhập lý do nghỉ việc..."
+                placeholder="Enter reason for resignation..."
                 maxLength={500}
               />
             </div>
@@ -557,7 +557,7 @@ export default function ResignEmployeeModal({
               disabled={loading}
               type="button"
             >
-              Hủy bỏ
+              Cancel
             </button>
             <button
               className="resign-btn resign-btn--confirm"
@@ -568,14 +568,14 @@ export default function ResignEmployeeModal({
               {loading ? (
                 <>
                   <span className="resign-spinner" aria-hidden="true" />
-                  Đang xử lý...
+                  Processing...
                 </>
               ) : (
                 <>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
-                  Xác nhận nghỉ việc
+                  Confirm Resignation
                 </>
               )}
             </button>

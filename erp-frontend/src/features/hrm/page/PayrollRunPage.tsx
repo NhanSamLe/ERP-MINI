@@ -42,10 +42,10 @@ import {
 } from "lucide-react";
 
 const statusLabel: Record<string, string> = {
-  present: "Đi làm",
-  absent: "Vắng",
-  leave: "Nghỉ phép",
-  late: "Đi trễ",
+  present: "Present",
+  absent: "Absent",
+  leave: "Leave",
+  late: "Late",
 };
 
 const statusPillClass = (s: string) => {
@@ -211,7 +211,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
 
 
     } catch (e: any) {
-      setEvidenceError(e?.response?.data?.message || "Không lấy được minh chứng");
+      setEvidenceError(e?.response?.data?.message || "Unable to load evidence");
     } finally {
       setEvidenceLoading(false);
     }
@@ -254,7 +254,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
   const handleCreateRun = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createPeriodId || !runNo.trim()) {
-      toast.error("Vui lòng chọn kỳ lương và nhập mã bảng lương");
+      toast.error("Please select a payroll period and enter a payroll run number");
       return;
     }
     try {
@@ -271,7 +271,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
   };
 
   const handleCancelRun = async (id: number) => {
-    if (!window.confirm("Bạn có chắc muốn hủy bảng lương này?")) return;
+    if (!window.confirm("Are you sure you want to cancel this payroll run?")) return;
     try {
       await dispatch(cancelPayrollRunThunk(id) as any).unwrap();
     } catch {
@@ -282,7 +282,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
   const handlePostRun = async (id: number) => {
     if (
       !window.confirm(
-        "Bạn có chắc muốn POST bảng lương này vào sổ cái? Hành động này không thể hoàn tác."
+        "Are you sure you want to POST this payroll run to General Ledger? This action cannot be undone."
       )
     )
       return;
@@ -295,18 +295,18 @@ console.log("attendance keys:", Object.keys(res.data || {}));
 
   const handleCalculate = async () => {
     if (!currentRun) return;
-    if (!window.confirm("Tính lương tự động theo chấm công cho kỳ này?")) return;
+    if (!window.confirm("Calculate payroll automatically based on attendance for this period?")) return;
 
     try {
       await apiClient.post(`/hrm/payroll-runs/${currentRun.id}/calculate`, {});
       await dispatch(fetchPayrollRunDetail(currentRun.id!) as any).unwrap();
-      toast.success("Đã tính lương xong!");
+      toast.success("Payroll calculation completed!");
       // refresh evidence nếu đang mở
       if (showEvidenceModal && evidenceEmployeeId) {
         await openEvidence(evidenceEmployeeId);
       }
     } catch (e: any) {
-      toast.error(e?.response?.data?.message || "Tính lương lỗi");
+      toast.error(e?.response?.data?.message || "Payroll calculation failed");
     }
   };
 
@@ -326,7 +326,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
     e.preventDefault();
     if (!currentRun) return;
     if (!lineEmployeeId || !lineAmount) {
-      toast.error("Vui lòng nhập nhân viên và số tiền");
+      toast.error("Please enter employee ID and amount");
       return;
     }
     const employee_id = Number(lineEmployeeId);
@@ -370,7 +370,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
 
   const handleDeleteLine = async (line: PayrollRunLineDTO) => {
     if (!currentRun) return;
-    if (!window.confirm("Xóa dòng lương này?")) return;
+    if (!window.confirm("Delete this payroll line?")) return;
     try {
       await dispatch(
         deletePayrollRunLineThunk({
@@ -401,12 +401,12 @@ console.log("attendance keys:", Object.keys(res.data || {}));
         {isDraft ? (
           <>
             <Clock className="w-3.5 h-3.5" />
-            Nháp
+            Draft
           </>
         ) : (
           <>
             <CheckCircle2 className="w-3.5 h-3.5" />
-            Đã post
+            Posted
           </>
         )}
       </span>
@@ -453,10 +453,10 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                 <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg">
                   <FileText className="w-7 h-7 text-white" />
                 </div>
-                Quản lý Bảng lương
+                Payroll Run Management
               </h1>
               <p className="text-sm text-gray-600">
-                Theo dõi và quản lý bảng lương của tất cả nhân viên
+                Track and manage employee payroll runs
               </p>
             </div>
 
@@ -466,7 +466,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                 className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg hover:shadow-xl font-medium"
               >
                 <Plus className="w-5 h-5" />
-                Lập bảng lương mới
+                Create New Payroll Run
               </button>
             )}
           </div>
@@ -477,7 +477,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600 font-medium mb-1">
-                    Tổng bảng lương
+                    Total Runs
                   </p>
                   <p className="text-2xl font-bold text-gray-900">
                     {stats.total}
@@ -493,7 +493,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600 font-medium mb-1">
-                    Bảng nháp
+                    Draft Runs
                   </p>
                   <p className="text-2xl font-bold text-amber-600">
                     {stats.draft}
@@ -509,7 +509,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600 font-medium mb-1">
-                    Đã post
+                    Posted
                   </p>
                   <p className="text-2xl font-bold text-emerald-600">
                     {stats.posted}
@@ -531,7 +531,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Tìm kiếm theo mã bảng lương hoặc kỳ lương..."
+                  placeholder="Search by payroll run code or period..."
                   className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -549,9 +549,9 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                     setStatusFilter(e.target.value as PayrollRunStatus | "all")
                   }
                 >
-                  <option value="all">Tất cả trạng thái</option>
-                  <option value="draft">Nháp</option>
-                  <option value="posted">Đã post</option>
+                  <option value="all">All Statuses</option>
+                  <option value="draft">Draft</option>
+                  <option value="posted">Posted</option>
                 </select>
               </div>
 
@@ -566,7 +566,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                     )
                   }
                 >
-                  <option value="all">Tất cả kỳ lương</option>
+                  <option value="all">All Payroll Periods</option>
                   {periods.map((p: any) => (
                     <option key={p.id} value={p.id}>
                       {p.period_code}
@@ -585,7 +585,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
               <div>
                 <h3 className="text-sm font-semibold text-red-800 mb-1">
-                  Có lỗi xảy ra
+                  An error occurred
                 </h3>
                 <p className="text-sm text-red-700">{error}</p>
               </div>
@@ -600,22 +600,22 @@ console.log("attendance keys:", Object.keys(res.data || {}));
               <thead>
                 <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Mã bảng lương
+                    Payroll Run Code
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Kỳ lương
+                    Payroll Period
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Chi nhánh
+                    Branch
                   </th>
                   <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Trạng thái
+                    Status
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Ngày lập
+                    Created Date
                   </th>
                   <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Thao tác
+                    Actions
                   </th>
                 </tr>
               </thead>
@@ -626,7 +626,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                       <div className="flex flex-col items-center gap-4">
                         <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
                         <span className="text-sm text-gray-500 font-medium">
-                          Đang tải dữ liệu...
+                          Loading data...
                         </span>
                       </div>
                     </td>
@@ -640,12 +640,12 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                         </div>
                         <div className="text-center">
                           <p className="text-sm font-medium text-gray-900 mb-1">
-                            Không tìm thấy bảng lương
+                            No payroll runs found
                           </p>
                           <p className="text-sm text-gray-500">
                             {searchTerm
-                              ? "Thử thay đổi từ khóa tìm kiếm"
-                              : "Chưa có bảng lương nào được tạo"}
+                              ? "Try changing your search keywords"
+                              : "No payroll runs have been created yet"}
                           </p>
                         </div>
                       </div>
@@ -702,7 +702,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                             <button
                               onClick={() => openLinesModal(row.id!)}
                               className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all hover:scale-110"
-                              title="Quản lý dòng lương"
+                              title="Manage payroll lines"
                             >
                               <Users className="w-4 h-4" />
                             </button>
@@ -712,7 +712,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                             <button
                               onClick={() => handlePostRun(row.id!)}
                               className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-all hover:scale-110"
-                              title="Post bảng lương"
+                              title="Post payroll run"
                             >
                               <Upload className="w-4 h-4" />
                             </button>
@@ -722,7 +722,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                             <button
                               onClick={() => handleCancelRun(row.id!)}
                               className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all hover:scale-110"
-                              title="Hủy bảng lương"
+                              title="Cancel payroll run"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -730,7 +730,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
 
                           {!isHRStaff && !isAccountant && (
                             <span className="text-xs text-gray-400 italic px-2 py-1 bg-gray-50 rounded">
-                              Chỉ xem
+                              Read-only
                             </span>
                           )}
                         </div>
@@ -754,7 +754,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                   <div className="p-2 bg-white/20 rounded-lg">
                     <FileText className="w-5 h-5" />
                   </div>
-                  Lập bảng lương mới
+                  Create New Payroll Run
                 </h2>
                 <button
                   onClick={() => setShowCreateModal(false)}
@@ -768,7 +768,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
             <form className="p-6 space-y-6" onSubmit={handleCreateRun}>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Kỳ lương <span className="text-red-500">*</span>
+                  Payroll Period <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -782,7 +782,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                     }
                     required
                   >
-                    <option value="">-- Chọn kỳ lương --</option>
+                    <option value="">-- Select Payroll Period --</option>
                     {periods.map((p: any) => (
                       <option key={p.id} value={p.id}>
                         {p.period_code} ({d10(p.start_date)} - {d10(p.end_date)})
@@ -794,7 +794,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Mã bảng lương <span className="text-red-500">*</span>
+                  Payroll Run Code <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -803,7 +803,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                     value={runNo}
                     onChange={(e) => setRunNo(e.target.value)}
-                    placeholder="VD: RUN-2024-01"
+                    placeholder="e.g., RUN-2024-01"
                     required
                   />
                 </div>
@@ -815,13 +815,13 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                   onClick={() => setShowCreateModal(false)}
                   className="px-5 py-2.5 rounded-lg border-2 border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
                 >
-                  Hủy
+                  Cancel
                 </button>
                 <button
                   type="submit"
                   className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-semibold hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg hover:shadow-xl"
                 >
-                  Tạo bảng lương
+                  Create Payroll Run
                 </button>
               </div>
             </form>
@@ -845,7 +845,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                   <div className="flex items-center gap-2 text-blue-100 text-sm">
                     <Calendar className="w-4 h-4" />
                     <span>
-                      Kỳ:{" "}
+                      Period:{" "}
                       {currentRun.period
                         ? `${currentRun.period.period_code} (${d10(
                             currentRun.period.start_date
@@ -875,7 +875,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-5">
                   <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <Plus className="w-4 h-4 text-blue-600" />
-                    {editingLineId ? "Cập nhật dòng lương" : "Thêm dòng lương mới"}
+                    {editingLineId ? "Update Payroll Line" : "Add New Payroll Line"}
                   </h3>
 
                   <form
@@ -884,7 +884,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                   >
                     <div className="flex-1 min-w-[180px]">
                       <label className="block text-xs font-semibold text-gray-700 mb-2">
-                        ID Nhân viên <span className="text-red-500">*</span>
+                        Employee ID <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="number"
@@ -895,13 +895,13 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                             e.target.value ? Number(e.target.value) : ("" as any)
                           )
                         }
-                        placeholder="VD: 101"
+                        placeholder="e.g., 101"
                       />
                     </div>
 
                     <div className="flex-1 min-w-[200px]">
                       <label className="block text-xs font-semibold text-gray-700 mb-2">
-                        Số tiền (VNĐ) <span className="text-red-500">*</span>
+                        Amount (VND) <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
                         <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -914,7 +914,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                               e.target.value ? Number(e.target.value) : ("" as any)
                             )
                           }
-                          placeholder="VD: 15000000"
+                          placeholder="e.g., 15000000"
                         />
                       </div>
                     </div>
@@ -926,12 +926,12 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                       {editingLineId ? (
                         <>
                           <RefreshCw className="w-4 h-4" />
-                          Cập nhật
+                          Update
                         </>
                       ) : (
                         <>
                           <Plus className="w-4 h-4" />
-                          Thêm
+                          Add
                         </>
                       )}
                     </button>
@@ -946,7 +946,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                         }}
                         className="px-4 py-2.5 rounded-lg border-2 border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
                       >
-                        Hủy sửa
+                        Cancel Edit
                       </button>
                     )}
                   </form>
@@ -958,7 +958,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                 <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-5 py-3 border-b-2 border-gray-200">
                   <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                     <Users className="w-4 h-4 text-gray-600" />
-                    Danh sách dòng lương
+                    Payroll Lines List
                     {currentRun.lines && currentRun.lines.length > 0 && (
                       <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">
                         {currentRun.lines.length}
@@ -972,13 +972,13 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200">
                         <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                          Nhân viên
+                          Employee
                         </th>
                         <th className="px-5 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                          Số tiền
+                          Amount
                         </th>
                         <th className="px-5 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider w-40">
-                          Thao tác
+                          Actions
                         </th>
                       </tr>
                     </thead>
@@ -992,11 +992,11 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                                 <Users className="w-8 h-8 text-gray-400" />
                               </div>
                               <p className="text-sm font-medium text-gray-500">
-                                Chưa có dòng lương nào
+                                No payroll lines yet
                               </p>
                               {isHRStaff && currentRun.status === "draft" && (
                                 <p className="text-xs text-gray-400">
-                                  Sử dụng form bên trên để thêm dòng lương
+                                  Use the form above to add a payroll line
                                 </p>
                               )}
                             </div>
@@ -1022,19 +1022,19 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                                       type="button"
                                       onClick={() => openEvidence(line.employee_id)}
                                       className="text-left group"
-                                      title="Xem minh chứng chấm công"
+                                      title="View attendance evidence"
                                     >
                                       <p className="text-sm font-semibold text-gray-900 group-hover:underline flex items-center gap-2">
                                         {line.employee?.full_name ||
-                                          `Nhân viên #${line.employee_id}`}
+                                          `Employee #${line.employee_id}`}
                                         <span className="inline-flex items-center gap-1 text-xs text-blue-600">
                                           <ClipboardList className="w-3.5 h-3.5" />
-                                          Minh chứng
+                                          Evidence
                                         </span>
                                       </p>
                                       {line.employee?.code && (
                                         <p className="text-xs text-gray-500">
-                                          Mã: {line.employee.code}
+                                          Code: {line.employee.code}
                                         </p>
                                       )}
                                     </button>
@@ -1048,7 +1048,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                                     {money(line.amount)}
                                   </span>
                                   <span className="text-xs text-gray-500">
-                                    VNĐ
+                                    VND
                                   </span>
                                 </div>
                               </td>
@@ -1060,21 +1060,21 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                                       <button
                                         onClick={() => handleEditLine(line)}
                                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all hover:scale-110"
-                                        title="Sửa"
+                                        title="Edit"
                                       >
                                         <Pencil className="w-4 h-4" />
                                       </button>
                                       <button
                                         onClick={() => handleDeleteLine(line)}
                                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all hover:scale-110"
-                                        title="Xóa"
+                                        title="Delete"
                                       >
                                         <Trash2 className="w-4 h-4" />
                                       </button>
                                     </>
                                   ) : (
                                     <span className="text-xs text-gray-400 italic px-2 py-1 bg-gray-50 rounded">
-                                      Chỉ xem
+                                      Read-only
                                     </span>
                                   )}
                                 </div>
@@ -1092,13 +1092,13 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                   <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-5 py-4 border-t-2 border-gray-200">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-semibold text-gray-700">
-                        Tổng cộng:
+                        Total:
                       </span>
                       <div className="flex flex-col items-end">
                         <span className="text-lg font-bold text-gray-900">
                           {money(linesTotal)}
                         </span>
-                        <span className="text-xs text-gray-500">VNĐ</span>
+                        <span className="text-xs text-gray-500">VND</span>
                       </div>
                     </div>
                   </div>
@@ -1115,7 +1115,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                     className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold hover:from-green-700 hover:to-green-800 transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
                   >
                     <RefreshCw className="w-4 h-4" />
-                    Tính lương tự động
+                    Auto Calculate
                   </button>
                 )}
               </div>
@@ -1124,7 +1124,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                 onClick={() => setShowLinesModal(false)}
                 className="px-6 py-2.5 rounded-lg border-2 border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
               >
-                Đóng
+                Close
               </button>
             </div>
           </div>
@@ -1140,14 +1140,14 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                         <div className="p-2 bg-white/10 rounded-lg">
                           <ClipboardList className="w-5 h-5" />
                         </div>
-                        Minh chứng tính lương
+                        Payroll Evidence
                       </h3>
                       <p className="text-sm text-slate-200">
                         {evidence?.employee?.full_name
                           ? `${evidence.employee.full_name} • ${d10(
                               evidence.period?.start_date
                             )} → ${d10(evidence.period?.end_date)}`
-                          : "Đang tải..."}
+                          : "Loading..."}
                       </p>
                     </div>
 
@@ -1173,7 +1173,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                         <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
                         <div>
                           <p className="text-sm font-semibold text-red-800">
-                            Không lấy được minh chứng
+                            Unable to load evidence
                           </p>
                           <p className="text-sm text-red-700">{evidenceError}</p>
                         </div>
@@ -1187,23 +1187,23 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         {[
                           {
-                            label: "Đi làm",
+                            label: "Present",
                             value: evidence.summary.presentDays,
                             cls:
                               "bg-emerald-50 border-emerald-200 text-emerald-700",
                           },
                           {
-                            label: "Nghỉ phép",
+                            label: "Leave",
                             value: evidence.summary.leaveDays,
                             cls: "bg-blue-50 border-blue-200 text-blue-700",
                           },
                           {
-                            label: "Vắng",
+                            label: "Absent",
                             value: evidence.summary.absentDays,
                             cls: "bg-red-50 border-red-200 text-red-700",
                           },
                           {
-                            label: "Đi trễ",
+                            label: "Late",
                             value: evidence.summary.lateDays,
                             cls:
                               "bg-amber-50 border-amber-200 text-amber-700",
@@ -1226,76 +1226,76 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                         <div className="px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
                           <Info className="w-4 h-4 text-gray-500" />
                           <h4 className="text-sm font-semibold text-gray-900">
-                            Giải thích tính lương (breakdown)
+                            Payroll Breakdown Explanation
                           </h4>
                         </div>
 
                         <div className="p-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
                           <div className="space-y-2 text-sm">
                             <div className="flex justify-between">
-                              <span className="text-gray-600">Lương cơ bản</span>
+                              <span className="text-gray-600">Basic Salary</span>
                               <span className="font-semibold">
-                                {money(evidence.employee.base_salary)} VNĐ
+                                {money(evidence.employee.base_salary)} VND
                               </span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-gray-600">Đơn giá / ngày</span>
+                              <span className="text-gray-600">Daily Rate</span>
                               <span className="font-semibold">
-                                {money(evidence.breakdown.dailyRate)} VNĐ
+                                {money(evidence.breakdown.dailyRate)} VND
                               </span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-gray-600">Base Pay</span>
                               <span className="font-semibold">
-                                {money(evidence.breakdown.basePay)} VNĐ
+                                {money(evidence.breakdown.basePay)} VND
                               </span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-gray-600">Phụ cấp</span>
+                              <span className="text-gray-600">Allowances</span>
                               <span className="font-semibold">
-                                {money(evidence.breakdown.allowance)} VNĐ
+                                {money(evidence.breakdown.allowance)} VND
                               </span>
                             </div>
                             <div className="flex justify-between">
-  <span className="text-gray-600">Tổng thu nhập (Gross)</span>
+  <span className="text-gray-600">Gross Income</span>
   <span className="font-semibold text-emerald-700">
-    {money(evidence.breakdown.gross)} VNĐ
+    {money(evidence.breakdown.gross)} VND
   </span>
 </div>
                             <div className="flex justify-between">
-                              <span className="text-gray-600">Trừ vắng</span>
+                              <span className="text-gray-600">Absence Deduction</span>
                               <span className="font-semibold text-red-600">
-                                -{money(evidence.breakdown.absentDeduction)} VNĐ
+                                -{money(evidence.breakdown.absentDeduction)} VND
                               </span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-gray-600">Phạt đi trễ</span>
+                              <span className="text-gray-600">Tardiness Penalty</span>
                               <span className="font-semibold text-red-600">
-                                -{money(evidence.breakdown.lateDeduction)} VNĐ
+                                -{money(evidence.breakdown.lateDeduction)} VND
                               </span>
                             </div>
                             <div className="flex justify-between">
-  <span className="text-gray-600">Thuế TNCN (PIT)</span>
+  <span className="text-gray-600">Personal Income Tax (PIT)</span>
   <span className="font-semibold text-red-600">
-    -{money(evidence.breakdown.pit)} VNĐ
+    -{money(evidence.breakdown.pit)} VND
   </span>
 </div>
                           </div>
 
                           <div className="border border-gray-200 rounded-xl p-4 bg-gradient-to-br from-gray-50 to-white">
                             <p className="text-xs font-semibold text-gray-600 mb-2">
-                              Kết quả
+                              Result
                             </p>
                           <div className="mt-3 pt-3 border-t border-gray-200 space-y-2 text-sm">
   <div className="flex justify-between">
-    <span className="text-gray-600">Loại hợp đồng</span>
+    <span className="text-gray-600">Contract Type</span>
     <span className="font-semibold capitalize">
       {evidence.employee.contract_type}
     </span>
   </div>
 
   <div className="flex justify-between">
-    <span className="text-gray-600">Người phụ thuộc</span>
+    <span className="text-gray-600">Dependents</span>
     <span className="font-semibold">
       {evidence.employee.dependent || 0}
     </span>
@@ -1303,29 +1303,29 @@ console.log("attendance keys:", Object.keys(res.data || {}));
 </div>
                             <div className="flex justify-between items-end">
                               <span className="text-sm text-gray-600">
-                                NET (tính lại)
+                                NET (recalculated)
                               </span>
                               <span className="text-2xl font-bold text-gray-900">
-                                {money(evidence.breakdown.net)} VNĐ
+                                {money(evidence.breakdown.net)} VND
                               </span>
                             </div>
 
                             <div className="mt-3 pt-3 border-t border-gray-200 space-y-2 text-sm">
                               <div className="flex justify-between">
                                 <span className="text-gray-600">
-                                  Amount đang lưu
+                                  Stored Amount
                                 </span>
                                 <span className="font-semibold">
                                   {evidence.breakdown.storedAmount == null
                                     ? "—"
                                     : `${money(
                                         evidence.breakdown.storedAmount
-                                      )} VNĐ`}
+                                      )} VND`}
                                 </span>
                               </div>
 
                               <div className="flex justify-between">
-                                <span className="text-gray-600">Chênh lệch</span>
+                                <span className="text-gray-600">Difference</span>
                                 <span
                                   className={`font-semibold ${
                                     (evidence.breakdown.diff || 0) === 0
@@ -1335,19 +1335,19 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                                 >
                                   {evidence.breakdown.diff == null
                                     ? "—"
-                                    : `${money(evidence.breakdown.diff)} VNĐ`}
+                                    : `${money(evidence.breakdown.diff)} VND`}
                                 </span>
                               </div>
 
                               <div className="mt-3 p-3 rounded-lg border border-gray-200 bg-white flex items-start gap-2">
                                 <Info className="w-4 h-4 text-gray-500 mt-0.5" />
                                 <p className="text-xs text-gray-600 leading-5">
-                                  NET (tính lại) là số tiền hệ thống tính dựa trên:
-• Chấm công
-• Phụ cấp
-• Khấu trừ vắng/trễ
-• Thuế TNCN theo loại hợp đồng
-• Giảm trừ người phụ thuộc
+                                  NET (recalculated) is computed based on:
+• Attendance records
+• Allowances
+• Deductions for absence/lateness
+• Personal Income Tax based on contract type
+• Dependent deductions
                                 </p>
                               </div>
                             </div>
@@ -1361,7 +1361,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                           <div className="flex items-center gap-2">
                             <Users className="w-4 h-4 text-gray-600" />
                             <h4 className="text-sm font-semibold text-gray-900">
-                              Danh sách chấm công
+                              Attendance Records
                             </h4>
                             <span className="ml-2 px-2 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-bold">
                               {evidence.attendance?.length || 0}
@@ -1374,7 +1374,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                               if (evidenceEmployeeId) openEvidence(evidenceEmployeeId);
                             }}
                             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition"
-                            title="Tải lại minh chứng"
+                            title="Reload Evidence"
                           >
                             <RefreshCw className="w-4 h-4" />
                             Refresh
@@ -1386,10 +1386,10 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                             <thead>
                               <tr className="bg-white border-b border-gray-200">
                                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                  Ngày
+                                  Date
                                 </th>
                                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                  Trạng thái
+                                  Status
                                 </th>
                                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                                   Check-in
@@ -1398,7 +1398,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                                   Check-out
                                 </th>
                                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                  Ghi chú
+                                  Notes
                                 </th>
                               </tr>
                             </thead>
@@ -1413,11 +1413,10 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                                         <ClipboardList className="w-7 h-7 text-gray-400" />
                                       </div>
                                       <p className="text-sm font-semibold text-gray-800">
-                                        Không có dữ liệu chấm công
+                                        No attendance data available
                                       </p>
                                       <p className="text-xs text-gray-500">
-                                        Kỳ này chưa ghi nhận attendance cho nhân
-                                        viên.
+                                        No attendance records found for this employee in this period.
                                       </p>
                                     </div>
                                   </td>
@@ -1484,7 +1483,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                     onClick={closeEvidence}
                     className="px-6 py-2.5 rounded-lg border-2 border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
                   >
-                    Đóng
+                    Close
                   </button>
                 </div>
               </div>

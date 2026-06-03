@@ -41,7 +41,7 @@ export default function BlogListPage() {
       setPosts(data);
     } catch (err: any) {
       console.error("Error fetching blog posts:", err);
-      setError("Không thể tải danh sách bài viết. Vui lòng kiểm tra kết nối API.");
+      setError("Unable to load articles list. Please check your API connection.");
     } finally {
       setLoading(false);
     }
@@ -59,7 +59,7 @@ export default function BlogListPage() {
   const handleDelete = async (id: number, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!window.confirm("Bạn có chắc chắn muốn xóa bài viết này không? Hành động này không thể hoàn tác.")) {
+    if (!window.confirm("Are you sure you want to delete this article? This action cannot be undone.")) {
       return;
     }
 
@@ -68,7 +68,7 @@ export default function BlogListPage() {
       setPosts((prev) => prev.filter((p) => p.id !== id));
     } catch (err: any) {
       console.error("Error deleting post:", err);
-      alert(err.response?.data?.error || "Không thể xóa bài viết.");
+      alert(err.response?.data?.error || "Unable to delete article.");
     }
   };
 
@@ -82,7 +82,7 @@ export default function BlogListPage() {
             AI Marketing & PR Blog
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Quản lý và soạn thảo các bài viết giới thiệu sản phẩm bằng trí tuệ nhân tạo (AI).
+            Manage and draft product promotion articles using Artificial Intelligence (AI).
           </p>
         </div>
         <Button 
@@ -90,7 +90,7 @@ export default function BlogListPage() {
           className="bg-orange-500 hover:bg-orange-600 text-white flex items-center gap-1.5 self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
-          Viết bài mới
+          Write New Article
         </Button>
       </div>
 
@@ -99,7 +99,7 @@ export default function BlogListPage() {
         <form onSubmit={handleSearchSubmit} className="flex-1 relative">
           <input
             type="text"
-            placeholder="Tìm kiếm theo tiêu đề hoặc nội dung..."
+            placeholder="Search by title or content..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full h-9 pl-9 pr-4 rounded-md border border-gray-300 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
@@ -118,16 +118,16 @@ export default function BlogListPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="h-9 px-3 rounded-md border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
           >
-            <option value="all">Tất cả trạng thái</option>
-            <option value="draft">Bản nháp</option>
-            <option value="published">Đã xuất bản</option>
+            <option value="all">All Statuses</option>
+            <option value="draft">Draft</option>
+            <option value="published">Published</option>
           </select>
           <Button 
             onClick={fetchPosts}
             variant="outline"
             className="h-9 text-gray-700 border-gray-300 hover:bg-gray-50"
           >
-            Lọc
+            Filter
           </Button>
         </div>
       </div>
@@ -143,7 +143,7 @@ export default function BlogListPage() {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
           <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
-          <span className="text-sm text-gray-500 font-medium">Đang tải danh sách bài viết...</span>
+          <span className="text-sm text-gray-500 font-medium">Loading articles list...</span>
         </div>
       ) : posts.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-150 p-12 text-center flex flex-col items-center justify-center gap-4">
@@ -151,16 +151,16 @@ export default function BlogListPage() {
             <FileText className="w-8 h-8 text-orange-500" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-gray-800">Chưa có bài viết nào</h3>
+            <h3 className="text-lg font-bold text-gray-800">No articles yet</h3>
             <p className="text-sm text-gray-500 mt-1 max-w-md">
-              Hãy bắt đầu viết bài PR sản phẩm đầu tiên của bạn bằng cách nhấn nút "Viết bài mới" phía trên.
+              Start drafting your first product PR article by clicking "Write New Article" above.
             </p>
           </div>
           <Button 
             onClick={() => navigate("/blog/create")}
             className="bg-orange-500 hover:bg-orange-600 text-white mt-2"
           >
-            Bắt đầu soạn thảo
+            Start Drafting
           </Button>
         </div>
       ) : (
@@ -192,7 +192,7 @@ export default function BlogListPage() {
                       ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                       : "bg-gray-100 text-gray-700 border border-gray-200"
                   }>
-                    {post.status === "published" ? "Đã xuất bản" : "Bản nháp"}
+                    {post.status === "published" ? "Published" : "Draft"}
                   </Badge>
                 </div>
               </div>
@@ -204,7 +204,7 @@ export default function BlogListPage() {
                   {post.product && (
                     <div className="mb-2.5">
                       <span className="inline-flex items-center text-[11px] font-semibold bg-orange-50 text-orange-600 px-2 py-0.5 rounded-md border border-orange-100">
-                        Sản phẩm: {post.product.name}
+                        Product: {post.product.name}
                       </span>
                     </div>
                   )}
@@ -214,7 +214,7 @@ export default function BlogListPage() {
                   </h3>
 
                   <p className="text-xs text-gray-500 line-clamp-3 mb-4 leading-relaxed">
-                    {post.summary || "Chưa có đoạn mô tả ngắn."}
+                    {post.summary || "No summary description yet."}
                   </p>
                 </div>
 
@@ -223,13 +223,13 @@ export default function BlogListPage() {
                   <div className="flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5 text-gray-400" />
                     <span className="truncate max-w-[80px]">
-                      {post.author ? (post.author.full_name || post.author.username) : "Người dùng"}
+                      {post.author ? (post.author.full_name || post.author.username) : "User"}
                     </span>
                   </div>
 
                   <div className="flex items-center gap-1">
                     <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                    <span>{new Date(post.created_at).toLocaleDateString("vi-VN")}</span>
+                    <span>{new Date(post.created_at).toLocaleDateString("en-US")}</span>
                   </div>
                 </div>
               </div>
@@ -237,7 +237,7 @@ export default function BlogListPage() {
               {/* Actions Footer */}
               <div className="bg-slate-50 border-t border-gray-100 px-5 py-3 flex justify-between items-center text-xs">
                 <span className="text-orange-500 font-bold group-hover:translate-x-1 transition-transform flex items-center gap-1">
-                  Đọc tiếp <ArrowRight className="w-3 h-3" />
+                  Read More <ArrowRight className="w-3 h-3" />
                 </span>
 
                 <div className="flex items-center gap-2">
@@ -247,14 +247,14 @@ export default function BlogListPage() {
                       navigate(`/blog/edit/${post.id}`);
                     }}
                     className="p-1 text-gray-400 hover:text-orange-500 transition-colors"
-                    title="Chỉnh sửa bài viết"
+                    title="Edit Article"
                   >
                     <Edit3 className="w-4 h-4" />
                   </button>
                   <button
                     onClick={(e) => handleDelete(post.id, e)}
                     className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                    title="Xóa bài viết"
+                    title="Delete Article"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

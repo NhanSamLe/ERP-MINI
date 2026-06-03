@@ -48,7 +48,7 @@ export default function GlEntryFormModal({
         setAccounts(rows);
       } catch (err: any) {
         console.error(err);
-        toast.error("Không thể tải danh sách tài khoản kế toán");
+        toast.error("Failed to load chart of accounts");
       }
     };
     loadAccounts();
@@ -74,7 +74,7 @@ export default function GlEntryFormModal({
         }
       } catch (err) {
         console.error(err);
-        toast.error("Không thể tải danh sách hóa đơn");
+        toast.error("Failed to load invoices");
       } finally {
         setInvoicesLoading(false);
       }
@@ -106,7 +106,7 @@ export default function GlEntryFormModal({
   // Xóa dòng định khoản
   const handleRemoveLine = (index: number) => {
     if (lines.length <= 2) {
-      toast.warn("Một bút toán cần tối thiểu 2 dòng định khoản.");
+      toast.warn("A journal entry requires at least 2 entry lines.");
       return;
     }
     const newLines = lines.filter((_, idx) => idx !== index);
@@ -146,21 +146,21 @@ export default function GlEntryFormModal({
     e.preventDefault();
 
     if (!isBalanced) {
-      toast.error("Bút toán chưa cân đối! Tổng số tiền Nợ phải bằng tổng số tiền Có.");
+      toast.error("Unbalanced entry! Total Debit must equal total Credit.");
       return;
     }
 
     // Kiểm tra đã điền tài khoản kế toán chưa
     const hasEmptyAccount = lines.some((l) => l.account_id === 0);
     if (hasEmptyAccount) {
-      toast.error("Vui lòng chọn tài khoản kế toán cho tất cả các dòng.");
+      toast.error("Please select an account for all entry lines.");
       return;
     }
 
     // Kiểm tra số tiền hợp lệ
     const hasZeroAmount = lines.some((l) => (l.debit || 0) === 0 && (l.credit || 0) === 0);
     if (hasZeroAmount) {
-      toast.error("Mỗi dòng hạch toán phải có số tiền Nợ hoặc Có lớn hơn 0.");
+      toast.error("Each line must have a Debit or Credit amount greater than 0.");
       return;
     }
 
@@ -179,12 +179,12 @@ export default function GlEntryFormModal({
         })),
       });
 
-      toast.success("Tạo bút toán thủ công thành công!");
+      toast.success("Manual journal entry created successfully!");
       onSuccess();
       onClose();
     } catch (err: any) {
       console.error(err);
-      toast.error(err.response?.data?.message || err.message || "Lỗi tạo bút toán");
+      toast.error(err.response?.data?.message || err.message || "Failed to create journal entry");
     } finally {
       setLoading(false);
     }
@@ -197,8 +197,8 @@ export default function GlEntryFormModal({
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
           <div>
-            <h3 className="text-xl font-bold text-slate-950">Tạo Bút Toán Thủ Công</h3>
-            <p className="text-xs text-slate-500 mt-1">Hạch toán trực tiếp vào Sổ Cái của Nhật ký kế toán</p>
+            <h3 className="text-xl font-bold text-slate-950">Create Manual Journal Entry</h3>
+            <p className="text-xs text-slate-500 mt-1">Post directly into General Ledger</p>
           </div>
           <button 
             onClick={onClose} 
@@ -214,7 +214,7 @@ export default function GlEntryFormModal({
           {/* Header Info Grid */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Ngày hạch toán *</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Posting Date *</label>
               <input
                 type="date"
                 required
@@ -224,26 +224,26 @@ export default function GlEntryFormModal({
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Loại tham chiếu</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Reference Type</label>
               <select
                 className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-sm text-slate-800"
                 value={referenceType}
                 onChange={(e) => setReferenceType(e.target.value as any)}
               >
-                <option value="">-- Không có --</option>
-                <option value="ar_invoice">Hóa đơn bán hàng (AR)</option>
-                <option value="ap_invoice">Hóa đơn mua hàng (AP)</option>
+                <option value="">-- None --</option>
+                <option value="ar_invoice">AR Invoice (Sales)</option>
+                <option value="ap_invoice">AP Invoice (Purchase)</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Chứng từ liên kết</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Linked Document</label>
               <select
                 disabled={!referenceType || invoicesLoading}
                 className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-sm text-slate-800 disabled:bg-slate-100 disabled:text-slate-400"
                 value={referenceId}
                 onChange={(e) => setReferenceId(e.target.value ? Number(e.target.value) : "")}
               >
-                <option value="">{invoicesLoading ? "Đang tải..." : "-- Chọn chứng từ --"}</option>
+                <option value="">{invoicesLoading ? "Loading..." : "-- Select Document --"}</option>
                 {invoices.map((inv) => (
                   <option key={inv.id} value={inv.id}>
                     {inv.invoice_no} ({Number(inv.total_after_tax).toLocaleString("vi-VN")}đ - {inv.customer?.name || inv.supplier?.name || "N/A"})
@@ -252,10 +252,10 @@ export default function GlEntryFormModal({
               </select>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Diễn giải / Memo</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Memo / Description</label>
               <input
                 type="text"
-                placeholder="Nhập nội dung nghiệp vụ..."
+                placeholder="Enter memo/description..."
                 className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-sm"
                 value={memo}
                 onChange={(e) => setMemo(e.target.value)}
@@ -271,10 +271,10 @@ export default function GlEntryFormModal({
                   <thead className="bg-slate-50 font-semibold text-slate-700">
                     <tr>
                       <th className="px-4 py-3 text-left w-12">#</th>
-                      <th className="px-4 py-3 text-left">Tài khoản kế toán *</th>
-                      <th className="px-4 py-3 text-right w-44">Số tiền Nợ (Debit)</th>
-                      <th className="px-4 py-3 text-right w-44">Số tiền Có (Credit)</th>
-                      <th className="px-4 py-3 text-center w-16">Xóa</th>
+                      <th className="px-4 py-3 text-left">Account Code *</th>
+                      <th className="px-4 py-3 text-right w-44">Debit</th>
+                      <th className="px-4 py-3 text-right w-44">Credit</th>
+                      <th className="px-4 py-3 text-center w-16">Delete</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white">
@@ -290,7 +290,7 @@ export default function GlEntryFormModal({
                               handleUpdateLine(idx, "account_id", Number(e.target.value))
                             }
                           >
-                            <option value={0}>-- Chọn tài khoản --</option>
+                            <option value={0}>-- Select Account --</option>
                             {accounts.map((acc) => (
                               <option key={acc.id} value={acc.id}>
                                 {acc.code} - {acc.name} ({acc.type})
@@ -347,7 +347,7 @@ export default function GlEntryFormModal({
                   className="inline-flex items-center gap-1 text-sm font-semibold text-blue-600 hover:text-blue-700 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-all"
                 >
                   <Plus className="w-4 h-4" />
-                  Thêm dòng hạch toán
+                  Add Entry Line
                 </button>
               </div>
             </div>
@@ -358,22 +358,22 @@ export default function GlEntryFormModal({
             <div className="flex items-center gap-2">
               {isBalanced ? (
                 <div className="flex items-center gap-1.5 text-emerald-600 font-semibold text-sm px-3 py-1.5 bg-emerald-50 rounded-lg border border-emerald-100">
-                  <span>✓ Bút toán cân đối</span>
+                  <span>✓ Balanced Entry</span>
                 </div>
               ) : (
                 <div className="flex items-center gap-1.5 text-amber-600 font-semibold text-sm px-3 py-1.5 bg-amber-50 rounded-lg border border-amber-100 animate-pulse">
                   <AlertCircle className="w-4 h-4" />
-                  <span>Chênh lệch: {difference.toLocaleString("vi-VN")}đ</span>
+                  <span>Difference: {difference.toLocaleString("vi-VN")}đ</span>
                 </div>
               )}
             </div>
 
             <div className="flex gap-6 text-sm text-slate-700 font-medium">
               <div>
-                Tổng Nợ: <span className="font-bold text-slate-900 font-mono text-base">{totalDebit.toLocaleString("vi-VN")}đ</span>
+                Total Debit: <span className="font-bold text-slate-900 font-mono text-base">{totalDebit.toLocaleString("vi-VN")}đ</span>
               </div>
               <div className="border-l border-slate-300 pl-6">
-                Tổng Có: <span className="font-bold text-slate-900 font-mono text-base">{totalCredit.toLocaleString("vi-VN")}đ</span>
+                Total Credit: <span className="font-bold text-slate-900 font-mono text-base">{totalCredit.toLocaleString("vi-VN")}đ</span>
               </div>
             </div>
           </div>
@@ -386,7 +386,7 @@ export default function GlEntryFormModal({
               disabled={loading}
               className="px-5 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium text-sm transition-all"
             >
-              Hủy bỏ
+              Cancel
             </button>
             <button
               type="submit"
@@ -396,12 +396,12 @@ export default function GlEntryFormModal({
               {loading ? (
                 <>
                   <Loader2 className="w-4.5 h-4.5 animate-spin" />
-                  Đang lưu...
+                  Saving...
                 </>
               ) : (
                 <>
                   <Save className="w-4.5 h-4.5" />
-                  Lưu bút toán
+                  Save Entry
                 </>
               )}
             </button>

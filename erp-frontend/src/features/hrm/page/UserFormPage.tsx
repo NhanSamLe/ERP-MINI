@@ -47,7 +47,7 @@ export default function UserFormPage() {
         setRoles(rs);
       } catch (err) {
         console.error(err);
-        toast.error("Không thể tải danh sách vai trò");
+        toast.error("Unable to load roles");
       }
     })();
   }, []);
@@ -83,11 +83,11 @@ export default function UserFormPage() {
 
     try {
       await createUser(form);
-      toast.success("Tạo tài khoản người dùng thành công! 🎉");
+      toast.success("User account created successfully! 🎉");
       nav(-1);
     } catch (err: any) {
       console.error(err);
-      toast.error(err?.response?.data?.message || "Tạo tài khoản thất bại");
+      toast.error(err?.response?.data?.message || "Failed to create user account");
     } finally {
       setLoading(false);
     }
@@ -103,7 +103,7 @@ export default function UserFormPage() {
             className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span className="text-sm font-medium">Quay lại</span>
+            <span className="text-sm font-medium">Back</span>
           </button>
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center space-x-3">
@@ -112,10 +112,10 @@ export default function UserFormPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
-                  Tạo tài khoản người dùng
+                  Create User Account
                 </h1>
                 <p className="text-sm text-gray-500 mt-1">
-                  Tài khoản sẽ được gắn với nhân viên và chi nhánh đã chọn
+                  The account will be linked to the selected employee and branch
                 </p>
               </div>
             </div>
@@ -128,13 +128,13 @@ export default function UserFormPage() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <Building className="w-5 h-5 mr-2 text-gray-400" />
-              Thông tin liên kết
+              Link Information
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <IdCard className="w-4 h-4 inline mr-1 text-gray-400" />
-                  Mã nhân viên
+                  Employee ID
                 </label>
                 <input
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed focus:outline-none"
@@ -145,7 +145,7 @@ export default function UserFormPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Building className="w-4 h-4 inline mr-1 text-gray-400" />
-                  Mã chi nhánh
+                  Branch ID
                 </label>
                 <input
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed focus:outline-none"
@@ -160,19 +160,19 @@ export default function UserFormPage() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <User className="w-5 h-5 mr-2 text-gray-400" />
-              Thông tin cá nhân
+              Personal Information
             </h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Họ và tên <span className="text-red-500">*</span>
+                  Full Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   name="full_name"
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
                   value={form.full_name}
                   onChange={handleChange}
-                  placeholder="Nhập họ và tên"
+                  placeholder="Enter full name"
                   required
                 />
               </div>
@@ -197,7 +197,7 @@ export default function UserFormPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     <Phone className="w-4 h-4 inline mr-1 text-gray-400" />
-                    Số điện thoại <span className="text-red-500">*</span>
+                    Phone Number <span className="text-red-500">*</span>
                   </label>
                   <input
                     name="phone"
@@ -217,14 +217,14 @@ export default function UserFormPage() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <Lock className="w-5 h-5 mr-2 text-gray-400" />
-              Thông tin đăng nhập
+              Login Credentials
             </h2>
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     <User className="w-4 h-4 inline mr-1 text-gray-400" />
-                    Tên đăng nhập <span className="text-red-500">*</span>
+                    Username <span className="text-red-500">*</span>
                   </label>
                   <input
                     name="username"
@@ -235,14 +235,14 @@ export default function UserFormPage() {
                     required
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Tên đăng nhập không chứa khoảng trắng
+                    Username must not contain spaces
                   </p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     <Lock className="w-4 h-4 inline mr-1 text-gray-400" />
-                    Mật khẩu <span className="text-red-500">*</span>
+                    Password <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="password"
@@ -254,7 +254,7 @@ export default function UserFormPage() {
                     required
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Tối thiểu 6 ký tự
+                    Minimum 6 characters
                   </p>
                 </div>
               </div>
@@ -262,7 +262,7 @@ export default function UserFormPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Shield className="w-4 h-4 inline mr-1 text-gray-400" />
-                  Vai trò <span className="text-red-500">*</span>
+                  Role <span className="text-red-500">*</span>
                 </label>
                 <select
                   name="role_id"
@@ -271,7 +271,7 @@ export default function UserFormPage() {
                   onChange={handleChange}
                   required
                 >
-                  <option value="">-- Chọn vai trò --</option>
+                  <option value="">-- Select Role --</option>
                   {roles.map((r) => (
                     <option key={r.id} value={r.id}>
                       {r.code} - {r.name}
@@ -291,7 +291,7 @@ export default function UserFormPage() {
                 className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                 disabled={loading}
               >
-                Hủy bỏ
+                Cancel
               </button>
               <button
                 type="submit"
@@ -320,12 +320,12 @@ export default function UserFormPage() {
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                       ></path>
                     </svg>
-                    <span>Đang tạo...</span>
+                    <span>Creating...</span>
                   </>
                 ) : (
                   <>
                     <User className="w-4 h-4" />
-                    <span>Tạo tài khoản</span>
+                    <span>Create Account</span>
                   </>
                 )}
               </button>

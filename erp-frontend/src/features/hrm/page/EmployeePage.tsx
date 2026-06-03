@@ -98,7 +98,7 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
       });
     }
   } catch (err: any) {
-    toast.error(err?.response?.data?.message || "Có lỗi xảy ra");
+    toast.error(err?.response?.data?.message || "An error occurred");
   }
 };
 
@@ -106,13 +106,13 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
 
   const handleDelete = async (emp: EmployeeDTO) => {
     if (!emp.id) return;
-    if (!window.confirm(`Xóa nhân viên ${emp.full_name}?`)) return;
+    if (!window.confirm(`Delete employee ${emp.full_name}?`)) return;
 
     try {
       await deleteEmployee(emp.id);
       await load();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Không thể xóa");
+      toast.error(err?.response?.data?.message || "Unable to delete");
     }
   };
 
@@ -184,7 +184,7 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
     setOpenResign(false);
     setResignEmp(null);
   } catch (err: any) {
-    alert(err?.response?.data?.message || "Không thể cập nhật nghỉ việc");
+    alert(err?.response?.data?.message || "Unable to update resignation status");
   }
 };
   return (
@@ -193,7 +193,7 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
       <div className="mb-8 flex justify-between items-center">
         <h1 className="text-3xl font-bold flex items-center gap-3">
           <Users className="w-8 h-8 text-blue-600" />
-          Hồ sơ nhân viên
+          Employee Profiles
         </h1>
 
         <button
@@ -203,7 +203,7 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
             setOpenForm(true);
           }}
         >
-          <Plus className="w-5 h-5" /> Thêm nhân viên
+          <Plus className="w-5 h-5" /> Add Employee
         </button>
       </div>
 
@@ -211,7 +211,7 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
       <div className="mb-6 max-w-md relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
-          placeholder="Tìm theo tên, mã nhân viên..."
+          placeholder="Search by name, employee code..."
           className="w-full border pl-10 pr-4 py-2 rounded-lg"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -225,19 +225,19 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b">
-                <th className="px-4 py-3 text-left">Mã NV</th>
-                <th className="px-4 py-3 text-left">Họ tên</th>
-                <th className="px-4 py-3">Giới tính</th>
-                <th className="px-4 py-3">Phòng ban</th>
-                <th className="px-4 py-3">Chức danh</th>
-                <th className="px-4 py-3">Chi nhánh</th>
-                <th className="px-4 py-3">Loại HĐ</th>
-                <th className="px-4 py-3">STK</th>
-                <th className="px-4 py-3">Ngân hàng</th>
-                <th className="px-4 py-3">Lương</th>
-                <th className="px-4 py-3">Trạng thái</th>
+                <th className="px-4 py-3 text-left">Emp Code</th>
+                <th className="px-4 py-3 text-left">Full Name</th>
+                <th className="px-4 py-3">Gender</th>
+                <th className="px-4 py-3">Department</th>
+                <th className="px-4 py-3">Position</th>
+                <th className="px-4 py-3">Branch</th>
+                <th className="px-4 py-3">Contract Type</th>
+                <th className="px-4 py-3">Bank Account</th>
+                <th className="px-4 py-3">Bank Name</th>
+                <th className="px-4 py-3">Salary</th>
+                <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3 text-center">AI Face</th>
-                <th className="px-4 py-3 text-center">Thao tác</th>
+                <th className="px-4 py-3 text-center">Actions</th>
               </tr>
             </thead>
 
@@ -245,13 +245,13 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
               {loading ? (
                 <tr>
                   <td colSpan={12} className="text-center py-10 text-gray-500">
-                    Đang tải...
+                    Loading...
                   </td>
                 </tr>
               ) : totalItems === 0 ? (
                 <tr>
                   <td colSpan={12} className="text-center py-10 text-gray-500">
-                    Không có dữ liệu
+                    No data available
                   </td>
                 </tr>
               ) : (
@@ -270,20 +270,20 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
                     <td className="px-4 py-3">
                       {
   e.status === "active"
-    ? "Đang làm"
+    ? "Active"
     : e.status === "inactive"
-    ? "Tạm nghỉ"
-    : "Đã nghỉ việc"
+    ? "Suspended"
+    : "Resigned"
 }
                     </td>
                     <td className="px-4 py-3 text-center">
                       {e.faces && e.faces.length > 0 ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">
-                          Đã Đăng Ký
+                          Registered
                         </span>
                       ) : (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-rose-100 text-rose-800">
-                          Chưa Có
+                          Not Registered
                         </span>
                       )}
                     </td>
@@ -295,7 +295,7 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
                           setEditing(e);
                           setOpenForm(true);
                         }}
-                        title="Sửa thông tin"
+                        title="Edit Profile"
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
@@ -303,7 +303,7 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
                       <button
                         className="p-2 text-red-600 hover:bg-red-50 rounded"
                         onClick={() => handleDelete(e)}
-                        title="Xóa nhân viên"
+                        title="Delete Employee"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -315,11 +315,10 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
                           setOpenRegisterFace(true);
                         }}
                         disabled={e.status === "resigned"}
-                        title={e.faces && e.faces.length > 0 ? "Cập nhật quét lại mặt AI" : "Đăng ký quét mặt AI"}
+                        title={e.faces && e.faces.length > 0 ? "Update AI Face Registration" : "Register AI Face"}
                       >
                         <Camera className="w-4 h-4" />
                       </button>
-
                       <button
                         className="p-2 text-yellow-600 hover:bg-yellow-50 rounded text-xs font-medium"
                         onClick={() => {
@@ -327,8 +326,9 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
                           setOpenResign(true);
                         }}
                         disabled={e.status === "resigned"}
+                        title="Resign"
                       >
-                        Nghỉ
+                        Resign
                       </button>
                     </td>
                   </tr>
@@ -342,12 +342,12 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
         {totalItems > 0 && (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t bg-gradient-to-r from-gray-50 to-white">
             <div className="text-sm text-gray-600">
-              Hiển thị{" "}
+              Showing{" "}
               <span className="font-semibold text-gray-900">
                 {startIndex + 1} - {Math.min(startIndex + pageSize, totalItems)}
               </span>{" "}
-              trong tổng số{" "}
-              <span className="font-semibold text-gray-900">{totalItems}</span> nhân viên
+              of{" "}
+              <span className="font-semibold text-gray-900">{totalItems}</span> employees
             </div>
 
             <div className="flex items-center gap-2">
@@ -358,7 +358,7 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
                 className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white hover:shadow-sm transition-all duration-200 bg-gray-50"
               >
                 <ChevronLeft className="w-4 h-4" />
-                <span className="hidden sm:inline">Trước</span>
+                <span className="hidden sm:inline">Previous</span>
               </button>
 
               {/* Page Numbers */}
@@ -395,7 +395,7 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
                 disabled={currentPage === totalPages}
                 className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white hover:shadow-sm transition-all duration-200 bg-gray-50"
               >
-                <span className="hidden sm:inline">Sau</span>
+                <span className="hidden sm:inline">Next</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>

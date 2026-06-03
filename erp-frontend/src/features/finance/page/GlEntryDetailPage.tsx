@@ -58,11 +58,11 @@ const GlEntryDetailPage: React.FC = () => {
     try {
       setLoading(true);
       await glEntryApi.updateStatus(id, "posted");
-      toast.success("Duyệt ghi sổ bút toán thành công!");
+      toast.success("Entry approved and posted successfully!");
       load();
     } catch (err: any) {
       console.error(err);
-      toast.error(err.response?.data?.message || err.message || "Lỗi duyệt bút toán");
+      toast.error(err.response?.data?.message || err.message || "Failed to approve entry");
     } finally {
       setLoading(false);
     }
@@ -73,11 +73,11 @@ const GlEntryDetailPage: React.FC = () => {
     try {
       setLoading(true);
       await glEntryApi.updateStatus(id, "draft");
-      toast.success("Hủy ghi sổ bút toán thành công!");
+      toast.success("Entry unposted successfully!");
       load();
     } catch (err: any) {
       console.error(err);
-      toast.error(err.response?.data?.message || err.message || "Lỗi hủy ghi sổ");
+      toast.error(err.response?.data?.message || err.message || "Failed to unpost entry");
     } finally {
       setLoading(false);
     }
@@ -99,20 +99,20 @@ const GlEntryDetailPage: React.FC = () => {
   const exportExcel = () => {
     if (!row) return;
     exportExcelReport<any>({
-      title: "CHI TIẾT BÚT TOÁN",
+      title: "ENTRY DETAILS",
       subtitle: `${row.entry_no} - ${row.journal?.code ?? ""} ${row.journal?.name ?? ""}`,
       meta: {
-        "Ngày bút toán": row.entry_date?.slice(0, 10),
-        "Trạng thái": row.status,
-        "Tổng Nợ": totals.totalDebit.toLocaleString("vi-VN"),
-        "Tổng Có": totals.totalCredit.toLocaleString("vi-VN"),
+        "Entry Date": row.entry_date?.slice(0, 10),
+        "Status": row.status,
+        "Total Debit": totals.totalDebit.toLocaleString("vi-VN"),
+        "Total Credit": totals.totalCredit.toLocaleString("vi-VN"),
       },
       columns: [
-        { header: "TK", key: "account", width: 22 },
-        { header: "Tên tài khoản", key: "account_name", width: 35 },
-        { header: "Đối tượng", key: "partner", width: 28 },
-        { header: "Nợ", key: "debit", width: 18, align: "right" },
-        { header: "Có", key: "credit", width: 18, align: "right" },
+        { header: "Account Code", key: "account", width: 22 },
+        { header: "Account Name", key: "account_name", width: 35 },
+        { header: "Partner", key: "partner", width: 28 },
+        { header: "Debit", key: "debit", width: 18, align: "right" },
+        { header: "Credit", key: "credit", width: 18, align: "right" },
       ],
       data: (row.lines || []).map((l) => ({
         account: l.account?.code ?? `#${l.account_id}`,
@@ -130,7 +130,7 @@ const GlEntryDetailPage: React.FC = () => {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
         <div className="text-center">
           <RefreshCcw className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-3" />
-          <p className="text-slate-600 font-medium">Đang tải dữ liệu...</p>
+          <p className="text-slate-600 font-medium">Loading data...</p>
         </div>
       </div>
     );
@@ -141,14 +141,14 @@ const GlEntryDetailPage: React.FC = () => {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
         <div className="text-center bg-white rounded-2xl shadow-lg p-8 max-w-md">
           <AlertTriangle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-slate-800 mb-2">Không tìm thấy bút toán</h2>
-          <p className="text-slate-600 mb-6">Bút toán này có thể đã bị xóa hoặc không tồn tại</p>
+          <h2 className="text-xl font-bold text-slate-800 mb-2">Entry Not Found</h2>
+          <p className="text-slate-600 mb-6">This entry may have been deleted or does not exist</p>
           <button
             onClick={() => navigate(-1)}
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            Quay lại
+            Back
           </button>
         </div>
       </div>
@@ -204,7 +204,7 @@ const GlEntryDetailPage: React.FC = () => {
                   </div>
                   {row.reference_type && (
                     <div className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100 font-semibold text-xs">
-                      <span>Tham chiếu: {row.reference_type === "ar_invoice" || row.reference_type === "AR_INVOICE" ? "Hóa đơn bán (AR)" : "Hóa đơn mua (AP)"} (ID: #{row.reference_id})</span>
+                      <span>Reference: {row.reference_type === "ar_invoice" || row.reference_type === "AR_INVOICE" ? "AR Invoice" : "AP Invoice"} (ID: #{row.reference_id})</span>
                     </div>
                   )}
                 </div>
@@ -219,7 +219,7 @@ const GlEntryDetailPage: React.FC = () => {
                   className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-500 transition-all shadow-sm hover:shadow-md disabled:opacity-50"
                 >
                   <Check className="w-4 h-4" />
-                  <span>Duyệt Ghi Sổ</span>
+                  <span>Approve & Post</span>
                 </button>
               )}
               {row.status === "posted" && isChiefOrAdmin && (
@@ -229,7 +229,7 @@ const GlEntryDetailPage: React.FC = () => {
                   className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 text-white font-medium hover:bg-rose-500 transition-all shadow-sm hover:shadow-md disabled:opacity-50"
                 >
                   <RefreshCw className="w-4 h-4" />
-                  <span>Hủy Ghi Sổ</span>
+                  <span>Unpost</span>
                 </button>
               )}
               <button
@@ -237,7 +237,7 @@ const GlEntryDetailPage: React.FC = () => {
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-700 font-medium hover:bg-slate-50 hover:border-slate-400 transition-all"
               >
                 <Download className="w-4 h-4" />
-                <span className="hidden sm:inline">Xuất Excel</span>
+                <span className="hidden sm:inline">Export Excel</span>
               </button>
               <button
                 onClick={load}
@@ -245,7 +245,7 @@ const GlEntryDetailPage: React.FC = () => {
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md"
               >
                 <RefreshCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-                <span className="hidden sm:inline">Tải lại</span>
+                <span className="hidden sm:inline">Reload</span>
               </button>
             </div>
           </div>
@@ -257,7 +257,7 @@ const GlEntryDetailPage: React.FC = () => {
             <div className="flex items-start gap-3">
               <FileText className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-semibold text-blue-900 mb-1">Ghi chú</p>
+                <p className="text-sm font-semibold text-blue-900 mb-1">Memo</p>
                 <p className="text-sm text-blue-800">{row.memo}</p>
               </div>
             </div>
@@ -270,18 +270,18 @@ const GlEntryDetailPage: React.FC = () => {
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm font-semibold text-amber-900 mb-2">Bút toán không cân bằng</p>
+                <p className="text-sm font-semibold text-amber-900 mb-2">Unbalanced Entry</p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
                   <div className="bg-white rounded-lg px-3 py-2 border border-amber-200">
-                    <p className="text-amber-700 font-medium">Tổng Nợ</p>
+                    <p className="text-amber-700 font-medium">Total Debit</p>
                     <p className="text-amber-900 font-semibold">{totals.totalDebit.toLocaleString("vi-VN")}</p>
                   </div>
                   <div className="bg-white rounded-lg px-3 py-2 border border-amber-200">
-                    <p className="text-amber-700 font-medium">Tổng Có</p>
+                    <p className="text-amber-700 font-medium">Total Credit</p>
                     <p className="text-amber-900 font-semibold">{totals.totalCredit.toLocaleString("vi-VN")}</p>
                   </div>
                   <div className="bg-white rounded-lg px-3 py-2 border border-amber-200">
-                    <p className="text-amber-700 font-medium">Chênh lệch</p>
+                    <p className="text-amber-700 font-medium">Difference</p>
                     <p className="text-red-600 font-semibold">{totals.diff.toLocaleString("vi-VN")}</p>
                   </div>
                 </div>
@@ -297,16 +297,16 @@ const GlEntryDetailPage: React.FC = () => {
               <thead>
                 <tr className="bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200">
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    Tài khoản
+                    Account
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    Đối tượng
+                    Partner
                   </th>
                   <th className="px-6 py-4 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    Nợ
+                    Debit
                   </th>
                   <th className="px-6 py-4 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    Có
+                    Credit
                   </th>
                 </tr>
               </thead>
@@ -344,7 +344,7 @@ const GlEntryDetailPage: React.FC = () => {
               <tfoot>
                 <tr className="bg-gradient-to-r from-slate-100 to-slate-50 border-t-2 border-slate-300">
                   <td className="px-6 py-4 font-bold text-slate-900" colSpan={2}>
-                    TỔNG CỘNG
+                    TOTAL
                   </td>
                   <td className="px-6 py-4 text-right font-bold text-slate-900">
                     {totals.totalDebit.toLocaleString("vi-VN")}

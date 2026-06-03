@@ -51,7 +51,7 @@ const GlEntryListPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jid]);
 
-  const title = useMemo(() => `Danh sách bút toán - Journal #${jid}`, [jid]);
+  const title = useMemo(() => `Journal Entries - Journal #${jid}`, [jid]);
 
   const hasActiveFilters = search || status || from || to;
 
@@ -80,7 +80,7 @@ const GlEntryListPage: React.FC = () => {
               <div className="flex items-center gap-4 text-sm">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span className="text-slate-600">Tổng: <span className="font-semibold text-slate-900">{stats.total}</span></span>
+                  <span className="text-slate-600">Total: <span className="font-semibold text-slate-900">{stats.total}</span></span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
@@ -99,7 +99,7 @@ const GlEntryListPage: React.FC = () => {
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium hover:from-blue-500 hover:to-indigo-500 transition-all shadow-sm hover:shadow-md"
               >
                 <Plus className="w-4 h-4" />
-                <span>Tạo bút toán</span>
+                <span>Create Entry</span>
               </button>
               <button
                 onClick={() => setShowFilters(!showFilters)}
@@ -110,7 +110,7 @@ const GlEntryListPage: React.FC = () => {
                 }`}
               >
                 <Filter className="w-4 h-4" />
-                <span className="hidden sm:inline">Bộ lọc</span>
+                <span className="hidden sm:inline">Filters</span>
                 {hasActiveFilters && (
                   <span className="bg-white text-blue-600 text-xs font-bold px-1.5 py-0.5 rounded-full">
                     !
@@ -123,7 +123,7 @@ const GlEntryListPage: React.FC = () => {
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 text-white font-medium hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md"
               >
                 <RefreshCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-                <span className="hidden sm:inline">Tải lại</span>
+                <span className="hidden sm:inline">Reload</span>
               </button>
             </div>
           </div>
@@ -133,21 +133,21 @@ const GlEntryListPage: React.FC = () => {
         {showFilters && (
           <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider">Bộ lọc tìm kiếm</h3>
+              <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider">Filters & Search</h3>
               {hasActiveFilters && (
                 <button
                   onClick={clearFilters}
                   className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 transition-colors"
                 >
                   <X className="w-4 h-4" />
-                  Xóa bộ lọc
+                  Clear Filters
                 </button>
               )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="lg:col-span-2">
-                <label className="block text-sm font-medium text-slate-700 mb-2">Tìm kiếm</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Search</label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
@@ -161,20 +161,20 @@ const GlEntryListPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Trạng thái</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Status</label>
                 <select
                   className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                   value={status}
                   onChange={(e) => setStatus(e.target.value as any)}
                 >
-                  <option value="">Tất cả</option>
+                  <option value="">All</option>
                   <option value="draft">Draft</option>
                   <option value="posted">Posted</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Từ ngày</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">From date</label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                   <input
@@ -187,7 +187,7 @@ const GlEntryListPage: React.FC = () => {
               </div>
 
               <div className="lg:col-start-4">
-                <label className="block text-sm font-medium text-slate-700 mb-2">Đến ngày</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">To date</label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                   <input
@@ -206,7 +206,7 @@ const GlEntryListPage: React.FC = () => {
                 className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 transition-all shadow-sm hover:shadow-md"
               >
                 <Search className="w-4 h-4" />
-                Áp dụng lọc
+                Apply Filters
               </button>
             </div>
           </div>
@@ -222,16 +222,16 @@ const GlEntryListPage: React.FC = () => {
                     Entry No
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    Ngày
+                    Date
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
                     Memo
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    Tham chiếu
+                    Reference
                   </th>
                   <th className="px-6 py-4 text-center text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    Trạng thái
+                    Status
                   </th>
                 </tr>
               </thead>
@@ -241,7 +241,7 @@ const GlEntryListPage: React.FC = () => {
                     <td className="px-6 py-16 text-center" colSpan={5}>
                       <div className="flex flex-col items-center gap-3">
                         <RefreshCcw className="w-8 h-8 text-blue-600 animate-spin" />
-                        <p className="text-slate-600 font-medium">Đang tải dữ liệu...</p>
+                        <p className="text-slate-600 font-medium">Loading data...</p>
                       </div>
                     </td>
                   </tr>
@@ -253,9 +253,9 @@ const GlEntryListPage: React.FC = () => {
                           <FileText className="w-8 h-8 text-slate-400" />
                         </div>
                         <div>
-                          <p className="text-slate-900 font-semibold mb-1">Chưa có bút toán</p>
+                          <p className="text-slate-900 font-semibold mb-1">No journal entries</p>
                           <p className="text-sm text-slate-500">
-                            {hasActiveFilters ? "Không tìm thấy kết quả phù hợp với bộ lọc" : "Chưa có bút toán nào được tạo"}
+                            {hasActiveFilters ? "No matching results found for filters" : "No entries created yet"}
                           </p>
                         </div>
                       </div>
@@ -286,7 +286,7 @@ const GlEntryListPage: React.FC = () => {
                         {r.reference_type ? (
                           <div className="flex flex-col">
                             <span className="text-xs font-bold text-blue-600 uppercase">
-                              {r.reference_type === "ar_invoice" || r.reference_type === "AR_INVOICE" ? "Hóa đơn bán (AR)" : "Hóa đơn mua (AP)"}
+                              {r.reference_type === "ar_invoice" || r.reference_type === "AR_INVOICE" ? "AR Invoice" : "AP Invoice"}
                             </span>
                             <span className="text-sm font-medium text-slate-700">
                               ID: #{r.reference_id}
@@ -328,7 +328,7 @@ const GlEntryListPage: React.FC = () => {
           {rows.length > 0 && (
             <div className="bg-slate-50 border-t border-slate-200 px-6 py-3">
               <p className="text-sm text-slate-600">
-                Hiển thị <span className="font-semibold text-slate-900">{rows.length}</span> bút toán
+                Showing <span className="font-semibold text-slate-900">{rows.length}</span> journal entries
               </p>
             </div>
           )}

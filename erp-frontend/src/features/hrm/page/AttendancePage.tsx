@@ -60,7 +60,7 @@ const AttendancePage: React.FC = () => {
 
   const handleDelete = (id?: number) => {
     if (!id) return;
-    if (window.confirm("Xóa bản ghi chấm công này?")) {
+    if (window.confirm("Delete this attendance record?")) {
       dispatch(deleteAttendance(id));
     }
   };
@@ -108,7 +108,7 @@ const AttendancePage: React.FC = () => {
           item.employee_id,
           {
             id: item.employee_id,
-            name: (item as any).employee?.full_name || `Nhân viên #${item.employee_id}`,
+            name: (item as any).employee?.full_name || `Employee #${item.employee_id}`,
           },
         ])
     ).values()
@@ -174,10 +174,10 @@ const AttendancePage: React.FC = () => {
               <div className="bg-gradient-to-br from-orange-500 to-orange-600 p-2.5 rounded-xl shadow-lg">
                 <Clock className="w-7 h-7 text-white" />
               </div>
-              Quản lý chấm công
+              Attendance Management
             </h1>
             <p className="text-gray-500 mt-2 text-sm">
-              Tổng số: <span className="font-semibold text-gray-700">{totalItems}</span> bản ghi
+              Total: <span className="font-semibold text-gray-700">{totalItems}</span> records
             </p>
           </div>
 
@@ -186,7 +186,7 @@ const AttendancePage: React.FC = () => {
             className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-5 py-2.5 flex items-center gap-2 rounded-xl shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 hover:from-orange-600 hover:to-orange-700 transition-all duration-200 font-medium"
           >
             <Plus className="w-5 h-5" />
-            Thêm chấm công
+            Add Attendance
           </button>
         </div>
       </div>
@@ -197,7 +197,7 @@ const AttendancePage: React.FC = () => {
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
-            placeholder="Tìm kiếm theo nhân viên, trạng thái, ghi chú..."
+            placeholder="Search by employee, status, notes..."
             className="w-full border border-gray-200 rounded-xl pl-12 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent shadow-sm hover:border-gray-300 transition-all duration-200"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -211,7 +211,7 @@ const AttendancePage: React.FC = () => {
             onChange={(e) => setSelectedEmployee(e.target.value)}
             className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent shadow-sm hover:border-gray-300 transition-all duration-200 bg-white appearance-none cursor-pointer"
           >
-            <option value="all">Tất cả nhân viên</option>
+            <option value="all">All Employees</option>
             {employeeOptions.map((emp) => (
               <option key={emp.id} value={emp.id}>
                 {emp.name}
@@ -233,7 +233,7 @@ const AttendancePage: React.FC = () => {
             <button
               onClick={() => setSelectedDate("")}
               className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-              title="Xóa bộ lọc ngày"
+              title="Clear date filter"
             >
               ✕
             </button>
@@ -251,31 +251,31 @@ const AttendancePage: React.FC = () => {
                   ID
                 </th>
                 <th className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Chi nhánh
+                  Branch
                 </th>
                 <th className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Nhân viên
+                  Employee
                 </th>
                 <th className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Ngày làm
+                  Work Date
                 </th>
                 <th className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Check in
+                  Check In
                 </th>
                 <th className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Check out
+                  Check Out
                 </th>
                 <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Giờ làm
+                  Working Hours
                 </th>
                 <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Trạng thái
+                  Status
                 </th>
                 <th className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Ghi chú
+                  Notes
                 </th>
                 <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Thao tác
+                  Actions
                 </th>
               </tr>
             </thead>
@@ -288,7 +288,7 @@ const AttendancePage: React.FC = () => {
                       <div className="relative">
                         <div className="w-12 h-12 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin"></div>
                       </div>
-                      <p className="mt-4 text-gray-500 text-sm">Đang tải dữ liệu...</p>
+                      <p className="mt-4 text-gray-500 text-sm">Loading data...</p>
                     </div>
                   </td>
                 </tr>
@@ -300,12 +300,12 @@ const AttendancePage: React.FC = () => {
                         <AlertCircle className="w-8 h-8 text-gray-400" />
                       </div>
                       <p className="text-gray-500 text-sm font-medium">
-                        {search ? "Không tìm thấy kết quả phù hợp" : "Chưa có dữ liệu chấm công"}
+                        {search ? "No matching results found" : "No attendance data available"}
                       </p>
                       <p className="text-gray-400 text-xs mt-1">
                         {search
-                          ? "Thử tìm kiếm với từ khóa khác"
-                          : "Nhấn nút 'Thêm chấm công' để tạo mới"}
+                          ? "Try searching with different keywords"
+                          : "Click 'Add Attendance' to create a new record"}
                       </p>
                     </div>
                   </td>
@@ -375,7 +375,7 @@ const AttendancePage: React.FC = () => {
                         <button
                           className="p-2 border border-gray-200 rounded-lg text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200 transition-all duration-200 shadow-sm hover:shadow"
                           onClick={() => handleEdit(item)}
-                          title="Chỉnh sửa"
+                          title="Edit"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
@@ -383,7 +383,7 @@ const AttendancePage: React.FC = () => {
                         <button
                           className="p-2 border border-gray-200 rounded-lg text-red-600 hover:bg-red-50 hover:border-red-200 transition-all duration-200 shadow-sm hover:shadow"
                           onClick={() => handleDelete(item.id)}
-                          title="Xóa"
+                          title="Delete"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -400,12 +400,12 @@ const AttendancePage: React.FC = () => {
         {totalItems > 0 && (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t bg-gradient-to-r from-gray-50 to-white">
             <div className="text-sm text-gray-600">
-              Hiển thị{" "}
+              Showing{" "}
               <span className="font-semibold text-gray-900">
                 {startIndex + 1} - {Math.min(startIndex + pageSize, totalItems)}
               </span>{" "}
-              trong tổng số{" "}
-              <span className="font-semibold text-gray-900">{totalItems}</span> bản ghi
+              of{" "}
+              <span className="font-semibold text-gray-900">{totalItems}</span> records
             </div>
 
             <div className="flex items-center gap-2">
@@ -416,7 +416,7 @@ const AttendancePage: React.FC = () => {
                 className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white hover:shadow-sm transition-all duration-200 bg-gray-50"
               >
                 <ChevronLeft className="w-4 h-4" />
-                <span className="hidden sm:inline">Trước</span>
+                <span className="hidden sm:inline">Previous</span>
               </button>
 
               {/* Page Numbers */}
@@ -452,7 +452,7 @@ const AttendancePage: React.FC = () => {
                 disabled={currentPage === totalPages}
                 className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white hover:shadow-sm transition-all duration-200 bg-gray-50"
               >
-                <span className="hidden sm:inline">Sau</span>
+                <span className="hidden sm:inline">Next</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>

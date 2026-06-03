@@ -69,11 +69,11 @@ export default function PositionFormModal({
 
   const handleSubmit = () => {
   if (!form.branch_id) {
-    toast.error("Vui lòng chọn chi nhánh");
+    toast.error("Please select a branch");
     return;
   }
   if (!form.name.trim()) {
-    toast.error("Tên chức danh là bắt buộc");
+    toast.error("Position name is required");
     return;
   }
 
@@ -103,7 +103,7 @@ export default function PositionFormModal({
               {form.id ? "Edit Position" : "Create Position"}
             </h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              Quản lý chức danh theo từng chi nhánh
+              Manage job titles in each branch
             </p>
           </div>
           <button
@@ -149,7 +149,7 @@ export default function PositionFormModal({
             </label>
             <input
               className="w-full border px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
-              placeholder="VD: Nhân viên kinh doanh, Kế toán trưởng..."
+              placeholder="e.g. Sales Executive, Chief Accountant..."
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
             />

@@ -32,7 +32,7 @@ export default function MyEmployeeProfilePage({ employeeId }: Props) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-6">
         <p className="text-red-600">
-          Tài khoản của bạn chưa được gắn với hồ sơ nhân viên (employee_id).
+          Your account is not linked to any employee profile (employee_id).
         </p>
       </div>
     );
@@ -41,64 +41,64 @@ export default function MyEmployeeProfilePage({ employeeId }: Props) {
   if (loading || !employee) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-6">
-        <p className="text-gray-500">Đang tải hồ sơ nhân viên...</p>
+        <p className="text-gray-500">Loading employee profile...</p>
       </div>
     );
   }
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
-      <h1 className="text-2xl font-bold mb-4">Hồ sơ nhân viên của tôi</h1>
+      <h1 className="text-2xl font-bold mb-4">My Profile</h1>
 
       <div className="bg-white border rounded-xl shadow-sm p-6 space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <div className="text-xs text-gray-500">Mã nhân viên</div>
+            <div className="text-xs text-gray-500">Employee Code</div>
             <div className="font-semibold">{employee.emp_code}</div>
           </div>
 
           <div>
-            <div className="text-xs text-gray-500">Họ tên</div>
+            <div className="text-xs text-gray-500">Full Name</div>
             <div className="font-semibold">{employee.full_name}</div>
           </div>
 
           <div>
-            <div className="text-xs text-gray-500">Giới tính</div>
+            <div className="text-xs text-gray-500">Gender</div>
             <div>{employee.gender}</div>
           </div>
 
           <div>
-            <div className="text-xs text-gray-500">Chi nhánh</div>
+            <div className="text-xs text-gray-500">Branch</div>
             <div>{(employee as any).branch?.name || "-"}</div>
           </div>
 
           <div>
-            <div className="text-xs text-gray-500">Phòng ban</div>
+            <div className="text-xs text-gray-500">Department</div>
             <div>{(employee as any).department?.name || "-"}</div>
           </div>
 
           <div>
-            <div className="text-xs text-gray-500">Chức danh</div>
+            <div className="text-xs text-gray-500">Position</div>
             <div>{(employee as any).position?.name || "-"}</div>
           </div>
 
           <div>
-            <div className="text-xs text-gray-500">Loại HĐ</div>
+            <div className="text-xs text-gray-500">Contract Type</div>
             <div>{employee.contract_type}</div>
           </div>
 
           <div>
-            <div className="text-xs text-gray-500">Trạng thái</div>
-            <div>{employee.status === "active" ? "Đang làm" : "Ngưng"}</div>
+            <div className="text-xs text-gray-500">Status</div>
+            <div>{employee.status === "active" ? "Active" : "Inactive"}</div>
           </div>
 
           <div>
-            <div className="text-xs text-gray-500">STK ngân hàng</div>
+            <div className="text-xs text-gray-500">Bank Account Number</div>
             <div>{employee.bank_account || "-"}</div>
           </div>
 
           <div>
-            <div className="text-xs text-gray-500">Ngân hàng</div>
+            <div className="text-xs text-gray-500">Bank Name</div>
             <div>{employee.bank_name || "-"}</div>
           </div>
         </div>

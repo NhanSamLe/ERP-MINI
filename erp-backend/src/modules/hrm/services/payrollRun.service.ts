@@ -131,25 +131,184 @@ export async function cancelPayrollRun(id: number) {
 }
 
 export async function postPayrollRun(id: number) {
-  const row = await model.PayrollRun.findByPk(id, {
-    include: [{ model: model.PayrollRunLine, as: "lines" }],
+  return await model.sequelize.transaction(async (t) => {
+    const row = await model.PayrollRun.findByPk(id, {
+      include: [
+        { model: model.PayrollPeriod, as: "period" },
+        {
+          model: model.PayrollRunLine,
+          as: "lines",
+          include: [{ model: model.Employee, as: "employee" }],
+        },
+      ],
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+    if (!row) throw new Error("Payroll run not found");
+
+    const status = (row as any).status as PayrollRunStatus;
+    if (status === "posted") {
+      throw new Error("Bảng lương đã được post");
+    }
+
+    const lines = (row as any).lines as any[] | undefined;
+    if (!lines || lines.length === 0) {
+      throw new Error("Không thể post bảng lương chưa có dòng lương");
+    }
+
+    const period = (row as any).period;
+    if (!period) throw new Error("Payroll period not found");
+
+    // 1. Tự động kiểm tra/tạo các tài khoản tiền lương: 334, 641, 642, 3335
+    let acc334 = await model.GlAccount.findOne({ where: { code: "334" }, transaction: t });
+    if (!acc334) {
+      acc334 = await model.GlAccount.create({
+        code: "334",
+        name: "Phải trả người lao động",
+        type: "liability",
+        normal_side: "credit",
+      } as any, { transaction: t });
+    }
+
+    let acc641 = await model.GlAccount.findOne({ where: { code: "641" }, transaction: t });
+    if (!acc641) {
+      acc641 = await model.GlAccount.create({
+        code: "641",
+        name: "Chi phí bán hàng",
+        type: "expense",
+        normal_side: "debit",
+      } as any, { transaction: t });
+    }
+
+    let acc642 = await model.GlAccount.findOne({ where: { code: "642" }, transaction: t });
+    if (!acc642) {
+      acc642 = await model.GlAccount.create({
+        code: "642",
+        name: "Chi phí quản lý doanh nghiệp",
+        type: "expense",
+        normal_side: "debit",
+      } as any, { transaction: t });
+    }
+
+    // 2. Tự động kiểm tra/tạo Nhật ký chung (GENERAL)
+    let journal = await model.GlJournal.findOne({ where: { code: "GENERAL" }, transaction: t });
+    if (!journal) {
+      journal = await model.GlJournal.create({
+        code: "GENERAL",
+        name: "Nhật ký chung",
+      }, { transaction: t });
+    }
+
+    // 3. Tính toán tổng lương theo bộ phận để hạch toán chi phí
+    let salesSalary = 0; // Chi phí lương bộ phận bán hàng (TK 641)
+    let adminSalary = 0; // Chi phí lương bộ phận quản lý (TK 642)
+    let totalNet = 0;    // Công nợ phải trả người lao động (TK 334)
+    let totalPit = 0;    // Thuế TNCN phải nộp (TK 3335)
+
+    for (const line of lines) {
+      const emp = line.employee;
+      const gross = Number(line.gross_amount || line.amount || 0);
+      const net = Number(line.net_amount || line.amount || 0);
+      const pit = Number(line.pit_amount || 0);
+
+      totalNet += net;
+      totalPit += pit;
+
+      let deptCode = "";
+      if (emp && emp.department_id) {
+        const dept = await model.Department.findByPk(emp.department_id, { transaction: t });
+        if (dept) {
+          deptCode = (dept.code || "").toUpperCase();
+        }
+      }
+
+      // Phân chia theo mã bộ phận bán hàng hoặc quản lý
+      if (deptCode.includes("SALE") || deptCode.includes("KD") || deptCode.includes("BH") || deptCode.includes("SALES")) {
+        salesSalary += gross;
+      } else {
+        adminSalary += gross;
+      }
+    }
+
+    // Kiểm tra và tạo TK 3335 nếu có thuế TNCN phát sinh
+    let acc3335 = null;
+    if (totalPit > 0) {
+      acc3335 = await model.GlAccount.findOne({ where: { code: "3335" }, transaction: t });
+      if (!acc3335) {
+        acc3335 = await model.GlAccount.create({
+          code: "3335",
+          name: "Thuế thu nhập cá nhân phải nộp",
+          type: "liability",
+          normal_side: "credit",
+        } as any, { transaction: t });
+      }
+    }
+
+    // Cân đối kế toán kép Tổng Nợ = Tổng Có
+    const totalDebit = salesSalary + adminSalary;
+    const totalCredit = totalNet + totalPit;
+    if (Math.abs(totalDebit - totalCredit) > 0.01) {
+      adminSalary += (totalCredit - totalDebit);
+    }
+
+    // 4. Tạo bút toán GL Entry
+    const entry = await model.GlEntry.create({
+      journal_id: journal.id,
+      entry_no: `GL-HRM-PAY-RUN-${row.id}`,
+      entry_date: new Date(),
+      reference_type: "payroll_run",
+      reference_id: row.id,
+      memo: `Hạch toán chi phí lương kỳ ${period.period_code} - Bảng lương ${row.run_no}`,
+      status: "draft",
+      branch_id: period.branch_id,
+    } as any, { transaction: t });
+
+    // 5. Tạo các dòng bút toán GL Entry Line
+    const entryLines: any[] = [];
+
+    if (salesSalary > 0) {
+      entryLines.push({
+        entry_id: entry.id,
+        account_id: acc641.id,
+        debit: salesSalary,
+        credit: 0,
+      });
+    }
+
+    if (adminSalary > 0) {
+      entryLines.push({
+        entry_id: entry.id,
+        account_id: acc642.id,
+        debit: adminSalary,
+        credit: 0,
+      });
+    }
+
+    if (totalNet > 0) {
+      entryLines.push({
+        entry_id: entry.id,
+        account_id: acc334.id,
+        debit: 0,
+        credit: totalNet,
+      });
+    }
+
+    if (totalPit > 0 && acc3335) {
+      entryLines.push({
+        entry_id: entry.id,
+        account_id: acc3335.id,
+        debit: 0,
+        credit: totalPit,
+      });
+    }
+
+    await model.GlEntryLine.bulkCreate(entryLines, { transaction: t });
+
+    // 6. Cập nhật trạng thái bảng lương sang "posted"
+    (row as any).status = "posted";
+    await row.save({ transaction: t });
+    return row;
   });
-  if (!row) throw new Error("Payroll run not found");
-
-  const status = (row as any).status as PayrollRunStatus;
-  if (status === "posted") {
-    throw new Error("Bảng lương đã được post");
-  }
-
-  const lines = (row as any).lines as any[] | undefined;
-  if (!lines || lines.length === 0) {
-    throw new Error("Không thể post bảng lương chưa có dòng lương");
-  }
-
-  // TODO: sau này thêm logic ghi vào sổ cái
-  (row as any).status = "posted";
-  await row.save();
-  return row;
 }
 
 // ========== LINES ==========
@@ -298,26 +457,32 @@ export async function calculatePayrollRun(runId: number, user: any) {
     // (optional) chặn cross-branch nếu bạn muốn
     // if (user?.branch_id && period.branch_id !== user.branch_id) throw new Error("Cross-branch denied");
 
-    const start = new Date(period.start_date);
-    const end = new Date(period.end_date);
-
-    // 2) Lấy nhân viên active trong branch của payroll period
+    // 2) Lấy nhân viên active hoặc đã nghỉ việc trong kỳ của payroll period
     const employees = await model.Employee.findAll({
-      where: { branch_id: period.branch_id, status: "active" },
+      where: {
+        branch_id: period.branch_id,
+        [Op.or]: [
+          { status: "active" },
+          {
+            status: "resigned",
+            resign_date: { [Op.gte]: period.start_date },
+          },
+        ],
+      },
       transaction: t,
     });
 
     if (!employees.length) {
-      throw new Error("Không có nhân viên active trong chi nhánh");
+      throw new Error("Không có nhân viên active hoặc resigned hợp lệ trong chi nhánh");
     }
 
     const empIds = employees.map((e: any) => e.id);
 
-    // 3) Lấy attendance theo kỳ cho tất cả nhân viên
+    // 3) Lấy attendance theo kỳ bằng cách so sánh trực tiếp chuỗi ngày
     const attendances = await model.Attendance.findAll({
       where: {
         employee_id: { [Op.in]: empIds },
-        work_date: { [Op.between]: [start, end] },
+        work_date: { [Op.between]: [period.start_date, period.end_date] },
       },
       transaction: t,
     });
@@ -458,13 +623,10 @@ export async function getPayrollEvidence(runId: number, employeeId: number) {
   if (!employee) throw new Error("Employee not found");
 
   // 3) filter attendance theo kỳ lương - dùng Date object để consistency với calculatePayrollRun
-  const start = new Date(period.start_date);
-  const end = new Date(period.end_date);
-
   const attendance = await model.Attendance.findAll({
     where: {
       employee_id: employeeId,
-      work_date: { [Op.between]: [start, end] },
+      work_date: { [Op.between]: [period.start_date, period.end_date] },
     },
     order: [["work_date", "ASC"]],
   });
@@ -566,12 +728,12 @@ async function calculatePIT(
 ) {
   if (gross <= 0) return 0;
 
-  // trial + seasonal
+  // Hợp đồng thử việc hoặc thời vụ từ 2 triệu trở lên bị khấu trừ 10%
   if (["trial", "seasonal"].includes(contractType)) {
     return gross >= 2000000 ? gross * 0.1 : 0;
   }
 
-  // official
+  // Hợp đồng chính thức áp dụng Biểu thuế lũy tiến từng phần
   const personalDeduction = 11000000;
   const dependentDeduction = dependents * 4400000;
 
@@ -582,15 +744,23 @@ async function calculatePIT(
 
   if (taxableIncome <= 0) return 0;
 
-  const pitRate = await model.TaxRate.findOne({
-    where: {
-      type: "PIT",
-      status: "active",
-    },
-    order: [["rate", "ASC"]],
-  });
+  // Tính thuế TNCN lũy tiến từng phần theo quy định Việt Nam
+  let pit = 0;
+  if (taxableIncome <= 5000000) {
+    pit = taxableIncome * 0.05;
+  } else if (taxableIncome <= 10000000) {
+    pit = taxableIncome * 0.10 - 250000;
+  } else if (taxableIncome <= 18000000) {
+    pit = taxableIncome * 0.15 - 750000;
+  } else if (taxableIncome <= 32000000) {
+    pit = taxableIncome * 0.20 - 1650000;
+  } else if (taxableIncome <= 52000000) {
+    pit = taxableIncome * 0.25 - 3250000;
+  } else if (taxableIncome <= 80000000) {
+    pit = taxableIncome * 0.30 - 5850000;
+  } else {
+    pit = taxableIncome * 0.35 - 9850000;
+  }
 
-  const rate = pitRate ? Number((pitRate as any).rate) : 10;
-
-  return taxableIncome * (rate / 100);
+  return pit;
 }

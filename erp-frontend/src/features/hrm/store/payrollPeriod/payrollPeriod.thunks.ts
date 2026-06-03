@@ -23,10 +23,10 @@ export const createPayrollPeriodThunk = createAsyncThunk(
     } catch (err: any) {
       if (axios.isAxiosError(err)) {
         return rejectWithValue(
-          err.response?.data?.message || "Lỗi tạo kỳ lương"
+          err.response?.data?.message || "Failed to create payroll period"
         );
       }
-      return rejectWithValue("Lỗi tạo kỳ lương");
+      return rejectWithValue("Failed to create payroll period");
     }
   }
 );
@@ -43,10 +43,10 @@ export const updatePayrollPeriodThunk = createAsyncThunk(
     } catch (err: any) {
       if (axios.isAxiosError(err)) {
         return rejectWithValue(
-          err.response?.data?.message || "Lỗi cập nhật kỳ lương"
+          err.response?.data?.message || "Failed to update payroll period"
         );
       }
-      return rejectWithValue("Lỗi cập nhật kỳ lương");
+      return rejectWithValue("Failed to update payroll period");
     }
   }
 );
@@ -60,10 +60,10 @@ export const closePayrollPeriodThunk = createAsyncThunk(
     } catch (err: any) {
       if (axios.isAxiosError(err)) {
         return rejectWithValue(
-          err.response?.data?.message || "Lỗi đóng kỳ lương"
+          err.response?.data?.message || "Failed to close payroll period"
         );
       }
-      return rejectWithValue("Lỗi đóng kỳ lương");
+      return rejectWithValue("Failed to close payroll period");
     }
   }
 );
@@ -77,10 +77,10 @@ export const deletePayrollPeriodThunk = createAsyncThunk(
     } catch (err: any) {
       if (axios.isAxiosError(err)) {
         return rejectWithValue(
-          err.response?.data?.message || "Lỗi xóa kỳ lương"
+          err.response?.data?.message || "Failed to delete payroll period"
         );
       }
-      return rejectWithValue("Lỗi xóa kỳ lương");
+      return rejectWithValue("Failed to delete payroll period");
     }
   }
 );

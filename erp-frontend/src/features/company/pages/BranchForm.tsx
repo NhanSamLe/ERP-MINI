@@ -172,7 +172,7 @@ export default function BranchForm({ mode }: { mode: "create" | "edit" }) {
 
   const save = async () => {
     if (!form.code?.trim() || !form.name?.trim()) {
-      toast.error("Mã và tên chi nhánh là bắt buộc");
+      toast.error("Branch code and name are required");
       return;
     }
     if (mode === "create") {
@@ -193,7 +193,7 @@ export default function BranchForm({ mode }: { mode: "create" | "edit" }) {
             {mode === "create" ? "Create Branch" : "Edit Branch"}
           </h1>
           <p className="text-sm text-gray-500">
-            Nhập thông tin chi nhánh và thông tin ngân hàng.
+            Enter branch information and bank details.
           </p>
         </div>
       </div>
@@ -236,7 +236,7 @@ export default function BranchForm({ mode }: { mode: "create" | "edit" }) {
             className="w-full border rounded-lg px-3 py-2 text-sm"
             value={form.address ?? ""}
             onChange={(e) => setForm({ ...form, address: e.target.value })}
-            placeholder="Số nhà, đường..."
+            placeholder="House number, street name..."
           />
         </div>
       </div>
@@ -245,14 +245,14 @@ export default function BranchForm({ mode }: { mode: "create" | "edit" }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm text-gray-600 mb-1">
-            Tỉnh / Thành phố
+            Province / City
           </label>
           <select
             className="w-full border rounded-lg px-3 py-2 text-sm"
             value={selectedProvinceCode ?? ""}
             onChange={(e) => handleProvinceChange(e.target.value)}
           >
-            <option value="">Chọn tỉnh/thành</option>
+            <option value="">Select province/city</option>
             {provinces.map((p) => (
               <option key={p.code} value={p.code}>
                 {p.name}
@@ -263,7 +263,7 @@ export default function BranchForm({ mode }: { mode: "create" | "edit" }) {
 
         <div>
           <label className="block text-sm text-gray-600 mb-1">
-            Quận / Huyện
+            District
           </label>
           <select
             className="w-full border rounded-lg px-3 py-2 text-sm"
@@ -271,7 +271,7 @@ export default function BranchForm({ mode }: { mode: "create" | "edit" }) {
             onChange={(e) => handleDistrictChange(e.target.value)}
             disabled={!districts.length}
           >
-            <option value="">Chọn quận/huyện</option>
+            <option value="">Select district</option>
             {districts.map((d) => (
               <option key={d.code} value={d.code}>
                 {d.name}
@@ -281,7 +281,7 @@ export default function BranchForm({ mode }: { mode: "create" | "edit" }) {
         </div>
 
         <div>
-          <label className="block text-sm text-gray-600 mb-1">Phường / Xã</label>
+          <label className="block text-sm text-gray-600 mb-1">Ward / Commune</label>
           <select
             className="w-full border rounded-lg px-3 py-2 text-sm"
             value={
@@ -290,7 +290,7 @@ export default function BranchForm({ mode }: { mode: "create" | "edit" }) {
             onChange={(e) => handleWardChange(e.target.value)}
             disabled={!wards.length}
           >
-            <option value="">Chọn phường/xã</option>
+            <option value="">Select ward/commune</option>
             {wards.map((w) => (
               <option key={w.code} value={w.code}>
                 {w.name}
@@ -305,7 +305,7 @@ export default function BranchForm({ mode }: { mode: "create" | "edit" }) {
             className="w-full border rounded-lg px-3 py-2 text-sm"
             value={form.tax_code ?? ""}
             onChange={(e) => setForm({ ...form, tax_code: e.target.value })}
-            placeholder="Mã số thuế"
+            placeholder="Tax code"
           />
         </div>
       </div>
@@ -322,7 +322,7 @@ export default function BranchForm({ mode }: { mode: "create" | "edit" }) {
             onChange={(e) =>
               setForm({ ...form, bank_account: e.target.value })
             }
-            placeholder="Số tài khoản"
+            placeholder="Account number"
           />
         </div>
 
@@ -337,7 +337,7 @@ export default function BranchForm({ mode }: { mode: "create" | "edit" }) {
             }
             onChange={(e) => handleBankChange(e.target.value)}
           >
-            <option value="">Chọn ngân hàng</option>
+            <option value="">Select bank</option>
             {banks.map((b) => (
               <option key={b.code} value={b.code}>
                 {b.shortName || b.name}

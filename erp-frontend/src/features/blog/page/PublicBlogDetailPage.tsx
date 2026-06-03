@@ -69,12 +69,12 @@ export default function PublicBlogDetailPage() {
         
         // Chỉ cho phép xem nếu bài viết đã được xuất bản
         if (data.status !== "published") {
-          throw new Error("Bài viết chưa được xuất bản.");
+          throw new Error("Article is not published yet.");
         }
         setPost(data);
       } catch (err: any) {
         console.error("Error loading public blog details:", err);
-        setError("Bài viết không tồn tại hoặc chưa được xuất bản.");
+        setError("Article does not exist or is not published.");
       } finally {
         setLoading(false);
       }
@@ -87,7 +87,7 @@ export default function PublicBlogDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center py-40 gap-3 bg-slate-50 min-h-screen">
         <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
-        <span className="text-sm text-slate-500 font-medium">Đang tải bài viết...</span>
+        <span className="text-sm text-slate-500 font-medium">Loading article...</span>
       </div>
     );
   }
@@ -111,15 +111,15 @@ export default function PublicBlogDetailPage() {
 
             {/* Desktop Menu */}
             <div className="hidden md:flex items-center gap-8">
-              <Link to="/#features" className="text-gray-700 hover:text-orange-500 transition">Tính năng</Link>
-              <Link to="/#pricing" className="text-gray-700 hover:text-orange-500 transition">Bảng giá</Link>
+              <Link to="/#features" className="text-gray-700 hover:text-orange-500 transition">Features</Link>
+              <Link to="/#pricing" className="text-gray-700 hover:text-orange-500 transition">Pricing</Link>
               <Link to="/public/blog" className="text-orange-500 font-semibold">Blog</Link>
-              <Link to="/login" className="text-gray-700 hover:text-orange-500 transition">Đăng nhập</Link>
+              <Link to="/login" className="text-gray-700 hover:text-orange-500 transition">Sign In</Link>
               <Link 
                 to="/login" 
                 className="bg-orange-400 hover:bg-orange-500 text-white px-6 py-2 rounded-lg transition"
               >
-                Dùng thử miễn phí
+                Free Trial
               </Link>
             </div>
 
@@ -135,15 +135,15 @@ export default function PublicBlogDetailPage() {
           {/* Mobile Menu */}
           {mobileMenuOpen && (
             <div className="md:hidden py-4 space-y-3 border-t border-gray-150">
-              <Link to="/#features" className="block text-gray-700 hover:text-orange-500">Tính năng</Link>
-              <Link to="/#pricing" className="block text-gray-700 hover:text-orange-500">Bảng giá</Link>
+              <Link to="/#features" className="block text-gray-700 hover:text-orange-500">Features</Link>
+              <Link to="/#pricing" className="block text-gray-700 hover:text-orange-500">Pricing</Link>
               <Link to="/public/blog" className="block text-orange-500 font-semibold">Blog</Link>
-              <Link to="/login" className="block text-gray-700 hover:text-orange-500">Đăng nhập</Link>
+              <Link to="/login" className="block text-gray-700 hover:text-orange-500">Sign In</Link>
               <Link 
                 to="/login" 
                 className="block bg-orange-400 text-white px-6 py-2 rounded-lg text-center"
               >
-                Dùng thử miễn phí
+                Free Trial
               </Link>
             </div>
           )}
@@ -155,12 +155,12 @@ export default function PublicBlogDetailPage() {
         
         {error || !post ? (
           <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-2xl text-center space-y-4 max-w-md mx-auto shadow-sm">
-            <p className="font-semibold">{error || "Bài viết không khả dụng."}</p>
+            <p className="font-semibold">{error || "Article is not available."}</p>
             <Link 
               to="/public/blog"
               className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-2 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5"
             >
-              <ArrowLeft className="w-4 h-4" /> Xem bài viết khác
+              <ArrowLeft className="w-4 h-4" /> View other articles
             </Link>
           </div>
         ) : (
@@ -172,7 +172,7 @@ export default function PublicBlogDetailPage() {
               to="/public/blog"
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-orange-500 transition-colors"
             >
-              <ArrowLeft className="w-4 h-4" /> Quay lại Blog
+              <ArrowLeft className="w-4 h-4" /> Back to Blog
             </Link>
 
             {/* Title & Metadata */}
@@ -184,11 +184,11 @@ export default function PublicBlogDetailPage() {
               <div className="flex flex-wrap items-center gap-4 text-xs text-gray-400 border-b border-gray-100 pb-4">
                 <div className="flex items-center gap-1.5">
                   <User className="w-4 h-4 text-gray-300" />
-                  <span>Người viết: <strong>{post.author?.full_name || "Ban biên tập"}</strong></span>
+                  <span>Author: <strong>{post.author?.full_name || "Editorial Team"}</strong></span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Calendar className="w-4 h-4 text-gray-300" />
-                  <span>Ngày đăng: {new Date(post.created_at).toLocaleDateString("vi-VN")}</span>
+                  <span>Published Date: {new Date(post.created_at).toLocaleDateString("en-US")}</span>
                 </div>
               </div>
             </div>
@@ -215,7 +215,7 @@ export default function PublicBlogDetailPage() {
               <div className="bg-gradient-to-r from-orange-50/50 to-amber-50/50 rounded-2xl border border-orange-100 p-5 md:p-6 mt-12 space-y-4">
                 <span className="text-[10px] font-bold text-orange-500 uppercase tracking-widest flex items-center gap-1">
                   <ShoppingBag className="w-3.5 h-3.5" />
-                  Sản phẩm được nhắc đến
+                  Featured Product
                 </span>
 
                 <div className="flex flex-col sm:flex-row gap-5 items-center">
@@ -238,7 +238,7 @@ export default function PublicBlogDetailPage() {
                       {post.product.name}
                     </h4>
                     <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
-                      {post.product.description || "Hãy liên hệ ngay với chúng tôi để nhận tư vấn và ưu đãi đặc quyền."}
+                      {post.product.description || "Please contact us now for advice and exclusive offers."}
                     </p>
                     <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4">
                       <span className="text-base font-extrabold text-orange-600">
@@ -248,7 +248,7 @@ export default function PublicBlogDetailPage() {
                         to="/login" // Redirect to order/buy or standard CTA
                         className="bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs px-4 py-2 rounded-lg transition-colors flex items-center gap-1"
                       >
-                        Mua Ngay <Sparkles className="w-3 h-3 text-amber-300" />
+                        Buy Now <Sparkles className="w-3 h-3 text-amber-300" />
                       </Link>
                     </div>
                   </div>
@@ -273,28 +273,28 @@ export default function PublicBlogDetailPage() {
                 <div className="text-white font-bold">ERP System</div>
               </div>
               <p className="text-sm">
-                Giải pháp quản lý doanh nghiệp toàn diện và hiện đại
+                Comprehensive and modern business management solution
               </p>
             </div>
             <div>
-              <h4 className="text-white font-semibold mb-4">Sản phẩm</h4>
+              <h4 className="text-white font-semibold mb-4">Product</h4>
               <ul className="space-y-2 text-sm">
-                <li><Link to="/#features" className="hover:text-orange-400">Tính năng</Link></li>
-                <li><Link to="/#pricing" className="hover:text-orange-400">Bảng giá</Link></li>
+                <li><Link to="/#features" className="hover:text-orange-400">Features</Link></li>
+                <li><Link to="/#pricing" className="hover:text-orange-400">Pricing</Link></li>
               </ul>
             </div>
             <div>
-              <h4 className="text-white font-semibold mb-4">Công ty</h4>
+              <h4 className="text-white font-semibold mb-4">Company</h4>
               <ul className="space-y-2 text-sm">
-                <li><Link to="/#about" className="hover:text-orange-400">Về chúng tôi</Link></li>
+                <li><Link to="/#about" className="hover:text-orange-400">About Us</Link></li>
                 <li><Link to="/public/blog" className="hover:text-orange-400">Blog</Link></li>
               </ul>
             </div>
             <div>
-              <h4 className="text-white font-semibold mb-4">Hỗ trợ</h4>
+              <h4 className="text-white font-semibold mb-4">Support</h4>
               <ul className="space-y-2 text-sm">
-                <li><a href="#" className="hover:text-orange-400">Trợ giúp</a></li>
-                <li><a href="#" className="hover:text-orange-400">Liên hệ</a></li>
+                <li><a href="#" className="hover:text-orange-400">Help</a></li>
+                <li><a href="#" className="hover:text-orange-400">Contact</a></li>
               </ul>
             </div>
           </div>

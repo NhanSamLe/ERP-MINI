@@ -131,10 +131,10 @@ export default function EmployeeFormModal({
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-bold text-white">
-                {initialData ? "Cập nhật thông tin nhân viên" : "Thêm nhân viên mới"}
+                {initialData ? "Update Employee Details" : "Add New Employee"}
               </h2>
               <p className="text-blue-100 text-sm mt-1">
-                {initialData ? `Mã NV: ${initialData.emp_code}` : "Vui lòng điền đầy đủ thông tin bên dưới"}
+                {initialData ? `Emp ID: ${initialData.emp_code}` : "Please fill in all details below"}
               </p>
             </div>
             <button
@@ -153,12 +153,12 @@ export default function EmployeeFormModal({
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-1 h-6 bg-blue-600 rounded"></div>
-              <h3 className="text-lg font-semibold text-gray-800">Thông tin cơ bản</h3>
+              <h3 className="text-lg font-semibold text-gray-800">Basic Information</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Chi nhánh <span className="text-red-500">*</span>
+                  Branch <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={form.branch_id ?? ""}
@@ -170,7 +170,7 @@ export default function EmployeeFormModal({
                   }
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
                 >
-                  <option value="">-- Chọn chi nhánh --</option>
+                  <option value="">-- Select branch --</option>
                   {branches.map((b) => (
                     <option key={b.id} value={b.id}>
                       {b.code} - {b.name}
@@ -181,20 +181,20 @@ export default function EmployeeFormModal({
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Mã nhân viên <span className="text-red-500">*</span>
+                  Employee Code <span className="text-red-500">*</span>
                 </label>
                 <input
                   name="emp_code"
                   value={form.emp_code}
                   onChange={handleChange}
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="VD: NV001"
+                  placeholder="e.g. EMP001"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Trạng thái <span className="text-red-500">*</span>
+                  Status <span className="text-red-500">*</span>
                 </label>
                 <select
                   name="status"
@@ -202,40 +202,40 @@ export default function EmployeeFormModal({
                   onChange={handleChange}
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
                 >
-                  <option value="active">✓ Đang làm việc</option>
-                  <option value="inactive">✗ Ngừng hoạt động</option>
+                  <option value="active">✓ Active</option>
+                  <option value="inactive">✗ Inactive</option>
                 </select>
               </div>
 
               <div className="md:col-span-2">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Họ và tên <span className="text-red-500">*</span>
+                  Full Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   name="full_name"
                   value={form.full_name}
                   onChange={handleChange}
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Nhập họ và tên đầy đủ"
+                  placeholder="Enter full name"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  CCCD/CMND
+                  National ID / Passport
                 </label>
                 <input
                   name="cccd"
                   value={form.cccd ?? ""}
                   onChange={handleChange}
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Số CCCD/CMND"
+                  placeholder="National ID / Passport No"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Giới tính <span className="text-red-500">*</span>
+                  Gender <span className="text-red-500">*</span>
                 </label>
                 <select
                   name="gender"
@@ -243,15 +243,15 @@ export default function EmployeeFormModal({
                   onChange={handleChange}
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
                 >
-                  <option value="male">Nam</option>
-                  <option value="female">Nữ</option>
-                  <option value="other">Khác</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Ngày sinh
+                  Birth Date
                 </label>
                 <input
                   type="date"
@@ -264,7 +264,7 @@ export default function EmployeeFormModal({
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Ngày vào làm
+                  Hire Date
                 </label>
                 <input
                   type="date"
@@ -277,16 +277,16 @@ export default function EmployeeFormModal({
             </div>
           </div>
 
-          {/* Thông tin công việc */}
+          {/* Employment Details */}
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-1 h-6 bg-blue-600 rounded"></div>
-              <h3 className="text-lg font-semibold text-gray-800">Thông tin công việc</h3>
+              <h3 className="text-lg font-semibold text-gray-800">Employment Details</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Phòng ban
+                  Department
                 </label>
                 <select
                   name="department_id"
@@ -299,7 +299,7 @@ export default function EmployeeFormModal({
                   }
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
                 >
-                  <option value="">-- Chọn phòng ban --</option>
+                  <option value="">-- Select department --</option>
                   {departments.map((d) => (
                     <option key={d.id} value={d.id}>
                       {d.name}
@@ -310,7 +310,7 @@ export default function EmployeeFormModal({
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Chức danh
+                  Position / Job Title
                 </label>
                 <select
                   name="position_id"
@@ -323,7 +323,7 @@ export default function EmployeeFormModal({
                   }
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
                 >
-                  <option value="">-- Chọn chức danh --</option>
+                  <option value="">-- Select position --</option>
                   {positions.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
@@ -334,7 +334,7 @@ export default function EmployeeFormModal({
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Loại hợp đồng <span className="text-red-500">*</span>
+                  Contract Type <span className="text-red-500">*</span>
                 </label>
                 <select
                   name="contract_type"
@@ -342,15 +342,15 @@ export default function EmployeeFormModal({
                   onChange={handleChange}
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
                 >
-                  <option value="trial">Thử việc</option>
-                  <option value="official">Chính thức</option>
-                  <option value="seasonal">Thời vụ</option>
+                  <option value="trial">Probationary</option>
+                  <option value="official">Official</option>
+                  <option value="seasonal">Seasonal</option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Lương cơ bản <span className="text-red-500">*</span>
+                  Base Salary <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <input
@@ -369,16 +369,16 @@ export default function EmployeeFormModal({
             </div>
           </div>
 
-          {/* Thông tin ngân hàng */}
+          {/* Payment Details */}
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-1 h-6 bg-blue-600 rounded"></div>
-              <h3 className="text-lg font-semibold text-gray-800">Thông tin thanh toán</h3>
+              <h3 className="text-lg font-semibold text-gray-800">Payment Details</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Ngân hàng
+                  Bank
                 </label>
                 <select
                   value={
@@ -396,7 +396,7 @@ export default function EmployeeFormModal({
                   }}
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
                 >
-                  <option value="">-- Chọn ngân hàng --</option>
+                  <option value="">-- Select bank --</option>
                   {banks.map((b) => (
                     <option key={b.code} value={b.code}>
                       {b.shortName || b.name}
@@ -407,14 +407,14 @@ export default function EmployeeFormModal({
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Số tài khoản
+                  Account Number
                 </label>
                 <input
                   name="bank_account"
                   value={form.bank_account ?? ""}
                   onChange={handleChange}
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Nhập số tài khoản"
+                  placeholder="Enter bank account number"
                 />
               </div>
             </div>
@@ -428,7 +428,7 @@ export default function EmployeeFormModal({
               disabled={loading}
               className="px-6 py-2.5 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all disabled:opacity-50"
             >
-              Hủy bỏ
+              Cancel
             </button>
             <button
               type="button"
@@ -442,14 +442,14 @@ export default function EmployeeFormModal({
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Đang xử lý...
+                  Processing...
                 </>
               ) : (
                 <>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  {initialData ? "Cập nhật" : "Thêm mới"}
+                  {initialData ? "Update" : "Add New"}
                 </>
               )}
             </button>

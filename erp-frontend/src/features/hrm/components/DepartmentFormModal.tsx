@@ -77,13 +77,13 @@ export default function DepartmentFormModal({
     const newErrors: Record<string, string> = {};
 
     if (!form.branch_id) {
-      newErrors.branch_id = "Vui lòng chọn chi nhánh";
+      newErrors.branch_id = "Please select a branch";
     }
     if (!form.code?.trim()) {
-      newErrors.code = "Mã phòng ban là bắt buộc";
+      newErrors.code = "Department code is required";
     }
     if (!form.name?.trim()) {
-      newErrors.name = "Tên phòng ban là bắt buộc";
+      newErrors.name = "Department name is required";
     }
 
     setErrors(newErrors);
@@ -105,7 +105,7 @@ export default function DepartmentFormModal({
 
   const handleDelete = () => {
     if (employeeCount > 0) {
-      setDeleteError("Có lỗi xảy ra khi xóa phòng ban");
+      setDeleteError("An error occurred while deleting the department");
       return;
     }
     if (onDelete) {
@@ -121,10 +121,10 @@ export default function DepartmentFormModal({
           <div>
             <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
               <Building2 className="w-5 h-5 text-orange-500" />
-              {form.id ? "Chỉnh sửa phòng ban" : "Tạo phòng ban mới"}
+              {form.id ? "Edit Department" : "Create New Department"}
             </h2>
             <p className="text-sm text-gray-500 mt-1">
-              Quản lý phòng ban trong từng chi nhánh
+              Manage departments in each branch
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -132,7 +132,7 @@ export default function DepartmentFormModal({
               <button
                 onClick={handleDelete}
                 className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg p-2 transition-all duration-200"
-                title="Xóa phòng ban"
+                title="Delete department"
               >
                 <Trash2 className="w-5 h-5" />
               </button>
@@ -159,7 +159,7 @@ export default function DepartmentFormModal({
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
               <Building2 className="w-4 h-4 text-gray-400" />
-              Chi nhánh
+              Branch
               <span className="text-red-500">*</span>
             </label>
             <div className="relative">
@@ -177,7 +177,7 @@ export default function DepartmentFormModal({
                 }}
               >
                 <option value="">
-                  {loadingBranches ? "Đang tải..." : "Chọn chi nhánh"}
+                  {loadingBranches ? "Loading..." : "Select branch"}
                 </option>
                 {branches.map((b) => (
                   <option key={b.id} value={b.id}>
@@ -203,14 +203,14 @@ export default function DepartmentFormModal({
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
               <Code2 className="w-4 h-4 text-gray-400" />
-              Mã phòng ban
+              Department Code
               <span className="text-red-500">*</span>
             </label>
             <input
               className={`w-full border ${
                 errors.code ? "border-red-300" : "border-gray-200"
               } px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-gray-300 transition-all duration-200`}
-              placeholder="VD: HR, IT, SALE..."
+              placeholder="e.g. HR, IT, SALES..."
               value={form.code}
               onChange={(e) => {
                 setForm({ ...form, code: e.target.value.toUpperCase() });
@@ -230,7 +230,7 @@ export default function DepartmentFormModal({
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
               <Type className="w-4 h-4 text-gray-400" />
-              Tên phòng ban
+              Department Name
               <span className="text-red-500">*</span>
             </label>
             <input
@@ -260,13 +260,13 @@ export default function DepartmentFormModal({
             className="px-5 py-2.5 text-sm font-medium border border-gray-300 rounded-xl hover:bg-white hover:shadow-sm transition-all duration-200 text-gray-700"
             onClick={onClose}
           >
-            Hủy bỏ
+            Cancel
           </button>
           <button
             className="px-5 py-2.5 text-sm font-medium rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 transition-all duration-200"
             onClick={handleSubmit}
           >
-            {form.id ? "Lưu thay đổi" : "Tạo mới"}
+            {form.id ? "Save changes" : "Create"}
           </button>
         </div>
       </div>

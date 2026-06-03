@@ -23,14 +23,14 @@ export default function RegisterFaceModal({
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [status, setStatus] = useState("Đang khởi động camera...");
+  const [status, setStatus] = useState("Starting camera...");
 
   // Load models khi mở modal
   useEffect(() => {
     if (!open || !employee) return;
 
     const loadModels = async () => {
-      setStatus("Đang tải mô hình nhận diện AI...");
+      setStatus("Loading AI detection models...");
       try {
         const MODEL_URL = "/models";
         await Promise.all([
@@ -39,10 +39,10 @@ export default function RegisterFaceModal({
           faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
         ]);
         setModelsLoaded(true);
-        setStatus("AI sẵn sàng. Hãy đứng trước camera và nhấn quét.");
+        setStatus("AI ready. Please look at the camera and click scan.");
       } catch (err) {
-        console.error("Lỗi tải models:", err);
-        setStatus("Lỗi tải mô hình AI. Kiểm tra thư mục public/models.");
+        console.error("Error loading models:", err);
+        setStatus("Error loading AI models. Check public/models folder.");
       }
     };
 
@@ -53,7 +53,7 @@ export default function RegisterFaceModal({
     if (!webcamRef.current || !employee?.id) return;
     setIsCapturing(true);
     setProgress(30);
-    setStatus("Đang phát hiện khuôn mặt...");
+    setStatus("Detecting face...");
 
     try {
       const video = webcamRef.current.video;
@@ -67,29 +67,29 @@ export default function RegisterFaceModal({
 
         if (detection) {
           const faceVector = Array.from(detection.descriptor);
-          setStatus("Đang đăng ký lên hệ thống...");
+          setStatus("Registering with system...");
           
           await registerFace(employee.id, faceVector);
           
           setProgress(100);
-          setStatus("Đăng ký thành công!");
-          toast.success("Đăng ký khuôn mặt thành công!");
+          setStatus("Registration successful!");
+          toast.success("Face registered successfully!");
           
           setTimeout(() => {
             onSuccess();
             onClose();
           }, 1500);
         } else {
-          setStatus("Không phát hiện khuôn mặt. Hãy nhìn thẳng vào camera.");
+          setStatus("Face not detected. Please look straight at the camera.");
           setProgress(0);
-          toast.error("Không phát hiện khuôn mặt");
+          toast.error("Face not detected");
         }
       }
     } catch (error: any) {
       console.error("Lỗi đăng ký khuôn mặt:", error);
-      setStatus(`Lỗi: ${error.message || "Không xác định"}`);
+      setStatus(`Error: ${error.message || "Unknown"}`);
       setProgress(0);
-      toast.error("Đăng ký thất bại");
+      toast.error("Registration failed");
     } finally {
       setIsCapturing(false);
     }
@@ -104,8 +104,8 @@ export default function RegisterFaceModal({
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
           <div>
-            <h3 className="text-lg font-bold text-white">Đăng ký khuôn mặt AI</h3>
-            <p className="text-xs text-slate-400 mt-1">Nhân viên: {employee.full_name} ({employee.emp_code})</p>
+            <h3 className="text-lg font-bold text-white">AI Face Registration</h3>
+            <p className="text-xs text-slate-400 mt-1">Employee: {employee.full_name} ({employee.emp_code})</p>
           </div>
           <button 
             onClick={onClose} 
@@ -156,7 +156,7 @@ export default function RegisterFaceModal({
             {isCapturing && (
               <p className="text-xs text-slate-400 mt-1 flex items-center justify-center gap-1.5">
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />
-                Vui lòng giữ nguyên vị trí khuôn mặt...
+                Please keep your face still...
               </p>
             )}
           </div>
@@ -168,7 +168,7 @@ export default function RegisterFaceModal({
             onClick={onClose}
             className="flex-1 px-4 py-2.5 rounded-xl border border-slate-800 text-slate-300 font-semibold text-sm hover:bg-slate-800 transition-colors"
           >
-            Hủy bỏ
+            Cancel
           </button>
           <button
             onClick={handleCapture}
@@ -178,12 +178,12 @@ export default function RegisterFaceModal({
             {isCapturing ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Đang quét...
+                Scanning...
               </>
             ) : (
               <>
                 <Camera className="w-4 h-4" />
-                Bắt đầu quét mặt
+                Start Scan
               </>
             )}
           </button>

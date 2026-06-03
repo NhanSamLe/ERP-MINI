@@ -53,7 +53,7 @@ export default function FinanceReportsPage() {
       setProfitLoss(plRes.data.data || null);
     } catch (err: any) {
       console.error(err);
-      toast.error(err.response?.data?.message || err.message || "Không thể tải báo cáo tài chính");
+      toast.error(err.response?.data?.message || err.message || "Failed to load financial reports");
     } finally {
       setLoading(false);
     }
@@ -85,21 +85,21 @@ export default function FinanceReportsPage() {
   const handleExport = () => {
     if (activeTab === "trial-balance") {
       exportExcelReport<any>({
-        title: "BẢNG CÂN ĐỐI PHÁT SINH TÀI KHOẢN",
-        subtitle: `Từ ngày ${startDate} đến ngày ${endDate}`,
+        title: "TRIAL BALANCE",
+        subtitle: `From ${startDate} to ${endDate}`,
         meta: {
-          "Tổng Số Dư Đầu Kỳ": tbTotals.totalOpening.toLocaleString("vi-VN") + "đ",
-          "Tổng Phát Sinh Nợ": tbTotals.totalDebit.toLocaleString("vi-VN") + "đ",
-          "Tổng Phát Sinh Có": tbTotals.totalCredit.toLocaleString("vi-VN") + "đ",
-          "Tổng Số Dư Cuối Kỳ": tbTotals.totalClosing.toLocaleString("vi-VN") + "đ",
+          "Total Opening Balance": tbTotals.totalOpening.toLocaleString("vi-VN") + "đ",
+          "Total Period Debit": tbTotals.totalDebit.toLocaleString("vi-VN") + "đ",
+          "Total Period Credit": tbTotals.totalCredit.toLocaleString("vi-VN") + "đ",
+          "Total Closing Balance": tbTotals.totalClosing.toLocaleString("vi-VN") + "đ",
         },
         columns: [
-          { header: "Mã TK", key: "code", width: 15 },
-          { header: "Tên tài khoản", key: "name", width: 35 },
-          { header: "Số dư đầu kỳ", key: "opening", width: 20, align: "right" },
-          { header: "Phát sinh Nợ", key: "debit", width: 20, align: "right" },
-          { header: "Phát sinh Có", key: "credit", width: 20, align: "right" },
-          { header: "Số dư cuối kỳ", key: "closing", width: 20, align: "right" },
+          { header: "Account Code", key: "code", width: 15 },
+          { header: "Account Name", key: "name", width: 35 },
+          { header: "Opening Balance", key: "opening", width: 20, align: "right" },
+          { header: "Period Debit", key: "debit", width: 20, align: "right" },
+          { header: "Period Credit", key: "credit", width: 20, align: "right" },
+          { header: "Closing Balance", key: "closing", width: 20, align: "right" },
         ],
         data: trialBalance.map(row => ({
           code: row.code,
@@ -113,24 +113,24 @@ export default function FinanceReportsPage() {
       });
     } else if (activeTab === "profit-loss" && profitLoss) {
       exportExcelReport<any>({
-        title: "BÁO CÁO KẾT QUẢ HOẠT ĐỘNG KINH DOANH",
-        subtitle: `Từ ngày ${startDate} đến ngày ${endDate}`,
+        title: "PROFIT AND LOSS STATEMENT",
+        subtitle: `From ${startDate} to ${endDate}`,
         meta: {
-          "Doanh thu thuần": profitLoss.totalRevenue.toLocaleString("vi-VN") + "đ",
-          "Giá vốn hàng bán": profitLoss.totalCogs.toLocaleString("vi-VN") + "đ",
-          "Lợi nhuận gộp": profitLoss.grossProfit.toLocaleString("vi-VN") + "đ",
+          "Net Revenue": profitLoss.totalRevenue.toLocaleString("vi-VN") + "đ",
+          "Cost of Goods Sold": profitLoss.totalCogs.toLocaleString("vi-VN") + "đ",
+          "Gross Profit": profitLoss.grossProfit.toLocaleString("vi-VN") + "đ",
         },
         columns: [
-          { header: "Chỉ tiêu", key: "item", width: 45 },
-          { header: "Mã số", key: "code", width: 10, align: "center" },
-          { header: "Số tiền", key: "amount", width: 25, align: "right" },
+          { header: "Line Item", key: "item", width: 45 },
+          { header: "Code", key: "code", width: 10, align: "center" },
+          { header: "Amount", key: "amount", width: 25, align: "right" },
         ],
         data: [
-          { item: "1. Doanh thu bán hàng và cung cấp dịch vụ", code: "01", amount: profitLoss.totalRevenue },
-          { item: "2. Các khoản giảm trừ doanh thu", code: "02", amount: 0 },
-          { item: "3. Doanh thu thuần về bán hàng và cung cấp dịch vụ (10 = 01 - 02)", code: "10", amount: profitLoss.totalRevenue },
-          { item: "4. Giá vốn hàng bán", code: "11", amount: profitLoss.totalCogs },
-          { item: "5. Lợi nhuận gộp về bán hàng và cung cấp dịch vụ (20 = 10 - 11)", code: "20", amount: profitLoss.grossProfit },
+          { item: "1. Revenue from sales and services", code: "01", amount: profitLoss.totalRevenue },
+          { item: "2. Revenue deductions", code: "02", amount: 0 },
+          { item: "3. Net revenue from sales and services (10 = 01 - 02)", code: "10", amount: profitLoss.totalRevenue },
+          { item: "4. Cost of goods sold", code: "11", amount: profitLoss.totalCogs },
+          { item: "5. Gross profit from sales and services (20 = 10 - 11)", code: "20", amount: profitLoss.grossProfit },
         ],
         fileName: `ProfitLoss_${startDate}_to_${endDate}.xlsx`,
       });
@@ -144,8 +144,8 @@ export default function FinanceReportsPage() {
         {/* Page Title Header */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 mb-1">Báo Cáo Tài Chính</h1>
-            <p className="text-sm text-slate-500">Xem Bảng cân đối phát sinh tài khoản và kết quả hoạt động kinh doanh</p>
+            <h1 className="text-2xl font-bold text-slate-900 mb-1">Financial Reports</h1>
+            <p className="text-sm text-slate-500">View Trial Balance and Profit & Loss statement</p>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -154,7 +154,7 @@ export default function FinanceReportsPage() {
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-700 font-medium hover:bg-slate-50 hover:border-slate-400 transition-all disabled:opacity-50"
             >
               <Download className="w-4 h-4" />
-              <span>Xuất Excel</span>
+              <span>Export Excel</span>
             </button>
             <button
               onClick={loadData}
@@ -162,7 +162,7 @@ export default function FinanceReportsPage() {
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50 transition-all shadow-sm hover:shadow-md"
             >
               <RefreshCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-              <span>Tải lại</span>
+              <span>Reload</span>
             </button>
           </div>
         </div>
@@ -171,7 +171,7 @@ export default function FinanceReportsPage() {
         <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
           <div className="flex flex-col md:flex-row md:items-end gap-4">
             <div className="flex-1">
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Từ ngày</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">From date</label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 <input
@@ -184,7 +184,7 @@ export default function FinanceReportsPage() {
             </div>
 
             <div className="flex-1">
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Đến ngày</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">To date</label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 <input
@@ -202,7 +202,7 @@ export default function FinanceReportsPage() {
               className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-slate-900 text-white font-medium hover:bg-slate-800 disabled:opacity-50 transition-all shadow-sm h-[42px]"
             >
               <Search className="w-4 h-4" />
-              <span>Xem báo cáo</span>
+              <span>View Report</span>
             </button>
           </div>
         </div>
@@ -215,7 +215,7 @@ export default function FinanceReportsPage() {
               activeTab === "trial-balance" ? "text-blue-600 border-b-2 border-blue-600" : "text-slate-500 hover:text-slate-700"
             }`}
           >
-            Bảng Cân đối Phát sinh
+            Trial Balance
           </button>
           <button
             onClick={() => setActiveTab("profit-loss")}
@@ -223,7 +223,7 @@ export default function FinanceReportsPage() {
               activeTab === "profit-loss" ? "text-blue-600 border-b-2 border-blue-600" : "text-slate-500 hover:text-slate-700"
             }`}
           >
-            Báo cáo Kết quả Kinh doanh (P&L)
+            Profit & Loss Statement (P&L)
           </button>
         </div>
 
@@ -231,7 +231,7 @@ export default function FinanceReportsPage() {
         {loading && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 py-24 text-center">
             <RefreshCcw className="w-10 h-10 text-blue-600 animate-spin mx-auto mb-4" />
-            <p className="text-slate-600 font-medium">Đang tải và tính toán báo cáo tài chính...</p>
+            <p className="text-slate-600 font-medium">Loading and calculating financial reports...</p>
           </div>
         )}
 
@@ -242,19 +242,19 @@ export default function FinanceReportsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200">
-                    <th className="px-6 py-4 text-left font-semibold text-slate-700 uppercase tracking-wider w-24">Số hiệu</th>
-                    <th className="px-6 py-4 text-left font-semibold text-slate-700 uppercase tracking-wider">Tên tài khoản</th>
-                    <th className="px-6 py-4 text-right font-semibold text-slate-700 uppercase tracking-wider w-36">Số dư đầu kỳ</th>
-                    <th className="px-6 py-4 text-right font-semibold text-slate-700 uppercase tracking-wider w-36">Phát sinh Nợ</th>
-                    <th className="px-6 py-4 text-right font-semibold text-slate-700 uppercase tracking-wider w-36">Phát sinh Có</th>
-                    <th className="px-6 py-4 text-right font-semibold text-slate-700 uppercase tracking-wider w-36">Số dư cuối kỳ</th>
+                    <th className="px-6 py-4 text-left font-semibold text-slate-700 uppercase tracking-wider w-24">Account Code</th>
+                    <th className="px-6 py-4 text-left font-semibold text-slate-700 uppercase tracking-wider">Account Name</th>
+                    <th className="px-6 py-4 text-right font-semibold text-slate-700 uppercase tracking-wider w-36">Opening Balance</th>
+                    <th className="px-6 py-4 text-right font-semibold text-slate-700 uppercase tracking-wider w-36">Period Debit</th>
+                    <th className="px-6 py-4 text-right font-semibold text-slate-700 uppercase tracking-wider w-36">Period Credit</th>
+                    <th className="px-6 py-4 text-right font-semibold text-slate-700 uppercase tracking-wider w-36">Closing Balance</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {trialBalance.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="px-6 py-12 text-center text-slate-500 font-medium">
-                        Không tìm thấy số liệu kế toán phát sinh trong kỳ này.
+                        No accounting entries found for this period.
                       </td>
                     </tr>
                   ) : (
@@ -284,7 +284,7 @@ export default function FinanceReportsPage() {
                 {trialBalance.length > 0 && (
                   <tfoot>
                     <tr className="bg-gradient-to-r from-slate-100 to-slate-50 border-t-2 border-slate-300 font-bold text-slate-900">
-                      <td colSpan={2} className="px-6 py-4 text-left">TỔNG CỘNG</td>
+                      <td colSpan={2} className="px-6 py-4 text-left">TOTAL</td>
                       <td className="px-6 py-4 text-right font-mono">{tbTotals.totalOpening.toLocaleString("vi-VN")}đ</td>
                       <td className="px-6 py-4 text-right font-mono text-emerald-800">{tbTotals.totalDebit.toLocaleString("vi-VN")}đ</td>
                       <td className="px-6 py-4 text-right font-mono text-blue-800">{tbTotals.totalCredit.toLocaleString("vi-VN")}đ</td>
@@ -305,7 +305,7 @@ export default function FinanceReportsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-semibold text-slate-500 uppercase mb-1">Doanh Thu Thuần</p>
+                      <p className="text-sm font-semibold text-slate-500 uppercase mb-1">Net Revenue</p>
                       <h3 className="text-2xl font-bold text-blue-600 font-mono">{profitLoss.totalRevenue.toLocaleString("vi-VN")}đ</h3>
                     </div>
                     <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
@@ -315,7 +315,7 @@ export default function FinanceReportsPage() {
 
                   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-semibold text-slate-500 uppercase mb-1">Giá Vốn Hàng Bán</p>
+                      <p className="text-sm font-semibold text-slate-500 uppercase mb-1">Cost of Goods Sold</p>
                       <h3 className="text-2xl font-bold text-amber-600 font-mono">{profitLoss.totalCogs.toLocaleString("vi-VN")}đ</h3>
                     </div>
                     <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
@@ -325,7 +325,7 @@ export default function FinanceReportsPage() {
 
                   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-semibold text-slate-500 uppercase mb-1">Lợi Nhuận Gộp</p>
+                      <p className="text-sm font-semibold text-slate-500 uppercase mb-1">Gross Profit</p>
                       <h3 className="text-2xl font-bold text-emerald-600 font-mono">{profitLoss.grossProfit.toLocaleString("vi-VN")}đ</h3>
                     </div>
                     <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
@@ -337,46 +337,46 @@ export default function FinanceReportsPage() {
                 {/* Main Statement Box */}
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                   <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
-                    <h3 className="font-bold text-slate-950 uppercase tracking-wide text-sm">Báo Cáo Kết Quả Hoạt Động Kinh Doanh (VAS-P&L)</h3>
+                    <h3 className="font-bold text-slate-950 uppercase tracking-wide text-sm">Profit & Loss Statement (VAS-P&L)</h3>
                   </div>
                   <div className="p-6">
                     <div className="overflow-x-auto">
                       <table className="w-full text-base">
                         <thead>
                           <tr className="border-b border-slate-200 text-slate-500 font-bold text-xs uppercase tracking-wider">
-                            <th className="py-3 text-left w-3/5">Chỉ tiêu</th>
-                            <th className="py-3 text-center w-24">Mã số</th>
-                            <th className="py-3 text-right">Số tiền kỳ này</th>
+                            <th className="py-3 text-left w-3/5">Line Item</th>
+                            <th className="py-3 text-center w-24">Code</th>
+                            <th className="py-3 text-right">Amount</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-semibold text-slate-900">
                           <tr className="hover:bg-slate-50/50">
-                            <td className="py-4">1. Doanh thu bán hàng và cung cấp dịch vụ (TK 511)</td>
+                            <td className="py-4">1. Revenue from sales and services (A/C 511)</td>
                             <td className="py-4 text-center font-mono text-slate-500">01</td>
                             <td className="py-4 text-right font-mono">{profitLoss.totalRevenue.toLocaleString("vi-VN")}đ</td>
                           </tr>
                           <tr className="hover:bg-slate-50/50">
-                            <td className="py-4 font-normal text-slate-600 pl-4">In: Doanh thu bán hàng hóa</td>
+                            <td className="py-4 font-normal text-slate-600 pl-4">In: Revenue from merchandise sales</td>
                             <td className="py-4 text-center font-mono text-slate-400">01.1</td>
                             <td className="py-4 text-right font-mono font-normal text-slate-700">{profitLoss.totalRevenue.toLocaleString("vi-VN")}đ</td>
                           </tr>
                           <tr className="hover:bg-slate-50/50">
-                            <td className="py-4">2. Các khoản giảm trừ doanh thu</td>
+                            <td className="py-4">2. Revenue deductions</td>
                             <td className="py-4 text-center font-mono text-slate-500">02</td>
                             <td className="py-4 text-right font-mono">—</td>
                           </tr>
                           <tr className="hover:bg-slate-50/50 bg-blue-50/20 text-blue-900">
-                            <td className="py-4 font-bold">3. Doanh thu thuần về bán hàng và cung cấp dịch vụ (10 = 01 - 02)</td>
+                            <td className="py-4 font-bold">3. Net revenue from sales and services (10 = 01 - 02)</td>
                             <td className="py-4 text-center font-mono font-bold text-blue-600">10</td>
                             <td className="py-4 text-right font-mono font-bold">{profitLoss.totalRevenue.toLocaleString("vi-VN")}đ</td>
                           </tr>
                           <tr className="hover:bg-slate-50/50">
-                            <td className="py-4">4. Giá vốn hàng bán (TK 632)</td>
+                            <td className="py-4">4. Cost of goods sold (A/C 632)</td>
                             <td className="py-4 text-center font-mono text-slate-500">11</td>
                             <td className="py-4 text-right font-mono text-amber-700">({profitLoss.totalCogs.toLocaleString("vi-VN")}đ)</td>
                           </tr>
                           <tr className="hover:bg-slate-50/50 bg-emerald-50/20 text-emerald-900">
-                            <td className="py-4 font-bold">5. Lợi nhuận gộp về bán hàng và cung cấp dịch vụ (20 = 10 - 11)</td>
+                            <td className="py-4 font-bold">5. Gross profit from sales and services (20 = 10 - 11)</td>
                             <td className="py-4 text-center font-mono font-bold text-emerald-600">20</td>
                             <td className="py-4 text-right font-mono font-bold text-emerald-700">{profitLoss.grossProfit.toLocaleString("vi-VN")}đ</td>
                           </tr>
@@ -388,7 +388,7 @@ export default function FinanceReportsPage() {
               </>
             ) : (
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 py-16 text-center text-slate-500 font-medium">
-                Không thể tải báo cáo kết quả hoạt động kinh doanh.
+                Failed to load Profit & Loss statement.
               </div>
             )}
           </div>

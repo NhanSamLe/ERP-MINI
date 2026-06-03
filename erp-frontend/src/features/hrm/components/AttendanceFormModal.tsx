@@ -83,7 +83,7 @@ const employees =
       <div className="bg-white rounded-lg shadow-lg w-full max-w-lg">
         <div className="px-4 py-3 border-b flex justify-between items-center">
           <h2 className="font-semibold">
-            {initialValue ? "Cập nhật chấm công" : "Tạo chấm công"}
+            {initialValue ? "Update Attendance" : "Create Attendance"}
           </h2>
           <button onClick={onClose} className="text-gray-500 hover:text-black">
             ✕
@@ -104,7 +104,7 @@ const employees =
                 className="border rounded px-2 py-1 w-full text-sm"
                 required
               >
-                <option value="">Chọn chi nhánh</option>
+                <option value="">Select Branch</option>
                 {branches.map((b: any) => (
                   <option key={b.id} value={b.id}>
                     {b.code ? `${b.code} - ${b.name}` : b.name}
@@ -124,7 +124,7 @@ const employees =
                 className="border rounded px-2 py-1 w-full text-sm"
                 required
               >
-                <option value="">Chọn nhân viên</option>
+                <option value="">Select Employee</option>
                 {employees.map((e: any) => (
                   <option key={e.id} value={e.id}>
                     {e.full_name || e.name}
@@ -136,7 +136,7 @@ const employees =
 
           {/* Ngày làm việc */}
           <div>
-            <label className="block text-sm font-medium mb-1">Ngày làm việc</label>
+            <label className="block text-sm font-medium mb-1">Work Date</label>
             <input
               type="date"
               name="work_date"
@@ -175,7 +175,7 @@ const employees =
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">
-                Số giờ làm (working_hours)
+                Working Hours (working_hours)
               </label>
               <input
                 type="number"
@@ -188,7 +188,7 @@ const employees =
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Trạng thái</label>
+              <label className="block text-sm font-medium mb-1">Status</label>
               <select
                 name="status"
                 value={form.status || "present"}
@@ -205,7 +205,7 @@ const employees =
 
           {/* Note */}
           <div>
-            <label className="block text-sm font-medium mb-1">Ghi chú</label>
+            <label className="block text-sm font-medium mb-1">Note</label>
             <textarea
               name="note"
               value={form.note || ""}
@@ -221,13 +221,13 @@ const employees =
               onClick={onClose}
               className="px-4 py-1 border rounded"
             >
-              Hủy
+              Cancel
             </button>
             <button
               type="submit"
               className="px-4 py-1 rounded bg-blue-600 text-white"
             >
-              {initialValue ? "Lưu" : "Tạo mới"}
+              {initialValue ? "Save" : "Create"}
             </button>
           </div>
         </form>

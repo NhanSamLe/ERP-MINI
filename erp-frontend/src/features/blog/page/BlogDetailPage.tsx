@@ -90,7 +90,7 @@ export default function BlogDetailPage() {
         setPost(data);
       } catch (err: any) {
         console.error("Error loading blog details:", err);
-        setError("Không tìm thấy bài viết hoặc bài viết đã bị xóa.");
+        setError("Article not found or has been deleted.");
       } finally {
         setLoading(false);
       }
@@ -101,14 +101,14 @@ export default function BlogDetailPage() {
 
   const handleDelete = async () => {
     if (!post) return;
-    if (!window.confirm("Bạn có chắc chắn muốn xóa bài viết này không?")) return;
+    if (!window.confirm("Are you sure you want to delete this article?")) return;
 
     try {
       await deleteBlogPost(post.id);
       navigate("/blog");
     } catch (err) {
       console.error("Error deleting post:", err);
-      alert("Xóa bài viết thất bại.");
+      alert("Failed to delete article.");
     }
   };
 
@@ -116,7 +116,7 @@ export default function BlogDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center py-40 gap-3">
         <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
-        <span className="text-sm text-gray-500 font-medium">Đang tải nội dung bài viết...</span>
+        <span className="text-sm text-gray-500 font-medium">Loading article content...</span>
       </div>
     );
   }
@@ -125,12 +125,12 @@ export default function BlogDetailPage() {
     return (
       <div className="p-6 max-w-4xl mx-auto space-y-6">
         <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-2xl text-center space-y-4">
-          <p className="font-semibold">{error || "Không tìm thấy bài viết."}</p>
+          <p className="font-semibold">{error || "Article not found."}</p>
           <Button 
             onClick={() => navigate("/blog")}
             className="bg-orange-500 hover:bg-orange-600 text-white flex items-center gap-1.5 mx-auto"
           >
-            <ArrowLeft className="w-4 h-4" /> Quay lại danh sách
+            <ArrowLeft className="w-4 h-4" /> Back to list
           </Button>
         </div>
       </div>
@@ -147,7 +147,7 @@ export default function BlogDetailPage() {
           to="/blog" 
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-orange-500 transition-colors"
         >
-          <ArrowLeft className="w-4 h-4" /> Quay lại danh sách
+          <ArrowLeft className="w-4 h-4" /> Back to list
         </Link>
 
         <div className="flex items-center gap-2">
@@ -156,14 +156,14 @@ export default function BlogDetailPage() {
             variant="outline"
             className="h-8 text-xs border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center gap-1"
           >
-            <Edit3 className="w-3.5 h-3.5" /> Chỉnh sửa
+            <Edit3 className="w-3.5 h-3.5" /> Edit
           </Button>
           <Button
             onClick={handleDelete}
             variant="outline"
             className="h-8 text-xs border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 flex items-center gap-1"
           >
-            <Trash2 className="w-3.5 h-3.5" /> Xóa bài
+            <Trash2 className="w-3.5 h-3.5" /> Delete
           </Button>
         </div>
       </div>
@@ -180,11 +180,11 @@ export default function BlogDetailPage() {
                   ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                   : "bg-gray-100 text-gray-700 border border-gray-200"
               }>
-                {post.status === "published" ? "Đã xuất bản" : "Bản nháp"}
+                {post.status === "published" ? "Published" : "Draft"}
               </Badge>
               {post.product && (
                 <Badge className="bg-orange-50 text-orange-600 border border-orange-200 font-medium">
-                  Sản phẩm: {post.product.name}
+                  Product: {post.product.name}
                 </Badge>
               )}
             </div>
@@ -196,11 +196,11 @@ export default function BlogDetailPage() {
             <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 border-b border-gray-100 pb-4">
               <div className="flex items-center gap-1.5">
                 <User className="w-4 h-4 text-gray-400" />
-                <span>Đăng bởi: <strong>{post.author ? (post.author.full_name || post.author.username) : "Người dùng"}</strong></span>
+                <span>Posted by: <strong>{post.author ? (post.author.full_name || post.author.username) : "User"}</strong></span>
               </div>
               <div className="flex items-center gap-1.5">
                 <Calendar className="w-4 h-4 text-gray-400" />
-                <span>Ngày tạo: {new Date(post.created_at).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                <span>Created Date: {new Date(post.created_at).toLocaleDateString("en-US", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
               </div>
             </div>
           </div>
@@ -230,7 +230,7 @@ export default function BlogDetailPage() {
             <div className="bg-white rounded-2xl border border-gray-150 shadow-sm p-4 space-y-4">
               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
                 <ShoppingBag className="w-3.5 h-3.5 text-orange-500" />
-                Sản phẩm liên kết
+                Linked Product
               </h3>
 
               {post.product.image_url ? (
@@ -254,7 +254,7 @@ export default function BlogDetailPage() {
                 <div className="flex justify-between items-center text-xs text-gray-500">
                   <span>SKU: {post.product.sku}</span>
                   <span className="font-bold text-orange-600">
-                    {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(post.product.sale_price)}
+                    {new Intl.NumberFormat("en-US", { style: "currency", currency: "VND" }).format(post.product.sale_price)}
                   </span>
                 </div>
               </div>
@@ -263,7 +263,7 @@ export default function BlogDetailPage() {
                 to={`/inventory/products`} // or deep link if product detail page exists
                 className="w-full h-8 rounded-lg border border-gray-200 text-gray-700 font-semibold text-xs flex items-center justify-center gap-1 hover:bg-slate-50 transition-colors"
               >
-                Xem chi tiết kho <ExternalLink className="w-3 h-3" />
+                View Inventory Details <ExternalLink className="w-3 h-3" />
               </Link>
             </div>
           )}
@@ -284,13 +284,13 @@ export default function BlogDetailPage() {
                 {post.seo_title || post.title}
               </h4>
               <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
-                {post.seo_meta_desc || post.summary || "Chưa thiết lập mô tả SEO cho bài viết này để hiển thị trên công cụ tìm kiếm."}
+                {post.seo_meta_desc || post.summary || "SEO description is not set for this article to display on search engines."}
               </p>
             </div>
 
             {post.seo_keywords && (
               <div className="space-y-1.5">
-                <span className="text-[10px] font-bold text-gray-400">Từ khóa chính:</span>
+                <span className="text-[10px] font-bold text-gray-400">Main Keywords:</span>
                 <div className="flex flex-wrap gap-1">
                   {post.seo_keywords.split(",").map((kw, i) => (
                     <span 

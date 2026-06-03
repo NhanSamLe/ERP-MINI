@@ -48,7 +48,7 @@ const PartnerList: FC = () => {
   }, [search, type]);
 
   const handleDelete = (id: number) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa đối tác này?")) {
+    if (window.confirm("Are you sure you want to delete this partner?")) {
       dispatch(deletePartnerThunk(id));
     }
   };
@@ -87,11 +87,11 @@ const PartnerList: FC = () => {
   const getTypeLabel = (type: PartnerType) => {
     switch (type) {
       case "customer":
-        return "Khách hàng";
+        return "Customer";
       case "supplier":
-        return "Nhà cung cấp";
+        return "Supplier";
       case "internal":
-        return "Nội bộ";
+        return "Internal";
       default:
         return type;
     }
@@ -107,9 +107,9 @@ const PartnerList: FC = () => {
               <Users className="w-6 h-6 text-orange-600" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-800">Quản lý đối tác</h2>
+              <h2 className="text-2xl font-bold text-gray-800">Partner Management</h2>
               <p className="text-sm text-gray-500 mt-1">
-                Tổng số: <span className="font-semibold text-gray-700">{totalItems}</span> đối tác
+                Total: <span className="font-semibold text-gray-700">{totalItems}</span> partners
               </p>
             </div>
           </div>
@@ -119,7 +119,7 @@ const PartnerList: FC = () => {
             className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-5 py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 font-medium"
           >
             <Plus className="w-5 h-5" />
-            Thêm đối tác mới
+            Add new partner
           </button>
         </div>
       </div>
@@ -129,7 +129,7 @@ const PartnerList: FC = () => {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Filter className="w-5 h-5 text-gray-600" />
-            <h3 className="font-semibold text-gray-800">Bộ lọc & Tìm kiếm</h3>
+            <h3 className="font-semibold text-gray-800">Filters & Search</h3>
             {activeFiltersCount > 0 && (
               <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
                 {activeFiltersCount}
@@ -142,7 +142,7 @@ const PartnerList: FC = () => {
               className="text-sm text-gray-600 hover:text-gray-800 flex items-center gap-1"
             >
               <X className="w-4 h-4" />
-              Xóa bộ lọc
+              Clear filters
             </button>
           )}
         </div>
@@ -153,7 +153,7 @@ const PartnerList: FC = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Tìm kiếm theo tên, email, số điện thoại, mã số thuế..."
+              placeholder="Search by name, email, phone, tax code..."
               className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -166,10 +166,10 @@ const PartnerList: FC = () => {
             value={type}
             onChange={(e) => setType(e.target.value as PartnerType | "")}
           >
-            <option value="">Tất cả loại đối tác</option>
-            <option value="customer">Khách hàng</option>
-            <option value="supplier">Nhà cung cấp</option>
-            <option value="internal">Nội bộ</option>
+            <option value="">All partner types</option>
+            <option value="customer">Customer</option>
+            <option value="supplier">Supplier</option>
+            <option value="internal">Internal</option>
           </select>
         </div>
       </div>
@@ -190,19 +190,19 @@ const PartnerList: FC = () => {
                       ID
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Thông tin đối tác
+                      Partner Info
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Loại
+                      Type
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Liên hệ
+                      Contact
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Trạng thái
+                      Status
                     </th>
                     <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Thao tác
+                      Actions
                     </th>
                   </tr>
                 </thead>
@@ -276,7 +276,7 @@ const PartnerList: FC = () => {
                               : "bg-gray-100 text-gray-700 border border-gray-200"
                           }`}
                         >
-                          {p.status === "active" ? "Hoạt động" : "Không hoạt động"}
+                          {p.status === "active" ? "Active" : "Inactive"}
                         </span>
                       </td>
 
@@ -285,7 +285,7 @@ const PartnerList: FC = () => {
                           <button
                             onClick={() => navigate(`/partners/${p.id}`)}
                             className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors duration-150 border border-emerald-200 hover:border-emerald-300"
-                            title="Chỉnh sửa"
+                            title="Edit"
                           >
                             <Pencil className="w-4 h-4" />
                           </button>
@@ -293,7 +293,7 @@ const PartnerList: FC = () => {
                           <button
                             onClick={() => handleDelete(p.id)}
                             className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors duration-150 border border-rose-200 hover:border-rose-300"
-                            title="Xóa"
+                            title="Delete"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -311,10 +311,10 @@ const PartnerList: FC = () => {
                         <div className="flex flex-col items-center gap-2">
                           <Users className="w-12 h-12 text-gray-300" />
                           <p className="text-sm font-medium">
-                            Không tìm thấy đối tác nào
+                            No partners found
                           </p>
                           <p className="text-xs text-gray-400">
-                            Thử điều chỉnh bộ lọc hoặc thêm đối tác mới
+                            Try adjusting the filters or add a new partner
                           </p>
                         </div>
                       </td>
@@ -328,19 +328,19 @@ const PartnerList: FC = () => {
             {totalItems > 0 && (
               <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
                 <div className="text-sm text-gray-600">
-                  Hiển thị{" "}
+                  Showing{" "}
                   <span className="font-semibold text-gray-900">
                     {startIndex + 1}
                   </span>{" "}
-                  đến{" "}
+                  to{" "}
                   <span className="font-semibold text-gray-900">
                     {Math.min(startIndex + pageSize, totalItems)}
                   </span>{" "}
-                  trong tổng số{" "}
+                  of{" "}
                   <span className="font-semibold text-gray-900">
                     {totalItems}
                   </span>{" "}
-                  đối tác
+                  partners
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -350,7 +350,7 @@ const PartnerList: FC = () => {
                     className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                   >
                     <ChevronLeft className="w-4 h-4" />
-                    Trước
+                    Prev
                   </button>
 
                   <div className="flex gap-1">
@@ -376,7 +376,7 @@ const PartnerList: FC = () => {
                     disabled={currentPage === totalPages}
                     className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                   >
-                    Sau
+                    Next
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>

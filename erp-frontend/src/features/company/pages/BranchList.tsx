@@ -99,7 +99,7 @@ export default function BranchList() {
           <Building2 className="w-7 h-7 text-orange-500" />
           <div>
             <h1 className="text-2xl font-bold">Branch Management</h1>
-            <p className="text-gray-500 text-sm">Quản lý công ty & chi nhánh</p>
+            <p className="text-gray-500 text-sm">Company & branch management</p>
           </div>
         </div>
         {isAdmin && (

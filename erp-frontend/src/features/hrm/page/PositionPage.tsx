@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../../store/store";
@@ -61,7 +61,7 @@ export default function PositionPage() {
     // error bây giờ là string do rejectWithValue trả về
     const msg = typeof error === "string"
       ? error
-      : error?.message || "Có lỗi xảy ra khi lưu chức danh";
+      : error?.message || "An error occurred while saving the position";
     toast.error(msg);
   }
 };
@@ -139,14 +139,14 @@ export default function PositionPage() {
               <div className="bg-gradient-to-br from-orange-500 to-orange-600 p-2.5 rounded-xl shadow-lg">
                 <Building2 className="w-7 h-7 text-white" />
               </div>
-              Quản lý chức danh
+              Position Management
             </h1>
             <p className="text-gray-500 mt-2 text-sm">
-              Tổng số:{" "}
+              Total:{" "}
               <span className="font-semibold text-gray-700">
                 {totalItems}
               </span>{" "}
-              chức danh
+              positions
             </p>
           </div>
 
@@ -158,7 +158,7 @@ export default function PositionPage() {
             }}
           >
             <Plus className="w-5 h-5" />
-            Thêm chức danh
+            Add Position
           </button>
         </div>
       </div>
@@ -168,7 +168,7 @@ export default function PositionPage() {
         <div className="relative max-w-md">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
-            placeholder="Tìm kiếm theo tên chức danh..."
+            placeholder="Search by position name..."
             className="w-full border border-gray-200 rounded-xl pl-12 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent shadow-sm hover:border-gray-300 transition-all duration-200"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -186,16 +186,16 @@ export default function PositionPage() {
                   ID
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Tên chức danh
+                  Position Name
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Chi nhánh
+                  Branch
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-  Trạng thái
-</th>
+                  Status
+                </th>
                 <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Thao tác
+                  Actions
                 </th>
               </tr>
             </thead>
@@ -209,7 +209,7 @@ export default function PositionPage() {
                         <div className="w-12 h-12 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin"></div>
                       </div>
                       <p className="mt-4 text-gray-500 text-sm">
-                        Đang tải dữ liệu...
+                        Loading data...
                       </p>
                     </div>
                   </td>
@@ -223,13 +223,13 @@ export default function PositionPage() {
                       </div>
                       <p className="text-gray-500 text-sm font-medium">
                         {search
-                          ? "Không tìm thấy kết quả phù hợp"
-                          : "Chưa có chức danh nào"}
+                          ? "No matching results found"
+                          : "No positions available"}
                       </p>
                       <p className="text-gray-400 text-xs mt-1">
                         {search
-                          ? "Thử tìm kiếm với từ khóa khác"
-                          : "Nhấn nút 'Thêm chức danh' để tạo mới"}
+                          ? "Try searching with different keywords"
+                          : "Click 'Add Position' to create a new one"}
                       </p>
                     </div>
                   </td>
@@ -267,7 +267,7 @@ export default function PositionPage() {
         : "bg-red-100 text-red-700"
     }`}
   >
-    {p.status === "active" ? "Hoạt động" : "Ngưng hoạt động"}
+    {p.status === "active" ? "Active" : "Inactive"}
   </span>
 </td>
                     <td className="px-6 py-4">
@@ -278,7 +278,7 @@ export default function PositionPage() {
                             setEditing(p);
                             setModalOpen(true);
                           }}
-                          title="Chỉnh sửa"
+                          title="Edit"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
@@ -291,7 +291,7 @@ export default function PositionPage() {
   }`}
   onClick={() => toggleStatus(p)}
 >
-  {p.status === "active" ? "Khóa" : "Mở"}
+  {p.status === "active" ? "Lock" : "Unlock"}
 </button>
                       </div>
                     </td>
@@ -306,16 +306,16 @@ export default function PositionPage() {
         {totalItems > 0 && (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t bg-gradient-to-r from-gray-50 to-white">
             <div className="text-sm text-gray-600">
-              Hiển thị{" "}
+              Showing{" "}
               <span className="font-semibold text-gray-900">
                 {startIndex + 1} -{" "}
                 {Math.min(startIndex + pageSize, totalItems)}
               </span>{" "}
-              trong tổng số{" "}
+              of{" "}
               <span className="font-semibold text-gray-900">
                 {totalItems}
               </span>{" "}
-              chức danh
+              positions
             </div>
 
             <div className="flex items-center gap-2">
@@ -326,7 +326,7 @@ export default function PositionPage() {
                 className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white hover:shadow-sm transition-all duration-200 bg-gray-50"
               >
                 <ChevronLeft className="w-4 h-4" />
-                <span className="hidden sm:inline">Trước</span>
+                <span className="hidden sm:inline">Previous</span>
               </button>
 
               {/* Page Numbers */}
@@ -365,7 +365,7 @@ export default function PositionPage() {
                 disabled={currentPage === totalPages}
                 className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white hover:shadow-sm transition-all duration-200 bg-gray-50"
               >
-                <span className="hidden sm:inline">Sau</span>
+                <span className="hidden sm:inline">Next</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
