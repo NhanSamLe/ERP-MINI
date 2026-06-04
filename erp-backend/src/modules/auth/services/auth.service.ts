@@ -336,7 +336,8 @@ export async function getUserForAttendance(userId: number) {
       "phone",
       "avatar_url",
       "is_active",
-      "employee_id",      // 👈 thêm dòng này
+      "employee_id",
+      "branch_id",
     ],
   });
 

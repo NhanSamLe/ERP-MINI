@@ -17,6 +17,7 @@ import stockMoveLineRoutes from "../modules/inventory/routes/stockMoveLine.route
 import employeeRoutes from "../modules/hrm/routes/employee.routes";
 import crmRoutes from "../modules/crm/routes";
 import attendanceRoutes from "../modules/hrm/routes/attendance.routes";
+import leaveRequestRoutes from "../modules/hrm/routes/leaveRequest.routes";
 import payrollPeriodRoutes from "../modules/hrm/routes/payrollPeriod.routes";
 import saleOrderRoutes from "../modules/sales/routes/saleOrder.routes";
 import arInvoiceRoutes from "../modules/sales/routes/arInvoice.routes";
@@ -69,6 +70,7 @@ router.use("/stock-move-line", stockMoveLineRoutes);
 router.use("/hrm/employees", employeeRoutes);
 router.use("/crm", crmRoutes);
 router.use("/attendance", attendanceRoutes);
+router.use("/hrm/leave-requests", leaveRequestRoutes);
 router.use("/hrm/payroll-period", payrollPeriodRoutes);
 
 router.use("/sales/orders", saleOrderRoutes);

@@ -30,6 +30,14 @@ export async function getByEmployee(req: Request, res: Response) {
 
 export async function create(req: Request, res: Response) {
   try {
+    const { employee_id, work_date } = req.body;
+    const { Attendance } = await import("../../../models/index");
+    
+    const exists = await Attendance.findOne({ where: { employee_id, work_date } });
+    if (exists) {
+      return res.status(400).json({ error: "Nhân viên đã có bản ghi chấm công trong ngày này." });
+    }
+
     const data = await service.create(req.body);
     res.json(data);
   } catch (e: unknown) {
@@ -40,6 +48,23 @@ export async function create(req: Request, res: Response) {
 
 export async function update(req: Request, res: Response) {
   try {
+    const { employee_id, work_date } = req.body;
+    const { Op } = await import("sequelize");
+    const { Attendance } = await import("../../../models/index");
+
+    if (employee_id && work_date) {
+      const exists = await Attendance.findOne({
+        where: {
+          employee_id,
+          work_date,
+          id: { [Op.ne]: Number(req.params.id) }
+        }
+      });
+      if (exists) {
+        return res.status(400).json({ error: "Nhân viên đã có bản ghi chấm công trong ngày này." });
+      }
+    }
+
     const data = await service.update(Number(req.params.id), req.body);
     res.json(data);
   } catch (e: unknown) {
@@ -98,8 +123,20 @@ export async function checkInAI(req: Request, res: Response) {
     });
 
     if (existingLog) {
-      // Đã có log check-in -> Thực hiện check-out
+      // Đã có log check-in -> Thực hiện check-out (yêu cầu cooldown tối thiểu 10 phút)
       const checkInTime = new Date(existingLog.check_in!);
+      const diffMins = (now.getTime() - checkInTime.getTime()) / (1000 * 60);
+
+      if (diffMins < 10) {
+        return res.json({
+          success: true,
+          type: "cooldown",
+          employee: { employeeId, fullName, empCode },
+          time: now.toLocaleTimeString("vi-VN", { hour12: false }),
+          message: `Bạn đã check-in thành công trước đó lúc ${checkInTime.toLocaleTimeString("vi-VN", { hour12: false })}. Vui lòng đợi thêm để thực hiện check-out.`
+        });
+      }
+
       const hours = (now.getTime() - checkInTime.getTime()) / (1000 * 60 * 60);
       const workingHours = parseFloat(hours.toFixed(2));
 

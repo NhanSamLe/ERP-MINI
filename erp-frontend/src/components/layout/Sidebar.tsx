@@ -235,6 +235,10 @@ const menuItems: MenuItem[] = [
       "BRANCH_MANAGER",
       "ACCOUNT",
       "CHACC",
+      "SALES",
+      "WHSTAFF",
+      "PURCHASE",
+      "ADMIN",
     ],
     subItems: [
       {
@@ -256,7 +260,10 @@ const menuItems: MenuItem[] = [
       {
         name: "Attendance",
         path: "/hrm/attendance",
-        allowedRoles: ["HRMANAGER", "HR_STAFF"],
+      },
+      {
+        name: "Leave Requests",
+        path: "/hrm/leave-requests",
       },
       {
         name: "Payroll Period",

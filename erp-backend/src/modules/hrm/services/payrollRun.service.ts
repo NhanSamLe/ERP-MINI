@@ -159,7 +159,7 @@ export async function postPayrollRun(id: number) {
     const period = (row as any).period;
     if (!period) throw new Error("Payroll period not found");
 
-    // 1. Tự động kiểm tra/tạo các tài khoản tiền lương: 334, 641, 642, 3335
+    // 1. Tự động kiểm tra/tạo các tài khoản tiền lương: 334, 641, 642, 3335, 338
     let acc334 = await model.GlAccount.findOne({ where: { code: "334" }, transaction: t });
     if (!acc334) {
       acc334 = await model.GlAccount.create({
@@ -190,6 +190,16 @@ export async function postPayrollRun(id: number) {
       } as any, { transaction: t });
     }
 
+    let acc338 = await model.GlAccount.findOne({ where: { code: "338" }, transaction: t });
+    if (!acc338) {
+      acc338 = await model.GlAccount.create({
+        code: "338",
+        name: "Phải trả phải nộp khác (Bảo hiểm xã hội)",
+        type: "liability",
+        normal_side: "credit",
+      } as any, { transaction: t });
+    }
+
     // 2. Tự động kiểm tra/tạo Nhật ký chung (GENERAL)
     let journal = await model.GlJournal.findOne({ where: { code: "GENERAL" }, transaction: t });
     if (!journal) {
@@ -199,20 +209,38 @@ export async function postPayrollRun(id: number) {
       }, { transaction: t });
     }
 
-    // 3. Tính toán tổng lương theo bộ phận để hạch toán chi phí
+    // 3. Tính toán tổng lương và bảo hiểm theo bộ phận để hạch toán chi phí
     let salesSalary = 0; // Chi phí lương bộ phận bán hàng (TK 641)
     let adminSalary = 0; // Chi phí lương bộ phận quản lý (TK 642)
+    let salesCompIns = 0; // Chi phí bảo hiểm bán hàng (TK 641)
+    let adminCompIns = 0; // Chi phí bảo hiểm quản lý (TK 642)
     let totalNet = 0;    // Công nợ phải trả người lao động (TK 334)
     let totalPit = 0;    // Thuế TNCN phải nộp (TK 3335)
+    let totalEmpIns = 0; // Bảo hiểm trích lương người lao động (TK 338)
+    let totalCompIns = 0; // Bảo hiểm doanh nghiệp chịu (TK 338)
 
     for (const line of lines) {
       const emp = line.employee;
       const gross = Number(line.gross_amount || line.amount || 0);
       const net = Number(line.net_amount || line.amount || 0);
       const pit = Number(line.pit_amount || 0);
+      const baseSalary = Number(emp?.base_salary || 0);
 
       totalNet += net;
       totalPit += pit;
+
+      let empIns = 0;
+      let compIns = 0;
+
+      if (emp && emp.contract_type === "official") {
+        const insuranceBase = Math.min(baseSalary, 46800000);
+        const insuranceBaseBhtn = Math.min(baseSalary, 99200000);
+        empIns = insuranceBase * 0.095 + insuranceBaseBhtn * 0.01;
+        compIns = insuranceBase * 0.225 + insuranceBaseBhtn * 0.01;
+      }
+
+      totalEmpIns += empIns;
+      totalCompIns += compIns;
 
       let deptCode = "";
       if (emp && emp.department_id) {
@@ -225,8 +253,10 @@ export async function postPayrollRun(id: number) {
       // Phân chia theo mã bộ phận bán hàng hoặc quản lý
       if (deptCode.includes("SALE") || deptCode.includes("KD") || deptCode.includes("BH") || deptCode.includes("SALES")) {
         salesSalary += gross;
+        salesCompIns += compIns;
       } else {
         adminSalary += gross;
+        adminCompIns += compIns;
       }
     }
 
@@ -245,10 +275,11 @@ export async function postPayrollRun(id: number) {
     }
 
     // Cân đối kế toán kép Tổng Nợ = Tổng Có
-    const totalDebit = salesSalary + adminSalary;
-    const totalCredit = totalNet + totalPit;
-    if (Math.abs(totalDebit - totalCredit) > 0.01) {
-      adminSalary += (totalCredit - totalDebit);
+    const totalDebit = (salesSalary + salesCompIns) + (adminSalary + adminCompIns);
+    const totalCredit = totalNet + totalPit + (totalCompIns + totalEmpIns);
+    const diff = totalCredit - totalDebit;
+    if (Math.abs(diff) > 0.01) {
+      adminSalary += diff;
     }
 
     // 4. Tạo bút toán GL Entry
@@ -266,24 +297,27 @@ export async function postPayrollRun(id: number) {
     // 5. Tạo các dòng bút toán GL Entry Line
     const entryLines: any[] = [];
 
-    if (salesSalary > 0) {
+    // Nợ 641: Lương Gross + Bảo hiểm DN chịu bộ phận Sales
+    if (salesSalary + salesCompIns > 0) {
       entryLines.push({
         entry_id: entry.id,
         account_id: acc641.id,
-        debit: salesSalary,
+        debit: salesSalary + salesCompIns,
         credit: 0,
       });
     }
 
-    if (adminSalary > 0) {
+    // Nợ 642: Lương Gross + Bảo hiểm DN chịu bộ phận Admin
+    if (adminSalary + adminCompIns > 0) {
       entryLines.push({
         entry_id: entry.id,
         account_id: acc642.id,
-        debit: adminSalary,
+        debit: adminSalary + adminCompIns,
         credit: 0,
       });
     }
 
+    // Có 334: Lương Net (Thực nhận)
     if (totalNet > 0) {
       entryLines.push({
         entry_id: entry.id,
@@ -293,12 +327,23 @@ export async function postPayrollRun(id: number) {
       });
     }
 
+    // Có 3335: Thuế TNCN khấu trừ
     if (totalPit > 0 && acc3335) {
       entryLines.push({
         entry_id: entry.id,
         account_id: acc3335.id,
         debit: 0,
         credit: totalPit,
+      });
+    }
+
+    // Có 338: Tổng BH bắt buộc phải nộp (DN đóng 23.5% + NLĐ đóng 10.5%)
+    if (totalCompIns + totalEmpIns > 0) {
+      entryLines.push({
+        entry_id: entry.id,
+        account_id: acc338.id,
+        debit: 0,
+        credit: totalCompIns + totalEmpIns,
       });
     }
 
@@ -517,24 +562,34 @@ export async function calculatePayrollRun(runId: number, user: any) {
         Number(emp.base_salary || 0) / PAYROLL_RULE.STANDARD_WORK_DAYS;
 
       const paidLeaveDays = PAYROLL_RULE.PAID_LEAVE ? leaveDays : 0;
+      // Trả lương cho cả ngày đi muộn
+      const paidDays = presentDays + lateDays + paidLeaveDays;
 
-      const basePay = dailyRate * (presentDays + paidLeaveDays);
-      const absentDeduction = dailyRate * absentDays;
+      const basePay = dailyRate * paidDays;
+      const absentDeduction = 0; // Bỏ trừ kép (đã không làm thì không trả lương ở basePay)
       const lateDeduction = lateDays * PAYROLL_RULE.LATE_FINE_PER_DAY;
-      const allowance = presentDays * PAYROLL_RULE.MEAL_ALLOWANCE_PER_DAY;
+      const allowance = (presentDays + lateDays) * PAYROLL_RULE.MEAL_ALLOWANCE_PER_DAY;
 
       const gross = basePay + allowance;
 
-const totalDeductionBeforeTax =
-  absentDeduction + lateDeduction;
+      // Tính bảo hiểm bắt buộc trích từ lương NLĐ đóng (10.5%)
+      let insuranceEmp = 0;
+      if (emp.contract_type === "official") {
+        const insuranceBase = Math.min(Number(emp.base_salary || 0), 46800000);
+        const insuranceBaseBhtn = Math.min(Number(emp.base_salary || 0), 99200000);
+        insuranceEmp = insuranceBase * 0.095 + insuranceBaseBhtn * 0.01;
+      }
 
-const pit = await calculatePIT(
-  emp.contract_type,
-  gross,
-  emp.dependent || 0
-);
+      const totalDeductionBeforeTax = lateDeduction; // Bỏ absentDeduction khỏi khấu trừ kép
 
-let net = gross - totalDeductionBeforeTax - pit;
+      const pit = await calculatePIT(
+        emp.contract_type,
+        gross,
+        emp.dependent || 0,
+        insuranceEmp
+      );
+
+      let net = gross - totalDeductionBeforeTax - insuranceEmp - pit;
 
       // làm tròn tiền nếu muốn
       net = Math.round(net);
@@ -548,36 +603,36 @@ let net = gross - totalDeductionBeforeTax - pit;
 
       if (existed) {
         await existed.update({
-  amount: net,
-  present_days: presentDays,
-  absent_days: absentDays,
-  leave_days: leaveDays,
-  late_days: lateDays,
-  base_salary: emp.base_salary,
-  daily_rate: dailyRate,
-  gross_amount: gross,
-  total_earning: gross,
-  total_deduction: totalDeductionBeforeTax + pit,
-  pit_amount: pit,
-  net_amount: net,
-}, { transaction: t });
+          amount: net,
+          present_days: presentDays,
+          absent_days: absentDays,
+          leave_days: leaveDays,
+          late_days: lateDays,
+          base_salary: emp.base_salary,
+          daily_rate: dailyRate,
+          gross_amount: gross,
+          total_earning: gross,
+          total_deduction: totalDeductionBeforeTax + insuranceEmp + pit,
+          pit_amount: pit,
+          net_amount: net,
+        }, { transaction: t });
       } else {
         await model.PayrollRunLine.create({
-  run_id: run.id,
-  employee_id: emp.id,
-  amount: net,
-  present_days: presentDays,
-  absent_days: absentDays,
-  leave_days: leaveDays,
-  late_days: lateDays,
-  base_salary: emp.base_salary,
-  daily_rate: dailyRate,
-  gross_amount: gross,
-  total_earning: gross,
-  total_deduction: totalDeductionBeforeTax + pit,
-  pit_amount: pit,
-  net_amount: net,
-}, { transaction: t });
+          run_id: run.id,
+          employee_id: emp.id,
+          amount: net,
+          present_days: presentDays,
+          absent_days: absentDays,
+          leave_days: leaveDays,
+          late_days: lateDays,
+          base_salary: emp.base_salary,
+          daily_rate: dailyRate,
+          gross_amount: gross,
+          total_earning: gross,
+          total_deduction: totalDeductionBeforeTax + insuranceEmp + pit,
+          pit_amount: pit,
+          net_amount: net,
+        }, { transaction: t });
       }
 
       results.push({
@@ -644,25 +699,31 @@ export async function getPayrollEvidence(runId: number, employeeId: number) {
   const dailyRateRaw = baseSalary / PAYROLL_RULE.STANDARD_WORK_DAYS;
 
   const paidLeaveDays = PAYROLL_RULE.PAID_LEAVE ? leaveDays : 0;
+  const paidDays = presentDays + lateDays + paidLeaveDays;
 
-  const basePayRaw = dailyRateRaw * (presentDays + paidLeaveDays);
-  const absentDeductionRaw = dailyRateRaw * absentDays;
+  const basePayRaw = dailyRateRaw * paidDays;
+  const absentDeductionRaw = 0; // Bỏ trừ kép
   const lateDeductionRaw = lateDays * PAYROLL_RULE.LATE_FINE_PER_DAY;
-  const allowanceRaw = presentDays * PAYROLL_RULE.MEAL_ALLOWANCE_PER_DAY;
+  const allowanceRaw = (presentDays + lateDays) * PAYROLL_RULE.MEAL_ALLOWANCE_PER_DAY;
 
   const grossRaw = basePayRaw + allowanceRaw;
 
-const pitRaw = await calculatePIT(
-  (employee as any).contract_type,
-  grossRaw,
-  (employee as any).dependent || 0
-);
+  // Tính bảo hiểm bắt buộc trích từ lương NLĐ đóng (10.5%)
+  let insuranceEmpRaw = 0;
+  if ((employee as any).contract_type === "official") {
+    const insuranceBase = Math.min(baseSalary, 46800000);
+    const insuranceBaseBhtn = Math.min(baseSalary, 99200000);
+    insuranceEmpRaw = insuranceBase * 0.095 + insuranceBaseBhtn * 0.01;
+  }
 
-let netRaw =
-  grossRaw -
-  absentDeductionRaw -
-  lateDeductionRaw -
-  pitRaw;
+  const pitRaw = await calculatePIT(
+    (employee as any).contract_type,
+    grossRaw,
+    (employee as any).dependent || 0,
+    insuranceEmpRaw
+  );
+
+  let netRaw = grossRaw - lateDeductionRaw - insuranceEmpRaw - pitRaw;
 
   // làm tròn theo kiểu bạn đang dùng ở calculatePayrollRun
   const dailyRate = Math.round(dailyRateRaw);
@@ -670,6 +731,7 @@ let netRaw =
   const absentDeduction = Math.round(absentDeductionRaw);
   const lateDeduction = Math.round(lateDeductionRaw);
   const allowance = Math.round(allowanceRaw);
+  const insuranceEmp = Math.round(insuranceEmpRaw);
   const net = Math.round(netRaw);
 
   // 6) amount đang lưu trong payroll_run_lines (nếu có)
@@ -702,29 +764,32 @@ let netRaw =
       full_name: (employee as any).full_name,
       base_salary: baseSalary,
       contract_type: (employee as any).contract_type,
-dependent: (employee as any).dependent || 0,
+      dependent: (employee as any).dependent || 0,
     },
     
     attendance,
     summary,
-   breakdown: {
-  dailyRate,
-  basePay,
-  allowance,
-  absentDeduction,
-  lateDeduction,
-  gross: Math.round(grossRaw),
-  pit: Math.round(pitRaw),
-  net,
-  storedAmount,
-  diff,
-},
+    breakdown: {
+      dailyRate,
+      basePay,
+      allowance,
+      absentDeduction,
+      lateDeduction,
+      insuranceEmp,
+      gross: Math.round(grossRaw),
+      pit: Math.round(pitRaw),
+      net,
+      storedAmount,
+      diff,
+    },
   };
 }
+
 async function calculatePIT(
   contractType: string,
   gross: number,
-  dependents: number = 0
+  dependents: number = 0,
+  insuranceDeduction: number = 0
 ) {
   if (gross <= 0) return 0;
 
@@ -738,7 +803,7 @@ async function calculatePIT(
   const dependentDeduction = dependents * 4400000;
 
   const taxableIncome = Math.max(
-    gross - personalDeduction - dependentDeduction,
+    gross - insuranceDeduction - personalDeduction - dependentDeduction,
     0
   );
 

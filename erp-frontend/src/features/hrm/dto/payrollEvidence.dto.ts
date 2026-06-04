@@ -26,15 +26,16 @@ export interface PayrollEvidenceDTO {
   };
 
   breakdown: {
-  dailyRate: number;
-  basePay: number;
-  allowance: number;
-  gross: number;
-  absentDeduction: number;
-  lateDeduction: number;
-  pit: number;
-  net: number;
-  storedAmount: number | null;
-  diff: number | null;
-}
+    dailyRate: number;
+    basePay: number;
+    allowance: number;
+    gross: number;
+    absentDeduction: number;
+    lateDeduction: number;
+    insuranceEmp: number;
+    pit: number;
+    net: number;
+    storedAmount: number | null;
+    diff: number | null;
+  }
 }

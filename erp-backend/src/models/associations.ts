@@ -54,6 +54,7 @@ import { EmailActivity } from "../modules/crm/models/emailActivity.model";
 import { Attendance } from "../modules/hrm/models/attendance.model";
 import { PayrollItem } from "../modules/hrm/models/payrollItem.model";
 import { EmployeeFace } from "../modules/hrm/models/employeeFace.model";
+import { LeaveRequest } from "../modules/hrm/models/leaveRequest.model";
 import { Permission } from "../modules/auth/models/permission.model";
 import { RolePermission } from "../modules/auth/models/rolePermission.model";
 import { UserRole } from "../modules/auth/models/userRole.model";
@@ -207,6 +208,28 @@ export function applyAssociations() {
   EmployeeFace.belongsTo(Employee, {
     foreignKey: "employee_id",
     as: "employee",
+  });
+
+  // ✅ Employee ↔ LeaveRequest
+  Employee.hasMany(LeaveRequest, {
+    foreignKey: "employee_id",
+    as: "leaveRequests",
+    onDelete: "CASCADE",
+  });
+  LeaveRequest.belongsTo(Employee, {
+    foreignKey: "employee_id",
+    as: "employee",
+  });
+
+  // ✅ Branch ↔ LeaveRequest
+  Branch.hasMany(LeaveRequest, {
+    foreignKey: "branch_id",
+    as: "leaveRequests",
+    onDelete: "CASCADE",
+  });
+  LeaveRequest.belongsTo(Branch, {
+    foreignKey: "branch_id",
+    as: "branch",
   });
 
   // =====================

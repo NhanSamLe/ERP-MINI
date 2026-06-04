@@ -1274,12 +1274,20 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                                 -{money(evidence.breakdown.lateDeduction)} VND
                               </span>
                             </div>
+                            {evidence.breakdown.insuranceEmp > 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Social Insurance (10.5%)</span>
+                                <span className="font-semibold text-red-600">
+                                  -{money(evidence.breakdown.insuranceEmp)} VND
+                                </span>
+                              </div>
+                            )}
                             <div className="flex justify-between">
-  <span className="text-gray-600">Personal Income Tax (PIT)</span>
-  <span className="font-semibold text-red-600">
-    -{money(evidence.breakdown.pit)} VND
-  </span>
-</div>
+                              <span className="text-gray-600">Personal Income Tax (PIT)</span>
+                              <span className="font-semibold text-red-600">
+                                -{money(evidence.breakdown.pit)} VND
+                              </span>
+                            </div>
                           </div>
 
                           <div className="border border-gray-200 rounded-xl p-4 bg-gradient-to-br from-gray-50 to-white">

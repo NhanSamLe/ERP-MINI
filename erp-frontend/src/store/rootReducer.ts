@@ -46,6 +46,7 @@ import documentIntelligenceReducer from "@/features/purchase/store/documentIntel
 import { narrativeReducer } from "@/features/ai-narrative/store/narrativeSlice";
 import { rfqReducer } from "@/features/purchase/store/rfq";
 import { purchaseReturnReducer } from "@/features/purchase/store/purchaseReturn";
+import leaveRequestReducer from "../features/hrm/store/leaveRequest/leaveRequest.slice";
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -90,6 +91,7 @@ const rootReducer = combineReducers({
   narrative: narrativeReducer,
   rfq: rfqReducer,
   purchaseReturn: purchaseReturnReducer,
+  leaveRequest: leaveRequestReducer,
 });
 
 export default rootReducer;

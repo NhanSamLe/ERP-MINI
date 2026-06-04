@@ -9,8 +9,13 @@ import UserFormPage from "../features/hrm/page/UserFormPage";
 import PayrollPeriodPage from "../features/hrm/page/PayrollPeriodPage";
 import PayrollItemPage from "../features/hrm/page/PayrollItemPage"; 
 import PayrollRunPage from "../features/hrm/page/PayrollRunPage";
+import LeaveRequestGuard from "../features/hrm/page/LeaveRequestGuard";
 
 const hrmRoutes: RouteObject[] = [
+  {
+    path: "/hrm/leave-requests",
+    element: <LeaveRequestGuard />,
+  },
   {
     path: "/hrm/department",
     element: <DepartmentPage />,

@@ -22,6 +22,11 @@ type ProfitLossData = {
   cogsAccounts: TrialBalanceRow[];
   totalCogs: number;
   grossProfit: number;
+  sellingAccounts?: TrialBalanceRow[];
+  totalSelling?: number;
+  adminAccounts?: TrialBalanceRow[];
+  totalAdmin?: number;
+  netOperatingProfit?: number;
 };
 
 export default function FinanceReportsPage() {
@@ -119,6 +124,9 @@ export default function FinanceReportsPage() {
           "Net Revenue": profitLoss.totalRevenue.toLocaleString("vi-VN") + "đ",
           "Cost of Goods Sold": profitLoss.totalCogs.toLocaleString("vi-VN") + "đ",
           "Gross Profit": profitLoss.grossProfit.toLocaleString("vi-VN") + "đ",
+          "Selling Expenses": (profitLoss.totalSelling || 0).toLocaleString("vi-VN") + "đ",
+          "G&A Expenses": (profitLoss.totalAdmin || 0).toLocaleString("vi-VN") + "đ",
+          "Net Operating Profit": (profitLoss.netOperatingProfit || 0).toLocaleString("vi-VN") + "đ",
         },
         columns: [
           { header: "Line Item", key: "item", width: 45 },
@@ -131,6 +139,9 @@ export default function FinanceReportsPage() {
           { item: "3. Net revenue from sales and services (10 = 01 - 02)", code: "10", amount: profitLoss.totalRevenue },
           { item: "4. Cost of goods sold", code: "11", amount: profitLoss.totalCogs },
           { item: "5. Gross profit from sales and services (20 = 10 - 11)", code: "20", amount: profitLoss.grossProfit },
+          { item: "6. Selling expenses", code: "21", amount: profitLoss.totalSelling || 0 },
+          { item: "7. General and administration expenses", code: "22", amount: profitLoss.totalAdmin || 0 },
+          { item: "8. Net operating profit (30 = 20 - 21 - 22)", code: "30", amount: profitLoss.netOperatingProfit || 0 },
         ],
         fileName: `ProfitLoss_${startDate}_to_${endDate}.xlsx`,
       });
@@ -302,7 +313,7 @@ export default function FinanceReportsPage() {
             {profitLoss ? (
               <>
                 {/* Stats Cards Row */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
                     <div>
                       <p className="text-sm font-semibold text-slate-500 uppercase mb-1">Net Revenue</p>
@@ -329,6 +340,16 @@ export default function FinanceReportsPage() {
                       <h3 className="text-2xl font-bold text-emerald-600 font-mono">{profitLoss.grossProfit.toLocaleString("vi-VN")}đ</h3>
                     </div>
                     <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
+                      <TrendingUp className="w-6 h-6" />
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-500 uppercase mb-1">Operating Profit</p>
+                      <h3 className="text-2xl font-bold text-purple-600 font-mono">{(profitLoss.netOperatingProfit || 0).toLocaleString("vi-VN")}đ</h3>
+                    </div>
+                    <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center">
                       <TrendingUp className="w-6 h-6" />
                     </div>
                   </div>
@@ -375,10 +396,25 @@ export default function FinanceReportsPage() {
                             <td className="py-4 text-center font-mono text-slate-500">11</td>
                             <td className="py-4 text-right font-mono text-amber-700">({profitLoss.totalCogs.toLocaleString("vi-VN")}đ)</td>
                           </tr>
-                          <tr className="hover:bg-slate-50/50 bg-emerald-50/20 text-emerald-900">
+                          <tr className="hover:bg-slate-50/50 bg-slate-50 text-slate-900 border-y">
                             <td className="py-4 font-bold">5. Gross profit from sales and services (20 = 10 - 11)</td>
-                            <td className="py-4 text-center font-mono font-bold text-emerald-600">20</td>
-                            <td className="py-4 text-right font-mono font-bold text-emerald-700">{profitLoss.grossProfit.toLocaleString("vi-VN")}đ</td>
+                            <td className="py-4 text-center font-mono font-bold text-slate-700">20</td>
+                            <td className="py-4 text-right font-mono font-bold">{profitLoss.grossProfit.toLocaleString("vi-VN")}đ</td>
+                          </tr>
+                          <tr className="hover:bg-slate-50/50">
+                            <td className="py-4">6. Selling expenses (A/C 641)</td>
+                            <td className="py-4 text-center font-mono text-slate-500">21</td>
+                            <td className="py-4 text-right font-mono text-red-600">({(profitLoss.totalSelling || 0).toLocaleString("vi-VN")}đ)</td>
+                          </tr>
+                          <tr className="hover:bg-slate-50/50">
+                            <td className="py-4">7. General and administration expenses (A/C 642)</td>
+                            <td className="py-4 text-center font-mono text-slate-500">22</td>
+                            <td className="py-4 text-right font-mono text-red-600">({(profitLoss.totalAdmin || 0).toLocaleString("vi-VN")}đ)</td>
+                          </tr>
+                          <tr className="hover:bg-slate-50/50 bg-emerald-50/20 text-emerald-900 border-t-2">
+                            <td className="py-4 font-bold">8. Net operating profit (30 = 20 - 21 - 22)</td>
+                            <td className="py-4 text-center font-mono font-bold text-emerald-600">30</td>
+                            <td className="py-4 text-right font-mono font-bold text-emerald-700">{(profitLoss.netOperatingProfit || 0).toLocaleString("vi-VN")}đ</td>
                           </tr>
                         </tbody>
                       </table>
