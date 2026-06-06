@@ -188,7 +188,7 @@ export default function RfqEditPage() {
 
   const handleAddProduct = async (product: Product) => {
     if (lines.some((l) => l.product_id === product.id)) {
-      toast.warning("Product already added");
+      toast.warning("Sản phẩm đã được thêm vào danh sách");
       return;
     }
     const tax = await dispatch(
@@ -255,24 +255,24 @@ export default function RfqEditPage() {
 
   const handleSubmit = async () => {
     if (!rfq) {
-      toast.error("RFQ data not loaded");
+      toast.error("Không thể tải thông tin RFQ");
       return;
     }
     if (!rfqDate) {
-      toast.error("RFQ Date is required");
+      toast.error("Vui lòng nhập Ngày yêu cầu báo giá");
       return;
     }
     if (lines.length === 0) {
-      toast.error("Add at least one product");
+      toast.error("Vui lòng thêm ít nhất một sản phẩm");
       return;
     }
     for (const l of lines) {
       if (l.quantity <= 0) {
-        toast.error(`Quantity must be > 0 for ${l.product_name}`);
+        toast.error(`Số lượng sản phẩm ${l.product_name} phải lớn hơn 0`);
         return;
       }
       if (l.unit_price <= 0) {
-        toast.error(`Unit price must be > 0 for ${l.product_name}`);
+        toast.error(`Đơn giá sản phẩm ${l.product_name} phải lớn hơn 0`);
         return;
       }
     }
@@ -303,10 +303,10 @@ export default function RfqEditPage() {
           },
         }),
       ).unwrap();
-      toast.success("RFQ updated");
+      toast.success("Đã cập nhật yêu cầu báo giá RFQ");
       navigate(`/purchase/rfqs/${rfq.id}`);
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to update RFQ");
+      toast.error(e?.message ?? "Cập nhật yêu cầu báo giá thất bại");
     } finally {
       setSubmitting(false);
     }
@@ -324,12 +324,12 @@ export default function RfqEditPage() {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-500">
         <FileText className="w-10 h-10 text-gray-300" />
-        <p className="text-sm font-medium">RFQ not found</p>
+        <p className="text-sm font-medium">Không tìm thấy yêu cầu báo giá RFQ</p>
         <button
           onClick={() => navigate("/purchase/rfqs")}
           className="text-sm text-orange-600 hover:underline"
         >
-          Back to RFQ list
+          Quay lại danh sách RFQ
         </button>
       </div>
     );
@@ -341,13 +341,13 @@ export default function RfqEditPage() {
       <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-500">
         <ArrowLeft className="w-10 h-10 text-gray-300" />
         <p className="text-sm font-medium">
-          Only draft or received RFQs can be edited
+          Chỉ yêu cầu báo giá Nháp hoặc Đã nhận mới có thể chỉnh sửa
         </p>
         <button
           onClick={() => navigate(`/purchase/rfqs/${rfq.id}`)}
           className="text-sm text-orange-600 hover:underline"
         >
-          Back to RFQ
+          Quay lại RFQ
         </button>
       </div>
     );
@@ -356,15 +356,15 @@ export default function RfqEditPage() {
   // Safe to render form now that rfq is loaded and valid
   return (
     <StandardFormLayout
-      title={`Edit RFQ: ${rfq.rfq_no}`}
+      title={`Chỉnh sửa RFQ: ${rfq.rfq_no}`}
       actions={[
         {
-          label: "Cancel",
+          label: "Hủy bỏ",
           variant: "outline",
           onClick: () => navigate(`/purchase/rfqs/${rfq.id}`),
         },
         {
-          label: "Save Changes",
+          label: "Lưu thay đổi",
           variant: "primary",
           onClick: handleSubmit,
           isLoading: submitting,
@@ -373,14 +373,14 @@ export default function RfqEditPage() {
     >
       {/* ── Header Info ── */}
       <FormSection
-        title="RFQ Information"
+        title="Thông tin yêu cầu báo giá (RFQ)"
         icon={<FileText className="w-4 h-4" />}
       >
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Supplier */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Supplier
+              Nhà cung cấp
             </label>
             <select
               value={supplierId}
@@ -389,7 +389,7 @@ export default function RfqEditPage() {
               }
               className="w-full h-9 px-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
             >
-              <option value="">— Select Supplier —</option>
+              <option value="">— Chọn nhà cung cấp —</option>
               {partners.items.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -401,7 +401,7 @@ export default function RfqEditPage() {
           {/* RFQ Date */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              RFQ Date <span className="text-red-500">*</span>
+              Ngày RFQ <span className="text-red-500">*</span>
             </label>
             <input
               type="date"
@@ -414,7 +414,7 @@ export default function RfqEditPage() {
           {/* Valid Until */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Valid Until
+              Hiệu lực đến
             </label>
             <input
               type="date"
@@ -428,7 +428,7 @@ export default function RfqEditPage() {
           {/* Branch (read-only) */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Branch
+              Chi nhánh
             </label>
             <div className="h-9 px-3 flex items-center text-sm bg-gray-50 border border-gray-200 rounded-md text-gray-600">
               {user?.branch?.name ?? "—"}
@@ -440,25 +440,25 @@ export default function RfqEditPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Internal Notes
+              Ghi chú nội bộ
             </label>
             <textarea
               rows={3}
               value={internalNotes}
               onChange={(e) => setInternalNotes(e.target.value)}
-              placeholder="Notes visible only internally..."
+              placeholder="Ghi chú chỉ hiển thị nội bộ..."
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-orange-500"
             />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Supplier Notes
+              Ghi chú nhà cung cấp
             </label>
             <textarea
               rows={3}
               value={supplierNotes}
               onChange={(e) => setSupplierNotes(e.target.value)}
-              placeholder="Notes to send to supplier..."
+              placeholder="Ghi chú gửi cho nhà cung cấp..."
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-orange-500"
             />
           </div>
@@ -467,7 +467,7 @@ export default function RfqEditPage() {
 
       {/* ── Products ── */}
       <FormSection
-        title="Products"
+        title="Sản phẩm"
         icon={<Package className="w-4 h-4" />}
         noPadding
         action={
@@ -477,7 +477,7 @@ export default function RfqEditPage() {
                 <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
                 <input
                   type="text"
-                  placeholder="Search product..."
+                  placeholder="Tìm kiếm sản phẩm..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onFocus={() =>
@@ -491,7 +491,7 @@ export default function RfqEditPage() {
                 className="inline-flex items-center gap-1 h-8 px-3 text-sm font-medium bg-orange-500 hover:bg-orange-600 text-white rounded-md transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" />
-                Add
+                Thêm
               </button>
             </div>
 
@@ -500,11 +500,11 @@ export default function RfqEditPage() {
               <div className="absolute right-5 top-full mt-1 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
                 {searchLoading ? (
                   <div className="px-4 py-3 text-sm text-gray-500 text-center">
-                    Searching...
+                    Đang tìm kiếm...
                   </div>
                 ) : searchResults.length === 0 ? (
                   <div className="px-4 py-3 text-sm text-gray-400 text-center">
-                    No products found
+                    Không tìm thấy sản phẩm
                   </div>
                 ) : (
                   searchResults.map((p) => (
@@ -533,28 +533,28 @@ export default function RfqEditPage() {
                 #
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
-                Product
+                Sản phẩm
               </th>
               <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">
-                Qty
+                Số lượng
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
-                UOM
+                ĐVT
               </th>
               <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">
-                Unit Price
+                Đơn giá
               </th>
               <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">
-                Tax %
+                Thuế %
               </th>
               <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">
-                Line Tax
+                Tiền thuế
               </th>
               <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">
-                Total
+                Thành tiền
               </th>
               <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">
-                Lead (days)
+                T.gian giao (ngày)
               </th>
               <th className="px-4 py-3 w-10" />
             </tr>
@@ -566,7 +566,7 @@ export default function RfqEditPage() {
                   colSpan={9}
                   className="px-4 py-10 text-center text-sm text-gray-400"
                 >
-                  Search and add products above
+                  Tìm kiếm và thêm sản phẩm ở trên
                 </td>
               </tr>
             ) : (
@@ -623,7 +623,7 @@ export default function RfqEditPage() {
                             }
                             className="h-7 px-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-orange-500 w-28"
                           >
-                            <option value="">— UOM —</option>
+                            <option value="">— ĐVT —</option>
                             {validUoms.map((u: Uom) => (
                               <option key={u.id} value={u.id}>
                                 {u.name}
@@ -701,7 +701,7 @@ export default function RfqEditPage() {
                   colSpan={7}
                   className="px-4 py-2 text-right text-xs font-medium text-gray-500"
                 >
-                  Subtotal
+                  Tổng tiền trước thuế
                 </td>
                 <td className="px-4 py-2 text-right text-sm font-semibold text-gray-800">
                   {totalBeforeTax.toLocaleString("vi-VN")}
@@ -713,7 +713,7 @@ export default function RfqEditPage() {
                   colSpan={7}
                   className="px-4 py-2 text-right text-xs font-medium text-gray-500"
                 >
-                  Tax
+                  Thuế
                 </td>
                 <td className="px-4 py-2 text-right text-sm text-gray-700">
                   {totalTax.toLocaleString("vi-VN")}
@@ -725,7 +725,7 @@ export default function RfqEditPage() {
                   colSpan={7}
                   className="px-4 py-2 text-right text-sm font-bold text-gray-800"
                 >
-                  Total
+                  Tổng cộng
                 </td>
                 <td className="px-4 py-2 text-right text-base font-bold text-orange-600">
                   {totalAfterTax.toLocaleString("vi-VN")}

@@ -97,6 +97,7 @@ import { StockLocation } from "../models/stockLocation.model";
 import { StockBalance } from "../models/stockBalance.model";
 import { PurchaseOrder } from "../../purchase/models/purchaseOrder.model";
 import { SaleOrder } from "../../sales/models/saleOrder.model";
+import { SaleOrderLine } from "../../sales/models/saleOrderLine.model";
 
 export const stockMoveService = {
   async getAll(user: JwtPayload) {
@@ -205,6 +206,74 @@ export const stockMoveService = {
         },
       ],
     });
+  },
+
+  async getAlreadyShippedQty(
+    saleOrderId: number,
+    productId: number,
+    excludeMoveId?: number,
+  ): Promise<number> {
+    const whereMove: any = {
+      reference_id: saleOrderId,
+      reference_type: "sale_order",
+      type: "issue",
+      status: "posted",
+    };
+    if (excludeMoveId) {
+      whereMove.id = { [Op.ne]: excludeMoveId };
+    }
+    const postedMoves = await StockMove.findAll({
+      where: whereMove,
+      attributes: ["id"],
+      raw: true,
+    });
+
+    if (postedMoves.length === 0) return 0;
+
+    const moveIds = postedMoves.map((m) => m.id);
+
+    const lines = await StockMoveLine.findAll({
+      where: {
+        move_id: moveIds,
+        product_id: productId,
+      },
+      attributes: ["quantity"],
+      raw: true,
+    });
+
+    return lines.reduce((sum, l) => sum + Number(l.quantity), 0);
+  },
+
+  async validateProductInSO(
+    soLines: SaleOrderLine[],
+    productId: number,
+  ) {
+    const soLine = soLines.find((l) => Number(l.product_id) === Number(productId));
+    if (!soLine) {
+      const productResult = await productService.getById(productId);
+      throw {
+        status: 400,
+        message: `Sản phẩm ${productResult?.name} không có trong Đơn bán hàng.`,
+      };
+    }
+    return soLine;
+  },
+
+  async validateSoRemainingQuantity(
+    productId: number,
+    inputQty: number,
+    soQty: number,
+    shippedQty: number,
+  ) {
+    const remaining = soQty - shippedQty;
+
+    if (inputQty > remaining) {
+      const productResult = await productService.getById(productId);
+      throw {
+        status: 400,
+        message: `Sản phẩm ${productResult?.name} vượt quá số lượng còn lại trong Đơn bán hàng. Còn lại: ${remaining}, đã nhập: ${inputQty}`,
+      };
+    }
   },
 
   async createReceipt(body: StockMoveCreateDTO, user: any) {
@@ -334,61 +403,163 @@ export const stockMoveService = {
       throw new Error("You cannot create a issue for another branch.");
     }
 
-    for (const line of body.lines) {
-      const balance = await StockBalance.findOne({
-        where: {
-          warehouse_id: body.warehouse_id,
-          product_id: line.product_id,
-        },
+    const t = await sequelize.transaction();
+    try {
+      const soLines = await SaleOrderLine.findAll({
+        where: { order_id: body.reference_id },
+        transaction: t,
       });
-      const productResult = await productService.getById(line.product_id);
 
-      if (!balance) {
-        throw {
-          status: 400,
-          message: `Product ${productResult?.name} is not available in this warehouse.`,
-        };
+      for (const line of body.lines) {
+        const soLine = await this.validateProductInSO(
+          soLines,
+          line.product_id,
+        );
+
+        const shipped = await this.getAlreadyShippedQty(
+          body.reference_id,
+          line.product_id,
+        );
+
+        const orderedQty = parseFloat(String(soLine.quantity ?? 0));
+        await this.validateSoRemainingQuantity(
+          line.product_id,
+          line.quantity,
+          orderedQty,
+          shipped,
+        );
+
+        const balance = await StockBalance.findOne({
+          where: {
+            warehouse_id: body.warehouse_id,
+            product_id: line.product_id,
+          },
+          transaction: t,
+        });
+        const productResult = await productService.getById(line.product_id);
+
+        if (!balance) {
+          throw {
+            status: 400,
+            message: `Product ${productResult?.name} is not available in this warehouse.`,
+          };
+        }
+
+        const available = Number(balance.quantity);
+        const required = Number(line.quantity);
+
+        if (available < required) {
+          throw {
+            status: 400,
+            message: `Not enough quantity for product ${productResult?.name}. Available: ${available}, Required: ${required}`,
+          };
+        }
       }
 
-      const available = Number(balance.quantity);
-      const required = Number(line.quantity);
-
-      if (available < required) {
-        throw {
-          status: 400,
-          message: `Not enough quantity for product ${productResult?.name}. Available: ${available}, Required: ${required}`,
-        };
+      const data: any = {
+        move_no: body.move_no,
+        move_date: new Date(body.move_date),
+        type: body.type,
+        warehouse_from_id: body.warehouse_id,
+        reference_type: body.reference_type,
+        note: body.note,
+        created_by: user.id,
+        branch_id: user.branch_id,
+      };
+      if (body.reference_id !== undefined) {
+        data.reference_id = body.reference_id;
       }
+      const move = await StockMove.create(data, { transaction: t });
+      await Promise.all(
+        body.lines.map((line) =>
+          StockMoveLine.create({
+            move_id: move.id,
+            product_id: line.product_id,
+            quantity: line.quantity,
+            uom_id: line.uom_id ?? null,
+            location_from_id: line.location_from_id ?? null,
+            location_to_id: line.location_to_id ?? null,
+            lot_id: line.lot_id ?? null,
+          }, { transaction: t }),
+        ),
+      );
+
+      await t.commit();
+      return await this.getById(move.id);
+    } catch (error) {
+      await t.rollback();
+      throw error;
+    }
+  },
+
+  async createPurchaseReturnIssue(purchaseReturnId: number, user: any) {
+    const allowedRoles = [Role.WHSTAFF];
+    if (!allowedRoles.includes(user.role)) {
+      throw new Error("You do not have permission to create Stock Move Issue");
     }
 
-    const data: any = {
-      move_no: body.move_no,
-      move_date: new Date(body.move_date),
-      type: body.type,
-      warehouse_from_id: body.warehouse_id,
-      reference_type: body.reference_type,
-      note: body.note,
-      created_by: user.id,
-      branch_id: user.branch_id,
-    };
-    if (body.reference_id !== undefined) {
-      data.reference_id = body.reference_id;
+    const { PurchaseReturn } = await import("../../purchase/models/purchaseReturn.model");
+    const { PurchaseReturnLine } = await import("../../purchase/models/purchaseReturnLine.model");
+
+    const ret = await PurchaseReturn.findByPk(purchaseReturnId, {
+      include: [{ model: PurchaseReturnLine, as: "lines" }],
+    });
+    if (!ret) throw { status: 404, message: "Purchase Return not found" };
+    if (ret.status !== "shipped")
+      throw { status: 400, message: "Only shipped returns can have a stock issue created" };
+    if (ret.stock_move_id)
+      throw { status: 400, message: "Stock move already exists for this return" };
+    if (!ret.warehouse_id)
+      throw { status: 400, message: "Return has no warehouse assigned" };
+
+    const warehouse = await Warehouse.findByPk(ret.warehouse_id);
+    if (!warehouse) throw new Error("Warehouse not found.");
+    if (warehouse.branch_id !== user.branch_id) {
+      throw new Error("You cannot create an issue for another branch.");
     }
-    const move = await StockMove.create(data);
-    await Promise.all(
-      body.lines.map((line) =>
-        StockMoveLine.create({
+
+    const t = await sequelize.transaction();
+    try {
+      const moveNo = `SM-RET-${Date.now()}`;
+      const move = await StockMove.create({
+        move_no: moveNo,
+        move_date: new Date(),
+        type: "issue",
+        warehouse_from_id: ret.warehouse_id,
+        reference_type: "purchase_return",
+        reference_id: ret.id,
+        status: "draft",
+        created_by: user.id,
+        branch_id: ret.branch_id,
+      }, { transaction: t });
+
+      const defaultLoc = await StockLocation.findOne({
+        where: { warehouse_id: ret.warehouse_id, type: "internal" },
+        transaction: t,
+      });
+      const defaultLocId = defaultLoc?.id ?? null;
+
+      const lines = (ret as any).lines as any[];
+      for (const line of lines) {
+        await StockMoveLine.create({
           move_id: move.id,
           product_id: line.product_id,
-          quantity: line.quantity,
+          quantity: Number(line.qty_in_stock_uom),
           uom_id: line.uom_id ?? null,
-          location_from_id: line.location_from_id ?? null,
-          location_to_id: line.location_to_id ?? null,
-        }),
-      ),
-    );
+          location_from_id: defaultLocId,
+          location_to_id: null,
+          lot_id: null,
+        }, { transaction: t });
+      }
 
-    return await this.getById(move.id);
+      await ret.update({ stock_move_id: move.id }, { transaction: t });
+
+      await t.commit();
+      return await this.getById(move.id);
+    } catch (err) {
+      await t.rollback();
+      throw err;
+    }
   },
 
   async createAdjustment(body: StockMoveAdjustmentDTO, user: any) {
@@ -601,35 +772,60 @@ export const stockMoveService = {
       };
     }
 
-    const poLines = await purchaseOrderService.getPOLines(body.reference_id);
-    const poMap = new Map<number, PurchaseOrderLine>();
-    poLines.forEach((l) => {
-      if (l.product_id != null) {
-        poMap.set(l.product_id, l);
+    if (body.reference_type === "sales_return") {
+      const { SalesReturnLine } = await import("../../sales/models/salesReturnLine.model");
+      const srLines = await SalesReturnLine.findAll({
+        where: { return_id: body.reference_id },
+      });
+      for (const line of body.lines) {
+        const srLine = srLines.find((l) => Number(l.product_id) === Number(line.product_id));
+        if (!srLine) {
+          const productResult = await productService.getById(line.product_id);
+          throw {
+            status: 400,
+            message: `Sản phẩm ${productResult?.name} không có trong phiếu trả hàng bán.`,
+          };
+        }
+        const maxQty = parseFloat(String(srLine.quantity_returned ?? 0));
+        if (parseFloat(String(line.quantity)) > maxQty) {
+          const productResult = await productService.getById(line.product_id);
+          throw {
+            status: 400,
+            message: `Sản phẩm ${productResult?.name} vượt quá số lượng nhận lại. Tối đa: ${maxQty}, Yêu cầu: ${line.quantity}`,
+          };
+        }
       }
-    });
+    } else {
+      const poLines = await purchaseOrderService.getPOLines(body.reference_id);
+      const poMap = new Map<number, PurchaseOrderLine>();
+      poLines.forEach((l) => {
+        if (l.product_id != null) {
+          poMap.set(l.product_id, l);
+        }
+      });
 
-    for (const line of body.lines) {
-      const poLine = await purchaseOrderService.validateProductInPO(
-        poMap,
-        line.product_id,
-      );
+      for (const line of body.lines) {
+        const poLine = await purchaseOrderService.validateProductInPO(
+          poMap,
+          line.product_id,
+        );
 
-      const received = await purchaseOrderService.getAlreadyReceivedQty(
-        body.reference_id,
-        line.product_id,
-      );
+        const received = await purchaseOrderService.getAlreadyReceivedQty(
+          body.reference_id,
+          line.product_id,
+        );
 
-      // Validate theo stock UOM
-      const poQtyInStockUom = parseFloat(
-        String(poLine.qty_in_stock_uom ?? poLine.quantity ?? 0),
-      );
-      await purchaseOrderService.validateRemainingQuantity(
-        line.product_id,
-        line.quantity,
-        poQtyInStockUom,
-        received,
-      );
+        // Validate theo stock UOM
+        const poQtyInStockUom = parseFloat(
+          String(poLine.qty_in_stock_uom ?? poLine.quantity ?? 0),
+        );
+        await purchaseOrderService.validateRemainingQuantity(
+          line.product_id,
+          line.quantity,
+          poQtyInStockUom,
+          received,
+        );
+      }
     }
     if (!record) return null;
 
@@ -725,63 +921,179 @@ export const stockMoveService = {
       };
     }
 
-    const updateData: any = {
-      move_no: body.move_no,
-      move_date: new Date(body.move_date),
-      type: body.type,
-      warehouse_from_id: body.warehouse_id,
-      reference_type: body.reference_type,
-      note: body.note,
-    };
-
-    if (body.reference_id !== undefined) {
-      updateData.reference_id = body.reference_id;
-    }
-
-    await record.update(updateData);
-
-    const existingLines = await StockMoveLine.findAll({
-      where: { move_id: id },
-    });
-    const newLines = body.lines;
-
-    const toDelete = existingLines.filter(
-      (line) => !newLines.some((l) => l.id === line.id),
-    );
-    await Promise.all(toDelete.map((line) => line.destroy()));
-
-    const toUpdate = existingLines.filter((line) =>
-      newLines.some((l) => l.id === line.id),
-    );
-    await Promise.all(
-      toUpdate.map((line) => {
-        const newData = newLines.find((l) => l.id === line.id);
-        if (!newData) return;
-        return line.update({
-          product_id: newData.product_id,
-          quantity: newData.quantity,
-          uom_id: newData.uom_id ?? null,
-          location_from_id: newData.location_from_id ?? null,
-          location_to_id: newData.location_to_id ?? null,
-          lot_id: newData.lot_id ?? null,
+    const t = await sequelize.transaction();
+    try {
+      if (body.reference_type === "purchase_return") {
+        const { PurchaseReturnLine } = await import("../../purchase/models/purchaseReturnLine.model");
+        const prLines = await PurchaseReturnLine.findAll({
+          where: { return_id: body.reference_id },
+          transaction: t,
         });
-      }),
-    );
 
-    const toCreate = newLines.filter((l) => !l.id);
-    await Promise.all(
-      toCreate.map((line) =>
-        StockMoveLine.create({
-          move_id: record.id,
-          product_id: line.product_id,
-          quantity: line.quantity,
-          uom_id: line.uom_id ?? null,
-          location_from_id: line.location_from_id ?? null,
-          location_to_id: line.location_to_id ?? null,
+        for (const line of body.lines) {
+          const prLine = prLines.find((l) => Number(l.product_id) === Number(line.product_id));
+          if (!prLine) {
+            const productResult = await productService.getById(line.product_id);
+            throw {
+              status: 400,
+              message: `Sản phẩm ${productResult?.name} không có trong phiếu xuất trả hàng.`,
+            };
+          }
+
+          const maxQty = parseFloat(String(prLine.qty_in_stock_uom ?? 0));
+          if (parseFloat(String(line.quantity)) > maxQty) {
+            const productResult = await productService.getById(line.product_id);
+            throw {
+              status: 400,
+              message: `Sản phẩm ${productResult?.name} vượt quá số lượng cần xuất trả. Tối đa: ${maxQty}, Yêu cầu: ${line.quantity}`,
+            };
+          }
+
+          const balance = await StockBalance.findOne({
+            where: {
+              warehouse_id: body.warehouse_id,
+              product_id: line.product_id,
+            },
+            transaction: t,
+          });
+          const productResult = await productService.getById(line.product_id);
+
+          if (!balance) {
+            throw {
+              status: 400,
+              message: `Product ${productResult?.name} is not available in this warehouse.`,
+            };
+          }
+
+          const available = Number(balance.quantity);
+          const required = Number(line.quantity);
+
+          if (available < required) {
+            throw {
+              status: 400,
+              message: `Not enough quantity for product ${productResult?.name}. Available: ${available}, Required: ${required}`,
+            };
+          }
+        }
+      } else {
+        const soLines = await SaleOrderLine.findAll({
+          where: { order_id: body.reference_id },
+          transaction: t,
+        });
+
+        for (const line of body.lines) {
+          const soLine = await this.validateProductInSO(
+            soLines,
+            line.product_id,
+          );
+
+          const shipped = await this.getAlreadyShippedQty(
+            body.reference_id,
+            line.product_id,
+            id,
+          );
+
+          const orderedQty = parseFloat(String(soLine.quantity ?? 0));
+          await this.validateSoRemainingQuantity(
+            line.product_id,
+            line.quantity,
+            orderedQty,
+            shipped,
+          );
+
+          const balance = await StockBalance.findOne({
+            where: {
+              warehouse_id: body.warehouse_id,
+              product_id: line.product_id,
+            },
+            transaction: t,
+          });
+          const productResult = await productService.getById(line.product_id);
+
+          if (!balance) {
+            throw {
+              status: 400,
+              message: `Product ${productResult?.name} is not available in this warehouse.`,
+            };
+          }
+
+          const available = Number(balance.quantity);
+          const required = Number(line.quantity);
+
+          if (available < required) {
+            throw {
+              status: 400,
+              message: `Not enough quantity for product ${productResult?.name}. Available: ${available}, Required: ${required}`,
+            };
+          }
+        }
+      }
+
+      const updateData: any = {
+        move_no: body.move_no,
+        move_date: new Date(body.move_date),
+        type: body.type,
+        warehouse_from_id: body.warehouse_id,
+        reference_type: body.reference_type,
+        note: body.note,
+      };
+
+      if (body.reference_id !== undefined) {
+        updateData.reference_id = body.reference_id;
+      }
+
+      await record.update(updateData, { transaction: t });
+
+      const existingLines = await StockMoveLine.findAll({
+        where: { move_id: id },
+        transaction: t,
+      });
+      const newLines = body.lines;
+
+      const toDelete = existingLines.filter(
+        (line) => !newLines.some((l) => l.id === line.id),
+      );
+      await Promise.all(toDelete.map((line) => line.destroy({ transaction: t })));
+
+      const toUpdate = existingLines.filter((line) =>
+        newLines.some((l) => l.id === line.id),
+      );
+      await Promise.all(
+        toUpdate.map((line) => {
+          const newData = newLines.find((l) => l.id === line.id);
+          if (!newData) return;
+          return line.update({
+            product_id: newData.product_id,
+            quantity: newData.quantity,
+            uom_id: newData.uom_id ?? null,
+            location_from_id: newData.location_from_id ?? null,
+            location_to_id: newData.location_to_id ?? null,
+            lot_id: newData.lot_id ?? null,
+          }, { transaction: t });
         }),
-      ),
-    );
-    return await this.getById(id);
+      );
+
+      const toCreate = newLines.filter((l) => !l.id);
+      await Promise.all(
+        toCreate.map((line) =>
+          StockMoveLine.create({
+            move_id: record.id,
+            product_id: line.product_id,
+            quantity: line.quantity,
+            uom_id: line.uom_id ?? null,
+            location_from_id: line.location_from_id ?? null,
+            location_to_id: line.location_to_id ?? null,
+            lot_id: line.lot_id ?? null,
+          }, { transaction: t }),
+        ),
+      );
+
+      await t.commit();
+      return await this.getById(id);
+    } catch (error) {
+      await t.rollback();
+      throw error;
+    }
   },
 
   async updateAdjustment(id: number, body: StockMoveAdjustmentDTO, user: any) {
@@ -1382,6 +1694,15 @@ export const stockMoveService = {
         if (poLine?.unit_price != null) {
           unitCost = parseFloat(String(poLine.unit_price));
         }
+      } else if (move.reference_type === "sales_return" && move.reference_id) {
+        const { SalesReturnLine } = await import("../../sales/models/salesReturnLine.model");
+        const srLine = await SalesReturnLine.findOne({
+          where: { return_id: move.reference_id, product_id: line.product_id },
+          transaction: t
+        });
+        if (srLine?.unit_price != null) {
+          unitCost = parseFloat(String(srLine.unit_price));
+        }
       }
 
       await this.updateStockBalance(
@@ -1488,10 +1809,74 @@ export const stockMoveService = {
         t
       );
     }
-    if (move.reference_type === "sale_order") {
-      await SaleOrder.update(
-        { status: "shipped", delivery_status: "delivered" },
-        { where: { id: move.reference_id }, transaction: t },
+    if (move.reference_type === "sale_order" && move.reference_id) {
+      const so = await SaleOrder.findByPk(move.reference_id, { transaction: t });
+      if (so) {
+        const soLines = await SaleOrderLine.findAll({
+          where: { order_id: so.id },
+          transaction: t,
+        });
+
+        const otherMoves = await StockMove.findAll({
+          where: {
+            reference_id: so.id,
+            reference_type: "sale_order",
+            type: "issue",
+            status: "posted",
+            id: { [Op.ne]: move.id },
+          },
+          attributes: ["id"],
+          transaction: t,
+        });
+
+        const otherMoveIds = otherMoves.map((m) => m.id);
+        const otherLines = otherMoveIds.length > 0 ? await StockMoveLine.findAll({
+          where: {
+            move_id: otherMoveIds,
+          },
+          transaction: t,
+        }) : [];
+
+        let allFullyDelivered = true;
+        let anyDelivered = false;
+
+        for (const soLine of soLines) {
+          const orderedQty = parseFloat(String(soLine.quantity ?? 0));
+          const prevShipped = otherLines
+            .filter((l) => Number(l.product_id) === Number(soLine.product_id))
+            .reduce((sum, l) => sum + parseFloat(String(l.quantity ?? 0)), 0);
+          const currShipped = lines
+            .filter((l) => Number(l.product_id) === Number(soLine.product_id))
+            .reduce((sum, l) => sum + parseFloat(String(l.quantity ?? 0)), 0);
+
+          const totalShipped = prevShipped + currShipped;
+          if (totalShipped < orderedQty) {
+            allFullyDelivered = false;
+          }
+          if (totalShipped > 0) {
+            anyDelivered = true;
+          }
+        }
+
+        const deliveryStatus = allFullyDelivered
+          ? "delivered"
+          : anyDelivered
+          ? "partial"
+          : "pending";
+
+        const nextStatus = allFullyDelivered ? "shipped" : "confirmed";
+
+        await so.update({
+          status: nextStatus,
+          delivery_status: deliveryStatus,
+        }, { transaction: t });
+      }
+    }
+    if (move.reference_type === "purchase_return" && move.reference_id) {
+      const { PurchaseReturn } = await import("../../purchase/models/purchaseReturn.model");
+      await PurchaseReturn.update(
+        { status: "confirmed" },
+        { where: { id: move.reference_id }, transaction: t }
       );
     }
   },

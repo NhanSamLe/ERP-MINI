@@ -11,9 +11,9 @@ import { formatVND } from "@/utils/currency.helper";
 import { Roles } from "@/types/enum";
 
 const RETURN_TYPE_LABELS: Record<string, string> = {
-  refund: "Refund",
-  replacement: "Replacement",
-  debit_note: "Debit Note",
+  refund: "Hoàn tiền",
+  replacement: "Đổi trả hàng",
+  debit_note: "Thẻ nợ",
 };
 
 export default function PraListPage() {
@@ -50,10 +50,10 @@ export default function PraListPage() {
             </span>
             <div>
               <h1 className="text-base font-semibold text-gray-900">
-                Return Authorizations
+                Yêu cầu Trả hàng mua (PRA)
               </h1>
               <p className="text-xs text-gray-400 mt-0.5">
-                Purchase return requests (PRA)
+                Quản lý các yêu cầu trả hàng cho nhà cung cấp
               </p>
             </div>
             <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-600">
@@ -75,7 +75,7 @@ export default function PraListPage() {
                   navigate("/purchase/return-authorizations/create")
                 }
               >
-                New PRA
+                Tạo PRA mới
               </Button>
             )}
           </div>
@@ -85,7 +85,7 @@ export default function PraListPage() {
         <div className="px-5 py-3 border-b border-orange-100 bg-orange-50/30">
           <div className="flex items-center gap-3 flex-wrap">
             <input
-              placeholder="Search PRA No, Supplier..."
+              placeholder="Tìm mã PRA, nhà cung cấp..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="flex-1 min-w-[200px] max-w-xs h-8 pl-3 pr-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 placeholder:text-gray-400"
@@ -95,14 +95,14 @@ export default function PraListPage() {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="h-8 pl-3 pr-8 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
             >
-              <option value="">All Status</option>
-              <option value="draft">Draft</option>
-              <option value="submitted">Submitted</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
-              <option value="processing">Processing</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
+              <option value="">Tất cả trạng thái</option>
+              <option value="draft">Nháp</option>
+              <option value="submitted">Đã nộp</option>
+              <option value="approved">Đã phê duyệt</option>
+              <option value="rejected">Đã từ chối</option>
+              <option value="processing">Đang xử lý</option>
+              <option value="completed">Đã hoàn thành</option>
+              <option value="cancelled">Đã hủy</option>
             </select>
           </div>
         </div>
@@ -111,13 +111,13 @@ export default function PraListPage() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3 text-gray-400">
             <div className="w-6 h-6 border-2 border-orange-200 border-t-orange-500 rounded-full animate-spin" />
-            <span className="text-sm">Loading...</span>
+            <span className="text-sm">Đang tải...</span>
           </div>
         ) : filtered.length === 0 ? (
           <div className="py-16 flex flex-col items-center gap-2 text-gray-400">
             <CornerUpLeft className="w-10 h-10" />
             <p className="text-sm font-medium">
-              No return authorizations found
+              Không tìm thấy yêu cầu trả hàng nào
             </p>
           </div>
         ) : (
@@ -126,22 +126,22 @@ export default function PraListPage() {
               <thead>
                 <tr className="border-b border-orange-100 bg-orange-50/60">
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    PRA No
+                    Số PRA
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Supplier
+                    Nhà cung cấp
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Return Type
+                    Loại trả hàng
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Amount
+                    Giá trị
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Status
+                    Trạng thái
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Created
+                    Ngày tạo
                   </th>
                 </tr>
               </thead>
@@ -183,11 +183,11 @@ export default function PraListPage() {
 
         <div className="flex items-center px-5 py-3 border-t border-orange-100 bg-orange-50/30">
           <p className="text-xs text-gray-500">
-            Showing{" "}
+            Hiển thị{" "}
             <span className="font-semibold text-gray-700">
               {filtered.length}
             </span>{" "}
-            records
+            bản ghi
           </p>
         </div>
       </div>

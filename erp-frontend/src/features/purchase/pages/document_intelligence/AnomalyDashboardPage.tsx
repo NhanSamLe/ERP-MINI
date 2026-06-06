@@ -30,27 +30,27 @@ import { toast } from "react-toastify";
 
 function formatFlagType(type: AnomalyFlagType): string {
   const map: Record<AnomalyFlagType, string> = {
-    price_outlier_zscore: "Price Outlier (Z-Score)",
-    price_outlier_iqr: "Price Outlier (IQR)",
-    quantity_outlier_zscore: "Quantity Outlier (Z-Score)",
-    quantity_outlier_5x: "Quantity Outlier (5×)",
-    invalid_quantity: "Invalid Quantity",
-    subtotal_mismatch: "Subtotal Mismatch",
-    total_mismatch: "Total Mismatch",
-    line_amount_mismatch: "Line Amount Mismatch",
-    approval_threshold_proximity: "Near Approval Threshold",
-    high_frequency_invoicing: "High Frequency Invoicing",
-    round_number_no_detail: "Round Number, No Detail",
-    rejected_pattern_match: "Rejected Pattern Match",
-    period_end_spike: "Period-End Spike",
-    new_vendor: "New Vendor",
-    dormant_vendor_reactivation: "Dormant Vendor",
-    weekend_high_value: "Weekend High Value",
-    future_dated_invoice: "Future-Dated Invoice",
-    stale_invoice: "Stale Invoice",
-    vendor_tax_code_change: "Tax Code Change",
-    multivariate_outlier: "Multivariate Outlier",
-    insufficient_data: "Insufficient Data",
+    price_outlier_zscore: "Ngoại lệ giá (Z-Score)",
+    price_outlier_iqr: "Ngoại lệ giá (IQR)",
+    quantity_outlier_zscore: "Ngoại lệ số lượng (Z-Score)",
+    quantity_outlier_5x: "Ngoại lệ số lượng (5×)",
+    invalid_quantity: "Số lượng không hợp lệ",
+    subtotal_mismatch: "Lệch tiền hàng",
+    total_mismatch: "Lệch tổng tiền",
+    line_amount_mismatch: "Lệch tiền dòng",
+    approval_threshold_proximity: "Gần hạn mức phê duyệt",
+    high_frequency_invoicing: "Tần suất hóa đơn cao",
+    round_number_no_detail: "Số tròn, thiếu chi tiết",
+    rejected_pattern_match: "Khớp mẫu đã bị từ chối",
+    period_end_spike: "Đột biến cuối kỳ",
+    new_vendor: "Nhà cung cấp mới",
+    dormant_vendor_reactivation: "Nhà cung cấp hoạt động lại",
+    weekend_high_value: "Giá trị cao cuối tuần",
+    future_dated_invoice: "Hóa đơn ghi ngày tương lai",
+    stale_invoice: "Hóa đơn quá cũ",
+    vendor_tax_code_change: "Thay đổi mã số thuế",
+    multivariate_outlier: "Ngoại lệ đa biến",
+    insufficient_data: "Không đủ dữ liệu",
   };
   return map[type] ?? type;
 }
@@ -58,16 +58,16 @@ function formatFlagType(type: AnomalyFlagType): string {
 function RiskLevelBadge({ level }: { level: RiskLevel }) {
   const config: Record<RiskLevel, { bg: string; text: string; label: string }> =
     {
-      high_risk: { bg: "bg-red-50", text: "text-red-700", label: "High Risk" },
+      high_risk: { bg: "bg-red-50", text: "text-red-700", label: "Rủi ro cao" },
       medium_risk: {
         bg: "bg-amber-50",
         text: "text-amber-700",
-        label: "Medium Risk",
+        label: "Rủi ro trung bình",
       },
       low_risk: {
         bg: "bg-green-50",
         text: "text-green-700",
-        label: "Low Risk",
+        label: "Rủi ro thấp",
       },
     };
   const c = config[level];
@@ -84,12 +84,12 @@ function LoadingSpinner() {
   return (
     <div className="flex flex-col items-center justify-center py-16 gap-3 text-gray-400">
       <div className="w-6 h-6 border-2 border-orange-200 border-t-orange-500 rounded-full animate-spin" />
-      <span className="text-sm">Loading...</span>
+      <span className="text-sm">Đang tải...</span>
     </div>
   );
 }
 
-function EmptyState({ message = "No records found" }: { message?: string }) {
+function EmptyState({ message = "Không tìm thấy bản ghi nào" }: { message?: string }) {
   return (
     <div className="py-16 flex flex-col items-center gap-2 text-gray-400">
       <Inbox className="w-10 h-10" />
@@ -127,7 +127,7 @@ function HighRiskTab() {
       const result = await documentIntelligenceApi.getAnomalyResults(f);
       setData(result);
     } catch {
-      toast.error("Failed to load anomaly results");
+      toast.error("Tải kết quả phát hiện bất thường thất bại");
     } finally {
       setLoading(false);
     }
@@ -148,7 +148,7 @@ function HighRiskTab() {
 
   const formatDate = (d: string) => {
     try {
-      return new Date(d).toLocaleString("en-US");
+      return new Date(d).toLocaleString("vi-VN");
     } catch {
       return d;
     }
@@ -169,10 +169,10 @@ function HighRiskTab() {
             }
             className="h-8 pl-3 pr-8 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
           >
-            <option value="">All Risk Levels</option>
-            <option value="high_risk">High Risk</option>
-            <option value="medium_risk">Medium Risk</option>
-            <option value="low_risk">Low Risk</option>
+            <option value="">Tất cả mức rủi ro</option>
+            <option value="high_risk">Rủi ro cao</option>
+            <option value="medium_risk">Rủi ro trung bình</option>
+            <option value="low_risk">Rủi ro thấp</option>
           </select>
 
           <input
@@ -183,7 +183,7 @@ function HighRiskTab() {
             }
             className="h-8 px-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
           />
-          <span className="text-xs text-gray-400">to</span>
+          <span className="text-xs text-gray-400">đến</span>
           <input
             type="date"
             value={pendingFilters.date_to ?? ""}
@@ -194,7 +194,7 @@ function HighRiskTab() {
           />
 
           <Button size="sm" variant="primary" onClick={handleApply}>
-            Apply
+            Áp dụng
           </Button>
           <Button
             size="sm"
@@ -208,7 +208,7 @@ function HighRiskTab() {
               setFilters({ page: 1, limit: PAGE_SIZE });
             }}
           >
-            Reset
+            Đặt lại
           </Button>
         </div>
       </div>
@@ -224,25 +224,25 @@ function HighRiskTab() {
             <thead>
               <tr className="border-b border-orange-100 bg-orange-50/60">
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Filename
+                  Tên tệp
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Risk Score
+                  Điểm rủi ro
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Risk Level
+                  Mức rủi ro
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Flags
+                  Cảnh báo
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Math
+                  Tính toán
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Analyzed At
+                  Thời gian phân tích
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Actions
+                  Thao tác
                 </th>
               </tr>
             </thead>
@@ -308,7 +308,7 @@ function HighRiskTab() {
       {data && data.total > 0 && (
         <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50/50 text-sm text-gray-600">
           <span>
-            Showing{" "}
+            Hiển thị{" "}
             <strong>
               {Math.min(((filters.page ?? 1) - 1) * PAGE_SIZE + 1, data.total)}–
               {Math.min((filters.page ?? 1) * PAGE_SIZE, data.total)}
@@ -366,7 +366,7 @@ function StatisticsTab() {
       );
       setStats(result);
     } catch {
-      toast.error("Failed to load statistics");
+      toast.error("Tải số liệu thống kê thất bại");
     } finally {
       setLoading(false);
     }
@@ -390,7 +390,7 @@ function StatisticsTab() {
           onChange={(e) => setDateFrom(e.target.value)}
           className="h-8 px-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
         />
-        <span className="text-xs text-gray-400">to</span>
+        <span className="text-xs text-gray-400">đến</span>
         <input
           type="date"
           value={dateTo}
@@ -403,44 +403,44 @@ function StatisticsTab() {
           onClick={fetchStats}
           loading={loading}
         >
-          Load
+          Tải số liệu
         </Button>
       </div>
 
       {loading ? (
         <LoadingSpinner />
       ) : !stats ? (
-        <EmptyState message="No statistics available" />
+        <EmptyState message="Không có số liệu thống kê" />
       ) : (
         <>
           {/* Risk level cards */}
           <div className="grid grid-cols-3 gap-4">
             <div className="erp-card px-5 py-4 space-y-1 border-l-4 border-l-orange-400">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                High Risk
+                Rủi ro cao
               </p>
               <p className="text-2xl font-semibold text-red-700">
                 {stats.totalByRiskLevel.high_risk ?? 0}
               </p>
-              <p className="text-xs text-gray-400">invoices</p>
+              <p className="text-xs text-gray-400">hóa đơn</p>
             </div>
             <div className="erp-card px-5 py-4 space-y-1 border-l-4 border-l-orange-400">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Medium Risk
+                Rủi ro trung bình
               </p>
               <p className="text-2xl font-semibold text-amber-700">
                 {stats.totalByRiskLevel.medium_risk ?? 0}
               </p>
-              <p className="text-xs text-gray-400">invoices</p>
+              <p className="text-xs text-gray-400">hóa đơn</p>
             </div>
             <div className="erp-card px-5 py-4 space-y-1 border-l-4 border-l-orange-400">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Low Risk
+                Rủi ro thấp
               </p>
               <p className="text-2xl font-semibold text-green-700">
                 {stats.totalByRiskLevel.low_risk ?? 0}
               </p>
-              <p className="text-xs text-gray-400">invoices</p>
+              <p className="text-xs text-gray-400">hóa đơn</p>
             </div>
           </div>
 
@@ -449,20 +449,20 @@ function StatisticsTab() {
             <div className="erp-card overflow-hidden">
               <div className="px-5 py-3.5 border-b border-gray-200">
                 <h3 className="text-sm font-semibold text-gray-800">
-                  Top Flag Types
+                  Các loại cảnh báo phổ biến nhất
                 </h3>
               </div>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-orange-100 bg-orange-50/60">
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Flag Type
+                      Loại cảnh báo
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider w-20">
-                      Count
+                      Số lượng
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Distribution
+                      Phân bổ
                     </th>
                   </tr>
                 </thead>
@@ -500,20 +500,20 @@ function StatisticsTab() {
             <div className="erp-card overflow-hidden">
               <div className="px-5 py-3.5 border-b border-gray-200">
                 <h3 className="text-sm font-semibold text-gray-800">
-                  Weekly Trend
+                  Xu hướng hàng tuần
                 </h3>
               </div>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-orange-100 bg-orange-50/60">
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Week
+                      Tuần
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Avg Risk Score
+                      Điểm rủi ro trung bình
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Count
+                      Số lượng
                     </th>
                   </tr>
                 </thead>
@@ -569,7 +569,7 @@ function ConfigTab() {
           mediumRiskScoreThreshold: cfg.mediumRiskScoreThreshold,
         });
       })
-      .catch(() => toast.error("Failed to load threshold config"))
+      .catch(() => toast.error("Tải cấu hình ngưỡng thất bại"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -578,9 +578,9 @@ function ConfigTab() {
     try {
       const updated = await documentIntelligenceApi.updateThresholdConfig(form);
       setConfig(updated);
-      toast.success("Threshold configuration saved");
+      toast.success("Đã lưu cấu hình ngưỡng");
     } catch {
-      toast.error("Failed to save configuration");
+      toast.error("Lưu cấu hình thất bại");
     } finally {
       setSaving(false);
     }
@@ -612,55 +612,55 @@ function ConfigTab() {
   );
 
   if (loading) return <LoadingSpinner />;
-  if (!config) return <EmptyState message="Configuration not available" />;
+  if (!config) return <EmptyState message="Cấu hình không khả dụng" />;
 
   return (
     <div className="p-5 space-y-5">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {field(
           "zScoreThreshold",
-          "Z-Score Threshold",
-          "Values beyond this many standard deviations are flagged (1.0 – 10.0)",
+          "Ngưỡng Z-Score",
+          "Các giá trị vượt quá số lần độ lệch chuẩn này sẽ bị cảnh báo (1.0 – 10.0)",
           1.0,
           10.0,
           0.1,
         )}
         {field(
           "iqrMultiplier",
-          "IQR Multiplier",
-          "Multiplier for IQR-based outlier detection (0.5 – 5.0)",
+          "Hệ số nhân IQR",
+          "Hệ số nhân để phát hiện ngoại lệ dựa trên IQR (0.5 – 5.0)",
           0.5,
           5.0,
           0.1,
         )}
         {field(
           "frequencyThresholdPerHour",
-          "Frequency Threshold Per Hour",
-          "Max invoices per hour before high-frequency flag triggers (1 – 100)",
+          "Ngưỡng tần suất mỗi giờ",
+          "Số hóa đơn tối đa mỗi giờ trước khi kích hoạt cảnh báo tần suất cao (1 – 100)",
           1,
           100,
           1,
         )}
         {field(
           "approvalThresholdVnd",
-          "Approval Threshold (VND)",
-          "Invoices near this amount trigger proximity flag. Set 0 to disable.",
+          "Ngưỡng phê duyệt (VND)",
+          "Hóa đơn gần số tiền này sẽ kích hoạt cảnh báo tiệm cận. Đặt 0 để tắt.",
           0,
           1_000_000_000_000,
           1_000_000,
         )}
         {field(
           "highRiskScoreThreshold",
-          "High Risk Score Threshold",
-          "Score at or above this value is classified as high risk (0.1 – 1.0)",
+          "Ngưỡng điểm rủi ro cao",
+          "Điểm bằng hoặc vượt quá giá trị này được phân loại là rủi ro cao (0.1 – 1.0)",
           0.1,
           1.0,
           0.05,
         )}
         {field(
           "mediumRiskScoreThreshold",
-          "Medium Risk Score Threshold",
-          "Score at or above this value is classified as medium risk (0.1 – 1.0)",
+          "Ngưỡng điểm rủi ro trung bình",
+          "Điểm bằng hoặc vượt quá giá trị này được phân loại là rủi ro trung bình (0.1 – 1.0)",
           0.1,
           1.0,
           0.05,
@@ -675,7 +675,7 @@ function ConfigTab() {
           onClick={handleSave}
           leftIcon={<Save className="w-3.5 h-3.5" />}
         >
-          Save Configuration
+          Lưu cấu hình
         </Button>
       </div>
     </div>
@@ -692,17 +692,17 @@ export default function AnomalyDashboardPage() {
   const tabs: Array<{ id: Tab; label: string; icon: React.ReactNode }> = [
     {
       id: "invoices",
-      label: "High Risk Invoices",
+      label: "Hóa đơn rủi ro cao",
       icon: <AlertTriangle className="w-3.5 h-3.5" />,
     },
     {
       id: "statistics",
-      label: "Statistics",
+      label: "Thống kê",
       icon: <BarChart2 className="w-3.5 h-3.5" />,
     },
     {
       id: "config",
-      label: "Config",
+      label: "Cấu hình",
       icon: <Settings className="w-3.5 h-3.5" />,
     },
   ];
@@ -718,10 +718,10 @@ export default function AnomalyDashboardPage() {
             </span>
             <div>
               <h1 className="text-base font-semibold text-gray-900">
-                Anomaly Detection Dashboard
+                Bảng giám sát phát hiện bất thường
               </h1>
               <p className="text-xs text-gray-400 mt-0.5">
-                Monitor and configure invoice anomaly detection
+                Giám sát và cấu hình phát hiện bất thường trên hóa đơn
               </p>
             </div>
           </div>

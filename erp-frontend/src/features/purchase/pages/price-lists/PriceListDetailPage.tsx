@@ -56,7 +56,7 @@ export default function PriceListDetailPage() {
       setIsActive(data.is_active);
       setItems(data.items ?? []);
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to load price list details");
+      toast.error(e?.message ?? "Tải chi tiết bảng giá thất bại");
     } finally {
       setLoading(false);
     }
@@ -100,7 +100,7 @@ export default function PriceListDetailPage() {
 
   // Header update
   const handleUpdateHeader = async () => {
-    if (!name.trim()) return toast.error("Price list name is required");
+    if (!name.trim()) return toast.error("Tên bảng giá không được để trống");
     try {
       await purchasePriceListApi.update(Number(id), {
         name: name.trim(),
@@ -109,11 +109,11 @@ export default function PriceListDetailPage() {
         notes: notes.trim() || null,
         is_active: isActive,
       });
-      toast.success("Price list details updated successfully");
+      toast.success("Cập nhật chi tiết bảng giá thành công");
       setIsEditingHeader(false);
       loadData();
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to update price list details");
+      toast.error(e?.message ?? "Cập nhật chi tiết bảng giá thất bại");
     }
   };
 
@@ -122,17 +122,17 @@ export default function PriceListDetailPage() {
     setIsActive(nextState);
     try {
       await purchasePriceListApi.update(Number(id), { is_active: nextState });
-      toast.success(nextState ? "Price list activated" : "Price list deactivated");
+      toast.success(nextState ? "Đã kích hoạt bảng giá" : "Đã hủy kích hoạt bảng giá");
     } catch (e: any) {
       setIsActive(!nextState);
-      toast.error(e?.message ?? "Failed to update status");
+      toast.error(e?.message ?? "Cập nhật trạng thái thất bại");
     }
   };
 
   // Add Product Item
   const handleAddProduct = async (product: Product) => {
     if (items.some((item) => item.product_id === product.id)) {
-      toast.warning("This product already exists in the price list");
+      toast.warning("Sản phẩm này đã tồn tại trong bảng giá");
       return;
     }
 
@@ -146,12 +146,12 @@ export default function PriceListDetailPage() {
           uom_id: product.purchase_uom_id ?? product.uom_id ?? null,
         },
       ]);
-      toast.success(`Added ${product.name} to price list`);
+      toast.success(`Đã thêm ${product.name} vào bảng giá`);
       setSearchTerm("");
       setShowDropdown(false);
       loadData();
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to add product");
+      toast.error(e?.message ?? "Thêm sản phẩm thất bại");
     }
   };
 
@@ -170,22 +170,22 @@ export default function PriceListDetailPage() {
   const handleSaveItem = async (itemId: number) => {
     try {
       await purchasePriceListApi.updateItem(Number(id), itemId, editingItemData);
-      toast.success("Price item updated successfully");
+      toast.success("Cập nhật sản phẩm trong bảng giá thành công");
       setEditingItemId(null);
       loadData();
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to save changes");
+      toast.error(e?.message ?? "Lưu thay đổi thất bại");
     }
   };
 
   const handleDeleteItem = async (itemId: number) => {
-    if (!window.confirm("Are you sure you want to remove this product from the price list?")) return;
+    if (!window.confirm("Bạn có chắc chắn muốn xóa sản phẩm này khỏi bảng giá không?")) return;
     try {
       await purchasePriceListApi.removeItem(Number(id), itemId);
-      toast.success("Product removed from price list");
+      toast.success("Đã xóa sản phẩm khỏi bảng giá");
       loadData();
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to remove product");
+      toast.error(e?.message ?? "Xóa sản phẩm thất bại");
     }
   };
 
@@ -207,7 +207,7 @@ export default function PriceListDetailPage() {
                 {priceList?.code || `PL-${priceList?.id}`}
               </span>
             </div>
-            <p className="text-xs text-gray-400">View and configure purchase price policies</p>
+            <p className="text-xs text-gray-400">Xem và định cấu hình chính sách giá mua hàng</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -220,7 +220,7 @@ export default function PriceListDetailPage() {
             }`}
           >
             {isActive ? <ToggleRight className="w-5 h-5 text-emerald-500" /> : <ToggleLeft className="w-5 h-5 text-gray-400" />}
-            {isActive ? "Active" : "Inactive"}
+            {isActive ? "Hoạt động" : "Không hoạt động"}
           </button>
         </div>
       </div>
@@ -229,13 +229,13 @@ export default function PriceListDetailPage() {
         {/* Left Column: Info Card */}
         <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden space-y-4">
           <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/60 flex items-center justify-between">
-            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">General Info</span>
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Thông tin chung</span>
             <button
               onClick={() => setIsEditingHeader(!isEditingHeader)}
               className="text-xs text-orange-500 hover:text-orange-600 font-semibold flex items-center gap-1"
             >
               <Edit3 className="w-3.5 h-3.5" />
-              {isEditingHeader ? "Cancel" : "Edit"}
+              {isEditingHeader ? "Hủy" : "Chỉnh sửa"}
             </button>
           </div>
           
@@ -243,19 +243,19 @@ export default function PriceListDetailPage() {
             {isEditingHeader ? (
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase">Price List Name</label>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase">Tên bảng giá</label>
                   <Input value={name} onChange={setName} className="h-9 text-sm" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase">Start Date</label>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase">Ngày bắt đầu</label>
                   <Input type="date" value={startDate} onChange={setStartDate} className="h-9 text-sm" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase">End Date</label>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase">Ngày kết thúc</label>
                   <Input type="date" value={endDate} onChange={setEndDate} className="h-9 text-sm" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase">Notes</label>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase">Ghi chú</label>
                   <textarea
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
@@ -264,7 +264,7 @@ export default function PriceListDetailPage() {
                   />
                 </div>
                 <Button onClick={handleUpdateHeader} className="w-full h-9 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs font-semibold">
-                  Save Changes
+                  Lưu thay đổi
                 </Button>
               </div>
             ) : (
@@ -272,24 +272,24 @@ export default function PriceListDetailPage() {
                 <div className="flex items-start gap-2">
                   <User className="w-4 h-4 text-gray-400 mt-0.5" />
                   <div>
-                    <span className="block text-[10px] text-gray-400 font-bold uppercase">Supplier</span>
+                    <span className="block text-[10px] text-gray-400 font-bold uppercase">Nhà cung cấp</span>
                     <span className="font-semibold text-gray-800">
-                      {priceList?.supplier?.name ?? "Generic (All Suppliers)"}
+                      {priceList?.supplier?.name ?? "Chung (Tất cả nhà cung cấp)"}
                     </span>
                   </div>
                 </div>
                 <div className="flex items-start gap-2">
                   <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
                   <div>
-                    <span className="block text-[10px] text-gray-400 font-bold uppercase">Validity Period</span>
+                    <span className="block text-[10px] text-gray-400 font-bold uppercase">Thời hạn hiệu lực</span>
                     <span className="text-gray-600 text-xs">
-                      {startDate ? new Date(startDate).toLocaleDateString("en-US") : "—"} to {endDate ? new Date(endDate).toLocaleDateString("en-US") : "Indefinite"}
+                      {startDate ? new Date(startDate).toLocaleDateString("vi-VN") : "—"} đến {endDate ? new Date(endDate).toLocaleDateString("vi-VN") : "Vô thời hạn"}
                     </span>
                   </div>
                 </div>
                 {notes && (
                   <div className="pt-3 border-t border-dashed border-gray-200">
-                    <span className="block text-[10px] text-gray-400 font-bold uppercase mb-1">Notes / Terms</span>
+                    <span className="block text-[10px] text-gray-400 font-bold uppercase mb-1">Ghi chú / Điều khoản</span>
                     <p className="text-xs text-gray-500 bg-gray-50 p-2.5 rounded-lg border border-gray-100">{notes}</p>
                   </div>
                 )}
@@ -309,7 +309,7 @@ export default function PriceListDetailPage() {
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Type product name or SKU to quickly add to price list..."
+                  placeholder="Nhập tên sản phẩm hoặc SKU để thêm nhanh vào bảng giá..."
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400/20 focus:border-orange-400 transition"
                 />
                 {searchLoading && (
@@ -348,27 +348,27 @@ export default function PriceListDetailPage() {
           {/* Pricing Table */}
           <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/60">
-              <h3 className="text-sm font-semibold text-gray-700">Product Pricing & Price Breaks</h3>
+              <h3 className="text-sm font-semibold text-gray-700">Giá sản phẩm & Khoảng giá</h3>
             </div>
 
             {items.length === 0 ? (
               <div className="py-20 flex flex-col items-center gap-2 text-gray-400">
                 <Package className="w-12 h-12 text-gray-300" />
-                <p className="text-sm font-medium">No products in this price list yet</p>
-                <p className="text-xs">Use the search bar above to add your first product</p>
+                <p className="text-sm font-medium">Chưa có sản phẩm nào trong bảng giá này</p>
+                <p className="text-xs">Sử dụng thanh tìm kiếm phía trên để thêm sản phẩm đầu tiên của bạn</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      <th className="px-5 py-3 w-[35%]">Product</th>
-                      <th className="px-5 py-3 text-center">UOM</th>
-                      <th className="px-5 py-3 text-center">Min Qty</th>
-                      <th className="px-5 py-3 text-right">Unit Price</th>
-                      <th className="px-5 py-3 text-center">Discount</th>
-                      <th className="px-5 py-3 text-center">Lead Time (Days)</th>
-                      <th className="px-5 py-3 text-right">Actions</th>
+                      <th className="px-5 py-3 w-[35%]">Sản phẩm</th>
+                      <th className="px-5 py-3 text-center">Đơn vị tính</th>
+                      <th className="px-5 py-3 text-center">Số lượng tối thiểu</th>
+                      <th className="px-5 py-3 text-right">Đơn giá</th>
+                      <th className="px-5 py-3 text-center">Chiết khấu</th>
+                      <th className="px-5 py-3 text-center">Thời gian giao hàng (Ngày)</th>
+                      <th className="px-5 py-3 text-right">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -457,10 +457,10 @@ export default function PriceListDetailPage() {
                                 className="w-20 text-center border border-gray-300 rounded-lg px-2 py-1 text-xs focus:ring-orange-400/20 focus:border-orange-400"
                                 value={editingItemData.lead_time_days ?? ""}
                                 onChange={(e) => setEditingItemData(prev => ({ ...prev, lead_time_days: e.target.value ? Number(e.target.value) : null }))}
-                                placeholder="Days"
+                                placeholder="Ngày"
                               />
                             ) : (
-                              <span className="text-gray-600 text-xs">{item.lead_time_days ? `${item.lead_time_days} days` : "—"}</span>
+                              <span className="text-gray-600 text-xs">{item.lead_time_days ? `${item.lead_time_days} ngày` : "—"}</span>
                             )}
                           </td>
 
@@ -472,14 +472,14 @@ export default function PriceListDetailPage() {
                                   <button
                                     onClick={() => handleSaveItem(item.id)}
                                     className="p-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200 transition"
-                                    title="Save"
+                                    title="Lưu"
                                   >
                                     <Check className="w-4 h-4" />
                                   </button>
                                   <button
                                     onClick={() => setEditingItemId(null)}
                                     className="p-1 rounded bg-gray-50 hover:bg-gray-100 text-gray-400 border border-gray-200 transition"
-                                    title="Cancel"
+                                    title="Hủy"
                                   >
                                     <X className="w-4 h-4" />
                                   </button>
@@ -489,14 +489,14 @@ export default function PriceListDetailPage() {
                                   <button
                                     onClick={() => startEditItem(item)}
                                     className="p-1.5 rounded-lg text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition"
-                                    title="Edit"
+                                    title="Chỉnh sửa"
                                   >
                                     <Edit3 className="w-4 h-4" />
                                   </button>
                                   <button
                                     onClick={() => handleDeleteItem(item.id)}
                                     className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition"
-                                    title="Delete"
+                                    title="Xóa"
                                   >
                                     <Trash2 className="w-4 h-4" />
                                   </button>

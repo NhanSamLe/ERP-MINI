@@ -77,7 +77,7 @@ export default function PurchaseOrderPage() {
     setDeleting(true);
     try {
       await dispatch(deletePurchaseOrderThunk(selectedPO.id)).unwrap();
-      toast.success("Purchase Order deleted successfully!");
+      toast.success("Xóa đơn đặt hàng thành công!");
       setConfirmOpen(false);
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -103,7 +103,7 @@ export default function PurchaseOrderPage() {
   const handleBulkApprove = async (po_ids: number[]) => {
     try {
       await dispatch(bulkApprovePurchaseOrdersThunk(po_ids)).unwrap();
-      toast.success("Approved successfully");
+      toast.success("Phê duyệt thành công!");
       dispatch(fetchPurchaseOrdersThunk());
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -115,7 +115,7 @@ export default function PurchaseOrderPage() {
       await dispatch(
         bulkCancelPurchaseOrdersThunk({ po_ids, reason }),
       ).unwrap();
-      toast.success("Cancelled successfully");
+      toast.success("Hủy thành công!");
       dispatch(fetchPurchaseOrdersThunk());
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -126,62 +126,72 @@ export default function PurchaseOrderPage() {
     try {
       if (config.reportType === "detailed") {
         await exportExcelReport({
-          title: "PURCHASE ORDERS LIST",
+          title: "DANH SÁCH ĐƠN ĐẶT HÀNG PO",
           columns: [
-            { header: "PO No", key: "po_no", width: 15 },
+            { header: "Mã PO", key: "po_no", width: 15 },
             {
-              header: "Order Date",
+              header: "Ngày đặt hàng",
               key: "order_date",
               width: 15,
               formatter: (val) =>
-                val ? new Date(String(val)).toLocaleDateString("en-US") : "",
+                val ? new Date(String(val)).toLocaleDateString("vi-VN") : "",
             },
             {
-              header: "Created By",
+              header: "Người tạo",
               key: "creator",
               width: 25,
               formatter: (val: any) => val?.full_name || "-",
             },
             {
-              header: "Total Amount",
+              header: "Tổng tiền sau thuế",
               key: "total_after_tax",
               width: 20,
               format: "currency",
               align: "right",
             },
             {
-              header: "Status",
+              header: "Trạng thái",
               key: "status",
               width: 15,
-              formatter: (val) => String(val).toUpperCase(),
+              formatter: (val) => {
+                const statusMap: Record<string, string> = {
+                  draft: "Nháp",
+                  waiting_approval: "Chờ phê duyệt",
+                  confirmed: "Đã xác nhận",
+                  partially_received: "Nhập một phần",
+                  completed: "Hoàn thành",
+                  cancelled: "Đã hủy",
+                };
+                return statusMap[String(val)] || String(val);
+              },
             },
             {
-              header: "Created At",
+              header: "Ngày tạo",
               key: "created_at",
               width: 15,
               formatter: (val) =>
-                val ? new Date(String(val)).toLocaleDateString("en-US") : "",
+                val ? new Date(String(val)).toLocaleDateString("vi-VN") : "",
             },
           ],
           data: purchaseOrders,
-          fileName: `Purchase_Orders_${new Date().getTime()}.xlsx`,
+          fileName: `Danh_Sach_Don_Dat_Hang_${new Date().getTime()}.xlsx`,
           footer: { creator: user?.full_name || "Admin" },
         });
       } else {
         const data = await reportApi.getPurchaseSummary(config);
         await exportExcelReport({
-          title: `PURCHASE EXPENSE REPORT BY ${config.period.toUpperCase()}`,
-          subtitle: `From: ${new Date(config.startDate!).toLocaleDateString("en-US")} - To: ${new Date(config.endDate!).toLocaleDateString("en-US")}`,
+          title: `BÁO CÁO CHI PHÍ MUA HÀNG THEO ${config.period === "day" ? "NGÀY" : config.period === "week" ? "TUẦN" : config.period === "month" ? "THÁNG" : "NĂM"}`,
+          subtitle: `Từ ngày: ${new Date(config.startDate!).toLocaleDateString("vi-VN")} - Đến ngày: ${new Date(config.endDate!).toLocaleDateString("vi-VN")}`,
           columns: [
-            { header: "Period", key: "time_period", width: 20 },
+            { header: "Giai đoạn", key: "time_period", width: 20 },
             {
-              header: "Total Orders",
+              header: "Tổng đơn hàng",
               key: "total_orders",
               width: 15,
               align: "center",
             },
             {
-              header: "Total Expense",
+              header: "Tổng chi phí",
               key: "total_expense",
               width: 25,
               format: "currency",
@@ -189,13 +199,13 @@ export default function PurchaseOrderPage() {
             },
           ],
           data: data.data,
-          fileName: `Purchase_Expense_Report_${config.period}_${new Date().getTime()}.xlsx`,
+          fileName: `Bao_Cao_Chi_Phi_Mua_Hang_${config.period}_${new Date().getTime()}.xlsx`,
           footer: { creator: user?.full_name || "Admin" },
         });
       }
     } catch (err) {
       console.error(err);
-      toast.error("Error exporting report");
+      toast.error("Lỗi khi xuất báo cáo");
     }
   };
 
@@ -212,23 +222,23 @@ export default function PurchaseOrderPage() {
   ).length;
 
   const columns = [
-    { key: "po_no", label: "PO No" },
+    { key: "po_no", label: "Mã PO" },
     {
       key: "order_date",
-      label: "Order Date",
+      label: "Ngày đặt hàng",
       render: (po: PurchaseOrder) =>
         po.order_date
-          ? new Date(po.order_date).toLocaleDateString("en-US")
+          ? new Date(po.order_date).toLocaleDateString("vi-VN")
           : "—",
     },
     {
       key: "Creator",
-      label: "Created By",
+      label: "Người tạo",
       render: (po: PurchaseOrder) => po.creator.full_name,
     },
     {
       key: "total_after_tax",
-      label: "Total",
+      label: "Tổng tiền",
       render: (po: PurchaseOrder) =>
         po.total_after_tax
           ? Number(po.total_after_tax).toLocaleString("vi-VN") + " ₫"
@@ -236,14 +246,14 @@ export default function PurchaseOrderPage() {
     },
     {
       key: "status",
-      label: "Status",
+      label: "Trạng thái",
       render: (po: PurchaseOrder) => <StatusBadge status={po.status} />,
     },
     {
       key: "created_at",
-      label: "Created At",
+      label: "Ngày tạo",
       render: (po: PurchaseOrder) =>
-        new Date(po.created_at).toLocaleDateString("en-US"),
+        new Date(po.created_at).toLocaleDateString("vi-VN"),
     },
   ];
 
@@ -255,11 +265,11 @@ export default function PurchaseOrderPage() {
           {/* Left: breadcrumb + count */}
           <div className="flex items-center gap-2 min-w-0">
             <div className="flex items-center gap-1.5 text-sm text-gray-400">
-              <span>Purchase</span>
+              <span>Mua hàng</span>
               <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
             </div>
             <span className="text-sm font-semibold text-gray-900">
-              Purchase Orders
+              Đơn đặt hàng PO
             </span>
             <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-600">
               {totalPOs}
@@ -269,19 +279,19 @@ export default function PurchaseOrderPage() {
           {/* Right: toolbar */}
           <div className="flex items-center gap-1.5">
             {/* Utility icon buttons */}
-            <Tooltip title="Export PDF">
+            <Tooltip title="Xuất PDF">
               <button className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-red-200 bg-red-50 text-red-500 hover:bg-red-100 transition-colors">
                 <FileText className="w-3.5 h-3.5" />
               </button>
             </Tooltip>
 
-            <Tooltip title="Export Excel">
+            <Tooltip title="Xuất Excel">
               <button className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors">
                 <FileSpreadsheet className="w-3.5 h-3.5" />
               </button>
             </Tooltip>
 
-            <Tooltip title="Download Report">
+            <Tooltip title="Tải báo cáo">
               <button
                 onClick={() => setOpenReportModal(true)}
                 className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
@@ -290,7 +300,7 @@ export default function PurchaseOrderPage() {
               </button>
             </Tooltip>
 
-            <Tooltip title="Refresh">
+            <Tooltip title="Tải lại">
               <button
                 onClick={() => dispatch(fetchPurchaseOrdersThunk())}
                 className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-gray-200 bg-gray-50 text-gray-500 hover:bg-gray-100 transition-colors"
@@ -299,7 +309,7 @@ export default function PurchaseOrderPage() {
               </button>
             </Tooltip>
 
-            <Tooltip title="Advanced Filter">
+            <Tooltip title="Bộ lọc nâng cao">
               <button
                 onClick={() => setShowAdvancedFilter(!showAdvancedFilter)}
                 className={`inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-colors ${
@@ -313,7 +323,7 @@ export default function PurchaseOrderPage() {
             </Tooltip>
 
             <Tooltip
-              title={`Bulk Actions${selectedIds.length > 0 ? ` (${selectedIds.length})` : ""}`}
+              title={`Hành động hàng loạt${selectedIds.length > 0 ? ` (${selectedIds.length})` : ""}`}
             >
               <button
                 onClick={() => setBulkActionModalVisible(true)}
@@ -335,13 +345,13 @@ export default function PurchaseOrderPage() {
             <Link to="/purchase-orders/create">
               <button className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold shadow-sm transition-colors">
                 <Plus className="w-3.5 h-3.5" />
-                New PO
+                Tạo PO mới
               </button>
             </Link>
 
             <button className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-gray-800 hover:bg-gray-900 text-white text-xs font-semibold transition-colors">
               <Upload className="w-3.5 h-3.5" />
-              Import
+              Nhập Excel
             </button>
           </div>
         </div>
@@ -352,25 +362,25 @@ export default function PurchaseOrderPage() {
         {/* Stats row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <StatsCard
-            label="Total Orders"
+            label="Tổng đơn hàng"
             value={totalPOs}
             icon={ShoppingCart}
             color="orange"
           />
           <StatsCard
-            label="Draft"
+            label="Nháp"
             value={draftCount}
             icon={FileText}
             color="blue"
           />
           <StatsCard
-            label="Waiting Approval"
+            label="Chờ phê duyệt"
             value={waitingCount}
             icon={Clock}
             color="amber"
           />
           <StatsCard
-            label="Confirmed"
+            label="Đã xác nhận"
             value={confirmedCount}
             icon={CheckCircle2}
             color="green"
@@ -384,7 +394,7 @@ export default function PurchaseOrderPage() {
               <div className="flex items-center gap-2">
                 <Filter className="w-4 h-4 text-orange-500" />
                 <span className="text-sm font-semibold text-gray-700">
-                  Advanced Filter
+                  Bộ lọc nâng cao
                 </span>
               </div>
               <button
@@ -408,9 +418,9 @@ export default function PurchaseOrderPage() {
         {purchaseOrders.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
             <EmptyState
-              title="No Purchase Orders"
-              description="Start by creating a new purchase order"
-              actionLabel="Create Purchase Order"
+              title="Không có đơn đặt hàng nào"
+              description="Bắt đầu bằng việc tạo một đơn đặt hàng mới"
+              actionLabel="Tạo đơn đặt hàng"
               onAction={() => navigate("/purchase-orders/create")}
             />
           </div>
@@ -421,13 +431,13 @@ export default function PurchaseOrderPage() {
               <div className="flex items-center gap-2">
                 <Package className="w-4 h-4 text-orange-500" />
                 <span className="text-sm font-semibold text-gray-700">
-                  Orders
+                  Đơn đặt hàng
                 </span>
                 {selectedIds.length > 0 && (
                   <span className="text-xs text-gray-400 ml-1">
                     —{" "}
                     <span className="font-medium text-purple-600">
-                      {selectedIds.length} selected
+                      Đã chọn {selectedIds.length} đơn hàng
                     </span>
                   </span>
                 )}
@@ -477,13 +487,14 @@ export default function PurchaseOrderPage() {
                 <Trash2 className="w-7 h-7 text-red-600" />
               </div>
               <h3 className="font-bold text-lg text-gray-900">
-                Delete Purchase Order?
+                Xác nhận xóa đơn đặt hàng?
               </h3>
               <p className="text-sm text-gray-500">
+                Đơn hàng{" "}
                 <span className="font-semibold text-gray-700">
                   {selectedPO?.po_no}
                 </span>{" "}
-                will be permanently deleted. This cannot be undone.
+                sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác.
               </p>
             </div>
             <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
@@ -491,7 +502,7 @@ export default function PurchaseOrderPage() {
                 onClick={() => setConfirmOpen(false)}
                 className="px-5 py-2 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 transition"
               >
-                Cancel
+                Hủy
               </button>
               <button
                 onClick={handleDelete}
@@ -501,10 +512,10 @@ export default function PurchaseOrderPage() {
                 {deleting ? (
                   <>
                     <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                    Deleting…
+                    Đang xóa…
                   </>
                 ) : (
-                  "Yes, Delete"
+                  "Đồng ý xóa"
                 )}
               </button>
             </div>
@@ -526,7 +537,7 @@ export default function PurchaseOrderPage() {
         open={openReportModal}
         onClose={() => setOpenReportModal(false)}
         onExport={handleExport}
-        title="Export Purchase Report"
+        title="Xuất báo cáo mua hàng"
       />
     </div>
   );

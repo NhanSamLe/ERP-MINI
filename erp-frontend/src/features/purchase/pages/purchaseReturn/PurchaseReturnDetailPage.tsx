@@ -50,7 +50,7 @@ export default function PurchaseReturnDetailPage() {
     setConfirmLines(
       (ret.lines ?? []).map((l: any) => ({
         line_id: l.id,
-        productName: l.product?.name ?? `Product #${l.product_id}`,
+        productName: l.product?.name ?? `Sản phẩm #${l.product_id}`,
         qty_returned: l.quantity_returned,
         uomName: l.uom?.name ?? "—",
         qty_confirmed: l.quantity_returned,
@@ -93,7 +93,7 @@ export default function PurchaseReturnDetailPage() {
     try {
       if (modal === "ship") {
         await dispatch(shipReturnThunk(ret.id)).unwrap();
-        toast.success("Return shipped");
+        toast.success("Đã xuất hàng trả lại");
       } else if (modal === "confirm") {
         await dispatch(
           confirmReturnThunk({
@@ -105,15 +105,15 @@ export default function PurchaseReturnDetailPage() {
             })),
           })
         ).unwrap();
-        toast.success("Return confirmed successfully");
+        toast.success("Xác nhận trả hàng thành công");
       } else if (modal === "complete") {
         await dispatch(completeReturnThunk(ret.id)).unwrap();
-        toast.success("Return completed");
+        toast.success("Hoàn thành trả hàng");
       } else if (modal === "debit_note") {
         const dn = await dispatch(
           createDebitNoteFromReturnThunk(ret.id),
         ).unwrap();
-        toast.success(`Debit Note ${dn.debit_note_no} created`);
+        toast.success(`Đã tạo Thẻ nợ ${dn.debit_note_no}`);
         navigate(`/purchase/debit-notes/${dn.id}`);
       }
       setModal(null);
@@ -134,12 +134,12 @@ export default function PurchaseReturnDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-500">
         <CornerUpLeft className="w-10 h-10 text-gray-300" />
-        <p className="text-sm font-medium">Purchase Return not found</p>
+        <p className="text-sm font-medium">Không tìm thấy Phiếu trả hàng mua</p>
         <button
           onClick={() => navigate("/purchase/returns")}
           className="text-sm text-orange-600 hover:underline"
         >
-          Back to list
+          Quay lại danh sách
         </button>
       </div>
     );
@@ -150,19 +150,19 @@ export default function PurchaseReturnDetailPage() {
 
   const actions = [
     {
-      label: "Back",
+      label: "Quay lại",
       variant: "outline" as const,
       onClick: () => navigate("/purchase/returns"),
     },
     ...(ret.status === "draft" && isPurchase
       ? [
           {
-            label: "Edit",
+            label: "Chỉnh sửa",
             variant: "outline" as const,
             onClick: () => navigate(`/purchase/returns/${ret.id}/edit`),
           },
           {
-            label: "Ship Return",
+            label: "Xuất hàng",
             variant: "primary" as const,
             onClick: () => setModal("ship"),
           },
@@ -171,7 +171,7 @@ export default function PurchaseReturnDetailPage() {
     ...(ret.status === "shipped" && isPurchase
       ? [
           {
-            label: "Confirm Return",
+            label: "Xác nhận nhận",
             variant: "primary" as const,
             onClick: handleOpenConfirm,
           },
@@ -180,7 +180,7 @@ export default function PurchaseReturnDetailPage() {
     ...(ret.status === "confirmed" && isPurchase
       ? [
           {
-            label: "Complete",
+            label: "Hoàn thành",
             variant: "success" as const,
             onClick: () => setModal("complete"),
           },
@@ -189,7 +189,7 @@ export default function PurchaseReturnDetailPage() {
     ...(["confirmed", "completed"].includes(ret.status) && isAccountant
       ? [
           {
-            label: "Create Debit Note",
+            label: "Tạo Thẻ nợ",
             variant: "primary" as const,
             onClick: () => setModal("debit_note"),
           },
@@ -207,57 +207,74 @@ export default function PurchaseReturnDetailPage() {
         actions={actions}
       >
         <FormSection
-          title="Return Details"
+          title="Chi tiết trả hàng"
           icon={<CornerUpLeft className="w-4 h-4" />}
         >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <p className="text-xs text-gray-500 mb-1">Return No</p>
+              <p className="text-xs text-gray-500 mb-1">Số phiếu trả</p>
               <p className="text-sm font-semibold">{ret.return_no}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 mb-1">Supplier</p>
+              <p className="text-xs text-gray-500 mb-1">Nhà cung cấp</p>
               <p className="text-sm">{ret.supplier?.name ?? "—"}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 mb-1">Return Date</p>
+              <p className="text-xs text-gray-500 mb-1">Kho xuất hàng</p>
+              <p className="text-sm">{(ret as any).warehouse?.name ?? "—"}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Ngày trả hàng</p>
               <p className="text-sm">
                 {new Date(ret.return_date).toLocaleDateString("vi-VN")}
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 mb-1">Total Return Amount</p>
+              <p className="text-xs text-gray-500 mb-1">Tổng giá trị trả hàng</p>
               <p className="text-sm font-bold text-orange-600">
                 {formatVND(ret.total_return_amount)}
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 mb-1">Created By</p>
+              <p className="text-xs text-gray-500 mb-1">Người tạo</p>
               <p className="text-sm">{ret.creator?.full_name ?? "—"}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 mb-1">Created At</p>
+              <p className="text-xs text-gray-500 mb-1">Thời gian tạo</p>
               <p className="text-sm">
                 {new Date(ret.created_at).toLocaleDateString("vi-VN")}
               </p>
             </div>
             {ret.pra_id && (
               <div>
-                <p className="text-xs text-gray-500 mb-1">From PRA</p>
+                <p className="text-xs text-gray-500 mb-1">Từ yêu cầu PRA</p>
                 <button
                   onClick={() =>
                     navigate(`/purchase/return-authorizations/${ret.pra_id}`)
                   }
                   className="text-sm text-orange-600 hover:underline"
                 >
-                  View PRA →
+                  Xem PRA →
+                </button>
+              </div>
+            )}
+            {ret.stock_move_id && (
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Phiếu kho</p>
+                <button
+                  onClick={() =>
+                    navigate(`/inventory/stock_move/view/${ret.stock_move_id}`)
+                  }
+                  className="text-sm text-orange-600 hover:underline font-medium"
+                >
+                  Xem phiếu kho →
                 </button>
               </div>
             )}
           </div>
           {ret.notes && (
             <div className="mt-4">
-              <p className="text-xs text-gray-500 mb-1">Notes</p>
+              <p className="text-xs text-gray-500 mb-1">Ghi chú</p>
               <p className="text-sm text-gray-700 whitespace-pre-wrap">
                 {ret.notes}
               </p>
@@ -267,7 +284,7 @@ export default function PurchaseReturnDetailPage() {
 
         {/* Lines */}
         <FormSection
-          title="Return Items"
+          title="Danh sách mặt hàng trả lại"
           icon={<Package className="w-4 h-4" />}
           noPadding
         >
@@ -276,18 +293,18 @@ export default function PurchaseReturnDetailPage() {
               <tr className="border-b border-orange-100 bg-orange-50/60">
                 {[
                   "#",
-                  "Product",
-                  "Qty Returned",
-                  "UOM",
-                  "Qty Confirmed",
-                  "Qty Rejected",
-                  "Unit Price",
-                  "Condition",
-                  "Line Total",
+                  "Sản phẩm",
+                  "SL Trả",
+                  "ĐVT",
+                  "SL Xác nhận",
+                  "SL Từ chối",
+                  "Đơn giá",
+                  "Tình trạng",
+                  "Thành tiền",
                 ].map((h) => (
                   <th
                     key={h}
-                    className={`px-4 py-3 text-xs font-semibold text-gray-500 uppercase ${["Qty Returned", "Qty Confirmed", "Qty Rejected", "Unit Price", "Line Total"].includes(h) ? "text-right" : "text-left"}`}
+                    className={`px-4 py-3 text-xs font-semibold text-gray-500 uppercase ${["SL Trả", "SL Xác nhận", "SL Từ chối", "Đơn giá", "Thành tiền"].includes(h) ? "text-right" : "text-left"}`}
                   >
                     {h}
                   </th>
@@ -301,7 +318,7 @@ export default function PurchaseReturnDetailPage() {
                     colSpan={9}
                     className="px-4 py-8 text-center text-sm text-gray-400"
                   >
-                    No line items
+                    Chưa có mặt hàng nào
                   </td>
                 </tr>
               ) : (
@@ -309,7 +326,7 @@ export default function PurchaseReturnDetailPage() {
                   <tr key={line.id} className="hover:bg-gray-50/60">
                     <td className="px-4 py-3 text-gray-500">{i + 1}</td>
                     <td className="px-4 py-3 font-medium text-gray-900">
-                      {line.product?.name ?? `Product #${line.product_id}`}
+                      {line.product?.name ?? `Sản phẩm #${line.product_id}`}
                     </td>
                     <td className="px-4 py-3 text-right">
                       {line.quantity_returned}
@@ -336,7 +353,7 @@ export default function PurchaseReturnDetailPage() {
                               : "bg-red-100 text-red-700"
                         }`}
                       >
-                        {line.condition}
+                        {line.condition === "good" ? "Tốt" : line.condition === "damaged" ? "Hỏng hóc" : "Lỗi sản xuất"}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right font-semibold text-orange-600">
@@ -354,9 +371,9 @@ export default function PurchaseReturnDetailPage() {
         isOpen={modal === "ship"}
         onClose={() => setModal(null)}
         onConfirm={handleAction}
-        title="Ship Return"
-        description={`Mark ${ret.return_no} as shipped to supplier?`}
-        confirmText="Ship"
+        title="Xuất hàng trả lại"
+        description={`Xác nhận đã xuất hàng trả lại cho nhà cung cấp đối với phiếu ${ret.return_no}?`}
+        confirmText="Xác nhận xuất hàng"
         variant="primary"
         loading={actionLoading}
       />
@@ -364,9 +381,9 @@ export default function PurchaseReturnDetailPage() {
         isOpen={modal === "complete"}
         onClose={() => setModal(null)}
         onConfirm={handleAction}
-        title="Complete Return"
-        description={`Mark ${ret.return_no} as completed?`}
-        confirmText="Complete"
+        title="Hoàn thành trả hàng"
+        description={`Xác nhận hoàn thành phiếu trả hàng mua ${ret.return_no}?`}
+        confirmText="Hoàn thành"
         variant="success"
         loading={actionLoading}
       />
@@ -374,9 +391,9 @@ export default function PurchaseReturnDetailPage() {
         isOpen={modal === "debit_note"}
         onClose={() => setModal(null)}
         onConfirm={handleAction}
-        title="Create Debit Note"
-        description={`Create an AP Debit Note from ${ret.return_no}? Only confirmed quantities will be included.`}
-        confirmText="Create Debit Note"
+        title="Tạo Thẻ nợ"
+        description={`Tạo Thẻ nợ phải trả từ phiếu ${ret.return_no}? Chỉ số lượng hàng đã được nhà cung cấp xác nhận nhận mới được đưa vào thẻ nợ.`}
+        confirmText="Tạo Thẻ nợ"
         variant="primary"
         loading={actionLoading}
       />
@@ -396,7 +413,7 @@ export default function PurchaseReturnDetailPage() {
                   <AlertCircle className="w-5 h-5 text-orange-500" />
                 </span>
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-900">Confirm Return</h3>
+                  <h3 className="text-sm font-semibold text-gray-900">Xác nhận hàng trả</h3>
                   <p className="text-xs text-gray-500 mt-0.5">
                     Xác nhận số lượng thực tế nhà cung cấp đã nhận cho phiếu {ret.return_no}
                   </p>

@@ -989,6 +989,11 @@ export const apInvoiceService = {
     if (query.source) where.source = query.source;
     if (query.supplier_id) where.supplier_id = Number(query.supplier_id);
 
+    // Filter by supplierName if provided
+    if (query.supplierName) {
+      where["$invoiceSupplier.name$"] = { [Op.like]: `%${query.supplierName}%` };
+    }
+
     // Date range on invoice_date
     if (query.date_from || query.date_to) {
       where.invoice_date = {};
@@ -1029,6 +1034,11 @@ export const apInvoiceService = {
           model: User,
           as: "approver",
           attributes: ["id", "full_name", "email", "phone", "avatar_url"],
+        },
+        {
+          model: Partner,
+          as: "invoiceSupplier",
+          attributes: ["id", "name", "email", "phone"],
         },
       ],
       order: [

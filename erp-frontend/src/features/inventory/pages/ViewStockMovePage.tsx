@@ -8,6 +8,7 @@ import {
   rejectStockMoveThunk,
   submitStockMoveThunk,
 } from "../store";
+import { fetchWarehousesThunk } from "../store/stock/warehouse/warehouse.thunks";
 import { Button } from "../../../components/ui/Button";
 import { Textarea } from "../../../components/ui/textarea";
 import {
@@ -43,9 +44,23 @@ export interface UserInfo {
 
 const statusColors: Record<string, string> = {
   draft: "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-100",
-  waiting_approval: "bg-yellow-50 text-yellow-700 border-yellow-250 hover:bg-yellow-50",
-  posted: "bg-emerald-50 text-emerald-700 border-emerald-250 hover:bg-emerald-50",
-  cancelled: "bg-rose-50 text-rose-700 border-rose-250 hover:bg-rose-50",
+  waiting_approval: "bg-yellow-50 text-yellow-700 border-yellow-255 hover:bg-yellow-50",
+  posted: "bg-emerald-50 text-emerald-700 border-emerald-255 hover:bg-emerald-50",
+  cancelled: "bg-rose-50 text-rose-700 border-rose-255 hover:bg-rose-50",
+};
+
+const statusLabels: Record<string, string> = {
+  draft: "Nháp",
+  waiting_approval: "Chờ duyệt",
+  posted: "Đã duyệt",
+  cancelled: "Đã hủy",
+};
+
+const typeLabels: Record<string, string> = {
+  receipt: "Nhập kho",
+  issue: "Xuất kho",
+  transfer: "Điều chuyển",
+  adjustment: "Kiểm kê",
 };
 
 const referenceColors: Record<ReferenceType, string> = {
@@ -53,6 +68,13 @@ const referenceColors: Record<ReferenceType, string> = {
   sale_order: "bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-50",
   transfer: "bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-50",
   adjustment: "bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-50",
+};
+
+const referenceLabels: Record<ReferenceType, string> = {
+  purchase_order: "Đơn mua hàng",
+  sale_order: "Đơn bán hàng",
+  transfer: "Điều chuyển",
+  adjustment: "Kiểm kê",
 };
 
 export default function ViewStockMovePage() {
@@ -89,6 +111,10 @@ export default function ViewStockMovePage() {
   }
 
   useEffect(() => {
+    dispatch(fetchWarehousesThunk());
+  }, [dispatch]);
+
+  useEffect(() => {
     if (!id) return;
     const load = async () => {
       setLoading(true);
@@ -107,7 +133,7 @@ export default function ViewStockMovePage() {
       const res = await dispatch(submitStockMoveThunk(data.id)).unwrap();
       setData(res);
       setConfirmSubmit(false);
-      toast.success("Submit success");
+      toast.success("Gửi yêu cầu phê duyệt thành công!");
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
@@ -122,7 +148,7 @@ export default function ViewStockMovePage() {
       const fresh = await dispatch(fetchStockMoveByIdThunk(data!.id)).unwrap();
       setData(mapToViewStockMove(fresh, warehouses));
       setConfirmApprove(false);
-      toast.success("Approved successfully");
+      toast.success("Đã phê duyệt thành công!");
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
@@ -133,7 +159,7 @@ export default function ViewStockMovePage() {
   const handleReject = async () => {
     if (!data) return;
     if (!rejectReason.trim()) {
-      toast.error("Please provide a reject reason");
+      toast.error("Vui lòng cung cấp lý do từ chối!");
       return;
     }
     setSubmitting(true);
@@ -145,7 +171,7 @@ export default function ViewStockMovePage() {
       setData(mapToViewStockMove(fresh, warehouses));
       setConfirmReject(false);
       setRejectReason("");
-      toast.success("Stock Move cancelled successfully");
+      toast.success("Đã hủy phiếu dịch chuyển kho thành công!");
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
@@ -158,7 +184,7 @@ export default function ViewStockMovePage() {
       <div className="min-h-screen flex items-center justify-center bg-slate-50/50">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-sm font-medium text-slate-500">Loading stock movement details...</p>
+          <p className="text-sm font-medium text-slate-500">Đang tải chi tiết phiếu dịch chuyển kho...</p>
         </div>
       </div>
     );
@@ -169,8 +195,8 @@ export default function ViewStockMovePage() {
       <div className="min-h-screen flex items-center justify-center bg-slate-50/50">
         <div className="flex flex-col items-center gap-2">
           <ShieldAlert className="w-12 h-12 text-rose-500" />
-          <h3 className="text-base font-bold text-slate-700">Movement Sheet Not Found</h3>
-          <p className="text-sm text-slate-400">The requested record is invalid or has been permanently deleted.</p>
+          <h3 className="text-base font-bold text-slate-700">Không tìm thấy phiếu dịch chuyển</h3>
+          <p className="text-sm text-slate-400">Bản ghi yêu cầu không hợp lệ hoặc đã bị xóa vĩnh viễn.</p>
         </div>
       </div>
     );
@@ -192,7 +218,7 @@ export default function ViewStockMovePage() {
           <div>
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-                Stock Move #{data.move_no}
+                Phiếu dịch chuyển #{data.move_no}
               </h1>
               <Badge
                 className={`px-2.5 py-0.5 rounded-full text-xs font-bold border shadow-none capitalize ${
@@ -210,14 +236,14 @@ export default function ViewStockMovePage() {
                           : "text-rose-500"
                   }`}
                 />
-                {data.status.replace("_", " ")}
+                {statusLabels[data.status] || data.status}
               </Badge>
               <Badge className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 border border-blue-150 text-blue-700 capitalize shadow-none">
-                {data.type}
+                {typeLabels[data.type] || data.type}
               </Badge>
             </div>
             <p className="text-slate-500 text-xs font-medium mt-1">
-              Move Date: <time dateTime={data.move_date}>{formatDateTime(data.move_date)}</time>
+              Ngày dịch chuyển: <time dateTime={data.move_date}>{formatDateTime(data.move_date)}</time>
             </p>
           </div>
         </div>
@@ -232,7 +258,7 @@ export default function ViewStockMovePage() {
                 variant="primary"
                 leftIcon={<Send className="w-4 h-4" />}
               >
-                Submit for Approval
+                Gửi yêu cầu phê duyệt
               </Button>
             )}
 
@@ -245,14 +271,14 @@ export default function ViewStockMovePage() {
                   variant="success"
                   leftIcon={<CheckCircle2 className="w-4 h-4" />}
                 >
-                  Approve Move
+                  Phê duyệt phiếu
                 </Button>
                 <Button
                   onClick={() => setConfirmReject(true)}
                   variant="danger"
                   leftIcon={<XCircle className="w-4 h-4" />}
                 >
-                  Cancel Sheet
+                  Hủy phiếu
                 </Button>
               </>
             )}
@@ -268,38 +294,38 @@ export default function ViewStockMovePage() {
             <CardHeader className="pb-4 border-b border-slate-50 bg-slate-50/20">
               <div className="flex items-center gap-2 text-slate-800">
                 <Info className="w-4 h-4 text-orange-500" />
-                <CardTitle className="text-base font-semibold">General Information</CardTitle>
+                <CardTitle className="text-base font-semibold">Thông tin chung</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="p-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-xs">
-                <InfoItem label="Movement Code" value={data.move_no} />
+                <InfoItem label="Mã phiếu" value={data.move_no} />
                 <InfoItem
-                  label="Document Date"
+                  label="Ngày chứng từ"
                   value={formatDateTime(data.move_date)}
                 />
                 <InfoItem
-                  label="Reference Source"
+                  label="Nguồn tham chiếu"
                   value={
                     <Badge
                       className={`shadow-none font-bold px-2 py-0.5 text-[10px] capitalize border ${
                         referenceColors[data.reference_type] || "bg-slate-50 text-slate-600 border-slate-200"
                       }`}
                     >
-                      {data.reference_type.replace("_", " ")}
+                      {referenceLabels[data.reference_type] || data.reference_type}
                     </Badge>
                   }
                 />
                 <InfoItem
-                  label="Reference ID"
+                  label="Mã tham chiếu"
                   value={<span className="font-mono bg-slate-55 px-2 py-0.5 rounded font-bold border border-slate-100">{data.reference_id ?? "—"}</span>}
                 />
                 <InfoItem
-                  label="Created At"
+                  label="Ngày tạo"
                   value={formatDateTime(data.created_at)}
                 />
                 <InfoItem
-                  label="Updated At"
+                  label="Ngày cập nhật"
                   value={formatDateTime(data.updated_at)}
                 />
               </div>
@@ -311,17 +337,17 @@ export default function ViewStockMovePage() {
             <CardHeader className="pb-4 border-b border-slate-50 bg-slate-50/20">
               <div className="flex items-center gap-2 text-slate-800">
                 <Warehouse className="w-4 h-4 text-indigo-500" />
-                <CardTitle className="text-base font-semibold">Associated Warehouses</CardTitle>
+                <CardTitle className="text-base font-semibold">Kho liên kết</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="p-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-xs">
                 <InfoItem
-                  label="Source Warehouse (From)"
+                  label="Kho nguồn (Từ)"
                   value={data.warehouse_from_name ? <span className="font-semibold text-slate-750">{data.warehouse_from_name}</span> : "—"}
                 />
                 <InfoItem 
-                  label="Destination Warehouse (To)" 
+                  label="Kho đích (Đến)" 
                   value={data.warehouse_to_name ? <span className="font-semibold text-slate-750">{data.warehouse_to_name}</span> : "—"} 
                 />
               </div>
@@ -335,10 +361,10 @@ export default function ViewStockMovePage() {
                 <ListPlus className="w-5 h-5 text-slate-700" />
                 <div>
                   <CardTitle className="text-base font-semibold text-slate-800">
-                    Stock Movement Lines
+                    Chi tiết dịch chuyển kho
                   </CardTitle>
                   <CardDescription className="text-xs text-slate-400 mt-0.5">
-                    Individual stock entries associated with this dispatch sheet
+                    Các chi tiết nhập xuất kho liên quan đến phiếu dịch chuyển này
                   </CardDescription>
                 </div>
               </div>
@@ -348,13 +374,15 @@ export default function ViewStockMovePage() {
               <table className="w-full text-sm">
                 <thead className="bg-slate-50/80 text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-slate-100">
                   <tr>
-                    <th className="py-3.5 px-6 text-left">Product</th>
+                    <th className="py-3.5 px-6 text-left">Sản phẩm</th>
                     <th className="py-3.5 px-6 text-left">SKU</th>
-                    <th className="py-3.5 px-6 text-right w-20">Quantity</th>
-                    <th className="py-3.5 px-6 text-left">UOM</th>
-                    <th className="py-3.5 px-6 text-left">From Location</th>
-                    {isTransfer && <th className="py-3.5 px-6 text-left">To Location</th>}
-                    <th className="py-3.5 px-6 text-left">Lot</th>
+                    <th className="py-3.5 px-6 text-right w-20">Số lượng</th>
+                    <th className="py-3.5 px-6 text-left">ĐVT</th>
+                    <th className="py-3.5 px-6 text-left">
+                      {data.type === "receipt" ? "Vị trí đích" : "Vị trí nguồn"}
+                    </th>
+                    {isTransfer && <th className="py-3.5 px-6 text-left">Vị trí đích</th>}
+                    <th className="py-3.5 px-6 text-left">Lô hàng</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -393,12 +421,22 @@ export default function ViewStockMovePage() {
                             "—"}
                         </td>
                         <td className="py-3.5 px-6 text-xs">
-                          {line.locationFrom ? (
-                            <Badge variant="secondary" className="shadow-none rounded px-2 text-[10px] bg-slate-100 text-slate-600 border border-slate-200">
-                              {line.locationFrom.code} · {line.locationFrom.name}
-                            </Badge>
+                          {data.type === "receipt" ? (
+                            line.locationTo ? (
+                              <Badge variant="secondary" className="shadow-none rounded px-2 text-[10px] bg-slate-100 text-slate-600 border border-slate-200">
+                                {line.locationTo.code} · {line.locationTo.name}
+                              </Badge>
+                            ) : (
+                              "—"
+                            )
                           ) : (
-                            "—"
+                            line.locationFrom ? (
+                              <Badge variant="secondary" className="shadow-none rounded px-2 text-[10px] bg-slate-100 text-slate-600 border border-slate-200">
+                                {line.locationFrom.code} · {line.locationFrom.name}
+                              </Badge>
+                            ) : (
+                              "—"
+                            )
                           )}
                         </td>
                         {isTransfer && (
@@ -420,7 +458,7 @@ export default function ViewStockMovePage() {
                               </span>
                               {line.lot.expiry_date && (
                                 <span className="text-slate-400 font-mono text-[9px] font-bold mt-0.5">
-                                  Exp: {line.lot.expiry_date.split("T")[0]}
+                                  HSD: {line.lot.expiry_date.split("T")[0]}
                                 </span>
                               )}
                             </div>
@@ -436,7 +474,7 @@ export default function ViewStockMovePage() {
                         colSpan={isTransfer ? 7 : 6}
                         className="py-16 text-center text-slate-450 italic"
                       >
-                        No lines found in this movement.
+                        Không tìm thấy chi tiết nào trong phiếu dịch chuyển.
                       </td>
                     </tr>
                   )}
@@ -451,7 +489,7 @@ export default function ViewStockMovePage() {
               <CardHeader className="pb-4 border-b border-slate-50 bg-slate-50/20">
                 <div className="flex items-center gap-2 text-slate-800">
                   <Notebook className="w-4 h-4 text-slate-555" />
-                  <CardTitle className="text-base font-semibold">Internal Memo / Notes</CardTitle>
+                  <CardTitle className="text-base font-semibold">Ghi chú nội bộ</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="p-5 text-sm text-slate-700 italic">
@@ -466,7 +504,7 @@ export default function ViewStockMovePage() {
               <CardHeader className="pb-4 border-b border-rose-100/40 bg-rose-50/25">
                 <div className="flex items-center gap-2 text-rose-800">
                   <XCircle className="w-4 h-4" />
-                  <CardTitle className="text-base font-semibold">Cancellation / Reject Reason</CardTitle>
+                  <CardTitle className="text-base font-semibold">Lý do hủy / từ chối</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="p-5 text-sm text-rose-700 font-semibold italic">
@@ -483,31 +521,31 @@ export default function ViewStockMovePage() {
             <CardHeader className="pb-4 border-b border-slate-50 bg-slate-50/20">
               <div className="flex items-center gap-2 text-slate-800">
                 <FileCheck className="w-4 h-4 text-slate-700" />
-                <CardTitle className="text-base font-semibold">Audit & Approval</CardTitle>
+                <CardTitle className="text-base font-semibold">Kiểm toán & Phê duyệt</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="p-5 space-y-5">
               <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Created By</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Người tạo</span>
                 <PersonCard user={data.creator} />
               </div>
               <div className="border-t border-slate-100 pt-3">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Approved By</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Người duyệt</span>
                 {data.approver ? (
                   <PersonCard user={data.approver} />
                 ) : (
                   <div className="p-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 text-xs text-slate-450 text-center font-semibold mt-2">
-                    No approved action recorded
+                    Chưa có thông tin phê duyệt
                   </div>
                 )}
               </div>
               <div className="pt-3 border-t border-slate-150 space-y-2 text-xs">
                 <div className="flex justify-between items-center">
-                  <span className="font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Created At</span>
+                  <span className="font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Ngày tạo</span>
                   <span className="font-semibold text-slate-700">{formatDateTime(data.created_at)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Updated At</span>
+                  <span className="font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Ngày cập nhật</span>
                   <span className="font-semibold text-slate-700">{formatDateTime(data.updated_at)}</span>
                 </div>
               </div>
@@ -517,29 +555,29 @@ export default function ViewStockMovePage() {
           {/* Summary stats details */}
           <Card className="border-slate-100 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">
             <CardHeader className="pb-4 border-b border-slate-50 bg-slate-50/20">
-              <CardTitle className="text-base font-semibold">Movement Specs</CardTitle>
+              <CardTitle className="text-base font-semibold">Thông số dịch chuyển</CardTitle>
             </CardHeader>
             <CardContent className="p-5 space-y-3.5 text-xs">
-              <SummaryRow label="Total Items Lines" value={data.lines?.length ?? 0} />
+              <SummaryRow label="Tổng số dòng" value={data.lines?.length ?? 0} />
               <SummaryRow
-                label="Movement Type"
-                value={<Badge className="bg-slate-100 text-slate-700 font-bold border border-slate-200 uppercase tracking-wider text-[10px] rounded shadow-none">{data.type}</Badge>}
+                label="Loại dịch chuyển"
+                value={<Badge className="bg-slate-100 text-slate-700 font-bold border border-slate-200 uppercase tracking-wider text-[10px] rounded shadow-none">{typeLabels[data.type] || data.type}</Badge>}
               />
               <SummaryRow
-                label="Trigger Source"
-                value={<span className="font-semibold capitalize text-slate-700">{data.reference_type?.replace("_", " ") || "—"}</span>}
+                label="Nguồn phát sinh"
+                value={<span className="font-semibold capitalize text-slate-700">{referenceLabels[data.reference_type] || data.reference_type}</span>}
               />
               <SummaryRow
-                label="Source Warehouse"
+                label="Kho nguồn"
                 value={<span className="font-semibold text-slate-700">{data.warehouse_from_name || "—"}</span>}
               />
               <SummaryRow
-                label="Target Warehouse"
+                label="Kho đích"
                 value={<span className="font-semibold text-slate-700">{data.warehouse_to_name || "—"}</span>}
               />
               <div className="border-t border-slate-100 pt-3">
                 <SummaryRow
-                  label="Total Qty Dispatched"
+                  label="Tổng số lượng dịch chuyển"
                   value={
                     <span className="font-mono font-extrabold text-blue-700 bg-blue-50 border border-blue-150 px-2 py-0.5 rounded">
                       {data.lines?.reduce(
@@ -563,10 +601,10 @@ export default function ViewStockMovePage() {
               <Send className="h-6 w-6 text-blue-600" />
             </div>
             <DialogTitle className="text-center text-lg font-bold text-slate-900">
-              Submit for Approval?
+              Gửi yêu cầu phê duyệt?
             </DialogTitle>
             <DialogDescription className="text-center text-sm text-gray-500 mt-1">
-              After submitting, this stock move will be sent to the Warehouse Manager. You will no longer be able to edit this record.
+              Sau khi gửi, phiếu dịch chuyển kho này sẽ được gửi đến Quản lý kho. Bạn sẽ không thể chỉnh sửa bản ghi này nữa.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-row justify-center gap-3 mt-4 border-t border-slate-100 pt-4">
@@ -576,7 +614,7 @@ export default function ViewStockMovePage() {
               disabled={submitting}
               className="w-full sm:w-auto"
             >
-              Cancel
+              Hủy
             </Button>
             <Button
               variant="primary"
@@ -584,7 +622,7 @@ export default function ViewStockMovePage() {
               loading={submitting}
               className="w-full sm:w-auto"
             >
-              Yes, Submit
+              Đồng ý gửi
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -598,10 +636,10 @@ export default function ViewStockMovePage() {
               <CheckCircle2 className="h-6 w-6 text-emerald-600" />
             </div>
             <DialogTitle className="text-center text-lg font-bold text-slate-900">
-              Approve Stock Move?
+              Phê duyệt phiếu dịch chuyển?
             </DialogTitle>
             <DialogDescription className="text-center text-sm text-gray-500 mt-1">
-              Once approved, this stock movement is posted. Product stock levels and ledger balances across locations will be modified instantly.
+              Sau khi được duyệt, phiếu dịch chuyển này sẽ được ghi sổ. Số lượng tồn kho và số dư sổ cái tại các vị trí sẽ được thay đổi ngay lập tức.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-row justify-center gap-3 mt-4 border-t border-slate-100 pt-4">
@@ -611,7 +649,7 @@ export default function ViewStockMovePage() {
               disabled={submitting}
               className="w-full sm:w-auto"
             >
-              Cancel
+              Hủy
             </Button>
             <Button
               variant="success"
@@ -619,7 +657,7 @@ export default function ViewStockMovePage() {
               loading={submitting}
               className="w-full sm:w-auto"
             >
-              Yes, Approve
+              Phê duyệt
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -633,30 +671,30 @@ export default function ViewStockMovePage() {
               <XCircle className="h-6 w-6 text-rose-600" />
             </div>
             <DialogTitle className="text-center text-lg font-bold text-slate-900">
-              Cancel / Reject Stock Move
+              Hủy / Từ chối phiếu dịch chuyển
             </DialogTitle>
             <DialogDescription className="text-center text-sm text-gray-500 mt-1.5">
-              Please specify the cancellation details or notes below. Discarded entries cannot be recovered.
+              Vui lòng chỉ rõ lý do hủy hoặc ghi chú bên dưới. Các phiếu đã hủy không thể khôi phục.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 my-2">
             <Textarea
-              placeholder="Provide a valid cancellation reason..."
+              placeholder="Nhập lý do hủy phiếu..."
               value={rejectReason}
               onChange={(value) => setRejectReason(value)}
               rows={4}
             />
           </div>
 
-          <DialogFooter className="flex-row justify-center gap-3 border-t border-slate-100 pt-4 mt-2">
+          <DialogFooter className="flex-row justify-center gap-3 border-t border-slate-150 pt-4 mt-2">
             <Button
               variant="outline"
               onClick={() => setConfirmReject(false)}
               disabled={submitting}
               className="w-full sm:w-auto"
             >
-              Close
+              Đóng
             </Button>
             <Button
               variant="danger"
@@ -664,7 +702,7 @@ export default function ViewStockMovePage() {
               loading={submitting}
               className="w-full sm:w-auto"
             >
-              Cancel Move
+              Hủy phiếu
             </Button>
           </DialogFooter>
         </DialogContent>

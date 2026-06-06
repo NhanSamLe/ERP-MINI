@@ -133,4 +133,100 @@ export const salesTools: ITool[] = [
       );
     },
   },
+
+  {
+    name: "get_sales_returns",
+    description:
+      "Truy vấn danh sách phiếu trả hàng bán (Sales Returns). Dùng khi hỏi về đơn trả hàng, trả lại hàng từ khách hàng.",
+    parameters: {
+      type: "object",
+      properties: {
+        customer_name: {
+          type: "string",
+          description: "Tên khách hàng (tùy chọn)",
+        },
+      },
+    },
+    async execute(args: any, context: ToolContext): Promise<ToolResult> {
+      return callErpApi(
+        "/sales/returns/returns",
+        {
+          ...(args.customer_name && { customerName: args.customer_name }),
+        },
+        context,
+      );
+    },
+  },
+
+  {
+    name: "get_credit_notes",
+    description:
+      "Truy vấn danh sách Thẻ tín dụng / Ghi chú giảm nợ (Credit Notes). Dùng khi hỏi về chứng từ giảm công nợ phải thu cho khách hàng.",
+    parameters: {
+      type: "object",
+      properties: {
+        customer_name: {
+          type: "string",
+          description: "Tên khách hàng (tùy chọn)",
+        },
+      },
+    },
+    async execute(args: any, context: ToolContext): Promise<ToolResult> {
+      return callErpApi(
+        "/sales/returns/credit-notes",
+        {
+          ...(args.customer_name && { customerName: args.customer_name }),
+        },
+        context,
+      );
+    },
+  },
+
+  {
+    name: "get_customer_refunds",
+    description:
+      "Truy vấn danh sách Phiếu hoàn tiền khách hàng (Customer Refunds). Dùng khi hỏi về tiền trả lại cho khách hàng.",
+    parameters: {
+      type: "object",
+      properties: {
+        customer_name: {
+          type: "string",
+          description: "Tên khách hàng (tùy chọn)",
+        },
+      },
+    },
+    async execute(args: any, context: ToolContext): Promise<ToolResult> {
+      return callErpApi(
+        "/sales/returns/refunds",
+        {
+          ...(args.customer_name && { customerName: args.customer_name }),
+        },
+        context,
+      );
+    },
+  },
+
+  {
+    name: "get_rmas",
+    description:
+      "Truy vấn danh sách Yêu cầu trả hàng bán (Return Merchandise Authorizations - RMA). Dùng khi hỏi về yêu cầu trả hàng từ khách hàng.",
+    parameters: {
+      type: "object",
+      properties: {
+        customer_name: {
+          type: "string",
+          description: "Tên khách hàng (tùy chọn)",
+        },
+      },
+    },
+    async execute(args: any, context: ToolContext): Promise<ToolResult> {
+      return callErpApi(
+        "/sales/returns/rmas",
+        {
+          ...(args.customer_name && { customerName: args.customer_name }),
+        },
+        context,
+      );
+    },
+  },
 ];

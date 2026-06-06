@@ -237,7 +237,7 @@ export default function ViewPurchaseOrderPage() {
     setSubmitting(true);
     try {
       await dispatch(submitPurchaseOrderThunk(finalPO.id)).unwrap();
-      toast.success("Purchase order submitted for approval!");
+      toast.success("Đã gửi đơn đặt hàng để phê duyệt!");
       await dispatch(fetchPurchaseOrderByIdThunk(finalPO.id)).unwrap();
       refreshAuditLogs();
       setConfirmSubmit(false);
@@ -253,7 +253,7 @@ export default function ViewPurchaseOrderPage() {
     try {
       setSubmitting(true);
       await dispatch(approvePurchaseOrderThunk(finalPO.id)).unwrap();
-      toast.success("Purchase Order approved!");
+      toast.success("Đơn đặt hàng đã được phê duyệt!");
       refreshAuditLogs();
       setConfirmApprove(false);
     } catch (error) {
@@ -266,7 +266,7 @@ export default function ViewPurchaseOrderPage() {
   const handleReject = async () => {
     if (!finalPO) return;
     if (!rejectReason.trim()) {
-      toast.error("Reject reason is required");
+      toast.error("Vui lòng nhập lý do hủy");
       return;
     }
     try {
@@ -274,7 +274,7 @@ export default function ViewPurchaseOrderPage() {
       await dispatch(
         cancelPurchaseOrderThunk({ id: finalPO.id, reason: rejectReason }),
       ).unwrap();
-      toast.success("Purchase Order cancelled!");
+      toast.success("Đơn đặt hàng đã bị hủy!");
       refreshAuditLogs();
       setConfirmReject(false);
       setRejectReason("");
@@ -345,9 +345,9 @@ export default function ViewPurchaseOrderPage() {
       <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm border-t-2 border-t-orange-500">
         <div className="max-w-screen-2xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-sm min-w-0">
-            <span className="text-gray-400">Purchase</span>
+            <span className="text-gray-400">Mua hàng</span>
             <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
-            <span className="text-gray-400">Orders</span>
+            <span className="text-gray-400">Đơn hàng</span>
             <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
             <span className="font-semibold text-gray-900 truncate font-mono">
               {finalPO?.po_no ?? `#${id}`}
@@ -362,14 +362,14 @@ export default function ViewPurchaseOrderPage() {
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-700 font-medium text-xs hover:bg-gray-50 transition"
                 >
                   <Edit className="w-3.5 h-3.5" />
-                  Edit
+                  Chỉnh sửa
                 </button>
                 <button
                   onClick={() => setConfirmSubmit(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500 text-white font-medium text-xs shadow-sm hover:bg-orange-600 transition"
                 >
                   <Send className="w-3.5 h-3.5" />
-                  Submit for Approval
+                  Gửi phê duyệt
                 </button>
               </>
             )}
@@ -380,14 +380,14 @@ export default function ViewPurchaseOrderPage() {
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 text-white font-medium text-xs shadow-sm hover:bg-emerald-600 transition"
                 >
                   <CheckCircle className="w-3.5 h-3.5" />
-                  Approve
+                  Phê duyệt
                 </button>
                 <button
                   onClick={() => setConfirmReject(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500 text-white font-medium text-xs shadow-sm hover:bg-red-600 transition"
                 >
                   <XCircle className="w-3.5 h-3.5" />
-                  Cancel
+                  Hủy
                 </button>
               </>
             )}
@@ -396,7 +396,7 @@ export default function ViewPurchaseOrderPage() {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-600 font-medium text-xs hover:bg-gray-50 transition"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              Back
+              Quay lại
             </button>
           </div>
         </div>
@@ -410,33 +410,33 @@ export default function ViewPurchaseOrderPage() {
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <SectionHeader
                 icon={<Package className="w-4 h-4" />}
-                title="Purchase Items"
-                subtitle={`${lines.length} item${lines.length !== 1 ? "s" : ""}`}
+                title="Sản phẩm mua"
+                subtitle={`Có ${lines.length} sản phẩm`}
               />
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-100">
                       <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider w-[40%]">
-                        Product
+                        Sản phẩm
                       </th>
                       <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                        Qty
+                        Số lượng
                       </th>
                       <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                        UOM
+                        Đơn vị tính
                       </th>
                       <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                        Unit Price
+                        Đơn giá
                       </th>
                       <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                        Tax
+                        Thuế
                       </th>
                       <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                        Tax Amount
+                        Tiền thuế
                       </th>
                       <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                        Total (incl. tax)
+                        Tổng tiền (gồm thuế)
                       </th>
                     </tr>
                   </thead>
@@ -447,7 +447,7 @@ export default function ViewPurchaseOrderPage() {
                           colSpan={7}
                           className="py-14 text-center text-gray-400 text-sm"
                         >
-                          No items
+                          Không có sản phẩm nào
                         </td>
                       </tr>
                     ) : (
@@ -523,14 +523,14 @@ export default function ViewPurchaseOrderPage() {
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <SectionHeader
                 icon={<Building2 className="w-4 h-4" />}
-                title="Supplier Information"
+                title="Thông tin nhà cung cấp"
               />
               <div className="p-5">
                 {supplierInfo ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     <div className="col-span-2 md:col-span-3">
                       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
-                        Company
+                        Công ty
                       </p>
                       <p className="font-bold text-gray-900 text-base">
                         {supplierInfo.name}
@@ -538,7 +538,7 @@ export default function ViewPurchaseOrderPage() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
-                        Contact
+                        Người liên hệ
                       </p>
                       <p className="text-sm text-gray-900">
                         {supplierInfo.contact_person || "—"}
@@ -546,7 +546,7 @@ export default function ViewPurchaseOrderPage() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
-                        Phone
+                        Điện thoại
                       </p>
                       <div className="flex items-center gap-1.5 text-sm text-gray-900">
                         <Phone className="w-3.5 h-3.5 text-gray-400" />
@@ -566,7 +566,7 @@ export default function ViewPurchaseOrderPage() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
-                        Bank
+                        Ngân hàng
                       </p>
                       <p className="text-sm text-gray-900">
                         {supplierInfo.bank_name || "—"}
@@ -576,7 +576,7 @@ export default function ViewPurchaseOrderPage() {
                 ) : (
                   <div className="flex items-center gap-2 text-gray-400 text-sm">
                     <Clock className="w-4 h-4 animate-spin" />
-                    Loading supplier info…
+                    Đang tải thông tin nhà cung cấp…
                   </div>
                 )}
               </div>
@@ -586,14 +586,14 @@ export default function ViewPurchaseOrderPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
                 {
-                  title: "Created By",
+                  title: "Người tạo",
                   user: finalPO?.creator,
                   color: "orange",
                 },
                 {
-                  title: "Approved By",
+                  title: "Người duyệt",
                   user: finalPO?.approver,
-                  emptyText: "Waiting for approval",
+                  emptyText: "Đang chờ phê duyệt",
                   color: "green",
                 },
               ].map(({ title, user, emptyText, color }) => (
@@ -640,7 +640,7 @@ export default function ViewPurchaseOrderPage() {
                   ) : (
                     <div className="flex items-center gap-2 text-gray-400 text-sm italic">
                       <Clock className="w-4 h-4" />
-                      {emptyText ?? "No data"}
+                      {emptyText ?? "Không có dữ liệu"}
                     </div>
                   )}
                 </div>
@@ -652,18 +652,18 @@ export default function ViewPurchaseOrderPage() {
               <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <SectionHeader
                   icon={<TrendingUp className="w-4 h-4" />}
-                  title="Tracking"
+                  title="Theo dõi"
                 />
                 <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
                   {[
                     {
-                      label: "Receipt Status",
+                      label: "Trạng thái nhận hàng",
                       status: (finalPO as any).receipt_status ?? "pending",
                       fullColor: "bg-green-500",
                       halfColor: "bg-orange-400",
                     },
                     {
-                      label: "Invoice Status",
+                      label: "Trạng thái hóa đơn",
                       status: (finalPO as any).invoice_status ?? "not_invoiced",
                       fullColor: "bg-green-500",
                       halfColor: "bg-blue-400",
@@ -697,7 +697,7 @@ export default function ViewPurchaseOrderPage() {
                       {(finalPO as any).expected_delivery_date && (
                         <div>
                           <p className="text-xs text-gray-400 mb-0.5">
-                            Expected Delivery
+                            Dự kiến giao hàng
                           </p>
                           <p className="font-medium text-gray-800">
                             {new Date(
@@ -709,7 +709,7 @@ export default function ViewPurchaseOrderPage() {
                       {(finalPO as any).supplier_ref_no && (
                         <div>
                           <p className="text-xs text-gray-400 mb-0.5">
-                            Supplier Ref No
+                            Mã tham chiếu NCC
                           </p>
                           <p className="font-medium text-gray-800">
                             {(finalPO as any).supplier_ref_no}
@@ -718,7 +718,7 @@ export default function ViewPurchaseOrderPage() {
                       )}
                       {(finalPO as any).rfq_id && (
                         <div>
-                          <p className="text-xs text-gray-400 mb-0.5">From RFQ</p>
+                          <p className="text-xs text-gray-400 mb-0.5">Từ RFQ</p>
                           <button
                             onClick={() =>
                               navigate(
@@ -727,7 +727,7 @@ export default function ViewPurchaseOrderPage() {
                             }
                             className="font-medium text-orange-600 hover:underline text-sm"
                           >
-                            View RFQ →
+                            Xem RFQ →
                           </button>
                         </div>
                       )}
@@ -744,7 +744,7 @@ export default function ViewPurchaseOrderPage() {
                 </div>
                 <div>
                   <p className="text-sm font-bold text-red-700 mb-1">
-                    Cancellation Reason
+                    Lý do hủy
                   </p>
                   <p className="text-sm text-red-800 whitespace-pre-line">
                     {finalPO.reject_reason}
@@ -758,7 +758,7 @@ export default function ViewPurchaseOrderPage() {
               <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <SectionHeader
                   icon={<FileText className="w-4 h-4" />}
-                  title="Notes"
+                  title="Ghi chú"
                 />
                 <div className="p-5">
                   <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
@@ -770,7 +770,7 @@ export default function ViewPurchaseOrderPage() {
 
             {/* Audit Log */}
             <AuditLogCard
-              title="Change History"
+              title="Lịch sử thay đổi"
               logs={auditLogs}
               loading={loadingAuditLogs}
               variant="po"
@@ -785,39 +785,39 @@ export default function ViewPurchaseOrderPage() {
                 <div className="flex items-center gap-2">
                   <ShoppingCart className="w-4 h-4 text-orange-500" />
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Order Info
+                    Thông tin đơn hàng
                   </p>
                 </div>
               </div>
               <div className="p-4 space-y-0 divide-y divide-gray-50">
                 <InfoRow
                   icon={<Hash className="w-3.5 h-3.5" />}
-                  label="Reference"
+                  label="Mã tham chiếu"
                   value={<span className="font-mono text-xs">{reference}</span>}
                 />
                 <InfoRow
                   icon={<Calendar className="w-3.5 h-3.5" />}
-                  label="Order Date"
+                  label="Ngày đặt hàng"
                   value={date}
                 />
                 <InfoRow
                   icon={<Building2 className="w-3.5 h-3.5" />}
-                  label="Branch"
+                  label="Chi nhánh"
                   value={selectedBranchName}
                 />
                 <InfoRow
                   icon={<User className="w-3.5 h-3.5" />}
-                  label="Created By"
+                  label="Người tạo"
                   value={finalPO?.creator?.full_name}
                 />
                 <InfoRow
                   icon={<Clock className="w-3.5 h-3.5" />}
-                  label="Created At"
+                  label="Ngày tạo"
                   value={formatDateTime(finalPO?.created_at)}
                 />
                 <InfoRow
                   icon={<Clock className="w-3.5 h-3.5" />}
-                  label="Updated At"
+                  label="Ngày cập nhật"
                   value={formatDateTime(finalPO?.updated_at)}
                 />
               </div>
@@ -829,26 +829,26 @@ export default function ViewPurchaseOrderPage() {
                 <div className="flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-orange-500" />
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Payment Summary
+                    Tóm tắt thanh toán
                   </p>
                 </div>
               </div>
               <div className="p-4 space-y-2.5">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Subtotal</span>
+                  <span className="text-gray-500">Tổng tiền trước thuế</span>
                   <span className="font-medium text-gray-700 tabular-nums">
                     {formatVND(totalBeforeTax)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Tax</span>
+                  <span className="text-gray-500">Thuế</span>
                   <span className="font-medium text-blue-600 tabular-nums">
                     {formatVND(totalOrderTax)}
                   </span>
                 </div>
                 <div className="pt-2.5 border-t border-dashed border-gray-200 flex justify-between items-center">
                   <span className="text-sm font-semibold text-gray-800">
-                    Total
+                    Tổng cộng
                   </span>
                   <span className="text-base font-bold text-orange-600 tabular-nums">
                     {formatVND(totalAfterTax)}
@@ -861,7 +861,7 @@ export default function ViewPurchaseOrderPage() {
             <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 <Layers className="w-3.5 h-3.5 text-orange-500" />
-                Line Items
+                Dòng sản phẩm
               </div>
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-600">
                 {lines.length}
@@ -877,8 +877,8 @@ export default function ViewPurchaseOrderPage() {
         onClose={() => setConfirmSubmit(false)}
         icon={<Send className="w-7 h-7 text-orange-600" />}
         iconBg="bg-orange-100"
-        title="Submit for Approval?"
-        desc="After submitting, you will no longer be able to edit this purchase order."
+        title="Gửi phê duyệt?"
+        desc="Sau khi gửi, bạn sẽ không thể chỉnh sửa đơn đặt hàng này nữa."
         footer={
           <>
             <Button
@@ -886,14 +886,14 @@ export default function ViewPurchaseOrderPage() {
               disabled={submitting}
               className="px-5 py-2 rounded-xl border border-gray-300 font-semibold text-gray-700 hover:bg-gray-50 text-sm"
             >
-              Cancel
+              Hủy
             </Button>
             <Button
               onClick={handleSubmitApproval}
               disabled={submitting}
               className="px-5 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold text-sm"
             >
-              {submitting ? "Submitting…" : "Yes, Submit"}
+              {submitting ? "Đang gửi…" : "Đồng ý gửi"}
             </Button>
           </>
         }
@@ -904,8 +904,8 @@ export default function ViewPurchaseOrderPage() {
         onClose={() => setConfirmApprove(false)}
         icon={<CheckCircle className="w-7 h-7 text-emerald-600" />}
         iconBg="bg-emerald-100"
-        title="Approve Purchase Order?"
-        desc="Once approved, this purchase order will be confirmed."
+        title="Phê duyệt đơn đặt hàng?"
+        desc="Một khi được phê duyệt, đơn đặt hàng này sẽ được xác nhận chính thức."
         footer={
           <>
             <Button
@@ -913,14 +913,14 @@ export default function ViewPurchaseOrderPage() {
               disabled={submitting}
               className="px-5 py-2 rounded-xl border border-gray-300 font-semibold text-gray-700  hover:bg-gray-50 text-sm"
             >
-              Cancel
+              Hủy
             </Button>
             <Button
               onClick={handleApprove}
               disabled={submitting}
               className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-sm"
             >
-              {submitting ? "Approving…" : "Approve"}
+              {submitting ? "Đang duyệt…" : "Phê duyệt"}
             </Button>
           </>
         }
@@ -934,8 +934,8 @@ export default function ViewPurchaseOrderPage() {
         }}
         icon={<XCircle className="w-6 h-6 text-red-600" />}
         iconBg="bg-red-100"
-        title="Cancel Purchase Order"
-        desc="This action cannot be undone."
+        title="Hủy đơn đặt hàng"
+        desc="Hành động này không thể hoàn tác."
         footer={
           <>
             <Button
@@ -946,24 +946,24 @@ export default function ViewPurchaseOrderPage() {
               disabled={submitting}
               className="px-5 py-2 rounded-xl border border-gray-300 font-semibold text-gray-700 hover:bg-gray-50 text-sm"
             >
-              Close
+              Đóng
             </Button>
             <Button
               onClick={handleReject}
               disabled={submitting || !rejectReason.trim()}
               className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold text-sm disabled:opacity-50"
             >
-              {submitting ? "Cancelling…" : "Cancel Order"}
+              {submitting ? "Đang hủy…" : "Hủy đơn hàng"}
             </Button>
           </>
         }
       >
         <div className="w-full text-left">
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Reason <span className="text-red-500">*</span>
+            Lý do <span className="text-red-500">*</span>
           </label>
           <Textarea
-            placeholder="Enter cancellation reason…"
+            placeholder="Nhập lý do hủy…"
             value={rejectReason}
             onChange={(value) => setRejectReason(value)}
             rows={4}

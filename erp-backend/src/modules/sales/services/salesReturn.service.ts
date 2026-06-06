@@ -13,6 +13,7 @@ import {
   SalesReturn,
   SalesReturnAuthorization,
   SalesReturnLine,
+  StockMove,
   TaxRate,
   User,
   Warehouse,
@@ -40,6 +41,7 @@ const RETURN_INCLUDE = [
   { model: Partner, as: "customer", attributes: ["id", "name", "email", "phone"] },
   { model: Warehouse, as: "warehouse", attributes: ["id", "name", "code"] },
   { model: SaleOrder, as: "saleOrder", attributes: ["id", "order_no", "delivery_status", "invoice_status"] },
+  { model: StockMove, as: "stockMove" },
 ];
 
 const RMA_INCLUDE = [
@@ -430,6 +432,33 @@ export const salesReturnService = {
         { transaction: t },
       );
 
+      const { StockMove } = await import("../../inventory/models/stockMove.model");
+      const { StockMoveLine } = await import("../../inventory/models/stockMoveLine.model");
+
+      const move = await StockMove.create({
+        move_no: `SM-SR-${ret.id}-${Date.now()}`,
+        move_date: new Date(),
+        type: "receipt",
+        warehouse_to_id: Number(data.warehouse_id),
+        reference_type: "sales_return",
+        reference_id: ret.id,
+        status: "draft",
+        created_by: user.id,
+        branch_id: rma.branch_id,
+      }, { transaction: t });
+
+      for (const line of lines) {
+        await StockMoveLine.create({
+          move_id: move.id,
+          product_id: line.product_id,
+          quantity: line.quantity_received,
+          uom_id: null,
+          lot_id: null,
+        }, { transaction: t });
+      }
+
+      await ret.update({ stock_move_id: move.id }, { transaction: t });
+
       await rma.update({ status: "processing", total_return_amount: total }, { transaction: t });
       return ret.id;
     });
@@ -460,6 +489,16 @@ export const salesReturnService = {
           },
           { transaction: t },
         );
+        if (ret.stock_move_id) {
+          const { StockMoveLine } = await import("../../inventory/models/stockMoveLine.model");
+          const moveLine = await StockMoveLine.findOne({
+            where: { move_id: ret.stock_move_id, product_id: row.product_id },
+            transaction: t,
+          });
+          if (moveLine) {
+            await moveLine.update({ quantity: quantityReceived }, { transaction: t });
+          }
+        }
       }
       await ret.update({ status: "inspected" }, { transaction: t });
     });
@@ -479,7 +518,13 @@ export const salesReturnService = {
       if (!lockedReturn) throw new Error("Sales return not found");
       if (lockedReturn.status !== "inspected") throw new Error("Return must be inspected before completion");
 
-      await increaseReturnStock(lockedReturn, t);
+      if (lockedReturn.stock_move_id) {
+        const { StockMove } = await import("../../inventory/models/stockMove.model");
+        const move = await StockMove.findByPk(lockedReturn.stock_move_id, { transaction: t });
+        if (!move || move.status !== "posted") {
+          throw new Error("Warehouse manager has not approved the stock receipt yet. Please have them approve the stock move first.");
+        }
+      }
       await lockedReturn.update({ status: "completed" }, { transaction: t });
       if (lockedReturn.sale_order_id) {
         const order = await SaleOrder.findByPk(lockedReturn.sale_order_id, {

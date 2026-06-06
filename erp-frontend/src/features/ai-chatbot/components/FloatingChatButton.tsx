@@ -13,7 +13,7 @@ export default function FloatingChatButton() {
       {/* Floating button */}
       <button
         onClick={() => dispatch(togglePanel())}
-        className={`fixed bottom-6 right-6 w-14 h-14 rounded-2xl text-white shadow-lg z-50 flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 ${
+        className={`relative w-14 h-14 rounded-2xl text-white shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 ${
           isOpen
             ? "bg-slate-700 shadow-slate-300/50 rotate-0"
             : "bg-gradient-to-br from-indigo-500 to-violet-600 shadow-indigo-300/60 hover:shadow-indigo-400/70"

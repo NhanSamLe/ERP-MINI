@@ -41,7 +41,7 @@ function ExpiryBadge({ date }: { date: string | null | undefined }) {
       <Badge
         className="text-[10px] px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-100 font-extrabold uppercase shadow-none hover:bg-rose-50"
       >
-        Expired
+        Đã hết hạn
       </Badge>
     );
   if (days <= 30)
@@ -49,7 +49,7 @@ function ExpiryBadge({ date }: { date: string | null | undefined }) {
       <Badge
         className="text-[10px] px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-100 font-extrabold shadow-none hover:bg-rose-50"
       >
-        {date} ({days}d)
+        {date} ({days} ngày)
       </Badge>
     );
   if (days <= 90)
@@ -57,10 +57,10 @@ function ExpiryBadge({ date }: { date: string | null | undefined }) {
       <Badge
         className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100 font-extrabold shadow-none hover:bg-amber-50"
       >
-        {date} ({days}d)
+        {date} ({days} ngày)
       </Badge>
     );
-  return <span className="text-xs text-slate-650 font-semibold font-mono">{date}</span>;
+  return <span className="text-xs text-slate-655 font-semibold font-mono">{date}</span>;
 }
 
 // ─── Lot Form Modal ───────────────────────────────────────────────────────────
@@ -105,7 +105,7 @@ function LotFormModal({ mode, initial, onClose, onSave }: LotFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.product_id || !form.lot_no.trim()) {
-      toast.error("Product and Lot No are required");
+      toast.error("Vui lòng chọn sản phẩm và nhập số lô");
       return;
     }
     setSaving(true);
@@ -122,7 +122,7 @@ function LotFormModal({ mode, initial, onClose, onSave }: LotFormProps) {
       onClose();
     } catch (err: any) {
       toast.error(
-        err?.response?.data?.message || err.message || "Failed to save",
+        err?.response?.data?.message || err.message || "Lưu thất bại",
       );
     } finally {
       setSaving(false);
@@ -134,17 +134,17 @@ function LotFormModal({ mode, initial, onClose, onSave }: LotFormProps) {
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>
-            {mode === "create" ? "Create Stock Lot" : "Edit Stock Lot"}
+            {mode === "create" ? "Tạo lô hàng mới" : "Chỉnh sửa lô hàng"}
           </DialogTitle>
           <DialogDescription>
-            Input metadata, serial numbers, and expiry thresholds for this inventory batch
+            Nhập thông tin chi tiết, số sê-ri và hạn dùng cho lô hàng tồn kho này
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Product <span className="text-red-500">*</span>
+              Sản phẩm <span className="text-red-500">*</span>
             </label>
             <select
               value={form.product_id}
@@ -154,7 +154,7 @@ function LotFormModal({ mode, initial, onClose, onSave }: LotFormProps) {
               disabled={mode === "edit"}
               className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
             >
-              <option value="">-- Select Product --</option>
+              <option value="">-- Chọn sản phẩm --</option>
               {products.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name} ({p.sku})
@@ -166,30 +166,30 @@ function LotFormModal({ mode, initial, onClose, onSave }: LotFormProps) {
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Lot No <span className="text-red-500">*</span>
+                Số lô <span className="text-red-500">*</span>
               </label>
               <Input
                 value={form.lot_no}
                 onChange={(val) => setForm({ ...form, lot_no: val })}
                 disabled={mode === "edit"}
                 className="border-slate-200 focus:ring-orange-400 focus:border-orange-400 font-mono"
-                placeholder="e.g. LOT-2026-001"
+                placeholder="Ví dụ: LOT-2026-001"
               />
               {mode === "edit" && (
                 <p className="text-[10px] text-gray-400 mt-0.5">
-                  Lot No cannot be changed
+                  Số lô không thể thay đổi
                 </p>
               )}
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Serial No
+                Số sê-ri (S/N)
               </label>
               <Input
                 value={form.serial_no}
                 onChange={(val) => setForm({ ...form, serial_no: val })}
                 className="border-slate-200 focus:ring-orange-400 focus:border-orange-400"
-                placeholder="Optional serial ID"
+                placeholder="Không bắt buộc"
               />
             </div>
           </div>
@@ -197,7 +197,7 @@ function LotFormModal({ mode, initial, onClose, onSave }: LotFormProps) {
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Manufacture Date
+                Ngày sản xuất
               </label>
               <input
                 type="date"
@@ -210,7 +210,7 @@ function LotFormModal({ mode, initial, onClose, onSave }: LotFormProps) {
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Expiry Date
+                Hạn sử dụng
               </label>
               <input
                 type="date"
@@ -225,7 +225,7 @@ function LotFormModal({ mode, initial, onClose, onSave }: LotFormProps) {
 
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Supplier
+              Nhà cung cấp
             </label>
             <select
               value={form.supplier_id}
@@ -234,7 +234,7 @@ function LotFormModal({ mode, initial, onClose, onSave }: LotFormProps) {
               }
               className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
             >
-              <option value="">-- Select Supplier --</option>
+              <option value="">-- Chọn nhà cung cấp --</option>
               {suppliers.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -245,14 +245,14 @@ function LotFormModal({ mode, initial, onClose, onSave }: LotFormProps) {
 
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Notes
+              Ghi chú
             </label>
             <textarea
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
               rows={2}
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
-              placeholder="Optional notes..."
+              placeholder="Nhập ghi chú..."
             />
           </div>
 
@@ -263,14 +263,14 @@ function LotFormModal({ mode, initial, onClose, onSave }: LotFormProps) {
               onClick={onClose}
               disabled={saving}
             >
-              Cancel
+              Hủy
             </Button>
             <Button
               type="submit"
               variant="primary"
               loading={saving}
             >
-              {mode === "create" ? "Create Lot" : "Save Changes"}
+              {mode === "create" ? "Tạo lô" : "Lưu thay đổi"}
             </Button>
           </DialogFooter>
         </form>
@@ -325,7 +325,7 @@ export default function StockLotPage() {
 
   const handleCreate = async (data: CreateLotDTO) => {
     await dispatch(createLotThunk(data)).unwrap();
-    toast.success("Lot created!");
+    toast.success("Tạo lô hàng thành công!");
   };
 
   const handleUpdate = async (data: any) => {
@@ -333,7 +333,7 @@ export default function StockLotPage() {
     await dispatch(
       updateLotThunk({ id: Number(editTarget.id), data }),
     ).unwrap();
-    toast.success("Lot updated!");
+    toast.success("Cập nhật lô hàng thành công!");
   };
 
   const handleDelete = async () => {
@@ -341,10 +341,10 @@ export default function StockLotPage() {
     setDeleting(true);
     try {
       await dispatch(deleteLotThunk(Number(deleteTarget.id))).unwrap();
-      toast.success("Lot deleted!");
+      toast.success("Xóa lô hàng thành công!");
     } catch (err: any) {
       toast.error(
-        err?.response?.data?.message || err.message || "Failed to delete",
+        err?.response?.data?.message || err.message || "Xóa thất bại",
       );
     } finally {
       setDeleting(false);
@@ -366,12 +366,12 @@ export default function StockLotPage() {
             <AlertTriangle className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Stock Lots</h1>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Quản lý lô hàng</h1>
             <p className="text-gray-500 text-sm mt-0.5">
-              {lots.length} lots total
+              Tổng cộng {lots.length} lô hàng
               {expiringCount > 0 && (
                 <Badge variant="destructive" className="ml-2.5 text-[10px] font-bold border shadow-none bg-rose-50 text-rose-700 border-rose-100">
-                  {expiringCount} expiring soon
+                  {expiringCount} lô sắp hết hạn
                 </Badge>
               )}
             </p>
@@ -386,7 +386,7 @@ export default function StockLotPage() {
           size="md"
           className="self-end sm:self-auto"
         >
-          Create Lot
+          Tạo lô
         </Button>
       </div>
 
@@ -397,7 +397,7 @@ export default function StockLotPage() {
             <Layers className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Batches</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tổng số lô</p>
             <p className="text-lg font-extrabold text-slate-850 mt-0.5">{lots.length}</p>
           </div>
         </div>
@@ -407,7 +407,7 @@ export default function StockLotPage() {
             <Clock className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Expiring 30d</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sắp hết hạn (30 ngày)</p>
             <p className="text-lg font-extrabold text-slate-850 mt-0.5">{expiringCount}</p>
           </div>
         </div>
@@ -417,7 +417,7 @@ export default function StockLotPage() {
             <XCircle className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Expired Lots</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lô đã hết hạn</p>
             <p className="text-lg font-extrabold text-slate-850 mt-0.5">
               {lots.filter(l => { const d = daysUntil(l.expiry_date); return d !== null && d < 0; }).length}
             </p>
@@ -429,7 +429,7 @@ export default function StockLotPage() {
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Healthy Batches</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lô còn hạn tốt</p>
             <p className="text-lg font-extrabold text-slate-850 mt-0.5">
               {lots.filter(l => { const d = daysUntil(l.expiry_date); return d === null || d > 30; }).length}
             </p>
@@ -444,7 +444,7 @@ export default function StockLotPage() {
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none z-10" />
             <Input
-              placeholder="Search lots by SKU, lot no, product name..."
+              placeholder="Tìm kiếm lô hàng theo SKU, số lô, tên sản phẩm..."
               value={search}
               onChange={setSearch}
               className="pl-9 bg-white border-slate-200 focus:ring-orange-500 focus:border-orange-500"
@@ -457,10 +457,10 @@ export default function StockLotPage() {
               onChange={(e) => setFilterExpiry(e.target.value as any)}
               className="h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition min-w-[160px]"
             >
-              <option value="all">All Expiry</option>
-              <option value="expiring30">Expiring ≤ 30 days</option>
-              <option value="expiring90">Expiring ≤ 90 days</option>
-              <option value="expired">Expired</option>
+              <option value="all">Tất cả hạn dùng</option>
+              <option value="expiring30">Hết hạn ≤ 30 ngày</option>
+              <option value="expiring90">Hết hạn ≤ 90 ngày</option>
+              <option value="expired">Đã hết hạn</option>
             </select>
 
             {(search || filterExpiry !== "all") && (
@@ -473,7 +473,7 @@ export default function StockLotPage() {
                 size="sm"
                 className="text-orange-500 hover:text-orange-600 hover:bg-orange-50/40"
               >
-                Clear Filters
+                Xóa bộ lọc
               </Button>
             )}
           </div>
@@ -484,14 +484,14 @@ export default function StockLotPage() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50/80 text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-slate-100">
               <tr>
-                <th className="py-3.5 px-6 text-left">Product</th>
-                <th className="py-3.5 px-6 text-left">Lot No</th>
-                <th className="py-3.5 px-6 text-left">Serial No</th>
-                <th className="py-3.5 px-6 text-left">Manufacture</th>
-                <th className="py-3.5 px-6 text-left">Expiry</th>
-                <th className="py-3.5 px-6 text-left">Supplier</th>
-                <th className="py-3.5 px-6 text-left">Notes</th>
-                <th className="py-3.5 px-6 text-center w-28">Actions</th>
+                <th className="py-3.5 px-6 text-left">Sản phẩm</th>
+                <th className="py-3.5 px-6 text-left">Số lô</th>
+                <th className="py-3.5 px-6 text-left">Số sê-ri</th>
+                <th className="py-3.5 px-6 text-left">Ngày SX</th>
+                <th className="py-3.5 px-6 text-left">Hạn sử dụng</th>
+                <th className="py-3.5 px-6 text-left">Nhà cung cấp</th>
+                <th className="py-3.5 px-6 text-left">Ghi chú</th>
+                <th className="py-3.5 px-6 text-center w-28">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -500,14 +500,14 @@ export default function StockLotPage() {
                   <td colSpan={8} className="py-16 text-center text-slate-400">
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-8 h-8 border-3 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-xs font-medium">Loading lots data...</span>
+                      <span className="text-xs font-medium">Đang tải dữ liệu lô hàng...</span>
                     </div>
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-16 text-center text-slate-400 italic">
-                    No lots found
+                    Không tìm thấy lô hàng nào
                   </td>
                 </tr>
               ) : (
@@ -567,14 +567,14 @@ export default function StockLotPage() {
                               setFormMode("edit");
                             }}
                             className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-blue-600 bg-white hover:bg-blue-50 hover:border-blue-100 transition-colors shadow-sm"
-                            title="Edit"
+                            title="Chỉnh sửa"
                           >
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => setDeleteTarget(lot)}
                             className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-rose-600 bg-white hover:bg-rose-50 hover:text-rose-700 hover:border-rose-100 transition-colors shadow-sm"
-                            title="Delete"
+                            title="Xóa"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -612,11 +612,11 @@ export default function StockLotPage() {
                   <Trash2 className="h-6 w-6 text-red-600" />
                 </div>
                 <DialogTitle className="text-center text-lg font-bold text-gray-900">
-                  Delete Stock Lot
+                  Xóa lô hàng
                 </DialogTitle>
                 <DialogDescription className="text-center text-sm text-gray-500 mt-1">
-                  Are you sure you want to delete lot <span className="font-mono font-bold text-slate-800">{deleteTarget.lot_no}</span>?
-                  This action cannot be undone and will remove all corresponding batch entries.
+                  Bạn có chắc chắn muốn xóa lô hàng <span className="font-mono font-bold text-slate-800">{deleteTarget.lot_no}</span>?
+                  Hành động này không thể hoàn tác và sẽ xóa tất cả các mục tồn kho liên quan.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter className="flex-row justify-center gap-3 mt-4">
@@ -626,7 +626,7 @@ export default function StockLotPage() {
                   disabled={deleting}
                   className="w-full sm:w-auto"
                 >
-                  Cancel
+                  Hủy
                 </Button>
                 <Button
                   variant="danger"
@@ -634,7 +634,7 @@ export default function StockLotPage() {
                   loading={deleting}
                   className="w-full sm:w-auto"
                 >
-                  Yes, Delete
+                  Xác nhận xóa
                 </Button>
               </DialogFooter>
             </>
