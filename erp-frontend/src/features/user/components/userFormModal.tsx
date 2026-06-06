@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { User, Role } from "../../../types/User";
 import { createUserDTO, updateUserDTO } from "../dto/userDTO";
 import { Branch } from "../../company/store";
+import axiosClient from "../../../api/axiosClient";
 
 interface UserFormModalProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ export function UserFormModal({
   branches,
   error,
 }: UserFormModalProps) {
+  const [employees, setEmployees] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -32,8 +34,23 @@ export function UserFormModal({
     phone: "",
     role_id: roles.length > 0 ? roles[0].id : 1,
     branch_id: branches.length > 0 ? branches[0].id : 1,
+    employee_id: "" as string | number,
   });
 
+
+  // Load danh sách nhân viên chưa có tài khoản
+  useEffect(() => {
+    if (isOpen && !editUser) {
+      axiosClient.get("/hrm/employees")
+        .then(res => {
+          const available = (res.data || []).filter((emp: any) => emp.status === "active" && !emp.user);
+          setEmployees(available);
+        })
+        .catch(err => console.error("Error loading employees:", err));
+    } else {
+      setEmployees([]);
+    }
+  }, [isOpen, editUser]);
 
   // Khi editUser thay đổi → cập nhật form
   useEffect(() => {
@@ -46,6 +63,7 @@ export function UserFormModal({
         phone: editUser.phone || "",
         role_id: editUser.role?.id || 1,
         branch_id: editUser.branch?.id || 1,
+        employee_id: "",
       });
     } else {
       resetForm();
@@ -62,6 +80,7 @@ export function UserFormModal({
       phone: "",
       role_id: roles.length > 0 ? roles[0].id : 1,
       branch_id: branches.length > 0 ? branches[0].id : 1,
+      employee_id: "",
     });
   };
 
@@ -74,6 +93,29 @@ export function UserFormModal({
       [name]:
         name === "role_id" || name === "branch_id" ? parseInt(value) : value,
     }));
+  };
+
+  const handleEmployeeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const empId = e.target.value;
+    if (empId) {
+      const emp = employees.find((x) => x.id === Number(empId));
+      if (emp) {
+        setFormData((prev) => ({
+          ...prev,
+          employee_id: emp.id,
+          username: emp.emp_code,
+          full_name: emp.full_name,
+          branch_id: emp.branch_id,
+        }));
+      }
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        employee_id: "",
+        username: "",
+        full_name: "",
+      }));
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -100,6 +142,7 @@ export function UserFormModal({
         phone: formData.phone,
         role_id: formData.role_id,
         branch_id: formData.branch_id,
+        ...(formData.employee_id ? { employee_id: Number(formData.employee_id) } : {}),
       };
       onCreate(payload);
     }
@@ -119,6 +162,28 @@ export function UserFormModal({
   </div>
 )}
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Link Employee (chỉ hiển thị khi tạo mới) */}
+          {!editUser && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Liên kết Nhân viên (Chờ cấp tài khoản)
+              </label>
+              <select
+                name="employee_id"
+                value={formData.employee_id}
+                onChange={handleEmployeeChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white text-sm"
+              >
+                <option value="">-- Chọn nhân viên để tự điền --</option>
+                {employees.map((emp) => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.emp_code} - {emp.full_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Username */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -129,9 +194,9 @@ export function UserFormModal({
               name="username"
               value={formData.username}
               onChange={handleChange}
-              disabled={!!editUser}
+              disabled={!!editUser || !!formData.employee_id}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -162,7 +227,8 @@ export function UserFormModal({
               name="full_name"
               value={formData.full_name}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              disabled={!!formData.employee_id}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -203,7 +269,7 @@ export function UserFormModal({
               name="role_id"
               value={formData.role_id}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
             >
               {roles.map((role) => (
                 <option key={role.id} value={role.id}>
@@ -222,7 +288,8 @@ export function UserFormModal({
               name="branch_id"
               value={formData.branch_id}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              disabled={!!formData.employee_id}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
             >
               {branches.map((branch) => (
                 <option key={branch.id} value={branch.id}>

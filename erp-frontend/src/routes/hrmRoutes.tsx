@@ -10,6 +10,8 @@ import PayrollPeriodPage from "../features/hrm/page/PayrollPeriodPage";
 import PayrollItemPage from "../features/hrm/page/PayrollItemPage"; 
 import PayrollRunPage from "../features/hrm/page/PayrollRunPage";
 import LeaveRequestGuard from "../features/hrm/page/LeaveRequestGuard";
+import PayrollMappingPage from "../features/hrm/page/PayrollMappingPage";
+import CostCenterPage from "../features/hrm/page/CostCenterPage";
 
 const hrmRoutes: RouteObject[] = [
   {
@@ -56,6 +58,14 @@ const hrmRoutes: RouteObject[] = [
   {
     path: "/hrm/payroll-runs",
     element: <PayrollRunPage />,
+  },
+  {
+    path: "/hrm/payroll-mappings",
+    element: <PayrollMappingPage />,
+  },
+  {
+    path: "/hrm/cost-centers",
+    element: <CostCenterPage />,
   },
   // ví dụ sau này:
   // { path: "/hrm/position", element: <PositionPage /> },

@@ -6,6 +6,7 @@ export interface createUserDTO {
   email?: string;
   phone?: string;
   role_id: number;
+  employee_id?: number;
 }
 
 export interface updateUserDTO {

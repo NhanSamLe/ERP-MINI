@@ -10,11 +10,11 @@ interface Props {
 }
 
 const ACCOUNT_TYPES: { value: GlAccountType; label: string }[] = [
-  { value: "asset", label: "Asset" },
-  { value: "liability", label: "Liability" },
-  { value: "equity", label: "Equity" },
-  { value: "revenue", label: "Revenue" },
-  { value: "expense", label: "Expense" },
+  { value: "asset", label: "Tài sản" },
+  { value: "liability", label: "Nợ phải trả" },
+  { value: "equity", label: "Vốn chủ sở hữu" },
+  { value: "revenue", label: "Doanh thu" },
+  { value: "expense", label: "Chi phí" },
 ];
 
 const GlAccountFormModal: React.FC<Props> = ({
@@ -62,12 +62,12 @@ const GlAccountFormModal: React.FC<Props> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="bg-white rounded-xl shadow-lg w-full max-w-lg p-6">
         <h2 className="text-xl font-semibold mb-4">
-          {initialValue ? "Edit Account" : "Add Account"}
+          {initialValue ? "Sửa tài khoản" : "Thêm tài khoản mới"}
         </h2>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
-            <label className="block text-sm font-medium mb-1">Account Code</label>
+            <label className="block text-sm font-medium mb-1">Mã tài khoản</label>
             <input
               name="code"
               value={formData.code}
@@ -79,7 +79,7 @@ const GlAccountFormModal: React.FC<Props> = ({
 
           <div>
             <label className="block text-sm font-medium mb-1">
-              Account Name
+              Tên tài khoản
             </label>
             <input
               name="name"
@@ -92,7 +92,7 @@ const GlAccountFormModal: React.FC<Props> = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Type</label>
+              <label className="block text-sm font-medium mb-1">Loại tài khoản</label>
               <select
                 name="type"
                 value={formData.type}
@@ -109,7 +109,7 @@ const GlAccountFormModal: React.FC<Props> = ({
 
             <div>
               <label className="block text-sm font-medium mb-1">
-                Normal Side
+                Bên phát sinh mặc định
               </label>
               <select
                 name="normal_side"
@@ -117,8 +117,8 @@ const GlAccountFormModal: React.FC<Props> = ({
                 onChange={handleChange}
                 className="w-full border rounded-md px-3 py-2"
               >
-                <option value="debit">Debit</option>
-                <option value="credit">Credit</option>
+                <option value="debit">Nợ</option>
+                <option value="credit">Có</option>
               </select>
             </div>
           </div>
@@ -130,14 +130,14 @@ const GlAccountFormModal: React.FC<Props> = ({
               className="px-4 py-2 rounded-md border"
               disabled={loading}
             >
-              Cancel
+              Hủy
             </button>
             <button
               type="submit"
               className="px-4 py-2 rounded-md bg-blue-600 text-white"
               disabled={loading}
             >
-              {loading ? "Saving..." : "Save"}
+              {loading ? "Đang lưu..." : "Lưu"}
             </button>
           </div>
         </form>

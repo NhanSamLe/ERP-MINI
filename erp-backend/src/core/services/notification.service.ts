@@ -15,6 +15,9 @@ const APPROVAL_ROLES: Record<ReferenceType, string[]> = {
     AP_INVOICE: ["CHACC", "BRANCH_MANAGER", "CEO"],
     AP_PAYMENT: ["CHACC", "BRANCH_MANAGER", "CEO"],
     LEAD: ["SALESMANAGER"], // Just in case
+    PAYROLL_RUN: ["CHIEF_ACCOUNTANT", "CHACC", "CEO"],
+    EMPLOYEE: ["HRMANAGER"],
+    LEAVE_REQUEST: ["HRMANAGER"],
 };
 
 /**
@@ -28,6 +31,9 @@ const REFERENCE_URL_MAP: Record<ReferenceType, (id: number) => string> = {
     AP_INVOICE: (id) => `/purchase/invoices/${id}`,
     AP_PAYMENT: (id) => `/purchase/payments/${id}`,
     LEAD: (id) => `/crm/leads`,
+    PAYROLL_RUN: (id) => `/hrm/payroll-runs`,
+    EMPLOYEE: (id) => `/hrm/employees`,
+    LEAVE_REQUEST: (id) => `/hrm/leave-requests`,
 };
 
 interface CreateNotificationParams {
@@ -41,6 +47,8 @@ interface CreateNotificationParams {
     approverName?: string; // Tên người duyệt
     rejectReason?: string; // Lý do từ chối
     io: SocketIOServer; // Socket.IO instance
+    targetRoles?: string[]; // (Tùy chọn) Danh sách role nhận thông báo duyệt thay thế
+    employeeName?: string; // Tên nhân viên
 }
 
 export const notificationService = {
@@ -59,6 +67,7 @@ export const notificationService = {
             approverName,
             rejectReason,
             io,
+            targetRoles,
         } = params;
 
         const url = REFERENCE_URL_MAP[referenceType](referenceId);
@@ -70,7 +79,7 @@ export const notificationService = {
         switch (type) {
             case "SUBMIT":
                 // Gửi cho người submit và các manager có quyền duyệt
-                const approverRoles = APPROVAL_ROLES[referenceType];
+                const approverRoles = targetRoles || APPROVAL_ROLES[referenceType] || [];
 
                 // Lấy danh sách users có role phù hợp trong cùng branch
                 // Cần include Role để filter theo code
@@ -100,10 +109,22 @@ export const notificationService = {
                     recipientIds.push(submitterId);
                 }
 
-                title = `Chứng từ ${referenceNo} cần duyệt`;
-                message = submitterName
-                    ? `${submitterName} đã gửi ${this.getDocumentTypeName(referenceType)} ${referenceNo} để duyệt`
-                    : `${this.getDocumentTypeName(referenceType)} ${referenceNo} đã được gửi để duyệt`;
+                if (referenceType === "EMPLOYEE") {
+                    title = `Hồ sơ nhân viên ${referenceNo} chờ duyệt`;
+                    message = submitterName
+                        ? `${submitterName} đã thêm nhân viên mới ${referenceNo} ${params.employeeName ? `- ${params.employeeName} ` : ""}chờ duyệt.`
+                        : `Nhân viên mới ${referenceNo} ${params.employeeName ? `- ${params.employeeName} ` : ""}đang chờ duyệt.`;
+                } else if (referenceType === "LEAVE_REQUEST") {
+                    title = `Đơn xin nghỉ phép ${referenceNo} chờ duyệt`;
+                    message = submitterName
+                        ? `${submitterName} đã gửi đơn xin nghỉ phép ${referenceNo} chờ duyệt.`
+                        : `Đơn xin nghỉ phép ${referenceNo} đang chờ duyệt.`;
+                } else {
+                    title = `Chứng từ ${referenceNo} cần duyệt`;
+                    message = submitterName
+                        ? `${submitterName} đã gửi ${this.getDocumentTypeName(referenceType)} ${referenceNo} để duyệt`
+                        : `${this.getDocumentTypeName(referenceType)} ${referenceNo} đã được gửi để duyệt`;
+                }
                 break;
 
             case "APPROVE":
@@ -112,10 +133,57 @@ export const notificationService = {
                     recipientIds = [submitterId];
                 }
 
-                title = `${referenceNo} đã được duyệt`;
-                message = approverName
-                    ? `${this.getDocumentTypeName(referenceType)} ${referenceNo} đã được ${approverName} duyệt`
-                    : `${this.getDocumentTypeName(referenceType)} ${referenceNo} đã được duyệt`;
+                if (referenceType === "PAYROLL_RUN") {
+                    // Gửi thêm cho tất cả HRMANAGER, HR_STAFF trong branch
+                    const hrRoles = ["HRMANAGER", "HR_STAFF"];
+                    const { Role } = await import("../../modules/auth/models/role.model");
+                    const hrs = await User.findAll({
+                        where: { branch_id: branchId },
+                        include: [{ model: Role, as: "role", where: { code: { [Op.in]: hrRoles } } }]
+                    });
+                    hrs.forEach(h => {
+                        if (!recipientIds.includes(h.id)) recipientIds.push(h.id);
+                    });
+                }
+
+                if (referenceType === "EMPLOYEE") {
+                    // Gửi cho tất cả ADMIN để tạo tài khoản
+                    const adminRoles = ["ADMIN"];
+                    const { Role } = await import("../../modules/auth/models/role.model");
+                    const admins = await User.findAll({
+                        include: [{ model: Role, as: "role", where: { code: { [Op.in]: adminRoles } } }]
+                    });
+                    admins.forEach(adm => {
+                        if (!recipientIds.includes(adm.id)) recipientIds.push(adm.id);
+                    });
+
+                    // Gửi cho các HR_STAFF ở chi nhánh đó để biết hồ sơ đã được duyệt
+                    const staffRoles = ["HR_STAFF"];
+                    const hrs = await User.findAll({
+                        where: { branch_id: branchId },
+                        include: [{ model: Role, as: "role", where: { code: { [Op.in]: staffRoles } } }]
+                    });
+                    hrs.forEach(h => {
+                        if (!recipientIds.includes(h.id)) recipientIds.push(h.id);
+                    });
+                }
+
+                if (referenceType === "EMPLOYEE") {
+                    title = `Nhân viên ${referenceNo} đã được duyệt`;
+                    message = approverName
+                        ? `Nhân viên ${referenceNo} ${params.employeeName ? `- ${params.employeeName} ` : ""}đã được ${approverName} duyệt. Vui lòng tạo tài khoản đăng nhập.`
+                        : `Nhân viên ${referenceNo} ${params.employeeName ? `- ${params.employeeName} ` : ""}đã được duyệt. Vui lòng tạo tài khoản đăng nhập.`;
+                } else if (referenceType === "LEAVE_REQUEST") {
+                    title = `Đơn xin nghỉ phép ${referenceNo} đã được duyệt`;
+                    message = approverName
+                        ? `Đơn xin nghỉ phép ${referenceNo} đã được ${approverName} duyệt.`
+                        : `Đơn xin nghỉ phép ${referenceNo} đã được duyệt.`;
+                } else {
+                    title = `${referenceNo} đã được duyệt`;
+                    message = approverName
+                        ? `${this.getDocumentTypeName(referenceType)} ${referenceNo} đã được ${approverName} duyệt`
+                        : `${this.getDocumentTypeName(referenceType)} ${referenceNo} đã được duyệt`;
+                }
                 break;
 
             case "SYSTEM":
@@ -134,13 +202,36 @@ export const notificationService = {
                     recipientIds = [submitterId];
                 }
 
-                title = `${referenceNo} bị từ chối`;
-                message = approverName
-                    ? `${this.getDocumentTypeName(referenceType)} ${referenceNo} đã bị ${approverName} từ chối`
-                    : `${this.getDocumentTypeName(referenceType)} ${referenceNo} đã bị từ chối`;
+                if (referenceType === "PAYROLL_RUN") {
+                    // Gửi thêm cho tất cả HRMANAGER, HR_STAFF trong branch
+                    const hrRoles = ["HRMANAGER", "HR_STAFF"];
+                    const { Role } = await import("../../modules/auth/models/role.model");
+                    const hrs = await User.findAll({
+                        where: { branch_id: branchId },
+                        include: [{ model: Role, as: "role", where: { code: { [Op.in]: hrRoles } } }]
+                    });
+                    hrs.forEach(h => {
+                        if (!recipientIds.includes(h.id)) recipientIds.push(h.id);
+                    });
+                }
 
-                if (rejectReason) {
-                    message += `\nLý do: ${rejectReason}`;
+                if (referenceType === "LEAVE_REQUEST") {
+                    title = `Đơn xin nghỉ phép ${referenceNo} bị từ chối`;
+                    message = approverName
+                        ? `Đơn xin nghỉ phép ${referenceNo} đã bị ${approverName} từ chối.`
+                        : `Đơn xin nghỉ phép ${referenceNo} đã bị từ chối.`;
+                    if (rejectReason) {
+                        message += ` Lý do: ${rejectReason}`;
+                    }
+                } else {
+                    title = `${referenceNo} bị từ chối`;
+                    message = approverName
+                        ? `${this.getDocumentTypeName(referenceType)} ${referenceNo} đã bị ${approverName} từ chối`
+                        : `${this.getDocumentTypeName(referenceType)} ${referenceNo} đã bị từ chối`;
+
+                    if (rejectReason) {
+                        message += `\nLý do: ${rejectReason}`;
+                    }
                 }
                 break;
         }
@@ -281,6 +372,9 @@ export const notificationService = {
             AP_INVOICE: "Hóa đơn mua",
             AP_PAYMENT: "Phiếu chi",
             LEAD: "Khách hàng tiềm năng",
+            PAYROLL_RUN: "Bảng lương",
+            EMPLOYEE: "Nhân viên",
+            LEAVE_REQUEST: "Đơn xin nghỉ phép",
         };
         return names[referenceType] || referenceType;
     },

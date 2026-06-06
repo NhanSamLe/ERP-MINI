@@ -47,8 +47,8 @@ const PayrollPeriodPage: React.FC = () => {
   const roleCode =
     (authUser as any)?.role?.code ?? (authUser as any)?.role ?? "UNKNOWN";
 
-  const isHRStaff = roleCode === "HR_STAFF";
-  const isChiefAcc = roleCode === "CHIEF_ACCOUNTANT";
+  const isHRStaff = roleCode === "HR_STAFF" || roleCode === "HRMANAGER" || roleCode === "ADMIN";
+  const isChiefAcc = roleCode === "CHIEF_ACCOUNTANT" || roleCode === "CHACC";
 
   // Filter trạng thái, Chief Accountant mặc định = "closed"
   const [statusFilter, setStatusFilter] =
@@ -114,12 +114,12 @@ const PayrollPeriodPage: React.FC = () => {
     const end = new Date(form.end_date);
 
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-      toast.error("Invalid date");
+      toast.error("Ngày không hợp lệ");
       return;
     }
 
     if (start > end) {
-      toast.error("Start date must be before end date");
+      toast.error("Ngày bắt đầu phải trước ngày kết thúc");
       return;
     }
 
@@ -143,7 +143,7 @@ const PayrollPeriodPage: React.FC = () => {
   };
 
   const handleClosePeriod = async (id: number) => {
-    if (!window.confirm("Are you sure you want to close this payroll period?")) return;
+    if (!window.confirm("Bạn có chắc chắn muốn khóa kỳ lương này không?")) return;
     try {
       await dispatch(closePayrollPeriodThunk(id) as any).unwrap();
     } catch {
@@ -152,7 +152,7 @@ const PayrollPeriodPage: React.FC = () => {
   };
 
   const handleDeletePeriod = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this payroll period?")) return;
+    if (!window.confirm("Bạn có chắc chắn muốn xóa kỳ lương này không?")) return;
     try {
       await dispatch(deletePayrollPeriodThunk(id) as any).unwrap();
     } catch {
@@ -217,9 +217,9 @@ const PayrollPeriodPage: React.FC = () => {
       closed: "bg-gray-100 text-gray-800 border-gray-200",
     };
     const labels = {
-      open: "Open",
-      processed: "Processed",
-      closed: "Closed",
+      open: "Đang mở",
+      processed: "Đã xử lý",
+      closed: "Đã khóa",
     };
     return (
       <span
@@ -238,7 +238,7 @@ const PayrollPeriodPage: React.FC = () => {
       <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold flex items-center gap-3">
           <Calendar className="w-8 h-8 text-blue-600" />
-          Payroll Periods
+          Kỳ lương
         </h1>
 
         {isHRStaff && (
@@ -246,7 +246,7 @@ const PayrollPeriodPage: React.FC = () => {
             onClick={openCreateModal}
             className="bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-orange-700 transition-colors shadow-md"
           >
-            <Plus className="w-5 h-5" /> Create Payroll Period
+            <Plus className="w-5 h-5" /> Tạo kỳ lương
           </button>
         )}
       </div>
@@ -256,7 +256,7 @@ const PayrollPeriodPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <Filter className="w-5 h-5 text-gray-500" />
           <label className="text-sm font-medium text-gray-700">
-            Status:
+            Trạng thái:
           </label>
           <select
             className={`border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
@@ -266,10 +266,10 @@ const PayrollPeriodPage: React.FC = () => {
             onChange={(e) => setStatusFilter(e.target.value as any)}
             disabled={isChiefAcc}
           >
-            <option value="all">All</option>
-            <option value="open">Open</option>
-            <option value="processed">Processed</option>
-            <option value="closed">Closed</option>
+            <option value="all">Tất cả</option>
+            <option value="open">Đang mở</option>
+            <option value="processed">Đã xử lý</option>
+            <option value="closed">Đã khóa</option>
           </select>
         </div>
       </div>
@@ -289,22 +289,22 @@ const PayrollPeriodPage: React.FC = () => {
             <thead>
               <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b">
                 <th className="px-6 py-4 text-left font-semibold text-gray-700">
-                  Period Code
+                  Mã kỳ lương
                 </th>
                 <th className="px-6 py-4 text-left font-semibold text-gray-700">
-                  Branch
+                  Chi nhánh
                 </th>
                 <th className="px-6 py-4 text-left font-semibold text-gray-700">
-                  Start Date
+                  Ngày bắt đầu
                 </th>
                 <th className="px-6 py-4 text-left font-semibold text-gray-700">
-                  End Date
+                  Ngày kết thúc
                 </th>
                 <th className="px-6 py-4 text-center font-semibold text-gray-700">
-                  Status
+                  Trạng thái
                 </th>
                 <th className="px-6 py-4 text-center font-semibold text-gray-700">
-                  Actions
+                  Thao tác
                 </th>
               </tr>
             </thead>
@@ -314,7 +314,7 @@ const PayrollPeriodPage: React.FC = () => {
                   <td colSpan={6} className="text-center py-12">
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-8 h-8 border-4 border-orange-200 border-t-orange-600 rounded-full animate-spin"></div>
-                      <span className="text-gray-500">Loading...</span>
+                      <span className="text-gray-500">Đang tải...</span>
                     </div>
                   </td>
                 </tr>
@@ -324,7 +324,7 @@ const PayrollPeriodPage: React.FC = () => {
                     <div className="flex flex-col items-center gap-3">
                       <Calendar className="w-12 h-12 text-gray-300" />
                       <span className="text-gray-500">
-                        No payroll periods available
+                        Không có kỳ lương nào
                       </span>
                     </div>
                   </td>
@@ -359,7 +359,7 @@ const PayrollPeriodPage: React.FC = () => {
                               onClick={() => openEditModal(row)}
                               disabled={row.status === "closed"}
                               className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                              title="Edit"
+                              title="Sửa"
                             >
                               <Pencil className="w-4 h-4" />
                             </button>
@@ -367,7 +367,7 @@ const PayrollPeriodPage: React.FC = () => {
                               <button
                                 onClick={() => handleClosePeriod(row.id!)}
                                 className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                                title="Close Period"
+                                title="Khóa kỳ lương"
                               >
                                 <Lock className="w-4 h-4" />
                               </button>
@@ -375,7 +375,7 @@ const PayrollPeriodPage: React.FC = () => {
                             <button
                               onClick={() => handleDeletePeriod(row.id!)}
                               className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Delete"
+                              title="Xóa"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -394,14 +394,14 @@ const PayrollPeriodPage: React.FC = () => {
         {totalItems > 0 && (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t bg-gradient-to-r from-gray-50 to-white">
             <div className="text-sm text-gray-600">
-              Showing{" "}
+              Hiển thị{" "}
               <span className="font-semibold text-gray-900">
                 {startIndex + 1} -{" "}
                 {Math.min(startIndex + pageSize, totalItems)}
               </span>{" "}
-              of{" "}
+              trên{" "}
               <span className="font-semibold text-gray-900">{totalItems}</span>{" "}
-              payroll periods
+              kỳ lương
             </div>
 
             <div className="flex items-center gap-2">
@@ -411,7 +411,7 @@ const PayrollPeriodPage: React.FC = () => {
                 className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white hover:shadow-sm transition-all duration-200 bg-gray-50"
               >
                 <ChevronLeft className="w-4 h-4" />
-                <span className="hidden sm:inline">Previous</span>
+                <span className="hidden sm:inline">Trước</span>
               </button>
 
               <div className="flex items-center gap-1">
@@ -448,7 +448,7 @@ const PayrollPeriodPage: React.FC = () => {
                 disabled={currentPage === totalPages}
                 className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white hover:shadow-sm transition-all duration-200 bg-gray-50"
               >
-                <span className="hidden sm:inline">Next</span>
+                <span className="hidden sm:inline">Sau</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -464,7 +464,7 @@ const PayrollPeriodPage: React.FC = () => {
             <div className="border-b px-6 py-4 bg-gradient-to-r from-orange-500 to-orange-600">
               <h2 className="text-xl font-semibold text-white flex items-center gap-2">
                 <Calendar className="w-6 h-6" />
-                {editingId ? "Update Payroll Period" : "Create New Payroll Period"}
+                {editingId ? "Cập nhật kỳ lương" : "Tạo kỳ lương mới"}
               </h2>
             </div>
 
@@ -472,7 +472,7 @@ const PayrollPeriodPage: React.FC = () => {
             <form className="p-6 space-y-5" onSubmit={handleSubmit}>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Branch <span className="text-red-500">*</span>
+                  Chi nhánh <span className="text-red-500">*</span>
                 </label>
                 <select
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
@@ -495,7 +495,7 @@ const PayrollPeriodPage: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Period Code <span className="text-red-500">*</span>
+                  Mã kỳ lương <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -504,7 +504,7 @@ const PayrollPeriodPage: React.FC = () => {
                   onChange={(e) =>
                     setForm((f) => ({ ...f, period_code: e.target.value }))
                   }
-                  placeholder="e.g. PP-2024-01"
+                  placeholder="Ví dụ: PP-2024-01"
                   required
                 />
               </div>
@@ -512,7 +512,7 @@ const PayrollPeriodPage: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Start Date <span className="text-red-500">*</span>
+                    Ngày bắt đầu <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="date"
@@ -526,7 +526,7 @@ const PayrollPeriodPage: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    End Date <span className="text-red-500">*</span>
+                    Ngày kết thúc <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="date"
@@ -542,7 +542,7 @@ const PayrollPeriodPage: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status <span className="text-red-500">*</span>
+                  Trạng thái <span className="text-red-500">*</span>
                 </label>
                 <select
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
@@ -554,9 +554,9 @@ const PayrollPeriodPage: React.FC = () => {
                     }))
                   }
                 >
-                  <option value="open">Open</option>
-                  <option value="processed">Processed</option>
-                  <option value="closed">Closed</option>
+                  <option value="open">Đang mở</option>
+                  <option value="processed">Đã xử lý</option>
+                  <option value="closed">Đã khóa</option>
                 </select>
               </div>
 
@@ -574,13 +574,13 @@ const PayrollPeriodPage: React.FC = () => {
                   onClick={() => setShowModal(false)}
                   className="px-5 py-2.5 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                 >
-                  Cancel
+                  Hủy
                 </button>
                 <button
                   type="submit"
                   className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-orange-500 to-orange-600 text-white text-sm font-medium hover:from-orange-600 hover:to-orange-700 transition-all shadow-md"
                 >
-                  {editingId ? "Update" : "Create"}
+                  {editingId ? "Cập nhật" : "Tạo mới"}
                 </button>
               </div>
             </form>

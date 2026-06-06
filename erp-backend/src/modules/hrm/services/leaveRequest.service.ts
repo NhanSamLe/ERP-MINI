@@ -1,5 +1,6 @@
 import * as model from "../../../models";
 import dayjs from "dayjs";
+import { notificationService } from "../../../core/services/notification.service";
 
 export async function getAll(filter: any = {}) {
   const where: any = {};
@@ -50,16 +51,20 @@ export async function getByEmployee(employeeId: number) {
   });
 }
 
-export async function create(payload: {
-  employee_id: number;
-  branch_id: number;
-  start_date: string;
-  end_date: string;
-  half_day?: "none" | "morning" | "afternoon";
-  leave_type?: "annual" | "sick" | "unpaid" | "maternity";
-  reason?: string;
-}) {
-  return model.LeaveRequest.create({
+export async function create(
+  payload: {
+    employee_id: number;
+    branch_id: number;
+    start_date: string;
+    end_date: string;
+    half_day?: "none" | "morning" | "afternoon";
+    leave_type?: "annual" | "sick" | "unpaid" | "maternity";
+    reason?: string;
+  },
+  user?: any,
+  app?: any
+) {
+  const row = await model.LeaveRequest.create({
     employee_id: payload.employee_id,
     branch_id: payload.branch_id,
     start_date: payload.start_date,
@@ -69,12 +74,46 @@ export async function create(payload: {
     reason: payload.reason || "",
     status: "pending",
   });
+
+  if (app) {
+    const io = app.get("io");
+    setImmediate(async () => {
+      try {
+        const requester = await model.Employee.findByPk(payload.employee_id);
+        if (!requester) return;
+
+        const requesterUser = await model.User.findOne({
+          where: { employee_id: payload.employee_id },
+        });
+
+        const submitterId = requesterUser ? requesterUser.id : (user ? user.id : undefined);
+        const submitterName = requester.full_name || (user ? user.username : undefined);
+
+        await notificationService.createNotification({
+          type: "SUBMIT",
+          referenceType: "LEAVE_REQUEST",
+          referenceId: row.id,
+          referenceNo: `NP-${row.id}`,
+          branchId: row.branch_id,
+          submitterId,
+          submitterName,
+          io,
+        });
+      } catch (err) {
+        console.error("Error creating leave request notification:", err);
+      }
+    });
+  }
+
+  return row;
 }
 
 export async function updateStatus(
   id: number,
   status: "approved" | "rejected",
-  approvedByUserId: number
+  approvedByUserId: number,
+  app?: any,
+  user?: any
 ) {
   const row = await model.LeaveRequest.findByPk(id);
   if (!row) throw new Error("Leave request not found");
@@ -83,7 +122,7 @@ export async function updateStatus(
     throw new Error("This leave request has already been processed");
   }
 
-  return await model.sequelize.transaction(async (t) => {
+  const updatedRow = await model.sequelize.transaction(async (t) => {
     row.status = status;
     row.approved_by = approvedByUserId;
     row.approved_at = new Date();
@@ -143,4 +182,35 @@ export async function updateStatus(
 
     return row;
   });
+
+  if (app) {
+    const io = app.get("io");
+    setImmediate(async () => {
+      try {
+        const requesterUser = await model.User.findOne({
+          where: { employee_id: row.employee_id },
+        });
+
+        if (requesterUser) {
+          const approverUser = user || await model.User.findByPk(approvedByUserId);
+          const approverName = approverUser ? (approverUser.full_name || approverUser.username) : "Manager";
+
+          await notificationService.createNotification({
+            type: status === "approved" ? "APPROVE" : "REJECT",
+            referenceType: "LEAVE_REQUEST",
+            referenceId: row.id,
+            referenceNo: `NP-${row.id}`,
+            branchId: row.branch_id,
+            submitterId: requesterUser.id,
+            approverName,
+            io,
+          });
+        }
+      } catch (err) {
+        console.error("Error creating leave request status update notification:", err);
+      }
+    });
+  }
+
+  return updatedRow;
 }

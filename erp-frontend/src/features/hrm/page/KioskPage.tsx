@@ -25,7 +25,7 @@ export default function KioskPage() {
   const webcamRef = useRef<Webcam>(null);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("Starting camera...");
+  const [statusMessage, setStatusMessage] = useState("Đang khởi động camera...");
   const [checkInResult, setCheckInResult] = useState<CheckInResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
@@ -51,7 +51,7 @@ export default function KioskPage() {
   useEffect(() => {
     const loadModels = async () => {
       try {
-        setStatusMessage("Loading AI models...");
+        setStatusMessage("Đang tải mô hình AI...");
         const MODEL_URL = "/models";
         await Promise.all([
           faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
@@ -59,10 +59,10 @@ export default function KioskPage() {
           faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
         ]);
         setModelsLoaded(true);
-        setStatusMessage("AI ready. Please stand in front of the camera to check-in/out.");
+        setStatusMessage("AI đã sẵn sàng. Vui lòng đứng trước camera để chấm công vào/ra.");
       } catch (error) {
         console.error("AI model load error:", error);
-        setStatusMessage("AI model loading failed. Ensure public/models directory contains weight files.");
+        setStatusMessage("Tải mô hình AI thất bại. Hãy đảm bảo thư mục public/models chứa các tệp trọng số.");
       }
     };
     loadModels();
@@ -99,7 +99,7 @@ export default function KioskPage() {
             .withFaceDescriptor();
 
           if (detection) {
-            setStatusMessage("Face detected! Verifying...");
+            setStatusMessage("Đã phát hiện khuôn mặt! Đang xác thực...");
             const faceVector = Array.from(detection.descriptor);
 
             // Gửi dữ liệu bằng fetch thuần để tránh axiosClient interceptors
@@ -117,19 +117,19 @@ export default function KioskPage() {
 
               setTimeout(() => {
                 setCheckInResult(null);
-                setStatusMessage("Ready. Please look straight into the camera.");
+                setStatusMessage("Sẵn sàng. Vui lòng nhìn thẳng vào camera.");
               }, 4000);
             } else {
-              setErrorMessage(data.error || "Recognition failed");
-              speak("Face not recognized");
+              setErrorMessage(data.error || "Nhận dạng thất bại");
+              speak("Không nhận diện được khuôn mặt");
 
               setTimeout(() => {
                 setErrorMessage(null);
-                setStatusMessage("Ready. Please look straight into the camera.");
+                setStatusMessage("Sẵn sàng. Vui lòng nhìn thẳng vào camera.");
               }, 2500);
             }
           } else {
-            setStatusMessage("Scanning... Please stand in front of the camera.");
+            setStatusMessage("Đang quét... Vui lòng đứng trước camera.");
           }
         } catch (err) {
           console.error("Lỗi quét khuôn mặt:", err);
@@ -220,7 +220,7 @@ export default function KioskPage() {
           className="flex items-center gap-2 px-4 py-2 border border-slate-800 rounded-xl hover:bg-slate-800 text-sm font-semibold text-slate-300 transition-all duration-200"
         >
           {voiceEnabled ? <Volume2 className="w-4.5 h-4.5 text-blue-400" /> : <VolumeX className="w-4.5 h-4.5 text-rose-400" />}
-          {voiceEnabled ? "Audio: On" : "Audio: Off"}
+          {voiceEnabled ? "Âm thanh: Bật" : "Âm thanh: Tắt"}
         </button>
       </header>
 
@@ -259,7 +259,7 @@ export default function KioskPage() {
               {/* Status Dot */}
               <div className="absolute top-4 left-4 bg-slate-950/80 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-slate-800/80 text-xs font-semibold flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-full ${modelsLoaded ? "bg-emerald-400 animate-pulse" : "bg-amber-400 animate-spin"}`}></span>
-                <span className="text-slate-300">{modelsLoaded ? "Detection" : "INITIALIZING AI..."}</span>
+                <span className="text-slate-300">{modelsLoaded ? "Nhận diện" : "ĐANG KHỞI TẠO AI..."}</span>
               </div>
             </div>
           </div>
@@ -269,7 +269,7 @@ export default function KioskPage() {
             <div className="bg-slate-900/40 border border-slate-900 rounded-2xl p-6 md:p-8 backdrop-blur-md flex flex-col justify-center min-h-[320px]">
 
               <div className="mb-6">
-                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest">Device Status</h3>
+                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest">Trạng thái thiết bị</h3>
                 <p className="text-base font-medium text-slate-300 mt-1 italic">"{statusMessage}"</p>
               </div>
 
@@ -280,23 +280,23 @@ export default function KioskPage() {
                     <CheckCircle className="w-8 h-8" />
                   </div>
                   <h4 className="text-lg font-bold text-white">
-                    {checkInResult.type === "checkin" ? "Check-in Successful!" : "Check-out Successful!"}
+                    {checkInResult.type === "checkin" ? "Chấm công vào thành công!" : "Chấm công ra thành công!"}
                   </h4>
                   <p className="text-xl font-extrabold text-white mt-2">
                     {checkInResult.employee.fullName}
                   </p>
-                  <p className="text-xs text-slate-400 mt-1">Employee Code: {checkInResult.employee.empCode}</p>
+                  <p className="text-xs text-slate-400 mt-1">Mã nhân viên: {checkInResult.employee.empCode}</p>
 
                   <div className="flex gap-4 items-center justify-center mt-4 text-sm text-slate-300 bg-slate-950/50 px-4 py-2 rounded-lg border border-slate-800">
-                    <div>Time: <strong>{checkInResult.time}</strong></div>
+                    <div>Giờ: <strong>{checkInResult.time}</strong></div>
                     {checkInResult.workingHours !== undefined && (
-                      <div className="border-l border-slate-800 pl-4">Hours: <strong>{checkInResult.workingHours}h</strong></div>
+                      <div className="border-l border-slate-800 pl-4">Số giờ: <strong>{checkInResult.workingHours}h</strong></div>
                     )}
                   </div>
 
                   {checkInResult.status === "late" && (
                     <span className="mt-3.5 px-3 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-bold uppercase rounded-full">
-                      Late
+                      Muộn
                     </span>
                   )}
                 </div>
@@ -308,11 +308,11 @@ export default function KioskPage() {
                   <div className="w-14 h-14 rounded-full bg-rose-500 flex items-center justify-center text-white mb-4">
                     <XCircle className="w-8 h-8" />
                   </div>
-                  <h4 className="text-base font-bold text-rose-400">Recognition Failed</h4>
+                  <h4 className="text-base font-bold text-rose-400">Nhận dạng thất bại</h4>
                   <p className="text-sm text-slate-200 mt-2">{errorMessage}</p>
                   <div className="flex items-center gap-1.5 mt-4 text-xs text-slate-400">
                     <AlertCircle className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Ensure your face is within the circle</span>
+                    <span>Hãy đảm bảo khuôn mặt của bạn nằm trong hình tròn</span>
                   </div>
                 </div>
               )}
@@ -322,7 +322,7 @@ export default function KioskPage() {
                 <div className="flex flex-col items-center justify-center text-center py-6 border border-dashed border-slate-800 rounded-xl bg-slate-950/10">
                   <Camera className="w-12 h-12 text-slate-700 animate-pulse" />
                   <p className="text-sm text-slate-500 mt-4 max-w-[240px]">
-                    Kiosk is running automatically. Look at the camera to check in/out.
+                    Kiosk đang chạy tự động. Nhìn vào camera để chấm công vào/ra.
                   </p>
                 </div>
               )}

@@ -17,7 +17,7 @@ export interface EmployeeDTO {
   faces?: Array<{ id: number }> | null;
 }
 export interface EmployeeFormPayload {
-  emp_code: string;
+  emp_code?: string;
   full_name: string;
   gender: string;
   contract_type: string;

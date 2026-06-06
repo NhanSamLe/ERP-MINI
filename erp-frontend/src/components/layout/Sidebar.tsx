@@ -278,7 +278,17 @@ const menuItems: MenuItem[] = [
       {
         name: "Payroll Run",
         path: "/hrm/payroll-runs",
-        allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC"],
+        allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC", "CEO", "ADMIN"],
+      },
+      {
+        name: "Payroll Mapping",
+        path: "/hrm/payroll-mappings",
+        allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC", "CEO", "ADMIN"],
+      },
+      {
+        name: "Cost Centers",
+        path: "/hrm/cost-centers",
+        allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC", "CEO", "ADMIN"],
       },
     ],
   },
