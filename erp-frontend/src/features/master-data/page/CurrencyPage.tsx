@@ -11,6 +11,7 @@ import { Column } from "../../../types/common";
 import { DataTable } from "../../../components/ui/DataTable";
 import { CurrencyFormModal } from "../components/CurrencyFormModal";
 import { RefreshCw, Plus } from "lucide-react";
+import { toast } from "react-toastify";
 
 export default function CurrencyPage() {
   const dispatch = useDispatch<AppDispatch>();
@@ -26,8 +27,13 @@ export default function CurrencyPage() {
   }, [dispatch]);
 
   const handleAddCurrency = async (code: string) => {
-    await dispatch(addCurrencyThunk(code));
-    setIsModalOpen(false);
+    const result = await dispatch(addCurrencyThunk(code));
+    if (addCurrencyThunk.fulfilled.match(result)) {
+      toast.success(`Thêm tiền tệ ${code} thành công!`);
+      setIsModalOpen(false);
+    } else {
+      toast.error((result.payload as string) ?? "Thêm tiền tệ thất bại. Vui lòng thử lại.");
+    }
   };
 
   const columns: Column<Currency>[] = [

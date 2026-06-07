@@ -92,8 +92,9 @@ export const stockBalanceService = {
       const group = groupMap.get(key)!;
       group.total_quantity += qty;
       group.total_value += qty * cost;
+      const rowUpdatedAt = row.updated_at ?? row.created_at ?? new Date(0);
       group.updated_at =
-        row.updated_at > group.updated_at ? row.updated_at : group.updated_at;
+        rowUpdatedAt > group.updated_at ? rowUpdatedAt : group.updated_at;
 
       // Thêm lot detail nếu có
       if ((row as any).lot) {

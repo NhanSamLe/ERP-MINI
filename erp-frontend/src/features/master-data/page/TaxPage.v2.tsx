@@ -15,10 +15,11 @@ import { createTaxTableConfig } from '../configs/tax-table.config';
 import { taxFormConfig } from '../configs/tax-form.config';
 import { Plus, Receipt, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { toast } from 'react-toastify';
 
 export default function TaxPageV2() {
   const dispatch = useAppDispatch();
-  const { Taxes, loading } = useAppSelector((state) => state.tax);
+  const { Taxes, loading, error } = useAppSelector((state) => state.tax);
   const { canCreate, canEdit, canDelete } = usePermission('tax_rate');
 
   const [showModal, setShowModal] = useState(false);
@@ -46,21 +47,36 @@ export default function TaxPageV2() {
   }, [Taxes, setData]);
 
   const handleCreate = async (dto: CreateTaxRateDto) => {
-    await dispatch(createTaxRateThunk(dto));
-    setShowModal(false);
-    setEditItem(null);
+    const result = await dispatch(createTaxRateThunk(dto));
+    if (createTaxRateThunk.fulfilled.match(result)) {
+      toast.success(`Tạo thuế "${dto.name}" thành công!`);
+      setShowModal(false);
+      setEditItem(null);
+    } else {
+      toast.error((result.payload as string) ?? 'Tạo thuế thất bại. Vui lòng thử lại.');
+    }
   };
 
   const handleUpdate = async (dto: UpdateTaxRateDto) => {
     if (!editItem) return;
-    await dispatch(updateTaxRateThunk({ id: editItem.id, data: dto }));
-    setShowModal(false);
-    setEditItem(null);
+    const result = await dispatch(updateTaxRateThunk({ id: editItem.id, data: dto }));
+    if (updateTaxRateThunk.fulfilled.match(result)) {
+      toast.success('Cập nhật thuế thành công!');
+      setShowModal(false);
+      setEditItem(null);
+    } else {
+      toast.error((result.payload as string) ?? 'Cập nhật thuế thất bại. Vui lòng thử lại.');
+    }
   };
 
   const handleDelete = async (tax: Tax) => {
-    if (window.confirm(`Delete tax "${tax.name}"?`)) {
-      await dispatch(deleteTaxRateThunk(tax.id));
+    if (window.confirm(`Xóa thuế "${tax.name}"?`)) {
+      const result = await dispatch(deleteTaxRateThunk(tax.id));
+      if (deleteTaxRateThunk.fulfilled.match(result)) {
+        toast.success(`Đã xóa thuế "${tax.name}".`);
+      } else {
+        toast.error((result.payload as string) ?? 'Xóa thuế thất bại.');
+      }
     }
   };
 
@@ -137,6 +153,11 @@ export default function TaxPageV2() {
             </div>
 
             <div className="p-6">
+              {error && (
+                <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {error}
+                </div>
+              )}
               <GenericForm
                 initialValues={
                   editItem
@@ -154,7 +175,7 @@ export default function TaxPageV2() {
                     : {
                         code: '',
                         name: '',
-                        type: 'percentage',
+                        type: 'VAT',
                         rate: 0,
                         applies_to: 'both',
                         is_vat: false,

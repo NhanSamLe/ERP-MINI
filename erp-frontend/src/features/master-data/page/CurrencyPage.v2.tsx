@@ -46,9 +46,15 @@ export default function CurrencyPageV2() {
       toast.error("Mã tiền tệ phải có đúng 3 ký tự");
       return;
     }
-    await dispatch(addCurrencyThunk(currencyCode.toUpperCase()));
-    setShowModal(false);
-    setCurrencyCode('');
+    const code = currencyCode.toUpperCase();
+    const result = await dispatch(addCurrencyThunk(code));
+    if (addCurrencyThunk.fulfilled.match(result)) {
+      toast.success(`Thêm tiền tệ ${code} thành công!`);
+      setShowModal(false);
+      setCurrencyCode('');
+    } else {
+      toast.error((result.payload as string) ?? "Thêm tiền tệ thất bại. Vui lòng thử lại.");
+    }
   };
 
   const handleModalClose = () => {

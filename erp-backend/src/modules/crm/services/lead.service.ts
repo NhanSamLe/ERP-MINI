@@ -17,13 +17,14 @@ export function canManage(role: string, userId: number, ownerId: number) {
 export async function getAllLeads(user: any) {
   const where: any = { is_deleted: false };
   if (user.role === "ADMIN") {
-    // ADMIN: xem tất cả không giới hạn
+    // ADMIN: lọc theo company qua branch nếu có company_id
+    if (user.company_id) {
+      // sẽ join branch bên dưới để filter
+    }
   } else if (user.role === "SALESMANAGER") {
-    // SALESMANAGER: xem tất cả lead trong branch của mình
-    where.branch_id = user.branch_id;
+    if (user.branch_id) where.branch_id = user.branch_id;
   } else {
-    // SALES: chỉ xem lead được giao cho mình
-    where.branch_id = user.branch_id;
+    if (user.branch_id) where.branch_id = user.branch_id;
     where.assigned_to = user.id;
   }
   return Lead.findAll({

@@ -2,12 +2,16 @@ import * as model from "../../../models/index";
 import { Op } from "sequelize";
 import { Branch } from "../models/branch.model";
 
-export async function getAllBranches() {
-  const branches = await model.Branch.findAll();
-  return branches;
+export async function getAllBranches(companyId?: number) {
+  const where: any = {};
+  if (companyId) where.company_id = companyId;
+  return model.Branch.findAll({ where, order: [["id", "ASC"]] });
 }
-export async function getBranchById(id: number) {
-  const row = await Branch.findByPk(id);
+
+export async function getBranchById(id: number, companyId?: number) {
+  const where: any = { id };
+  if (companyId) where.company_id = companyId;
+  const row = await Branch.findOne({ where });
   if (!row) throw new Error("Branch not found");
   return row;
 }

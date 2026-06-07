@@ -23,7 +23,16 @@ export function verifyToken(token: string): JwtPayload | null {
   }
 }
 
-// Làm mới access token từ refresh token
+// Verify refresh token (dùng refreshSecret khác với access token)
+export function verifyRefreshToken(refreshToken: string): JwtPayload | null {
+  try {
+    return jwt.verify(refreshToken, env.jwt.refreshSecret) as JwtPayload;
+  } catch (err) {
+    return null;
+  }
+}
+
+// Giữ lại để backward compat nhưng controller mới dùng verifyRefreshToken + DB lookup
 export function refreshAccessToken(refreshToken: string): string | null {
   try {
     const decoded = jwt.verify(refreshToken, env.jwt.refreshSecret) as JwtPayload;
@@ -31,9 +40,9 @@ export function refreshAccessToken(refreshToken: string): string | null {
       id: decoded.id,
       username: decoded.username,
       role: decoded.role,
-        ...(decoded.fullName ? { fullName: decoded.fullName } : {}),
-        ...(decoded.email ? { email: decoded.email } : {}),
-        ...(decoded.branch_id ? { branch_id: decoded.branch_id } : {}),
+      ...(decoded.fullName ? { fullName: decoded.fullName } : {}),
+      ...(decoded.email ? { email: decoded.email } : {}),
+      ...(decoded.branch_id ? { branch_id: decoded.branch_id } : {}),
     });
   } catch (err) {
     return null;

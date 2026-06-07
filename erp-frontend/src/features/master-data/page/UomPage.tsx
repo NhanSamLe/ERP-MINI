@@ -11,8 +11,8 @@ import { Uom, CreateUomDto, UpdateUomDto } from "../dto/uom.dto";
 import { DataTable } from "../../../components/ui/DataTable";
 import UomFormModal from "../components/UomFormModal";
 import { Plus, RefreshCw, Search, Pencil, Trash2, Package } from "lucide-react";
-import * as uomService from "../service/uom.service";
 import { Column } from "../../../types/common";
+import { toast } from "react-toastify";
 
 export default function UomPage() {
   const dispatch = useAppDispatch();
@@ -27,26 +27,37 @@ export default function UomPage() {
   }, [dispatch]);
 
   const handleSearch = async () => {
-    const data = await uomService.searchUoms(searchText);
-    dispatch({
-      type: fetchAllUomsThunk.fulfilled.type,
-      payload: data,
-    });
+    dispatch(fetchAllUomsThunk());
   };
 
   const handleCreate = async (dto: CreateUomDto) => {
-    await dispatch(createUomThunk(dto));
-    setShowModal(false);
+    const result = await dispatch(createUomThunk(dto));
+    if (createUomThunk.fulfilled.match(result)) {
+      toast.success(`Tạo đơn vị "${dto.name}" thành công!`);
+      setShowModal(false);
+    } else {
+      toast.error((result.payload as string) ?? "Tạo đơn vị thất bại. Vui lòng thử lại.");
+    }
   };
 
   const handleUpdate = async (id: number, dto: UpdateUomDto) => {
-    await dispatch(updateUomThunk({ id, data: dto }));
-    setShowModal(false);
+    const result = await dispatch(updateUomThunk({ id, data: dto }));
+    if (updateUomThunk.fulfilled.match(result)) {
+      toast.success("Cập nhật đơn vị thành công!");
+      setShowModal(false);
+    } else {
+      toast.error((result.payload as string) ?? "Cập nhật đơn vị thất bại. Vui lòng thử lại.");
+    }
   };
 
   const handleDelete = async (row: Uom) => {
-    if (window.confirm(`Delete UOM "${row.name}" ?`)) {
-      await dispatch(deleteUomThunk(row.id));
+    if (window.confirm(`Xóa đơn vị "${row.name}"?`)) {
+      const result = await dispatch(deleteUomThunk(row.id));
+      if (deleteUomThunk.fulfilled.match(result)) {
+        toast.success(`Đã xóa đơn vị "${row.name}".`);
+      } else {
+        toast.error((result.payload as string) ?? "Xóa đơn vị thất bại.");
+      }
     }
   };
 
@@ -121,7 +132,7 @@ export default function UomPage() {
               {/* Refresh Button */}
               <button
                 className="p-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-1 group"
-                onClick={handleSearch}
+                onClick={() => dispatch(fetchAllUomsThunk())}
                 title="Refresh"
               >
                 <RefreshCw className="w-5 h-5 text-gray-600 group-hover:rotate-180 transition-transform duration-500" />

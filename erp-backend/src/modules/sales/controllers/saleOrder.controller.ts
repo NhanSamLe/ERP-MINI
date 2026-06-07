@@ -41,7 +41,6 @@ export const SaleOrderController = {
 
       return res.json(orders);
     } catch (err: any) {
-      console.error(err);
       return res.status(400).json({ message: err.message || "Error" });
     }
   },
@@ -53,7 +52,6 @@ export const SaleOrderController = {
 
       return res.status(201).json({ message: "Created", data: result });
     } catch (err: any) {
-      console.error("🔥 BE ERROR:", err);
       return res.status(400).json({ message: err.message });
     }
   },

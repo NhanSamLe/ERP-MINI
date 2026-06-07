@@ -6,4 +6,5 @@ export interface JwtPayload {
   fullName?: string;
   email?: string;
   branch_id?: number;
+  company_id?: number;  // Multi-tenant isolation: phân biệt dữ liệu giữa các công ty
 }

@@ -64,26 +64,18 @@ export const saleOrderService = {
   /** -----------------------------------------------------
    * HELPER: Tổng tiền toàn bộ Order
    * ---------------------------------------------------- */
-  async calcTotals(lines: any[], globalDiscountPercent = 0, globalDiscountAmount = 0) {
+  async calcTotals(lines: any[]) {
+    // line_total và line_tax đã bao gồm discount từng line (áp dụng trong calcLineTax)
+    // KHÔNG áp dụng global discount ở đây để tránh double-count
     let total_before_tax = 0;
     let total_tax = 0;
-    let total_after_tax = 0;
 
     for (const line of lines) {
       total_before_tax += Number(line.line_total || 0);
       total_tax += Number(line.line_tax || 0);
     }
 
-    if (globalDiscountPercent > 0) {
-      total_before_tax -= (total_before_tax * globalDiscountPercent) / 100;
-    } else if (globalDiscountAmount > 0) {
-      total_before_tax -= globalDiscountAmount;
-    }
-
-    if (total_before_tax < 0) total_before_tax = 0;
-
-    total_after_tax = total_before_tax + total_tax;
-
+    const total_after_tax = total_before_tax + total_tax;
     return { total_before_tax, total_tax, total_after_tax };
   },
 
@@ -311,7 +303,7 @@ export const saleOrderService = {
         createdLines.push(createdLine);
       }
 
-      const totals = await this.calcTotals(createdLines, order.discount_percent, order.discount_amount);
+      const totals = await this.calcTotals(createdLines);
 
       await order.update(
         {
@@ -430,7 +422,7 @@ export const saleOrderService = {
       // ============================
       // Recalculate totals
       // ============================
-      const totals = await this.calcTotals(updatedLines, order.discount_percent, order.discount_amount);
+      const totals = await this.calcTotals(updatedLines);
 
       await order.update(
         {
@@ -554,7 +546,8 @@ export const saleOrderService = {
           reference_type: "sale_order",
           reference_id: order.id,
           branch_id: order.branch_id,
-          status: "waiting_approval",
+          warehouse_from_id: null, // warehouse manager sẽ chỉ định kho khi xử lý
+          status: "draft",
           created_by: manager.id,
           note: `Tự động tạo lệnh xuất kho cho Sale Order: ${order.order_no}`,
         },
@@ -631,6 +624,21 @@ export const saleOrderService = {
         },
         { transaction: t }
       );
+
+      // Xóa stock move draft được tạo tự động khi approve (nếu có)
+      // Chỉ xóa những move ở trạng thái draft, tránh xóa nhầm move đã xử lý
+      const draftMoves = await StockMove.findAll({
+        where: {
+          reference_type: "sale_order",
+          reference_id: order.id,
+          status: "draft",
+        },
+        transaction: t,
+      });
+      for (const move of draftMoves) {
+        await StockMoveLine.destroy({ where: { move_id: move.id }, transaction: t });
+        await move.destroy({ transaction: t });
+      }
 
       // Gửi thông báo
       if (app && order.created_by) {

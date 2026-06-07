@@ -25,7 +25,7 @@ export const createTaxTableConfig = (
       sortable: true,
       width: '120px',
       align: 'right',
-      render: (value) => `${value.toFixed(2)}%`,
+      render: (value) => `${Number(value).toFixed(2)}%`,
     },
     {
       key: 'status',

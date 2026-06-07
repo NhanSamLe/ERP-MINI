@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { authMiddleware } from "../../../core/middleware/auth";
 import {
   getPartnersHandler,
   getPartnerByIdHandler,
@@ -9,10 +10,11 @@ import {
 
 const router = Router();
 
-router.get("/", getPartnersHandler);
-router.get("/:id", getPartnerByIdHandler);
-router.post("/", createPartnerHandler);
-router.put("/:id", updatePartnerHandler);
-router.delete("/:id", deletePartnerHandler);
+// Tất cả partner routes đều yêu cầu authentication
+router.get("/", authMiddleware([]), getPartnersHandler);
+router.get("/:id", authMiddleware([]), getPartnerByIdHandler);
+router.post("/", authMiddleware([]), createPartnerHandler);
+router.put("/:id", authMiddleware([]), updatePartnerHandler);
+router.delete("/:id", authMiddleware([]), deletePartnerHandler);
 
 export default router;

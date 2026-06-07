@@ -21,7 +21,7 @@ import { DataTable } from "../../../components/ui/DataTable";
 import { Column } from "../../../types/common";
 import ConversionFormModal from "../components/ConversionFormModal";
 import { Plus, RefreshCw, Search, Pencil, Trash2, ArrowRightLeft } from "lucide-react";
-import * as convService from "../service/uomConversion.service";
+import { toast } from "react-toastify";
 
 export default function UomConversionPage() {
   const dispatch = useAppDispatch();
@@ -41,27 +41,43 @@ export default function UomConversionPage() {
   }, [dispatch]);
 
   const handleSearch = async () => {
-    const data = await convService.searchUomConversions(searchText);
-    dispatch({ type: fetchAllConversionsThunk.fulfilled.type, payload: data });
+    dispatch(fetchAllConversionsThunk());
   };
 
   const handleSubmit = async (
     form: CreateUomConversionDto | UpdateUomConversionDto
   ) => {
     if (editItem && editItem.id) {
-      await dispatch(
+      const result = await dispatch(
         updateConversionThunk({ id: editItem.id, data: form as UpdateUomConversionDto })
       );
+      if (updateConversionThunk.fulfilled.match(result)) {
+        toast.success("Cập nhật quy đổi thành công!");
+        setShowModal(false);
+        setEditItem(null);
+      } else {
+        toast.error((result.payload as string) ?? "Cập nhật quy đổi thất bại.");
+      }
     } else {
-      await dispatch(createConversionThunk(form as CreateUomConversionDto));
+      const result = await dispatch(createConversionThunk(form as CreateUomConversionDto));
+      if (createConversionThunk.fulfilled.match(result)) {
+        toast.success("Tạo quy đổi thành công!");
+        setShowModal(false);
+        setEditItem(null);
+      } else {
+        toast.error((result.payload as string) ?? "Tạo quy đổi thất bại.");
+      }
     }
-    setShowModal(false);
-    setEditItem(null);
   };
 
   const handleDelete = async (item: UomConversion) => {
-    if (window.confirm(`Delete this conversion?`)) {
-      await dispatch(deleteConversionThunk(item.id));
+    if (window.confirm(`Xóa quy đổi này?`)) {
+      const result = await dispatch(deleteConversionThunk(item.id));
+      if (deleteConversionThunk.fulfilled.match(result)) {
+        toast.success("Đã xóa quy đổi.");
+      } else {
+        toast.error((result.payload as string) ?? "Xóa quy đổi thất bại.");
+      }
     }
   };
 
@@ -170,7 +186,7 @@ export default function UomConversionPage() {
               {/* Refresh Button */}
               <button
                 className="p-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-1 group"
-                onClick={handleSearch}
+                onClick={() => dispatch(fetchAllConversionsThunk())}
                 title="Refresh"
               >
                 <RefreshCw className="w-5 h-5 text-gray-600 group-hover:rotate-180 transition-transform duration-500" />

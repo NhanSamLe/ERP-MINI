@@ -20,12 +20,9 @@ export async function getOrganizationChart(req: Request, res: Response) {
       return res.status(400).json({ message: "Invalid branchId" });
     }
 
-    console.log("🔎 getOrganizationChart branchId =", branchId, "user.role =", userJwt.role);
-
     const data = await organizationService.getOrganizationChart(branchId);
     return res.json(data);
   } catch (error: any) {
-    console.error("getOrganizationChart error:", error);
     return res.status(500).json({ message: error.message || "Server error" });
   }
 }

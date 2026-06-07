@@ -1,6 +1,6 @@
 import React from "react";
 import { TableConfig } from "@/components/v2/tables";
-import { ScoringRule } from "../dto/scoringRule.dto";
+import { ScoringRule, ScoringSignal } from "../dto/scoringRule.dto";
 
 const FIELD_LABELS: Record<string, string> = {
   industry: "Ngành nghề",
@@ -22,7 +22,8 @@ const OPERATOR_LABELS: Record<string, string> = {
 
 export const scoringRuleTableConfig = (
   onEdit: (item: ScoringRule) => void,
-  onDelete: (item: ScoringRule) => void
+  onDelete: (item: ScoringRule) => void,
+  signals: ScoringSignal[] = []
 ): TableConfig<ScoringRule> => ({
   columns: [
     { key: "id", label: "ID", sortable: true, width: "60px" },
@@ -31,7 +32,7 @@ export const scoringRuleTableConfig = (
       key: "field",
       label: "Trường đánh giá",
       width: "140px",
-      render: (v) => FIELD_LABELS[v] || v,
+      render: (v) => signals.find((signal) => signal.key === v)?.label || FIELD_LABELS[v] || v,
     },
     {
       key: "operator",

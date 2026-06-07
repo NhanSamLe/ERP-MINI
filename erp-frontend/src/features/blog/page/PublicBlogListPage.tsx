@@ -1,200 +1,182 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { 
-  FileText, 
-  Calendar, 
-  User, 
-  ArrowRight, 
-  Sparkles, 
+import { Link } from "react-router-dom";
+import {
+  FileText,
+  Calendar,
+  User,
+  ArrowRight,
+  Sparkles,
   ShoppingBag,
   Menu,
   X,
-  Loader2
+  Loader2,
 } from "lucide-react";
 import { getBlogPosts } from "../api/blog.api";
 import { BlogPost } from "../dto/blog.dto";
-import { Badge } from "../../../components/ui/badge";
 
 export default function PublicBlogListPage() {
-  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchPublicPosts = async () => {
+    const fetch = async () => {
       setLoading(true);
       setError(null);
       try {
-        // Lấy tất cả bài viết, chỉ lọc hiển thị bài đã xuất bản (published)
-        const allPosts = await getBlogPosts({ status: "published" });
-        setPosts(allPosts);
-      } catch (err: any) {
-        console.error("Error loading public blogs:", err);
-        setError("Unable to load news list at this time. Please try again later.");
+        const data = await getBlogPosts({ status: "published" });
+        setPosts(data);
+      } catch {
+        setError("Không thể tải danh sách bài viết. Vui lòng thử lại sau.");
       } finally {
         setLoading(false);
       }
     };
-
-    fetchPublicPosts();
+    fetch();
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-between">
-      {/* Landing Page Header/Navigation */}
-      <nav className="fixed top-0 w-full bg-white/95 backdrop-blur-sm border-b border-gray-200 z-50">
+    <div className="min-h-screen bg-white flex flex-col">
+
+      {/* ─── Navbar ─── */}
+      <nav className="fixed top-0 w-full bg-white/95 backdrop-blur-md border-b border-gray-100 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            {/* Logo */}
-            <Link to="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-blue-900 rounded-lg flex items-center justify-center">
-                <div className="w-6 h-6 border-2 border-orange-400 rounded-full"></div>
-              </div>
-              <div>
-                <span className="text-sm text-orange-400 font-medium">ERP</span>
-                <div className="text-xl font-bold text-blue-900">System</div>
-              </div>
+            <Link to="/" className="flex items-center gap-2 select-none">
+              <img src="/assets/logo.png" alt="" className="h-9 w-9 object-contain" />
+              <span className="text-xl font-bold tracking-tight">
+                <span className="text-gray-900">ERP</span>
+                <span className="text-orange-500"> Mini</span>
+              </span>
             </Link>
 
-            {/* Desktop Menu */}
             <div className="hidden md:flex items-center gap-8">
-              <Link to="/#features" className="text-gray-700 hover:text-orange-500 transition">Features</Link>
-              <Link to="/#pricing" className="text-gray-700 hover:text-orange-500 transition">Pricing</Link>
-              <Link to="/public/blog" className="text-orange-500 font-semibold">Blog</Link>
-              <Link to="/login" className="text-gray-700 hover:text-orange-500 transition">Sign In</Link>
-              <Link 
-                to="/login" 
-                className="bg-orange-400 hover:bg-orange-500 text-white px-6 py-2 rounded-lg transition"
+              <Link to="/#features" className="text-sm font-medium text-gray-600 hover:text-orange-500 transition-colors">Tính năng</Link>
+              <Link to="/#pricing" className="text-sm font-medium text-gray-600 hover:text-orange-500 transition-colors">Giá cả</Link>
+              <Link to="/public/blog" className="text-sm font-semibold text-orange-500">Blog</Link>
+              <Link to="/login" className="text-sm font-medium text-gray-600 hover:text-orange-500 transition-colors">Đăng nhập</Link>
+              <Link
+                to="/register"
+                className="inline-flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors shadow-sm"
               >
-                Free Trial
+                Dùng thử miễn phí <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
 
-            {/* Mobile Menu Button */}
-            <button 
-              className="md:hidden text-gray-700"
+            <button
+              className="md:hidden p-2 rounded-md text-gray-600 hover:bg-orange-50"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
 
-          {/* Mobile Menu */}
           {mobileMenuOpen && (
-            <div className="md:hidden py-4 space-y-3 border-t border-gray-150">
-              <Link to="/#features" className="block text-gray-700 hover:text-orange-500">Features</Link>
-              <Link to="/#pricing" className="block text-gray-700 hover:text-orange-500">Pricing</Link>
-              <Link to="/public/blog" className="block text-orange-500 font-semibold">Blog</Link>
-              <Link to="/login" className="block text-gray-700 hover:text-orange-500">Sign In</Link>
-              <Link 
-                to="/login" 
-                className="block bg-orange-400 text-white px-6 py-2 rounded-lg text-center"
-              >
-                Free Trial
-              </Link>
+            <div className="md:hidden py-4 border-t border-gray-100 space-y-3">
+              <Link to="/#features" className="block px-2 py-1.5 text-sm text-gray-600 hover:text-orange-500" onClick={() => setMobileMenuOpen(false)}>Tính năng</Link>
+              <Link to="/#pricing" className="block px-2 py-1.5 text-sm text-gray-600 hover:text-orange-500" onClick={() => setMobileMenuOpen(false)}>Giá cả</Link>
+              <Link to="/public/blog" className="block px-2 py-1.5 text-sm font-semibold text-orange-500">Blog</Link>
+              <Link to="/login" className="block px-2 py-1.5 text-sm text-gray-600 hover:text-orange-500">Đăng nhập</Link>
+              <Link to="/register" className="block text-center bg-orange-500 text-white text-sm font-semibold px-4 py-2.5 rounded-lg">Dùng thử miễn phí</Link>
             </div>
           )}
         </div>
       </nav>
 
-      {/* Hero Banner Section */}
-      <section className="pt-28 pb-12 bg-gradient-to-br from-blue-900 to-indigo-950 text-white text-center px-4">
-        <div className="max-w-3xl mx-auto space-y-4">
-          <Badge className="bg-orange-500 hover:bg-orange-600 text-white border-none py-1 px-3">
-            News & Events
-          </Badge>
-          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">
-            Blog & Business Insights
+      {/* ─── Hero ─── */}
+      <section className="pt-28 pb-14 px-4 bg-gradient-to-b from-orange-50 to-white">
+        <div className="max-w-3xl mx-auto text-center space-y-4">
+          <span className="inline-flex items-center gap-1.5 bg-orange-100 text-orange-600 text-xs font-semibold px-3 py-1.5 rounded-full">
+            <Sparkles className="w-3.5 h-3.5" />
+            Tin tức & Sự kiện
+          </span>
+          <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight">
+            Blog & Kiến thức doanh nghiệp
           </h1>
-          <p className="text-slate-300 text-sm md:text-base leading-relaxed max-w-2xl mx-auto">
-            Discover in-depth articles on business process optimization, 
-            AI applications in enterprise management, and the latest updates from ERP System.
+          <p className="text-gray-500 text-sm md:text-base leading-relaxed max-w-xl mx-auto">
+            Khám phá các bài viết chuyên sâu về tối ưu quy trình kinh doanh,
+            ứng dụng AI trong quản lý doanh nghiệp và cập nhật mới nhất từ ERP Mini.
           </p>
         </div>
       </section>
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        
+      {/* ─── Content ─── */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-center">
+          <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-center mb-8 text-sm">
             {error}
           </div>
         )}
 
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-3">
+          <div className="flex flex-col items-center justify-center py-24 gap-3">
             <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
-            <span className="text-sm text-slate-500 font-medium">Loading articles...</span>
+            <span className="text-sm text-gray-400 font-medium">Đang tải bài viết...</span>
           </div>
         ) : posts.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-200 p-16 text-center max-w-xl mx-auto space-y-4 shadow-sm">
-            <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto text-slate-400">
-              <FileText className="w-7 h-7" />
+          <div className="bg-white rounded-2xl border border-gray-200 p-16 text-center max-w-md mx-auto shadow-sm space-y-4">
+            <div className="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center mx-auto">
+              <FileText className="w-7 h-7 text-orange-300" />
             </div>
-            <h3 className="text-lg font-bold text-gray-800">No public articles available yet</h3>
-            <p className="text-xs text-gray-500">
-              Knowledge-sharing articles are being prepared by our editorial team. Please check back later!
+            <h3 className="text-lg font-bold text-gray-800">Chưa có bài viết nào</h3>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              Đội ngũ biên tập đang chuẩn bị các bài viết chia sẻ kiến thức. Hãy quay lại sau nhé!
             </p>
-            <Link 
-              to="/" 
+            <Link
+              to="/"
               className="inline-flex items-center gap-1 text-xs font-bold text-orange-500 hover:underline"
             >
-              Back to Homepage <ArrowRight className="w-3.5 h-3.5" />
+              Về trang chủ <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
         ) : (
-          /* Cards Grid */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {posts.map((post) => (
-              <Link 
+              <Link
                 key={post.id}
                 to={`/public/blog/${post.slug}`}
                 className="group bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg hover:border-orange-200 transition-all flex flex-col shadow-sm"
               >
-                {/* Feature Image */}
-                <div className="relative aspect-video w-full bg-slate-100 overflow-hidden">
+                {/* Thumbnail */}
+                <div className="relative aspect-video w-full bg-orange-50 overflow-hidden">
                   {post.image_url ? (
-                    <img 
-                      src={post.image_url} 
+                    <img
+                      src={post.image_url}
                       alt={post.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-orange-50 to-amber-100 flex items-center justify-center">
-                      <Sparkles className="w-10 h-10 text-orange-300" />
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Sparkles className="w-10 h-10 text-orange-200" />
                     </div>
                   )}
                 </div>
 
-                {/* Card Body */}
+                {/* Body */}
                 <div className="p-5 flex-1 flex flex-col justify-between">
-                  <div className="space-y-3">
+                  <div className="space-y-2.5">
                     {post.product && (
                       <span className="inline-flex items-center text-[10px] font-bold bg-orange-50 text-orange-600 px-2 py-0.5 rounded border border-orange-100">
-                        <ShoppingBag className="w-3 h-3 mr-1" /> PR: {post.product.name}
+                        <ShoppingBag className="w-3 h-3 mr-1" /> {post.product.name}
                       </span>
                     )}
-
-                    <h3 className="text-base font-bold text-gray-900 group-hover:text-orange-600 line-clamp-2 transition-colors">
+                    <h3 className="text-base font-bold text-gray-900 group-hover:text-orange-600 line-clamp-2 transition-colors leading-snug">
                       {post.title}
                     </h3>
-
                     <p className="text-xs text-gray-500 line-clamp-3 leading-relaxed">
-                      {post.summary || "Read the detailed article here."}
+                      {post.summary || "Nhấn để đọc bài viết chi tiết."}
                     </p>
                   </div>
 
-                  {/* Metadata Footer */}
-                  <div className="border-t border-gray-100 pt-4 mt-5 flex items-center justify-between text-xs text-gray-400">
+                  <div className="border-t border-gray-100 pt-3.5 mt-4 flex items-center justify-between text-xs text-gray-400">
                     <div className="flex items-center gap-1">
-                      <User className="w-3.5 h-3.5 text-gray-300" />
-                      <span>{post.author?.full_name || "Editorial Team"}</span>
+                      <User className="w-3.5 h-3.5" />
+                      <span>{post.author?.full_name || "Ban biên tập"}</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5 text-gray-300" />
+                      <Calendar className="w-3.5 h-3.5" />
                       <span>{new Date(post.created_at).toLocaleDateString("vi-VN")}</span>
                     </div>
                   </div>
@@ -203,48 +185,48 @@ export default function PublicBlogListPage() {
             ))}
           </div>
         )}
-
       </main>
 
-      {/* Landing Page Footer */}
-      <footer className="bg-gray-900 text-gray-400 py-12 px-4 sm:px-6 lg:px-8 mt-12">
+      {/* ─── Footer ─── */}
+      <footer className="bg-gray-900 text-gray-400 py-12 px-4 sm:px-6 lg:px-8 mt-8">
         <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-blue-900 rounded-lg flex items-center justify-center">
-                  <div className="w-5 h-5 border-2 border-orange-400 rounded-full"></div>
-                </div>
-                <div className="text-white font-bold">ERP System</div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-8">
+            <div className="col-span-2 sm:col-span-1">
+              <div className="flex items-center gap-2 mb-3">
+                <img src="/assets/logo.png" alt="" className="h-8 w-8 object-contain opacity-90" />
+                <span className="text-xl font-bold">
+                  <span className="text-white">ERP</span>
+                  <span className="text-orange-400"> Mini</span>
+                </span>
               </div>
-              <p className="text-sm">
-                Comprehensive and modern business management solution
+              <p className="text-sm leading-relaxed">
+                Giải pháp quản lý doanh nghiệp toàn diện cho doanh nghiệp Việt Nam.
               </p>
             </div>
             <div>
-              <h4 className="text-white font-semibold mb-4">Product</h4>
+              <h4 className="text-white font-semibold mb-4 text-sm">Sản phẩm</h4>
               <ul className="space-y-2 text-sm">
-                <li><Link to="/#features" className="hover:text-orange-400">Features</Link></li>
-                <li><Link to="/#pricing" className="hover:text-orange-400">Pricing</Link></li>
+                <li><Link to="/#features" className="hover:text-orange-400 transition-colors">Tính năng</Link></li>
+                <li><Link to="/#pricing" className="hover:text-orange-400 transition-colors">Bảng giá</Link></li>
               </ul>
             </div>
             <div>
-              <h4 className="text-white font-semibold mb-4">Company</h4>
+              <h4 className="text-white font-semibold mb-4 text-sm">Công ty</h4>
               <ul className="space-y-2 text-sm">
-                <li><Link to="/#about" className="hover:text-orange-400">About Us</Link></li>
-                <li><Link to="/public/blog" className="hover:text-orange-400">Blog</Link></li>
+                <li><Link to="/" className="hover:text-orange-400 transition-colors">Về chúng tôi</Link></li>
+                <li><Link to="/public/blog" className="hover:text-orange-400 transition-colors">Blog</Link></li>
               </ul>
             </div>
             <div>
-              <h4 className="text-white font-semibold mb-4">Support</h4>
+              <h4 className="text-white font-semibold mb-4 text-sm">Hỗ trợ</h4>
               <ul className="space-y-2 text-sm">
-                <li><a href="#" className="hover:text-orange-400">Help</a></li>
-                <li><a href="#" className="hover:text-orange-400">Contact</a></li>
+                <li><a href="#" className="hover:text-orange-400 transition-colors">Trung tâm trợ giúp</a></li>
+                <li><a href="#" className="hover:text-orange-400 transition-colors">Liên hệ</a></li>
               </ul>
             </div>
           </div>
-          <div className="border-t border-gray-800 pt-8 text-center text-sm">
-            <p>© 2025 ERP System. All rights reserved.</p>
+          <div className="border-t border-gray-800 pt-8 text-sm text-center">
+            © 2025 ERP Mini. All rights reserved.
           </div>
         </div>
       </footer>

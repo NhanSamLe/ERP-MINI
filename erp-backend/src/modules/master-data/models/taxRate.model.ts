@@ -12,9 +12,10 @@ export interface TaxRateAttrs {
   effective_date: Date;
   expiry_date?: Date | null;
   status: "active" | "inactive";
+  company_id: number | null; // NULL = chuẩn quốc gia, số = custom của công ty
 }
 
-type TaxRateCreation = Optional<TaxRateAttrs, "id" | "is_vat" | "status" | "effective_date"| "expiry_date">;
+type TaxRateCreation = Optional<TaxRateAttrs, "id" | "is_vat" | "status" | "effective_date" | "expiry_date" | "company_id">;
 
 export class TaxRate extends Model<TaxRateAttrs, TaxRateCreation> implements TaxRateAttrs {
   public id!: number;
@@ -27,12 +28,13 @@ export class TaxRate extends Model<TaxRateAttrs, TaxRateCreation> implements Tax
   public effective_date!: Date;
   public expiry_date?: Date | null;
   public status!: "active" | "inactive";
+  public company_id!: number | null;
 }
 
 TaxRate.init(
   {
     id: { type: DataTypes.BIGINT, autoIncrement: true, primaryKey: true },
-    code: { type: DataTypes.STRING(20), allowNull: false, unique: true },
+    code: { type: DataTypes.STRING(20), allowNull: false },
     name: { type: DataTypes.STRING(100), allowNull: false },
     type: {
       type: DataTypes.ENUM(
@@ -56,6 +58,7 @@ TaxRate.init(
     effective_date: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
     expiry_date: { type: DataTypes.DATE, allowNull: true },
     status: { type: DataTypes.ENUM("active", "inactive"), defaultValue: "active" },
+    company_id: { type: DataTypes.BIGINT, allowNull: true, defaultValue: null },
   },
   { sequelize, tableName: "tax_rates", timestamps: true, createdAt: "created_at", updatedAt: "updated_at" }
 );

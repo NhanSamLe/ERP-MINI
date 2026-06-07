@@ -21,6 +21,7 @@ import { createUomTableConfig } from '../configs/uom-table.config';
 import { uomFormConfig } from '../configs/uom-form.config';
 import { Plus, Package, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { toast } from 'react-toastify';
 
 export default function UomPageV2() {
   const dispatch = useAppDispatch();
@@ -52,31 +53,37 @@ export default function UomPageV2() {
     setData(Uoms);
   }, [Uoms, setData]);
 
-  /**
-   * Handle create
-   */
   const handleCreate = async (dto: CreateUomDto) => {
-    await dispatch(createUomThunk(dto));
-    setShowModal(false);
-    setEditItem(null);
+    const result = await dispatch(createUomThunk(dto));
+    if (createUomThunk.fulfilled.match(result)) {
+      toast.success(`Tạo đơn vị "${dto.name}" thành công!`);
+      setShowModal(false);
+      setEditItem(null);
+    } else {
+      toast.error((result.payload as string) ?? 'Tạo đơn vị thất bại. Vui lòng thử lại.');
+    }
   };
 
-  /**
-   * Handle update
-   */
   const handleUpdate = async (dto: UpdateUomDto) => {
     if (!editItem) return;
-    await dispatch(updateUomThunk({ id: editItem.id, data: dto }));
-    setShowModal(false);
-    setEditItem(null);
+    const result = await dispatch(updateUomThunk({ id: editItem.id, data: dto }));
+    if (updateUomThunk.fulfilled.match(result)) {
+      toast.success('Cập nhật đơn vị thành công!');
+      setShowModal(false);
+      setEditItem(null);
+    } else {
+      toast.error((result.payload as string) ?? 'Cập nhật đơn vị thất bại. Vui lòng thử lại.');
+    }
   };
 
-  /**
-   * Handle delete
-   */
   const handleDelete = async (uom: Uom) => {
-    if (window.confirm(`Delete UOM "${uom.name}"?`)) {
-      await dispatch(deleteUomThunk(uom.id));
+    if (window.confirm(`Xóa đơn vị "${uom.name}"?`)) {
+      const result = await dispatch(deleteUomThunk(uom.id));
+      if (deleteUomThunk.fulfilled.match(result)) {
+        toast.success(`Đã xóa đơn vị "${uom.name}".`);
+      } else {
+        toast.error((result.payload as string) ?? 'Xóa đơn vị thất bại.');
+      }
     }
   };
 

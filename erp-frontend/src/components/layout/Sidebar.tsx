@@ -14,7 +14,6 @@ import {
   Handshake,
   ChevronRight,
   Building2,
-  ClipboardList,
   BrainCircuit,
 } from "lucide-react";
 
@@ -386,7 +385,11 @@ const menuItems: MenuItem[] = [
   },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  onNavigate?: () => void;
+}
+
+export default function Sidebar({ onNavigate }: SidebarProps) {
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const location = useLocation();
   const { user } = useSelector((s: RootState) => s.auth);
@@ -413,12 +416,14 @@ export default function Sidebar() {
   const isSubItemActive = (path: string) => path && location.pathname === path;
 
   return (
-    <aside className="w-64 h-screen bg-white border-r border-gray-200 flex flex-col overflow-hidden">
-      {/* Sidebar header label */}
-      <div className="px-4 pt-3 pb-2">
-        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-          Navigation
-        </span>
+    <aside className="w-64 h-full bg-white border-r border-gray-200 flex flex-col overflow-hidden">
+      {/* Brand logo block */}
+      <div className="px-4 py-3 border-b border-gray-100">
+        <img
+          src="/assets/banner-lgoo.png"
+          alt="ERP Mini"
+          className="h-10 w-auto object-contain"
+        />
       </div>
 
       {/* Nav items */}
@@ -450,6 +455,7 @@ export default function Sidebar() {
                   {item.path ? (
                     <Link
                       to={item.path}
+                      onClick={onNavigate}
                       className="flex items-center gap-2.5 flex-1 min-w-0"
                     >
                       <item.icon
@@ -490,6 +496,7 @@ export default function Sidebar() {
                         <Link
                           key={sub.name}
                           to={targetPath}
+                          onClick={onNavigate}
                           className={[
                             "block px-3 py-1.5 rounded-md text-sm transition-colors duration-100",
                             active
@@ -510,7 +517,7 @@ export default function Sidebar() {
 
       {/* Footer */}
       <div className="px-4 py-3 border-t border-gray-100">
-        <p className="text-[10px] text-gray-400 font-medium">ERP UTE · v1.0</p>
+        <p className="text-[10px] text-gray-400 font-medium">ERP Mini · v1.0</p>
       </div>
     </aside>
   );

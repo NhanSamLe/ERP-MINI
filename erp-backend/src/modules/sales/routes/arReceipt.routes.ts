@@ -14,21 +14,21 @@ router.get("/customers/debt", authMiddleware([]), ArReceiptController.getCustome
 router.get("/:id", authMiddleware([]), ArReceiptController.getOne);
 
 // Create receipt
-router.post("/", authMiddleware([]), ArReceiptController.create);
+router.post("/", authMiddleware(["ACCOUNT", "CHACC"]), ArReceiptController.create);
 
 // Update (draft only)
-router.put("/:id", authMiddleware([]), ArReceiptController.update);
+router.put("/:id", authMiddleware(["ACCOUNT", "CHACC", "BRANCH_MANAGER", "BRMN"]), ArReceiptController.update);
 
 // Submit to approve
-router.post("/:id/submit", authMiddleware([]), ArReceiptController.submit);
+router.post("/:id/submit", authMiddleware(["ACCOUNT", "CHACC"]), ArReceiptController.submit);
 
 // Approve receipt
-router.post("/:id/approve", authMiddleware([]), ArReceiptController.approve);
+router.post("/:id/approve", authMiddleware(["CHACC"]), ArReceiptController.approve);
 
 // Reject receipt
-router.post("/:id/reject", authMiddleware([]), ArReceiptController.reject);
+router.post("/:id/reject", authMiddleware(["CHACC"]), ArReceiptController.reject);
 
 // Allocate amount to invoices
-router.post("/:id/allocate", authMiddleware([]), ArReceiptController.allocate);
+router.post("/:id/allocate", authMiddleware(["ACCOUNT", "CHACC"]), ArReceiptController.allocate);
 
 export default router;

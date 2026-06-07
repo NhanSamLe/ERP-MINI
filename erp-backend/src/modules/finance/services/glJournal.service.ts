@@ -2,22 +2,28 @@ import { GlJournal } from "../models/glJournal.model";
 import * as model from "../../../models/index";
 import { Op } from "sequelize";
 import { sequelize } from "../../../config/db";
+import { assertPostingPeriodOpen } from "./fiscalGuard.service";
+import { getCompanyIdFromUserBranch } from "./companyScope.service";
 
-export async function getAllGlJournals() {
-  const rows = await GlJournal.findAll({
-    order: [["code", "ASC"]],
-  });
-  return rows;
+export async function getAllGlJournals(companyId?: number) {
+  const where: any = {};
+  if (companyId) where[Op.or] = [{ company_id: companyId }, { company_id: null }];
+  return GlJournal.findAll({ where, order: [["code", "ASC"]] });
 }
-export async function listJournals() {
-  return model.GlJournal.findAll({ order: [["id", "ASC"]] });
+
+export async function listJournals(companyId?: number) {
+  const where: any = {};
+  if (companyId) where[Op.or] = [{ company_id: companyId }, { company_id: null }];
+  return model.GlJournal.findAll({ where, order: [["id", "ASC"]] });
 }
 
 export async function listEntriesByJournal(
   journalId: number,
-  filter: { from?: string; to?: string; status?: string; search?: string }
+  filter: { from?: string; to?: string; status?: string; search?: string; branch_id?: number }
 ) {
   const where: any = { journal_id: journalId };
+  const andConditions: any[] = [];
+  if (filter.branch_id) where.branch_id = filter.branch_id;
 
   if (filter.status) where.status = filter.status;
 
@@ -28,12 +34,14 @@ export async function listEntriesByJournal(
   }
 
   if (filter.search) {
-    where[Op.or] = [
+    andConditions.push({ [Op.or]: [
       { entry_no: { [Op.like]: `%${filter.search}%` } },
       { memo: { [Op.like]: `%${filter.search}%` } },
       { reference_type: { [Op.like]: `%${filter.search}%` } },
-    ];
+    ] });
   }
+
+  if (andConditions.length > 0) where[Op.and] = andConditions;
 
   return model.GlEntry.findAll({
     where,
@@ -78,7 +86,8 @@ export async function createManualEntry(
       credit: number;
     }[];
   },
-  branchId?: number | null
+  branchId?: number | null,
+  companyId?: number | null,
 ) {
   const { journal_id, entry_date, memo, reference_type, reference_id, lines } = data;
 
@@ -121,6 +130,9 @@ export async function createManualEntry(
     throw new Error(`Bút toán không cân đối. Tổng Nợ (${totalDebit.toLocaleString()}) phải bằng Tổng Có (${totalCredit.toLocaleString()}).`);
   }
 
+  // companyId chỉ dùng để kiểm tra kỳ kế toán; GlEntry lấy scope theo branch_id.
+  await assertPostingPeriodOpen(entry_date, companyId ?? undefined);
+
   // 3. Tạo mã bút toán JV duy nhất
   const todayStr = new Date(entry_date).toISOString().slice(0, 10).replace(/-/g, "");
   const rand = Math.floor(1000 + Math.random() * 9000);
@@ -132,7 +144,7 @@ export async function createManualEntry(
       journal_id,
       entry_no: entryNo,
       entry_date: new Date(entry_date),
-      status: "draft", // Mặc định tạo tay là Draft
+      status: "draft",
     };
     if (memo !== undefined) entryData.memo = memo;
     if (branchId !== undefined && branchId !== null) entryData.branch_id = branchId;
@@ -177,24 +189,32 @@ export async function createManualEntry(
 export async function updateEntryStatus(id: number, status: "draft" | "posted", user: any) {
   const entry = await model.GlEntry.findByPk(id);
   if (!entry) throw new Error("Bút toán không tồn tại.");
+  const companyId = await getCompanyIdFromUserBranch(user ?? {});
+
+  // GlEntry is branch-scoped; company is derived from the branch for fiscal guard.
+  if (user?.branch_id && entry.branch_id && entry.branch_id !== user.branch_id) {
+    throw new Error("Không được phép thao tác bút toán của chi nhánh khác.");
+  }
 
   if (user.role !== "CHACC" && user.role !== "ADMIN") {
     throw new Error("Chỉ Kế toán trưởng hoặc Admin mới có quyền duyệt/hủy duyệt bút toán.");
+  }
+
+  if (status === "posted") {
+    await assertPostingPeriodOpen(entry.entry_date, companyId);
   }
 
   await entry.update({ status });
   return getEntryDetail(id);
 }
 
-export async function getTrialBalance(filter: { from: string; to: string; branch_id?: number }) {
-  const accounts = await model.GlAccount.findAll({ order: [["code", "ASC"]] });
-  
-  const entryWhere: any = {
-    status: "posted"
-  };
-  if (filter.branch_id) {
-    entryWhere.branch_id = filter.branch_id;
-  }
+export async function getTrialBalance(filter: { from: string; to: string; branch_id?: number; company_id?: number }) {
+  const accountWhere: any = {};
+  if (filter.company_id) accountWhere[Op.or] = [{ company_id: filter.company_id }, { company_id: null }];
+  const accounts = await model.GlAccount.findAll({ where: accountWhere, order: [["code", "ASC"]] });
+
+  const entryWhere: any = { status: "posted" };
+  if (filter.branch_id) entryWhere.branch_id = filter.branch_id;
 
   const entries = await model.GlEntry.findAll({
     where: entryWhere,
@@ -275,7 +295,7 @@ export async function getTrialBalance(filter: { from: string; to: string; branch
   return trialBalance;
 }
 
-export async function getProfitLoss(filter: { from: string; to: string; branch_id?: number }) {
+export async function getProfitLoss(filter: { from: string; to: string; branch_id?: number; company_id?: number }) {
   const trialBalance = await getTrialBalance(filter);
   
   // Doanh thu (Revenue): TK đầu 5 (511)

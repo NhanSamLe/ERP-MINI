@@ -141,7 +141,6 @@ export const StockMoveController = {
       );
       res.json({ success: true, data: approvedMove });
     } catch (err: any) {
-      console.error(err);
       res.status(400).json({
         success: false,
         message: err.message || "Error approving stock move",

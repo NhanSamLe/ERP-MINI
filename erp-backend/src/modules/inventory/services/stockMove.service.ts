@@ -374,21 +374,28 @@ export const stockMoveService = {
     if (body.reference_id !== undefined) {
       data.reference_id = body.reference_id;
     }
-    const move = await StockMove.create(data);
-    await Promise.all(
-      body.lines.map((line) =>
-        StockMoveLine.create({
-          move_id: move.id,
-          product_id: line.product_id,
-          quantity: line.quantity,
-          uom_id: line.uom_id ?? null,
-          location_from_id: line.location_from_id ?? null,
-          location_to_id: line.location_to_id ?? null,
-        }),
-      ),
-    );
 
-    return await this.getById(move.id);
+    const t = await sequelize.transaction();
+    try {
+      const move = await StockMove.create(data, { transaction: t });
+      await Promise.all(
+        body.lines.map((line) =>
+          StockMoveLine.create({
+            move_id: move.id,
+            product_id: line.product_id,
+            quantity: line.quantity,
+            uom_id: line.uom_id ?? null,
+            location_from_id: line.location_from_id ?? null,
+            location_to_id: line.location_to_id ?? null,
+          }, { transaction: t }),
+        ),
+      );
+      await t.commit();
+      return await this.getById(move.id);
+    } catch (error) {
+      await t.rollback();
+      throw error;
+    }
   },
 
   async createAdjustment(body: StockMoveAdjustmentDTO, user: any) {
@@ -1048,40 +1055,57 @@ export const stockMoveService = {
   },
 
   async findByType(type: string, user: JwtPayload) {
+    const warehouses = await Warehouse.findAll({
+      where: { branch_id: user.branch_id },
+      attributes: ["id"],
+      raw: true,
+    });
+    const warehouseIds = warehouses.map((w: any) => w.id);
+
     const where: any = {
       type,
-      [Op.or]: [
-        { warehouse_from_id: user.branch_id },
-        { warehouse_to_id: user.branch_id },
-      ],
+      branch_id: user.branch_id,
     };
+    if (warehouseIds.length > 0) {
+      where[Op.or] = [
+        { warehouse_from_id: { [Op.in]: warehouseIds } },
+        { warehouse_to_id: { [Op.in]: warehouseIds } },
+        { warehouse_from_id: null },
+      ];
+    }
 
     if (user.role === Role.WHSTAFF) {
       where.created_by = user.id;
     }
 
-    return await StockMove.findAll({
-      where,
-      include: this.buildIncludes(),
-    });
+    return await StockMove.findAll({ where, include: this.buildIncludes() });
   },
+
   async findByStatus(status: string, user: JwtPayload) {
+    const warehouses = await Warehouse.findAll({
+      where: { branch_id: user.branch_id },
+      attributes: ["id"],
+      raw: true,
+    });
+    const warehouseIds = warehouses.map((w: any) => w.id);
+
     const where: any = {
       status,
-      [Op.or]: [
-        { warehouse_from_id: user.branch_id },
-        { warehouse_to_id: user.branch_id },
-      ],
+      branch_id: user.branch_id,
     };
+    if (warehouseIds.length > 0) {
+      where[Op.or] = [
+        { warehouse_from_id: { [Op.in]: warehouseIds } },
+        { warehouse_to_id: { [Op.in]: warehouseIds } },
+        { warehouse_from_id: null },
+      ];
+    }
 
     if (user.role === Role.WHSTAFF) {
       where.created_by = user.id;
     }
 
-    return await StockMove.findAll({
-      where,
-      include: this.buildIncludes(),
-    });
+    return await StockMove.findAll({ where, include: this.buildIncludes() });
   },
 
   buildIncludes() {
@@ -1355,7 +1379,6 @@ export const stockMoveService = {
         },
       ],
     });
-    console.log("UPDATED MOVE WITH INCLUDE", updatedMove?.lines);
     return updatedMove?.get({ plain: true });
   },
 
@@ -1450,13 +1473,11 @@ export const stockMoveService = {
 
       const totalReceived = previousReceived + currentReceived;
 
-      console.log(
-        `Product ${poLine.product_id}: PO Qty(stock)=${poQty}, Previous Received=${previousReceived}, Current Received=${currentReceived}, Total=${totalReceived}`,
-      );
-      if (totalReceived < poQty || totalReceived > poQty) {
+      if (totalReceived < poQty) {
         fullyReceived = false;
         break;
       }
+      // Nhận thừa (totalReceived > poQty) vẫn tính là fully received
     }
     await po.update({
       status: fullyReceived ? "completed" : "partially_received",
@@ -1488,11 +1509,54 @@ export const stockMoveService = {
         t
       );
     }
-    if (move.reference_type === "sale_order") {
-      await SaleOrder.update(
-        { status: "shipped", delivery_status: "delivered" },
-        { where: { id: move.reference_id }, transaction: t },
-      );
+    if (move.reference_type === "sale_order" && move.reference_id) {
+      const so = await SaleOrder.findByPk(move.reference_id, {
+        include: [{ model: StockMoveLine, as: "lines" }],
+        transaction: t,
+      }) as any;
+
+      if (so) {
+        // Tính tổng qty đặt hàng và đã xuất
+        const soLines = await (await import("../../sales/models/saleOrderLine.model")).SaleOrderLine.findAll({
+          where: { order_id: so.id },
+          transaction: t,
+        });
+
+        const allPostedMoveLines = await StockMoveLine.findAll({
+          include: [{
+            model: StockMove,
+            as: "move",
+            where: {
+              reference_type: "sale_order",
+              reference_id: so.id,
+              type: "issue",
+              status: "posted",
+            },
+          }],
+          transaction: t,
+        });
+
+        const issuedQtyByProduct: Record<number, number> = {};
+        for (const ml of allPostedMoveLines) {
+          const pid = ml.product_id ?? 0;
+          issuedQtyByProduct[pid] = (issuedQtyByProduct[pid] ?? 0) + Number(ml.quantity ?? 0);
+        }
+
+        let fullyDelivered = true;
+        for (const sol of soLines) {
+          const orderedQty = Number(sol.quantity ?? 0);
+          const issuedQty = issuedQtyByProduct[sol.product_id ?? 0] ?? 0;
+          if (issuedQty < orderedQty) { fullyDelivered = false; break; }
+        }
+
+        await SaleOrder.update(
+          {
+            status: fullyDelivered ? "shipped" : "confirmed",
+            delivery_status: fullyDelivered ? "delivered" : "partial",
+          },
+          { where: { id: move.reference_id }, transaction: t },
+        );
+      }
     }
   },
 

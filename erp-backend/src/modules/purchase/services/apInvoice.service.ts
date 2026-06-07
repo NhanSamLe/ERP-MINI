@@ -15,8 +15,9 @@ import { Transaction, Op } from "sequelize";
 import { GlJournal } from "../../finance/models/glJournal.model";
 import { GlEntry } from "../../finance/models/glEntry.model";
 import { GlEntryLine } from "../../finance/models/glEntryLine.model";
-import { GlAccount } from "../../finance/models/glAccount.model";
 import { notificationService } from "../../../core/services/notification.service";
+import { requireGlAccounts } from "../../finance/services/glAccount.helper";
+import { getCompanyIdFromBranch } from "../../finance/services/companyScope.service";
 import { DuplicateDetectorService } from "../../document-intelligence/services/duplicateDetector.service";
 import { ThreeWayMatcherService } from "../../document-intelligence/services/threeWayMatcher.service";
 import { apInvoiceAuditLogService } from "./apInvoiceAuditLog.service";
@@ -472,19 +473,18 @@ export const apInvoiceService = {
 
     const invoiceNo = `AP-${new Date().getFullYear()}-${Date.now()}`;
     const invoiceDate = new Date();
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 30);
 
     const result = await this.createAPInvoice(
       {
         source: "manual",
         invoice_no: invoiceNo,
         invoice_date: invoiceDate,
-        due_date: dueDate,
+        // due_date sẽ tự tính từ payment_term_id trong createAPInvoice
         supplier_id: po.supplier_id!,
         ...(po.id && { po_id: po.id }),
         branch_id: po.branch_id!,
         created_by: user.id,
+        ...(((po as any).payment_term_id) && { payment_term_id: (po as any).payment_term_id }),
         ...(totalBeforeTax > 0 && { total_before_tax: totalBeforeTax }),
         ...(totalTax > 0 && { total_tax: totalTax }),
         ...(totalAfterTax > 0 && { total_after_tax: totalAfterTax }),
@@ -674,6 +674,7 @@ export const apInvoiceService = {
     if (apInvoice.branch_id !== user.branch_id) {
       throw new Error("You cannot submit a invoice for another branch.");
     }
+
     if (apInvoice.status !== "draft") {
       throw new Error("Only draft invoice can be submitted.");
     }
@@ -723,6 +724,8 @@ export const apInvoiceService = {
       if (invoice.approval_status !== "waiting_approval")
         throw new Error("Invoice is not waiting for approval");
 
+      const companyId = await getCompanyIdFromBranch(invoice.branch_id, t);
+
       await invoice.update(
         {
           approval_status: "approved",
@@ -749,23 +752,16 @@ export const apInvoiceService = {
           reference_id: invoice.id,
           memo: `Ghi nhận công nợ phải trả ${invoice.invoice_no}`,
           status: "posted",
-        },
+          branch_id: invoice.branch_id ?? null,
+        } as any,
         { transaction: t },
       );
 
-      const [invAcc, vatAcc, apAcc] = await Promise.all([
-        GlAccount.findOne({ where: { code: "156" }, transaction: t }),
-        GlAccount.findOne({ where: { code: "1331" }, transaction: t }),
-        GlAccount.findOne({ where: { code: "331" }, transaction: t }),
-      ]);
-
-      if (!invAcc || !vatAcc || !apAcc) {
-        throw new Error("Missing GL Accounts 156 / 1331 / 331");
-      }
-
-      const INVENTORY_ACC_ID = invAcc.id;
-      const VAT_INPUT_ACC_ID = vatAcc.id;
-      const AP_ACC_ID = apAcc.id;
+      // Lấy tài khoản theo company_id — multi-tenant safe
+      const accounts = await requireGlAccounts(companyId, ["156", "1331", "331"], t);
+      const INVENTORY_ACC_ID = accounts["156"]!.id;
+      const VAT_INPUT_ACC_ID = accounts["1331"]!.id;
+      const AP_ACC_ID = accounts["331"]!.id;
 
       const totalBeforeTax = Number(invoice.total_before_tax || 0);
       const totalTax = Number(invoice.total_tax || 0);

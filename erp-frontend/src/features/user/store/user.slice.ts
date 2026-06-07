@@ -53,25 +53,43 @@ const userSlice =  createSlice({
             state.loading = false;
             state.error = action.payload as string;
         })
+        .addCase(createUserThunk.pending, (state) => {
+            state.loading = true;
+            state.error = null;
+        })
         .addCase(createUserThunk.fulfilled, (state, action) => {
-        state.users.push(action.payload);
+            state.users.push(action.payload);
+            state.loading = false;
         })
         .addCase(createUserThunk.rejected, (state, action) => {
+            state.loading = false;
             state.error = action.payload as string;
+        })
+        .addCase(updateUserThunk.pending, (state) => {
+            state.loading = true;
+            state.error = null;
         })
         .addCase(updateUserThunk.fulfilled, (state, action) => {
             const index = state.users.findIndex(user => user.id === action.payload.id);
             if (index !== -1) {
                 state.users[index] = action.payload;
             }
+            state.loading = false;
         })
         .addCase(updateUserThunk.rejected, (state, action) => {
+            state.loading = false;
             state.error = action.payload as string;
+        })
+        .addCase(deleteUserThunk.pending, (state) => {
+            state.loading = true;
+            state.error = null;
         })
         .addCase(deleteUserThunk.fulfilled, (state, action) => {
             state.users = state.users.filter(user => user.id !== action.payload);
+            state.loading = false;
         })
         .addCase(deleteUserThunk.rejected, (state, action) => {
+            state.loading = false;
             state.error = action.payload as string;
         });
     }

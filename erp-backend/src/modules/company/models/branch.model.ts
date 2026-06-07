@@ -12,6 +12,7 @@ export interface BranchAttrs {
   district?: string;
   ward?: string;
   tax_code?: string;
+  phone?: string;
   bank_account?: string;
   bank_name?: string;
   status: "active" | "inactive";
@@ -29,6 +30,7 @@ export class Branch extends Model<BranchAttrs, BranchCreation> implements Branch
   public district?: string;
   public ward?: string;
   public tax_code?: string;
+  public phone?: string;
   public bank_account?: string;
   public bank_name?: string;
   public status!: "active" | "inactive";
@@ -45,6 +47,7 @@ Branch.init(
     district: { type: DataTypes.STRING(100) },
     ward: { type: DataTypes.STRING(100) },
     tax_code: { type: DataTypes.STRING(50) },
+    phone: { type: DataTypes.STRING(20) },
     bank_account: { type: DataTypes.STRING(50) },
     bank_name: { type: DataTypes.STRING(100) },
     status: { type: DataTypes.ENUM("active", "inactive"), defaultValue: "active" },

@@ -6,8 +6,8 @@ import { Branch } from "../../company/store";
 interface UserFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreate: (data: createUserDTO) => void;
-  onUpdate: (data: updateUserDTO) => void;
+  onCreate: (data: createUserDTO) => void | Promise<void>;
+  onUpdate: (data: updateUserDTO) => void | Promise<void>;
   editUser?: User | null;
   roles: Role[];
   branches: Branch[];
@@ -33,6 +33,7 @@ export function UserFormModal({
     role_id: roles.length > 0 ? roles[0].id : 1,
     branch_id: branches.length > 0 ? branches[0].id : 1,
   });
+  const [submitting, setSubmitting] = useState(false);
 
 
   // Khi editUser thay đổi → cập nhật form
@@ -76,8 +77,11 @@ export function UserFormModal({
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
+    try {
     if (editUser) {
       // Gọi update
       const payload: updateUserDTO = {
@@ -88,7 +92,7 @@ export function UserFormModal({
         role_id: formData.role_id,
         branch_id: formData.branch_id,
       };
-      onUpdate(payload);
+      await onUpdate(payload);
      
     } else {
       // Gọi create
@@ -101,7 +105,10 @@ export function UserFormModal({
         role_id: formData.role_id,
         branch_id: formData.branch_id,
       };
-      onCreate(payload);
+      await onCreate(payload);
+    }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -246,9 +253,10 @@ export function UserFormModal({
             </button>
             <button
               type="submit"
+              disabled={submitting}
               className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600"
             >
-              {editUser ? "Update" : "Create"}
+              {submitting ? "Saving..." : editUser ? "Update" : "Create"}
             </button>
           </div>
         </form>

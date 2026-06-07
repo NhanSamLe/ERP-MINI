@@ -14,22 +14,16 @@ import { Plus, RefreshCw, Search, Pencil, Trash2, Receipt } from "lucide-react";
 import TaxFormModal from "../components/TaxFormModal";
 import * as taxService from "../service/tax.service";
 import { Column } from "../../../types/common";
-
-// ... (import giữ nguyên, thêm Alert nếu chưa có)
-import { Alert } from "../../../components/ui/Alert";  
 import { clearTaxError } from "../store/master-data/tax/tax.slice";
+import { toast } from "react-toastify";
 
 export default function TaxPage() {
   const dispatch = useAppDispatch();
-  const { Taxes, loading, error: reduxError } = useAppSelector((state) => state.tax);  // Lấy error từ Redux
+  const { Taxes, loading } = useAppSelector((state) => state.tax);
 
   const [showModal, setShowModal] = useState(false);
   const [editItem, setEditItem] = useState<Tax | null>(null);
   const [searchText, setSearchText] = useState("");
-  const [localError, setLocalError] = useState<string | null>(null);  // State local cho lỗi
-
-  // Hiển thị lỗi từ Redux hoặc local
-  const displayError = reduxError || localError;
 
   useEffect(() => {
     dispatch(fetchAllTaxRatesThunk());
@@ -42,62 +36,63 @@ export default function TaxPage() {
         type: fetchAllTaxRatesThunk.fulfilled.type,
         payload: data,
       });
-      setLocalError(null);
-    } catch (err) {
-      setLocalError("Failed to search tax rates");
+    } catch {
+      toast.error("Tìm kiếm thuế thất bại.");
     }
   };
 
   const handleCreate = async (dto: CreateTaxRateDto) => {
-    try {
-      await dispatch(createTaxRateThunk(dto));
+    const result = await dispatch(createTaxRateThunk(dto));
+    if (createTaxRateThunk.fulfilled.match(result)) {
+      toast.success(`Tạo thuế "${dto.name}" thành công!`);
+      dispatch(clearTaxError());
       setShowModal(false);
-      setLocalError(null);
-    } catch (err) {
-      setLocalError("Failed to create tax rate");
+    } else {
+      toast.error((result.payload as string) ?? "Tạo thuế thất bại. Vui lòng thử lại.");
     }
   };
 
   const handleUpdate = async (id: number, dto: UpdateTaxRateDto) => {
-    try {
-      await dispatch(updateTaxRateThunk({ id, data: dto }));
+    const result = await dispatch(updateTaxRateThunk({ id, data: dto }));
+    if (updateTaxRateThunk.fulfilled.match(result)) {
+      toast.success("Cập nhật thuế thành công!");
+      dispatch(clearTaxError());
       setShowModal(false);
-      setLocalError(null);
-    } catch (err) {
-      setLocalError("Failed to update tax rate");
+    } else {
+      toast.error((result.payload as string) ?? "Cập nhật thuế thất bại. Vui lòng thử lại.");
     }
   };
 
   const handleDelete = async (row: Tax) => {
-    if (window.confirm(`Delete tax "${row.name}" ?`)) {
-      try {
-        await dispatch(deleteTaxRateThunk(row.id));
-        setLocalError(null);
-      } catch (err) {
-        setLocalError("Failed to delete tax rate");
+    if (window.confirm(`Xóa thuế "${row.name}"?`)) {
+      const result = await dispatch(deleteTaxRateThunk(row.id));
+      if (deleteTaxRateThunk.fulfilled.match(result)) {
+        toast.success(`Đã xóa thuế "${row.name}".`);
+        dispatch(clearTaxError());
+      } else {
+        toast.error((result.payload as string) ?? "Xóa thuế thất bại.");
       }
     }
   };
 
-
   const columns: Column<Tax>[] = [
     { key: "code", label: "Code", sortable: true },
     { key: "name", label: "Name", sortable: true },
-    { 
-      key: "rate", 
-      label: "Rate (%)", 
+    {
+      key: "rate",
+      label: "Rate (%)",
       sortable: true,
       render: (row) => (
         <span className="font-medium text-gray-900">{formatPercent(row.rate, 2)}</span>
       ),
     },
-    { 
-      key: "status", 
+    {
+      key: "status",
       label: "Status",
       render: (row) => (
         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-          row.status === 'active' 
-            ? 'bg-green-100 text-green-800' 
+          row.status === 'active'
+            ? 'bg-green-100 text-green-800'
             : 'bg-gray-100 text-gray-800'
         }`}>
           {row.status}
@@ -172,7 +167,7 @@ export default function TaxPage() {
               {/* Refresh Button */}
               <button
                 className="p-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-1 group"
-                onClick={handleSearch}
+                onClick={() => dispatch(fetchAllTaxRatesThunk())}
                 title="Refresh"
               >
                 <RefreshCw className="w-5 h-5 text-gray-600 group-hover:rotate-180 transition-transform duration-500" />
@@ -192,13 +187,7 @@ export default function TaxPage() {
             </div>
           </div>
         </div>
-                   {/* Hiển thị lỗi nếu có */}
-        {displayError && (
-          <Alert type="error" message={displayError} onClose={() => {
-            setLocalError(null);
-            dispatch(clearTaxError());  // Clear Redux error
-          }} />
-        )}
+
         {/* Table Section */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <DataTable<Tax>
