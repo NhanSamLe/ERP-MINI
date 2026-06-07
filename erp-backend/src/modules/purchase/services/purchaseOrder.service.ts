@@ -22,6 +22,7 @@ import { literal, Op } from "sequelize";
 import { notificationService } from "../../../core/services/notification.service";
 import { validationService } from "./validationService";
 import { auditService } from "./auditService";
+import { generatePoNo } from "../utils/poNoGenerator";
 
 /**
  * Quy đổi quantity từ purchase UOM sang stock UOM của product.
@@ -210,18 +211,28 @@ export const purchaseOrderService = {
       ],
     });
 
-    if (!po) throw new Error("Purchase order not found");
+    if (!po) throw new Error("Không tìm thấy đơn mua hàng");
     return po;
   },
 
   async create(data: any, user: any) {
     const allowedRoles = ["PURCHASE"];
     if (!allowedRoles.includes(user.role)) {
-      throw new Error("You do not have permission to create purchase orders.");
+      throw new Error("Bạn không có quyền tạo đơn mua hàng.");
     }
 
     if (data.branch_id !== user.branch_id) {
-      throw new Error("You cannot create a purchase order for another branch.");
+      throw new Error("Bạn không thể tạo đơn mua hàng cho chi nhánh khác.");
+    }
+
+    // Tự gen po_no nếu không được cung cấp (ví dụ: tạo từ AI chatbot)
+    if (!data.po_no || data.po_no.trim() === "") {
+      data.po_no = generatePoNo();
+    }
+
+    // Tự set order_date nếu không có
+    if (!data.order_date) {
+      data.order_date = new Date();
     }
 
     // Validate input
@@ -247,6 +258,14 @@ export const purchaseOrderService = {
       );
 
       for (const line of data.lines) {
+        // Nếu không có tax_rate_id, tự lookup từ product default
+        if (!line.tax_rate_id) {
+          const productForTax = await productService.getById(line.product_id);
+          if ((productForTax as any)?.tax_rate_id) {
+            line.tax_rate_id = (productForTax as any).tax_rate_id;
+          }
+        }
+
         const calc = await this.calculateLine(line);
 
         totalBeforeTax += calc.line_total;
@@ -304,11 +323,13 @@ export const purchaseOrderService = {
   async update(id: number, data: PurchaseOrderUpdateDto, user: any) {
     const allowedRoles = ["PURCHASE"];
     if (!allowedRoles.includes(user.role)) {
-      throw new Error("You do not have permission to edit purchase orders.");
+      throw new Error("Bạn không có quyền chỉnh sửa đơn mua hàng.");
     }
 
     if (data.branch_id !== user.branch_id) {
-      throw new Error("You cannot edit a purchase order for another branch.");
+      throw new Error(
+        "Bạn không thể chỉnh sửa đơn mua hàng của chi nhánh khác.",
+      );
     }
 
     const po = await PurchaseOrder.findByPk(id, {
@@ -324,17 +345,16 @@ export const purchaseOrderService = {
       ],
     });
 
-    if (!po) throw new Error("Purchase order not found");
+    if (!po) throw new Error("Không tìm thấy đơn mua hàng");
     if (po.status !== "draft") {
       throw {
         status: 400,
-        message:
-          "Cannot edit the purchase order because it has already been approved",
+        message: "Không thể chỉnh sửa đơn mua hàng đã được phê duyệt",
       };
     }
 
     if (po.created_by !== user.id)
-      throw new Error("You can only modify your own orders");
+      throw new Error("Bạn chỉ có thể chỉnh sửa đơn mua hàng của mình");
 
     await sequelize.transaction(async (t) => {
       let totalBeforeTax = 0;
@@ -443,21 +463,19 @@ export const purchaseOrderService = {
     const allowedRoles = ["PURCHASE"];
 
     if (!allowedRoles.includes(user.role)) {
-      throw new Error("You do not have permission to delete purchase orders.");
+      throw new Error("Bạn không có quyền xóa đơn mua hàng.");
     }
 
     if (po?.branch_id !== user.branch_id) {
-      throw new Error("You cannot delete a purchase order for another branch.");
+      throw new Error("Bạn không thể xóa đơn mua hàng của chi nhánh khác.");
     }
 
-    if (!po) throw new Error("Purchase order not found");
+    if (!po) throw new Error("Không tìm thấy đơn mua hàng");
     if (po.status !== "draft") {
-      throw new Error(
-        "Cannot delete the purchase order because it has already been approved",
-      );
+      throw new Error("Không thể xóa đơn mua hàng đã được phê duyệt");
     }
     if (po.created_by !== user.id)
-      throw new Error("You can only delete your own orders");
+      throw new Error("Bạn chỉ có thể xóa đơn mua hàng của mình");
 
     await po.destroy();
     return { success: true };
@@ -465,21 +483,19 @@ export const purchaseOrderService = {
 
   async approvalPO(id: number, user: any, app?: any) {
     const po = await this.getPOById(id);
-    if (!po) throw new Error("Purchase order not found");
+    if (!po) throw new Error("Không tìm thấy đơn mua hàng");
 
     if (user.role !== Role.PURCHASEMANAGER) {
-      throw new Error("You do not have permission to approve purchase orders.");
+      throw new Error("Bạn không có quyền phê duyệt đơn mua hàng.");
     }
     if (po.branch_id !== user.branch_id) {
       throw new Error(
-        "You cannot approve a purchase order for another branch.",
+        "Bạn không thể phê duyệt đơn mua hàng của chi nhánh khác.",
       );
     }
 
     if (po.status !== "waiting_approval") {
-      throw new Error(
-        "Only purchase orders in 'waiting_approval' can be approved.",
-      );
+      throw new Error("Chỉ có thể phê duyệt đơn mua hàng đang chờ duyệt.");
     }
     po.status = "confirmed";
     po.approved_by = user.id;
@@ -509,24 +525,22 @@ export const purchaseOrderService = {
 
   async cancelPO(id: number, user: any, reason: string, app?: any) {
     const po = await this.getPOById(id);
-    if (!po) throw new Error("Purchase order not found");
+    if (!po) throw new Error("Không tìm thấy đơn mua hàng");
 
     if (user.role !== Role.PURCHASEMANAGER) {
-      throw new Error("You do not have permission to cancel purchase orders.");
+      throw new Error("Bạn không có quyền hủy đơn mua hàng.");
     }
 
     if (po.branch_id !== user.branch_id) {
-      throw new Error("You cannot cancel a purchase order for another branch.");
+      throw new Error("Bạn không thể hủy đơn mua hàng của chi nhánh khác.");
     }
 
     if (po.status !== "waiting_approval") {
-      throw new Error(
-        "Only purchase orders in 'waiting_approval' can be cancelled.",
-      );
+      throw new Error("Chỉ có thể hủy đơn mua hàng đang chờ duyệt.");
     }
 
     if (!reason || reason.trim() === "") {
-      throw new Error("Reject reason is required to cancel a purchase order.");
+      throw new Error("Vui lòng nhập lý do hủy đơn mua hàng.");
     }
 
     po.status = "cancelled";
@@ -559,18 +573,20 @@ export const purchaseOrderService = {
 
   async submitForApproval(id: number, user: any, app?: any) {
     const po = await this.getPOById(id);
-    if (!po) throw new Error("Purchase order not found");
+    if (!po) throw new Error("Không tìm thấy đơn mua hàng");
 
     if (po.branch_id !== user.branch_id) {
-      throw new Error("You cannot submit a purchase order for another branch.");
+      throw new Error(
+        "Bạn không thể gửi duyệt đơn mua hàng của chi nhánh khác.",
+      );
     }
 
     if (po.status !== "draft") {
-      throw new Error("Only draft purchase orders can be submitted.");
+      throw new Error("Chỉ có thể gửi duyệt đơn mua hàng ở trạng thái nháp.");
     }
 
     if (po.created_by !== user.id)
-      throw new Error("Only the creator can submit");
+      throw new Error("Chỉ người tạo mới có thể gửi duyệt đơn mua hàng.");
 
     po.status = "waiting_approval";
     po.submitted_at = new Date();

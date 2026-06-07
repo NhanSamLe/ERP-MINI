@@ -108,7 +108,7 @@ export default function CreatePurchaseOrderPage() {
     const y = today.getFullYear();
     const m = String(today.getMonth() + 1).padStart(2, "0");
     const d = String(today.getDate()).padStart(2, "0");
-    const randomNumber = Math.floor(Math.random() * 900 + 100);
+    const randomNumber = Math.floor(Math.random() * 9000 + 1000); // 1000–9999
     setReference(`PO-${y}${m}${d}-${randomNumber}`);
   }, []);
 
@@ -161,7 +161,13 @@ export default function CreatePurchaseOrderPage() {
     const costPrice = Number(product.cost_price ?? 0);
     const purchaseUomId = product.purchase_uom_id ?? product.uom_id ?? null;
     const stockUomId = product.uom_id ?? null;
-    return convertPrice(costPrice, stockUomId, purchaseUomId, conversions, Number(product.id));
+    return convertPrice(
+      costPrice,
+      stockUomId,
+      purchaseUomId,
+      conversions,
+      Number(product.id),
+    );
   };
 
   const convertPriceToStockUom = (
@@ -240,7 +246,7 @@ export default function CreatePurchaseOrderPage() {
           line_total: lineTotal,
           price_source: priceSource,
         };
-      })
+      }),
     );
     setLines(updatedLines);
     recalcTotals(updatedLines);
@@ -261,7 +267,7 @@ export default function CreatePurchaseOrderPage() {
     ).unwrap();
     const rate = Number(tax?.rate || 0);
     const qty = 1;
-    
+
     setProductCache((prev) => ({ ...prev, [Number(product.id)]: product }));
 
     let priceInPurchaseUom = resolvePrice(product, supplierId);
@@ -351,7 +357,7 @@ export default function CreatePurchaseOrderPage() {
     if ((field === "quantity" || field === "uom_id") && supplierId) {
       const line = lines.find((l) => l.id === id);
       if (line) {
-        const newQty = field === "quantity" ? (value || 1) : line.quantity;
+        const newQty = field === "quantity" ? value || 1 : line.quantity;
         try {
           const pRes = await purchasePriceListApi.evaluatePrice({
             product_id: Number(line.product_id),
@@ -376,7 +382,7 @@ export default function CreatePurchaseOrderPage() {
           fetchedPrice.unit_price,
           updated.uom_id,
           updated.stock_uom_id,
-          Number(updated.product_id)
+          Number(updated.product_id),
         );
       }
 
@@ -395,7 +401,7 @@ export default function CreatePurchaseOrderPage() {
         updated.quantity_in_stock_uom = qtyInStockUom;
         const selectedUom = uoms.find((u: Uom) => u.id === newUomId);
         updated.uom_name = selectedUom?.name ?? "";
-        
+
         if (!fetchedPrice) {
           const newPriceInPurchaseUom = convertPriceFromStockUom(
             line.sale_price || 0,
@@ -467,7 +473,8 @@ export default function CreatePurchaseOrderPage() {
     try {
       setIsSubmitting(true);
       const today = new Date().toISOString().split("T")[0];
-      if (date > today) return toast.error("Ngày đặt hàng không thể ở tương lai!");
+      if (date > today)
+        return toast.error("Ngày đặt hàng không thể ở tương lai!");
       if (!supplierId) return toast.error("Vui lòng chọn nhà cung cấp!");
       if (!date) return toast.error("Vui lòng nhập ngày đặt hàng!");
       if (lines.length === 0)
@@ -535,7 +542,9 @@ export default function CreatePurchaseOrderPage() {
             </span>
           </div>
           <div className="pt-3 border-t border-dashed border-gray-200 flex justify-between items-center">
-            <span className="text-sm font-semibold text-gray-800">Tổng cộng</span>
+            <span className="text-sm font-semibold text-gray-800">
+              Tổng cộng
+            </span>
             <span className="text-base font-bold text-orange-600">
               {formatVND(totalAfterTax)}
             </span>
@@ -577,14 +586,18 @@ export default function CreatePurchaseOrderPage() {
             {date && (
               <div className="flex items-center gap-2 text-sm">
                 <CalendarDays className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                <span className="text-gray-500 w-16 flex-shrink-0">Ngày đặt</span>
+                <span className="text-gray-500 w-16 flex-shrink-0">
+                  Ngày đặt
+                </span>
                 <span className="font-medium text-gray-900">{date}</span>
               </div>
             )}
             {user?.branch?.name && (
               <div className="flex items-center gap-2 text-sm">
                 <Building2 className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                <span className="text-gray-500 w-16 flex-shrink-0">Chi nhánh</span>
+                <span className="text-gray-500 w-16 flex-shrink-0">
+                  Chi nhánh
+                </span>
                 <span className="font-medium text-gray-900 truncate">
                   {user.branch.name}
                 </span>
@@ -672,7 +685,7 @@ export default function CreatePurchaseOrderPage() {
                     <Input
                       value={reference}
                       onChange={(value) => setReference(value)}
-                      placeholder="PO-YYYYMMDD-XXX"
+                      placeholder="PO-YYYYMMDD-NNNN"
                       className="h-9 text-sm font-mono"
                     />
                   </div>
@@ -943,22 +956,24 @@ export default function CreatePurchaseOrderPage() {
                                   className="w-32 text-right border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono"
                                 />
                                 {line.price_source && (
-                                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium border ${
-                                    line.price_source === "price_list"
-                                      ? "bg-emerald-50 text-emerald-600 border-emerald-100"
-                                      : line.price_source === "supplier_info"
-                                      ? "bg-blue-50 text-blue-600 border-blue-100"
-                                      : line.price_source === "cost_price"
-                                      ? "bg-amber-50 text-amber-600 border-amber-100"
-                                      : "bg-gray-100 text-gray-500 border-gray-200"
-                                  }`}>
+                                  <span
+                                    className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium border ${
+                                      line.price_source === "price_list"
+                                        ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                                        : line.price_source === "supplier_info"
+                                          ? "bg-blue-50 text-blue-600 border-blue-100"
+                                          : line.price_source === "cost_price"
+                                            ? "bg-amber-50 text-amber-600 border-amber-100"
+                                            : "bg-gray-100 text-gray-500 border-gray-200"
+                                    }`}
+                                  >
                                     {line.price_source === "price_list"
                                       ? "Bảng giá mua"
                                       : line.price_source === "supplier_info"
-                                      ? "Giá mặc định NCC"
-                                      : line.price_source === "cost_price"
-                                      ? "Giá vốn"
-                                      : "Nhập tay"}
+                                        ? "Giá mặc định NCC"
+                                        : line.price_source === "cost_price"
+                                          ? "Giá vốn"
+                                          : "Nhập tay"}
                                   </span>
                                 )}
                               </div>
@@ -1040,4 +1055,3 @@ export default function CreatePurchaseOrderPage() {
     </div>
   );
 }
-

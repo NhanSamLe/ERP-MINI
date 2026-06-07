@@ -6,6 +6,7 @@ import routes from "./routes";
 import { errorHandler } from "./core/middleware/error";
 import "./modules/master-data/services/currency.cron";
 import "./modules/purchase/services/purchase.cron";
+import { startAgentScheduler } from "./modules/ai-agent/services/agentScheduler.service";
 import { env } from "./config/env";
 import { ocrConfig } from "./modules/document-intelligence/services/ocrConfig.service";
 
@@ -25,5 +26,8 @@ app.use(errorHandler);
 
 // Log OCR config on startup for audit
 ocrConfig.logConfigOnStartup();
+
+// Start AI agent scheduled jobs
+startAgentScheduler();
 
 export default app;
