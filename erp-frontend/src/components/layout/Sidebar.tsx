@@ -34,22 +34,64 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   {
-    name: "Sales",
+    name: "Bán hàng",
     icon: ShoppingCart,
     path: "/sales",
-    allowedRoles: ["SALESMANAGER", "SALES", "BRANCH_MANAGER", "CHACC", "ACCOUNT", "WHSTAFF", "WHMANAGER"],
+    allowedRoles: [
+      "SALESMANAGER",
+      "SALES",
+      "BRANCH_MANAGER",
+      "CHACC",
+      "ACCOUNT",
+      "WHSTAFF",
+      "WHMANAGER",
+    ],
     subItems: [
-      { name: "Quotations", path: "/sales/quotations",      allowedRoles: ["SALES", "SALESMANAGER", "ADMIN"] },
-      { name: "Orders",     path: "/sales/orders",          allowedRoles: ["SALES", "SALESMANAGER", "CEO", "WHSTAFF", "ACCOUNT"] },
-      { name: "Returns",    path: "/sales/returns",         allowedRoles: ["SALES", "SALESMANAGER", "BRANCH_MANAGER", "WHSTAFF", "WHMANAGER"] },
-      { name: "Credit Notes & Refunds", path: "/sales/returns-accounting", allowedRoles: ["ACCOUNT", "CHACC"] },
-      { name: "Invoices",   path: "/invoices",              allowedRoles: ["ACCOUNT", "CHACC", "CEO"] },
-      { name: "Receipts",   path: "/receipts",              allowedRoles: ["ACCOUNT", "CHACC"] },
-      { name: "Customers",  path: "/partners?type=customer",allowedRoles: ["SALES", "SALESMANAGER"] },
+      {
+        name: "Báo giá",
+        path: "/sales/quotations",
+        allowedRoles: ["SALES", "SALESMANAGER", "ADMIN"],
+      },
+      {
+        name: "Đơn bán hàng",
+        path: "/sales/orders",
+        allowedRoles: ["SALES", "SALESMANAGER", "CEO", "WHSTAFF", "ACCOUNT"],
+      },
+      {
+        name: "Trả hàng bán",
+        path: "/sales/returns",
+        allowedRoles: [
+          "SALES",
+          "SALESMANAGER",
+          "BRANCH_MANAGER",
+          "WHSTAFF",
+          "WHMANAGER",
+        ],
+      },
+      {
+        name: "Ghi có & Hoàn tiền",
+        path: "/sales/returns-accounting",
+        allowedRoles: ["ACCOUNT", "CHACC"],
+      },
+      {
+        name: "Hóa đơn bán",
+        path: "/invoices",
+        allowedRoles: ["ACCOUNT", "CHACC", "CEO"],
+      },
+      {
+        name: "Phiếu thu",
+        path: "/receipts",
+        allowedRoles: ["ACCOUNT", "CHACC"],
+      },
+      {
+        name: "Khách hàng",
+        path: "/partners?type=customer",
+        allowedRoles: ["SALES", "SALESMANAGER"],
+      },
     ],
   },
   {
-    name: "Purchase",
+    name: "Mua hàng",
     icon: ShoppingBag,
     path: "/purchase",
     allowedRoles: [
@@ -61,88 +103,116 @@ const menuItems: MenuItem[] = [
     ],
     subItems: [
       {
-        name: "Purchase Orders",
+        name: "Đơn mua hàng",
         path: "/purchase/orders",
         allowedRoles: ["PURCHASE", "PURCHASEMANAGER", "ACCOUNT", "WHSTAFF"],
       },
       {
-        name: "Invoices",
+        name: "Hóa đơn mua",
         path: "/purchase/invoices",
         allowedRoles: ["ACCOUNT", "CHACC"],
       },
       {
-        name: "Payments",
+        name: "Phiếu chi",
         path: "/purchase/payments",
         allowedRoles: ["ACCOUNT", "CHACC"],
       },
       {
-        name: "Vendors",
+        name: "Nhà cung cấp",
         path: "/purchase/vendors",
         allowedRoles: ["PURCHASE", "PURCHASEMANAGER"],
       },
       {
-        name: "RFQs",
+        name: "Yêu cầu báo giá",
         path: "/purchase/rfqs",
         allowedRoles: ["PURCHASE", "PURCHASEMANAGER"],
       },
       {
-        name: "Price Lists",
+        name: "Bảng giá mua",
         path: "/purchase/price-lists",
         allowedRoles: ["PURCHASE", "PURCHASEMANAGER", "ACCOUNT"],
       },
       {
-        name: "Return Auth.",
+        name: "Yêu cầu trả hàng",
         path: "/purchase/return-authorizations",
         allowedRoles: ["PURCHASE", "PURCHASEMANAGER", "ACCOUNT", "CHACC"],
       },
       {
-        name: "Purchase Returns",
+        name: "Trả hàng mua",
         path: "/purchase/returns",
         allowedRoles: ["PURCHASE", "PURCHASEMANAGER", "ACCOUNT", "CHACC"],
       },
       {
-        name: "Debit Notes",
+        name: "Giấy báo nợ",
         path: "/purchase/debit-notes",
         allowedRoles: ["ACCOUNT", "CHACC"],
       },
       {
-        name: "Vendor Refunds",
+        name: "Hoàn tiền NCC",
         path: "/purchase/vendor-refunds",
         allowedRoles: ["ACCOUNT", "CHACC"],
       },
       {
-        name: "OCR Invoice",
+        name: "Scan hóa đơn (OCR)",
         path: "/purchase/document-intelligence",
         allowedRoles: ["ACCOUNT", "CHACC"],
       },
       {
-        name: "OCR History",
+        name: "Lịch sử OCR",
         path: "/purchase/document-intelligence/history",
         allowedRoles: ["ACCOUNT", "CHACC"],
       },
     ],
   },
   {
-    name: "Inventory",
+    name: "Kho hàng",
     icon: Package,
     path: "/inventory",
     allowedRoles: ["WHMANAGER", "WHSTAFF", "ADMIN"],
     subItems: [
-      { name: "Products",    path: "/inventory/products",    allowedRoles: ["WHMANAGER", "WHSTAFF", "ADMIN"] },
-      { name: "Warehouses",  path: "/inventory/warehouses",  allowedRoles: ["ADMIN"] },
-      { name: "Locations",   path: "/inventory/locations",   allowedRoles: ["ADMIN", "WHMANAGER", "WHSTAFF"] },
-      { name: "Lots",        path: "/inventory/lots",        allowedRoles: ["ADMIN", "WHMANAGER", "WHSTAFF", "PURCHASE"] },
-      { name: "Category",    path: "/inventory/categories",  allowedRoles: ["WHMANAGER", "ADMIN", "WHSTAFF"] },
-      { name: "Stock",       path: "/inventory/stock",       allowedRoles: ["WHMANAGER", "WHSTAFF"] },
-      { name: "Stock Moves", path: "/inventory/stock_move",  allowedRoles: ["WHMANAGER", "WHSTAFF"] },
-      { name: "Hàng bán trả về", path: "/inventory/sales-returns", allowedRoles: ["WHMANAGER", "WHSTAFF"] },
       {
-        name: "Physical Inventory",
+        name: "Sản phẩm",
+        path: "/inventory/products",
+        allowedRoles: ["WHMANAGER", "WHSTAFF", "ADMIN"],
+      },
+      { name: "Kho", path: "/inventory/warehouses", allowedRoles: ["ADMIN"] },
+      {
+        name: "Vị trí kho",
+        path: "/inventory/locations",
+        allowedRoles: ["ADMIN", "WHMANAGER", "WHSTAFF"],
+      },
+      {
+        name: "Lô hàng",
+        path: "/inventory/lots",
+        allowedRoles: ["ADMIN", "WHMANAGER", "WHSTAFF", "PURCHASE"],
+      },
+      {
+        name: "Danh mục",
+        path: "/inventory/categories",
+        allowedRoles: ["WHMANAGER", "ADMIN", "WHSTAFF"],
+      },
+      {
+        name: "Tồn kho",
+        path: "/inventory/stock",
+        allowedRoles: ["WHMANAGER", "WHSTAFF"],
+      },
+      {
+        name: "Phiếu kho",
+        path: "/inventory/stock_move",
+        allowedRoles: ["WHMANAGER", "WHSTAFF"],
+      },
+      {
+        name: "Hàng bán trả về",
+        path: "/inventory/sales-returns",
+        allowedRoles: ["WHMANAGER", "WHSTAFF"],
+      },
+      {
+        name: "Kiểm kê kho",
         path: "/inventory/physical-inventories",
         allowedRoles: ["ADMIN", "WHMANAGER", "WHSTAFF"],
       },
       {
-        name: "Reports",
+        name: "Báo cáo kho",
         path: "/inventory/reports",
         allowedRoles: ["ADMIN", "WHMANAGER", "WHSTAFF"],
       },
@@ -155,77 +225,77 @@ const menuItems: MenuItem[] = [
     allowedRoles: ["SALES", "SALESMANAGER", "ADMIN"],
     subItems: [
       {
-        name: "Leads",
+        name: "Khách hàng tiềm năng",
         path: "/crm/leads",
         allowedRoles: ["SALES", "SALESMANAGER", "ADMIN"],
       },
       {
-        name: "Opportunities",
+        name: "Cơ hội kinh doanh",
         path: "/crm/opportunities",
         allowedRoles: ["SALES", "SALESMANAGER", "ADMIN"],
       },
       {
-        name: "Tasks",
+        name: "Công việc",
         path: "/crm/activities/tasks",
         allowedRoles: ["SALES", "SALESMANAGER"],
       },
       {
-        name: "Calls",
+        name: "Cuộc gọi",
         path: "/crm/activities/calls",
         allowedRoles: ["SALES", "SALESMANAGER"],
       },
       {
-        name: "Emails",
+        name: "Email",
         path: "/crm/activities/emails",
         allowedRoles: ["SALES", "SALESMANAGER"],
       },
       {
-        name: "Meetings",
+        name: "Cuộc họp",
         path: "/crm/activities/meetings",
         allowedRoles: ["SALES", "SALESMANAGER"],
       },
       {
-        name: "Lead Sources",
+        name: "Nguồn khách hàng",
         path: "/crm/settings/lead-sources",
         allowedRoles: ["SALESMANAGER", "ADMIN"],
       },
       {
-        name: "Pipelines",
+        name: "Quy trình bán hàng",
         path: "/crm/settings/pipelines",
         allowedRoles: ["SALESMANAGER", "ADMIN"],
       },
       {
-        name: "Scoring Rules",
+        name: "Quy tắc chấm điểm",
         path: "/crm/settings/scoring-rules",
         allowedRoles: ["SALESMANAGER", "ADMIN"],
       },
     ],
   },
   {
-    name: "Finance",
+    name: "Tài chính",
     icon: DollarSign,
     path: "/finance",
     allowedRoles: ["ACCOUNT", "CHACC", "CEO"],
     subItems: [
       {
-        name: "Chart of Accounts",
+        name: "Hệ thống tài khoản",
         path: "/finance/accounts",
         allowedRoles: ["ACCOUNT", "CHACC"],
       },
       {
-        name: "Journal Entries",
+        name: "Bút toán",
         path: "/finance/journals",
         allowedRoles: ["ACCOUNT", "CHACC"],
       },
       {
-        name: "Reports",
+        name: "Báo cáo tài chính",
         path: "/finance/reports",
         allowedRoles: ["ACCOUNT", "CHACC", "CEO", "ADMIN"],
       },
     ],
   },
   {
-    name: "HR & Payroll",
+    name: "Nhân sự & Lương",
     icon: UserCheck,
     path: "/hrm",
     allowedRoles: [
@@ -242,41 +312,45 @@ const menuItems: MenuItem[] = [
     ],
     subItems: [
       {
-        name: "Department",
+        name: "Phòng ban",
         path: "/hrm/department",
         allowedRoles: ["HRMANAGER", "HR_STAFF"],
       },
       {
-        name: "Position",
+        name: "Chức vụ",
         path: "/hrm/position",
         allowedRoles: ["HRMANAGER", "HR_STAFF"],
       },
-      { name: "Chart", path: "", allowedRoles: ["CEO", "BRANCH_MANAGER"] },
       {
-        name: "Employees",
+        name: "Sơ đồ tổ chức",
+        path: "",
+        allowedRoles: ["CEO", "BRANCH_MANAGER"],
+      },
+      {
+        name: "Nhân viên",
         path: "/hrm/employees",
         allowedRoles: ["HRMANAGER", "HR_STAFF"],
       },
       {
-        name: "Attendance",
+        name: "Chấm công",
         path: "/hrm/attendance",
       },
       {
-        name: "Leave Requests",
+        name: "Đơn xin nghỉ phép",
         path: "/hrm/leave-requests",
       },
       {
-        name: "Payroll Period",
+        name: "Kỳ lương",
         path: "/hrm/payroll",
         allowedRoles: ["HRMANAGER", "HR_STAFF"],
       },
       {
-        name: "Payroll Items",
+        name: "Khoản lương",
         path: "/hrm/payroll-items",
         allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC"],
       },
       {
-        name: "Payroll Run",
+        name: "Tính lương",
         path: "/hrm/payroll-runs",
         allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC", "CEO", "ADMIN"],
       },
@@ -293,65 +367,65 @@ const menuItems: MenuItem[] = [
     ],
   },
   {
-    name: "Reports",
+    name: "Báo cáo",
     icon: FileText,
     path: "/reports",
     allowedRoles: ["CEO", "BRANCH_MANAGER"],
     subItems: [
       {
-        name: "Sales Report",
+        name: "Báo cáo bán hàng",
         path: "/reports/sales",
         allowedRoles: ["CEO", "BRANCH_MANAGER"],
       },
       {
-        name: "Purchase Report",
+        name: "Báo cáo mua hàng",
         path: "/reports/purchase",
         allowedRoles: ["CEO", "BRANCH_MANAGER"],
       },
       {
-        name: "Inventory Report",
+        name: "Báo cáo kho",
         path: "/reports/inventory",
         allowedRoles: ["CEO", "BRANCH_MANAGER"],
       },
       {
-        name: "Financial Report",
+        name: "Báo cáo tài chính",
         path: "/reports/financial",
         allowedRoles: ["CEO", "BRANCH_MANAGER"],
       },
     ],
   },
   {
-    name: "Partners",
+    name: "Đối tác",
     icon: Handshake,
     path: "/partners",
     allowedRoles: ["PURCHASE", "ADMIN", "PURCHASEMANAGER"],
     subItems: [
-      { name: "All Partners", path: "/partners", allowedRoles: ["ADMIN"] },
+      { name: "Tất cả đối tác", path: "/partners", allowedRoles: ["ADMIN"] },
       {
-        name: "Customers",
+        name: "Khách hàng",
         path: "/partners?type=customer",
         allowedRoles: ["ADMIN"],
       },
       {
-        name: "Suppliers",
+        name: "Nhà cung cấp",
         path: "/partners?type=supplier",
         allowedRoles: ["PURCHASE", "ADMIN", "PURCHASEMANAGER"],
       },
     ],
   },
   {
-    name: "Branches",
+    name: "Chi nhánh",
     icon: Building2,
     path: "/company/branches",
     allowedRoles: ["CEO", "ADMIN"],
     subItems: [
       {
-        name: "Branch Management",
+        name: "Quản lý chi nhánh",
         path: "/company/branches",
         allowedRoles: ["ADMIN", "CEO"],
       },
       {
-        name: "Create Branch",
+        name: "Tạo chi nhánh",
         path: "/company/branches/create",
         allowedRoles: ["CEO", "ADMIN"],
       },
@@ -370,28 +444,36 @@ const menuItems: MenuItem[] = [
     allowedRoles: ["CEO", "ADMIN", "SALESMANAGER", "SALES"],
   },
   {
-    name: "Admin",
+    name: "Quản trị",
     icon: UserCog,
     allowedRoles: ["ADMIN"],
     subItems: [
-      { name: "Users", path: "/admin/users", allowedRoles: ["ADMIN"] },
+      { name: "Người dùng", path: "/admin/users", allowedRoles: ["ADMIN"] },
       {
-        name: "Currencies",
+        name: "Tiền tệ",
         path: "/master-data/currencies",
         allowedRoles: ["ADMIN"],
       },
       {
-        name: "Exchange Rates",
+        name: "Tỷ giá",
         path: "/master-data/exchange-rates",
         allowedRoles: ["ADMIN"],
       },
-      { name: "UOM", path: "/master-data/uoms", allowedRoles: ["ADMIN"] },
       {
-        name: "UOM Conversions",
+        name: "Đơn vị tính",
+        path: "/master-data/uoms",
+        allowedRoles: ["ADMIN"],
+      },
+      {
+        name: "Quy đổi đơn vị",
         path: "/master-data/uom-conversions",
         allowedRoles: ["ADMIN"],
       },
-      { name: "Taxes", path: "/master-data/taxes", allowedRoles: ["ADMIN"] },
+      {
+        name: "Thuế suất",
+        path: "/master-data/taxes",
+        allowedRoles: ["ADMIN"],
+      },
     ],
   },
 ];
@@ -427,7 +509,7 @@ export default function Sidebar() {
       {/* Sidebar header label */}
       <div className="px-4 pt-3 pb-2">
         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-          Navigation
+          Điều hướng
         </span>
       </div>
 

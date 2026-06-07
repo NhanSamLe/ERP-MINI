@@ -34,6 +34,13 @@ const statusColors: Record<string, string> = {
   cancelled: "bg-rose-50 text-rose-700 border-rose-150 hover:bg-rose-50",
 };
 
+const statusLabels: Record<string, string> = {
+  draft: "Nháp",
+  in_progress: "Đang thực hiện",
+  validated: "Đã xác nhận",
+  cancelled: "Đã hủy",
+};
+
 export default function PhysicalInventoryDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -62,13 +69,13 @@ export default function PhysicalInventoryDetailPage() {
     try {
       if (action === "start") {
         await dispatch(startPhysicalInventoryThunk(inv.id)).unwrap();
-        toast.success("Inventory started");
+        toast.success("Đã bắt đầu đợt kiểm kê!");
       } else if (action === "validate") {
         await dispatch(validatePhysicalInventoryThunk(inv.id)).unwrap();
-        toast.success("Inventory validated — stock balances updated");
+        toast.success("Đã xác nhận đợt kiểm kê — số dư tồn kho đã được cập nhật!");
       } else {
         await dispatch(cancelPhysicalInventoryThunk(inv.id)).unwrap();
-        toast.success("Inventory cancelled");
+        toast.success("Đã hủy đợt kiểm kê!");
       }
       setConfirmAction(null);
     } catch (err) {
@@ -83,7 +90,7 @@ export default function PhysicalInventoryDetailPage() {
     if (raw === undefined) return;
     const qty = parseFloat(raw);
     if (isNaN(qty) || qty < 0) {
-      toast.error("Invalid quantity");
+      toast.error("Số lượng không hợp lệ!");
       return;
     }
     setSavingLine(line.id);
@@ -95,7 +102,7 @@ export default function PhysicalInventoryDetailPage() {
         delete n[line.id];
         return n;
       });
-      toast.success("Line updated");
+      toast.success("Đã cập nhật dòng kiểm kê!");
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
@@ -109,7 +116,7 @@ export default function PhysicalInventoryDetailPage() {
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-sm font-medium text-slate-500">
-            {loading ? "Loading audit sheet..." : "Inventory session not found"}
+            {loading ? "Đang tải phiếu kiểm kê..." : "Không tìm thấy đợt kiểm kê"}
           </p>
         </div>
       </div>
@@ -142,14 +149,14 @@ export default function PhysicalInventoryDetailPage() {
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
                 <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-                  Audit Sheet #{inv.inv_no}
+                  Phiếu kiểm kê #{inv.inv_no}
                 </h1>
                 <Badge
                   className={`px-2.5 py-0.5 rounded-full text-xs font-bold border shadow-none capitalize ${
                     statusColors[inv.status] || "bg-slate-50 text-slate-600 border-slate-200"
                   }`}
                 >
-                  {inv.status.replace("_", " ")}
+                  {statusLabels[inv.status] || inv.status}
                 </Badge>
               </div>
               <p className="text-slate-555 text-sm mt-0.5 font-medium">
@@ -166,7 +173,7 @@ export default function PhysicalInventoryDetailPage() {
               onClick={() => setConfirmAction("start")}
               leftIcon={<Play className="w-4 h-4" />}
             >
-              Start Session
+              Bắt đầu kiểm kê
             </Button>
           )}
           {canValidate && (
@@ -175,7 +182,7 @@ export default function PhysicalInventoryDetailPage() {
               onClick={() => setConfirmAction("validate")}
               leftIcon={<CheckCircle className="w-4 h-4" />}
             >
-              Validate
+              Xác nhận
             </Button>
           )}
           {canCancel && (
@@ -184,7 +191,7 @@ export default function PhysicalInventoryDetailPage() {
               onClick={() => setConfirmAction("cancel")}
               leftIcon={<Ban className="w-4 h-4" />}
             >
-              Cancel
+              Hủy
             </Button>
           )}
         </div>
@@ -197,38 +204,38 @@ export default function PhysicalInventoryDetailPage() {
           <CardHeader className="pb-4 border-b border-slate-50 bg-slate-50/20">
             <div className="flex items-center gap-2 text-slate-800">
               <Info className="w-4 h-4 text-orange-500" />
-              <CardTitle className="text-base font-semibold">Audit Overview</CardTitle>
+              <CardTitle className="text-base font-semibold">Tổng quan kiểm kê</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="p-6">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-5 text-xs">
-              <InfoRow label="Audit Sheet No" value={inv.inv_no} />
-              <InfoRow label="Inventory Date" value={inv.inv_date} />
-              <InfoRow label="Target Warehouse" value={inv.warehouse?.name ?? "—"} />
+              <InfoRow label="Mã phiếu kiểm kê" value={inv.inv_no} />
+              <InfoRow label="Ngày kiểm kê" value={inv.inv_date} />
+              <InfoRow label="Kho kiểm kê" value={inv.warehouse?.name ?? "—"} />
               <InfoRow
-                label="Current Status"
+                label="Trạng thái hiện tại"
                 value={
                   <Badge className="bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded capitalize shadow-none border border-slate-200">
-                    {inv.status.replace("_", " ")}
+                    {statusLabels[inv.status] || inv.status}
                   </Badge>
                 }
               />
               <InfoRow
-                label="Sheet Creator"
+                label="Người tạo phiếu"
                 value={inv.creator?.full_name ?? "—"}
               />
               <InfoRow
-                label="Created At"
+                label="Ngày tạo"
                 value={formatDateTime(inv.created_at ?? "")}
               />
               {inv.validator && (
                 <>
                   <InfoRow
-                    label="Validated By"
+                    label="Người xác nhận"
                     value={inv.validator.full_name}
                   />
                   <InfoRow
-                    label="Validated At"
+                    label="Ngày xác nhận"
                     value={formatDateTime(inv.validated_at ?? "")}
                   />
                 </>
@@ -242,14 +249,14 @@ export default function PhysicalInventoryDetailPage() {
           <CardHeader className="pb-4 border-b border-slate-50 bg-slate-50/20">
             <div className="flex items-center gap-2 text-slate-800">
               <BarChart3 className="w-4 h-4 text-indigo-500" />
-              <CardTitle className="text-base font-semibold">Audit Summary</CardTitle>
+              <CardTitle className="text-base font-semibold">Tóm tắt kiểm kê</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="p-5 space-y-4">
             <div className="space-y-3.5 text-xs">
-              <SummaryRow label="Total Audit Lines" value={inv.lines?.length ?? 0} />
+              <SummaryRow label="Tổng số dòng kiểm kê" value={inv.lines?.length ?? 0} />
               <SummaryRow
-                label="Lines flag with difference"
+                label="Số dòng lệch số lượng"
                 value={
                   <Badge
                     variant={inv.lines?.filter((l) => Number(l.difference_qty) !== 0).length ? "destructive" : "default"}
@@ -261,7 +268,7 @@ export default function PhysicalInventoryDetailPage() {
               />
               <div className="border-t border-slate-100 pt-3 space-y-3">
                 <SummaryRow
-                  label="Theoretical Qty"
+                  label="Số lượng lý thuyết"
                   value={
                     <span className="font-mono font-bold text-slate-600">
                       {inv.lines
@@ -271,7 +278,7 @@ export default function PhysicalInventoryDetailPage() {
                   }
                 />
                 <SummaryRow
-                  label="Actual Counted Qty"
+                  label="Số lượng thực tế đếm"
                   value={
                     <span className="font-mono font-extrabold text-indigo-650 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
                       {inv.lines
@@ -293,12 +300,12 @@ export default function PhysicalInventoryDetailPage() {
             <ListCollapse className="w-5 h-5 text-slate-700" />
             <div>
               <CardTitle className="text-base font-semibold text-slate-800">
-                Audit Record Entries
+                Chi tiết phiếu kiểm kê
               </CardTitle>
               <CardDescription className="text-xs text-slate-400 mt-0.5">
                 {inv.status === "in_progress"
-                  ? "Audit session is in progress. Input actual storage stock levels below"
-                  : "Finalized physical count values"}
+                  ? "Đợt kiểm kê đang được thực hiện. Nhập số lượng thực tế đếm được ở dưới"
+                  : "Số lượng thực tế đếm đã chốt"}
               </CardDescription>
             </div>
           </div>
@@ -308,16 +315,16 @@ export default function PhysicalInventoryDetailPage() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50/80 text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-slate-100">
               <tr>
-                <th className="py-3.5 px-6 text-left">Product</th>
+                <th className="py-3.5 px-6 text-left">Sản phẩm</th>
                 <th className="py-3.5 px-6 text-left">SKU</th>
-                <th className="py-3.5 px-6 text-left">Location</th>
-                <th className="py-3.5 px-6 text-left">Lot</th>
-                <th className="py-3.5 px-6 text-right">Theoretical</th>
-                <th className="py-3.5 px-6 text-right">Actual Counted</th>
-                <th className="py-3.5 px-6 text-right">Difference</th>
-                <th className="py-3.5 px-6 text-right">Unit Cost</th>
+                <th className="py-3.5 px-6 text-left">Vị trí</th>
+                <th className="py-3.5 px-6 text-left">Lô hàng</th>
+                <th className="py-3.5 px-6 text-right">Lý thuyết</th>
+                <th className="py-3.5 px-6 text-right">Thực tế đếm</th>
+                <th className="py-3.5 px-6 text-right">Chênh lệch</th>
+                <th className="py-3.5 px-6 text-right">Giá vốn</th>
                 {inv.status === "in_progress" && (
-                  <th className="py-3.5 px-6 text-center w-24">Actions</th>
+                  <th className="py-3.5 px-6 text-center w-24">Thao tác</th>
                 )}
               </tr>
             </thead>
@@ -328,7 +335,7 @@ export default function PhysicalInventoryDetailPage() {
                     colSpan={inv.status === "in_progress" ? 9 : 8}
                     className="py-16 text-center text-slate-450 italic"
                   >
-                    No lines found. Propose start session to load system stock snapshots.
+                    Không tìm thấy dòng chi tiết nào. Bắt đầu đợt kiểm kê để tải dữ liệu tồn kho hệ thống.
                   </td>
                 </tr>
               ) : (
@@ -354,7 +361,7 @@ export default function PhysicalInventoryDetailPage() {
                           </span>
                         </div>
                       </td>
-                      <td className="py-3.5 px-6 font-mono text-xs font-bold text-slate-450 uppercase tracking-wider">
+                      <td className="py-3.5 px-6 font-mono text-xs font-bold text-slate-455 uppercase tracking-wider">
                         {line.product?.sku}
                       </td>
                       <td className="py-3.5 px-6 text-xs">
@@ -364,7 +371,7 @@ export default function PhysicalInventoryDetailPage() {
                           </Badge>
                         ) : (
                           <span className="text-slate-350 italic text-xs">
-                            No location
+                            Không có vị trí
                           </span>
                         )}
                       </td>
@@ -432,10 +439,10 @@ export default function PhysicalInventoryDetailPage() {
                               variant="primary"
                               className="w-full h-8"
                             >
-                              {savingLine === line.id ? "..." : "Save"}
+                              {savingLine === line.id ? "..." : "Lưu"}
                             </Button>
                           ) : (
-                            <span className="text-[11px] text-slate-400 font-semibold italic">Recorded</span>
+                            <span className="text-[11px] text-slate-400 font-semibold italic">Đã ghi nhận</span>
                           )}
                         </td>
                       )}
@@ -457,18 +464,18 @@ export default function PhysicalInventoryDetailPage() {
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-orange-100 mb-4 animate-pulse">
                   <AlertTriangle className="h-6 w-6 text-orange-600" />
                 </div>
-                <DialogTitle className="text-center text-lg font-bold text-slate-900 capitalize">
-                  {confirmAction === "start" && "Start Count Session?"}
-                  {confirmAction === "validate" && "Validate Count Results?"}
-                  {confirmAction === "cancel" && "Abort Count Audit?"}
+                <DialogTitle className="text-center text-lg font-bold text-slate-900">
+                  {confirmAction === "start" && "Bắt đầu đợt kiểm kê?"}
+                  {confirmAction === "validate" && "Xác nhận kết quả kiểm kê?"}
+                  {confirmAction === "cancel" && "Hủy bỏ đợt kiểm kê?"}
                 </DialogTitle>
                 <DialogDescription className="text-center text-sm text-gray-500 mt-1.5">
                   {confirmAction === "start" &&
-                    "This initializes the sheet and locks down snapshot current values as theoretical safety counts."}
+                    "Hành động này sẽ khởi tạo phiếu kiểm kê và khóa số lượng tồn kho hiện tại làm số lượng lý thuyết."}
                   {confirmAction === "validate" &&
-                    "WARNING: This finishes the counts, validates discrepancies, and adjusts inventory stock levels. This action is final."}
+                    "CẢNH BÁO: Hành động này sẽ chốt số lượng đếm, xác nhận các chênh lệch và điều chỉnh lượng tồn kho tương ứng. Không thể hoàn tác."}
                   {confirmAction === "cancel" &&
-                    "This cancels the session sheet. Recorded data lines will be discarded safely."}
+                    "Hành động này sẽ hủy bỏ đợt kiểm kê. Các dữ liệu đã đếm sẽ bị loại bỏ."}
                 </DialogDescription>
               </DialogHeader>
 
@@ -479,7 +486,7 @@ export default function PhysicalInventoryDetailPage() {
                   disabled={submitting}
                   className="w-full sm:w-auto"
                 >
-                  Close
+                  Đóng
                 </Button>
                 <Button
                   variant={confirmAction === "validate" ? "success" : confirmAction === "cancel" ? "danger" : "primary"}
@@ -487,7 +494,7 @@ export default function PhysicalInventoryDetailPage() {
                   loading={submitting}
                   className="w-full sm:w-auto"
                 >
-                  Confirm
+                  Xác nhận
                 </Button>
               </DialogFooter>
             </>

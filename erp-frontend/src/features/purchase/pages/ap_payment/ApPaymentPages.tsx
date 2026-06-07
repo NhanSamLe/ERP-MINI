@@ -46,40 +46,40 @@ export default function ApPaymentPages() {
   const handleExport = async () => {
     try {
       await exportExcelReport({
-        title: "PAYMENTS LIST",
+        title: "DANH SÁCH PHIẾU CHI",
         columns: [
-          { header: "Payment No", key: "payment_no", width: 15 },
+          { header: "Mã phiếu chi", key: "payment_no", width: 15 },
           {
-            header: "Supplier",
+            header: "Nhà cung cấp",
             key: "supplier",
             width: 30,
             formatter: (val: any) => val?.name || "-",
           },
           {
-            header: "Amount",
+            header: "Số tiền",
             key: "amount",
             width: 20,
             format: "currency",
             align: "right",
           },
           {
-            header: "Status",
+            header: "Trạng thái",
             key: "status",
             width: 15,
             formatter: (val) => String(val).toUpperCase(),
           },
           {
-            header: "Approval",
+            header: "Phê duyệt",
             key: "approval_status",
             width: 15,
             formatter: (val) => String(val).toUpperCase(),
           },
           {
-            header: "Created Date",
+            header: "Ngày tạo",
             key: "created_at",
             width: 15,
             formatter: (val) =>
-              val ? new Date(String(val)).toLocaleDateString("en-US") : "",
+              val ? new Date(String(val)).toLocaleDateString("vi-VN") : "",
           },
         ],
         data: filteredPayments,
@@ -90,7 +90,7 @@ export default function ApPaymentPages() {
       });
     } catch (err) {
       console.error(err);
-      toast.error("Error exporting report");
+      toast.error("Lỗi khi xuất báo cáo");
     }
   };
 
@@ -107,8 +107,8 @@ export default function ApPaymentPages() {
       <div className="max-w-7xl mx-auto space-y-6">
         {/* ================= HEADER ================= */}
         <PageHeader
-          title="AP Payments"
-          subtitle="Manage all supplier payments"
+          title="Phiếu chi AP"
+          subtitle="Quản lý tất cả các khoản thanh toán nhà cung cấp"
           actions={
             <div className="flex gap-2">
               <button
@@ -116,14 +116,14 @@ export default function ApPaymentPages() {
                 className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2.5 rounded-lg font-medium transition-colors"
               >
                 <Download className="w-5 h-5" />
-                Export Excel
+                Xuất Excel
               </button>
               <button
                 onClick={() => setOpenCreateModal(true)}
                 className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-lg font-medium transition-colors"
               >
                 <Plus className="w-5 h-5" />
-                New Payment
+                Chi tiền mới
               </button>
             </div>
           }
@@ -133,19 +133,19 @@ export default function ApPaymentPages() {
         <div className="grid grid-cols-3 gap-4">
           <StatsCard
             icon={CreditCard}
-            label="Total Payments"
+            label="Tổng số phiếu chi"
             value={list.length}
             color="orange"
           />
           <StatsCard
             icon={CreditCard}
-            label="Draft"
+            label="Bản nháp"
             value={draftCount}
             color="blue"
           />
           <StatsCard
             icon={CreditCard}
-            label="Posted"
+            label="Đã ghi sổ"
             value={postedCount}
             color="green"
           />
@@ -155,12 +155,12 @@ export default function ApPaymentPages() {
         <div className="bg-white rounded-xl shadow-sm border-l-4 border-l-orange-400 border p-5">
           <div className="flex flex-wrap gap-4 items-end">
             <div className="flex-1 min-w-[240px]">
-              <label className="block text-sm font-medium mb-2">Search</label>
+              <label className="block text-sm font-medium mb-2">Tìm kiếm</label>
               <div className="relative">
                 <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Payment no..."
+                  placeholder="Mã phiếu chi..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
@@ -169,16 +169,16 @@ export default function ApPaymentPages() {
             </div>
 
             <div className="w-56">
-              <label className="block text-sm font-medium mb-2">Status</label>
+              <label className="block text-sm font-medium mb-2">Trạng thái</label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
               >
-                <option value="All">All</option>
-                <option value={ApPaymentStatus.DRAFT}>Draft</option>
-                <option value={ApPaymentStatus.POSTED}>Posted</option>
-                <option value={ApPaymentStatus.CANCELLED}>Cancelled</option>
+                <option value="All">Tất cả</option>
+                <option value={ApPaymentStatus.DRAFT}>Nháp</option>
+                <option value={ApPaymentStatus.POSTED}>Đã ghi sổ</option>
+                <option value={ApPaymentStatus.CANCELLED}>Đã hủy</option>
               </select>
             </div>
           </div>
@@ -190,22 +190,22 @@ export default function ApPaymentPages() {
             <thead className="bg-orange-50/60 border-b border-orange-100">
               <tr>
                 <th className="px-6 py-4 text-left font-semibold text-gray-700">
-                  Payment No
+                  Mã phiếu chi
                 </th>
                 <th className="px-6 py-4 text-left font-semibold text-gray-700">
-                  Supplier
+                  Nhà cung cấp
                 </th>
                 <th className="px-6 py-4 text-right font-semibold text-gray-700">
-                  Amount
+                  Số tiền
                 </th>
                 <th className="px-6 py-4 text-left font-semibold text-gray-700">
-                  Status
+                  Trạng thái
                 </th>
                 <th className="px-6 py-4 text-left font-semibold text-gray-700">
-                  Approval
+                  Phê duyệt
                 </th>
                 <th className="px-6 py-4 text-center font-semibold text-gray-700">
-                  Actions
+                  Thao tác
                 </th>
               </tr>
             </thead>
@@ -216,7 +216,7 @@ export default function ApPaymentPages() {
                   <td colSpan={6} className="py-16 text-center">
                     <div className="flex flex-col items-center gap-2 text-gray-500">
                       <CreditCard className="w-8 h-8 animate-pulse" />
-                      Loading payments...
+                      Đang tải phiếu chi...
                     </div>
                   </td>
                 </tr>
@@ -227,10 +227,10 @@ export default function ApPaymentPages() {
                   <td colSpan={6} className="py-16 text-center">
                     <EmptyState
                       icon={CreditCard}
-                      title="No payments found"
-                      description="Create your first payment by clicking the New Payment button"
+                      title="Không tìm thấy phiếu chi nào"
+                      description="Tạo phiếu chi đầu tiên của bạn bằng cách nhấp vào nút Chi tiền mới"
                       action={{
-                        label: "New Payment",
+                        label: "Chi tiền mới",
                         onClick: () => setOpenCreateModal(true),
                       }}
                     />
@@ -253,8 +253,8 @@ export default function ApPaymentPages() {
                     </td>
 
                     <td className="px-6 py-4 text-right font-medium">
-                      {Number(payment.amount || 0).toLocaleString("en-US", {
-                        minimumFractionDigits: 2,
+                      {Number(payment.amount || 0).toLocaleString("vi-VN", {
+                        minimumFractionDigits: 0,
                       })}
                     </td>
 
@@ -287,8 +287,8 @@ export default function ApPaymentPages() {
 
           {/* ================= FOOTER ================= */}
           <div className="px-6 py-4 border-t bg-orange-50/40 text-sm text-gray-600">
-            Showing <strong>{filteredPayments.length}</strong> of{" "}
-            <strong>{list.length}</strong> payments
+            Hiển thị <strong>{filteredPayments.length}</strong> trên{" "}
+            <strong>{list.length}</strong> phiếu chi
           </div>
         </div>
       </div>

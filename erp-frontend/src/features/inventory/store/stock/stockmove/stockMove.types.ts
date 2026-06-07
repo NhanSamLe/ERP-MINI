@@ -258,6 +258,7 @@ export interface LineIssueItem {
   uomOptions?: Array<{ id: number; code: string; name: string }>;
   quantity: number;
   location_from_id?: number | null;
+  lot_id?: number | null;
 }
 
 export interface StockMoveAdjustmentCreate {

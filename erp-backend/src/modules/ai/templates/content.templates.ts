@@ -1,12 +1,17 @@
 /**
  * SQL query thực tế để build content_text cho từng module
  * Đã điều chỉnh chính xác theo schema database ERP Mini thực tế
+ *
+ * Lưu ý: Mỗi query PHẢI SELECT branch_id để lưu vào Qdrant payload,
+ * cho phép filter theo branch khi search (multi-tenant isolation).
  */
 export const contentTemplates = {
   crm: {
+    // Partners không có branch_id — dùng branch_id = 0 (global/shared)
     customer: `
       SELECT
         p.id,
+        0 AS branch_id,
         CONCAT_WS(' | ',
           CONCAT('Khách hàng: ', p.name),
           CONCAT('Phân loại: ',  p.type),
@@ -25,6 +30,7 @@ export const contentTemplates = {
     lead: `
       SELECT
         l.id,
+        IFNULL(l.branch_id, 0) AS branch_id,
         CONCAT_WS(' | ',
           CONCAT('Lead: ',          l.title),
           CONCAT('Khách hàng: ',    IFNULL(c.name, 'Chưa có')),
@@ -42,8 +48,10 @@ export const contentTemplates = {
     purchase_order: `
       SELECT
         po.id,
+        po.branch_id,
         CONCAT(
           'Purchase Order: ', po.po_no, '\n',
+          'Chi nhánh: ',      IFNULL(b.name, po.branch_id), '\n',
           'Nhà cung cấp: ',   v.name,       '\n',
           'Ngày đặt: ',       DATE_FORMAT(po.order_date, '%d/%m/%Y'), '\n',
           'Ngày giao dự kiến: ', IFNULL(DATE_FORMAT(po.expected_delivery_date, '%d/%m/%Y'), 'N/A'), '\n',
@@ -57,20 +65,23 @@ export const contentTemplates = {
           )
         ) AS content_text
       FROM purchase_orders po
-      JOIN partners v              ON po.supplier_id = v.id
+      JOIN partners v               ON po.supplier_id = v.id
       JOIN purchase_order_lines pol ON pol.po_id      = po.id
       JOIN products p               ON pol.product_id = p.id
       LEFT JOIN uoms u              ON pol.uom_id     = u.id
-      GROUP BY po.id, po.po_no, v.name, po.order_date,
-               po.expected_delivery_date, po.status, po.total_after_tax
+      LEFT JOIN branches b          ON po.branch_id   = b.id
+      GROUP BY po.id, po.branch_id, po.po_no, v.name, po.order_date,
+               po.expected_delivery_date, po.status, po.total_after_tax, b.name
     `,
 
+    // Vendor là global (không có branch_id) — dùng branch_id = 0
     vendor: `
       SELECT
         p.id,
+        0 AS branch_id,
         CONCAT_WS(' | ',
           CONCAT('Nhà cung cấp: ', p.name),
-          CONCAT('Phân loại: ',  p.type),
+          CONCAT('Phân loại: ',    p.type),
           CONCAT('Điện thoại: ',   IFNULL(p.phone,   'N/A')),
           CONCAT('Email: ',        IFNULL(p.email,   'N/A')),
           CONCAT('Địa chỉ: ',      IFNULL(p.address, 'N/A')),
@@ -85,8 +96,10 @@ export const contentTemplates = {
     sale_order: `
       SELECT
         so.id,
+        so.branch_id,
         CONCAT(
           'Sale Order: ',   so.order_no,   '\n',
+          'Chi nhánh: ',    IFNULL(b.name, so.branch_id), '\n',
           'Khách hàng: ',   c.name,        '\n',
           'Ngày đặt: ',     DATE_FORMAT(so.order_date, '%d/%m/%Y'), '\n',
           'Trạng thái: ',   so.status,     '\n',
@@ -103,15 +116,19 @@ export const contentTemplates = {
       JOIN sale_order_lines sol ON sol.order_id   = so.id
       JOIN products p           ON sol.product_id = p.id
       LEFT JOIN uoms u          ON p.uom_id       = u.id
-      GROUP BY so.id, so.order_no, c.name, so.order_date,
-               so.status, so.total_after_tax
+      LEFT JOIN branches b      ON so.branch_id   = b.id
+      GROUP BY so.id, so.branch_id, so.order_no, c.name, so.order_date,
+               so.status, so.total_after_tax, b.name
     `,
   },
 
   inventory: {
+    // Product là global — stock_balances có branch_id nhưng sản phẩm thì không
+    // Dùng branch_id = 0 cho product master data
     product: `
       SELECT
         p.id,
+        0 AS branch_id,
         CONCAT_WS(' | ',
           CONCAT('Sản phẩm: ',    p.name),
           CONCAT('SKU: ',          p.sku),

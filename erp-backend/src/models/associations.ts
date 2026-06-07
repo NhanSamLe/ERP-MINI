@@ -1138,6 +1138,10 @@ export function applyAssociations() {
     foreignKey: "sale_order_id",
     as: "saleOrder",
   });
+  SalesReturn.belongsTo(StockMove, {
+    foreignKey: "stock_move_id",
+    as: "stockMove",
+  });
   SalesReturnLine.belongsTo(Product, {
     foreignKey: "product_id",
     as: "product",
@@ -1302,6 +1306,10 @@ export function applyAssociations() {
   PurchaseReturn.belongsTo(PurchaseOrder, {
     foreignKey: "purchase_order_id",
     as: "purchaseOrder",
+  });
+  PurchaseReturn.belongsTo(StockMove, {
+    foreignKey: "stock_move_id",
+    as: "stockMove",
   });
   PurchaseReturn.belongsTo(User, { foreignKey: "created_by", as: "creator" });
   PurchaseReturn.belongsTo(User, { foreignKey: "approved_by", as: "approver" });

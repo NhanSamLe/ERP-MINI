@@ -16,9 +16,9 @@ import { Roles } from "@/types/enum";
 import { VendorRefund } from "../../api/purchaseReturn.api";
 
 const METHOD_LABELS: Record<string, string> = {
-  cash: "Cash",
-  bank: "Bank Transfer",
-  transfer: "Transfer",
+  cash: "Tiền mặt",
+  bank: "Chuyển khoản ngân hàng",
+  transfer: "Chuyển khoản",
 };
 
 export default function VendorRefundListPage() {
@@ -51,7 +51,7 @@ export default function VendorRefundListPage() {
     if (!postTarget) return;
     try {
       await dispatch(postVendorRefundThunk(postTarget.id)).unwrap();
-      toast.success("Vendor Refund posted");
+      toast.success("Đã ghi sổ phiếu hoàn tiền từ NCC");
       setPostTarget(null);
     } catch (e: any) {
       toast.error(e);
@@ -68,10 +68,10 @@ export default function VendorRefundListPage() {
             </span>
             <div>
               <h1 className="text-base font-semibold text-gray-900">
-                Vendor Refunds
+                Hoàn tiền từ Nhà cung cấp
               </h1>
               <p className="text-xs text-gray-400 mt-0.5">
-                Supplier cash refunds
+                Nhận tiền hoàn trả từ nhà cung cấp
               </p>
             </div>
             <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-600">
@@ -91,7 +91,7 @@ export default function VendorRefundListPage() {
                 leftIcon={<Plus className="w-3.5 h-3.5" />}
                 onClick={() => navigate("/purchase/vendor-refunds/create")}
               >
-                New Refund
+                Tạo Phiếu hoàn tiền mới
               </Button>
             )}
           </div>
@@ -99,7 +99,7 @@ export default function VendorRefundListPage() {
 
         <div className="px-5 py-3 border-b border-orange-100 bg-orange-50/30 flex items-center gap-3">
           <input
-            placeholder="Search Refund No, Supplier..."
+            placeholder="Tìm số phiếu hoàn, nhà cung cấp..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="flex-1 min-w-[200px] max-w-xs h-8 pl-3 pr-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 placeholder:text-gray-400"
@@ -109,9 +109,9 @@ export default function VendorRefundListPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="h-8 pl-3 pr-8 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
           >
-            <option value="">All Status</option>
-            <option value="draft">Draft</option>
-            <option value="posted">Posted</option>
+            <option value="">Tất cả trạng thái</option>
+            <option value="draft">Nháp</option>
+            <option value="posted">Đã ghi sổ</option>
           </select>
         </div>
 
@@ -122,7 +122,7 @@ export default function VendorRefundListPage() {
         ) : filtered.length === 0 ? (
           <div className="py-16 flex flex-col items-center gap-2 text-gray-400">
             <Banknote className="w-10 h-10" />
-            <p className="text-sm font-medium">No vendor refunds found</p>
+            <p className="text-sm font-medium">Không tìm thấy phiếu hoàn tiền nào</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -130,17 +130,17 @@ export default function VendorRefundListPage() {
               <thead>
                 <tr className="border-b border-orange-100 bg-orange-50/60">
                   {[
-                    "Refund No",
-                    "Supplier",
-                    "Date",
-                    "Method",
-                    "Amount",
-                    "Status",
-                    "Actions",
+                    "Số phiếu hoàn",
+                    "Nhà cung cấp",
+                    "Ngày lập",
+                    "Phương thức",
+                    "Số tiền",
+                    "Trạng thái",
+                    "Thao tác",
                   ].map((h) => (
                     <th
                       key={h}
-                      className={`px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider ${h === "Amount" || h === "Actions" ? "text-right" : "text-left"}`}
+                      className={`px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider ${h === "Số tiền" || h === "Thao tác" ? "text-right" : "text-left"}`}
                     >
                       {h}
                     </th>
@@ -182,7 +182,7 @@ export default function VendorRefundListPage() {
                             onClick={() => setPostTarget(r)}
                             className="h-6 px-2 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded hover:bg-emerald-100 transition-colors"
                           >
-                            Post
+                            Ghi sổ
                           </button>
                         )}
                     </td>
@@ -195,11 +195,11 @@ export default function VendorRefundListPage() {
 
         <div className="px-5 py-3 border-t border-orange-100 bg-orange-50/30">
           <p className="text-xs text-gray-500">
-            Showing{" "}
+            Hiển thị{" "}
             <span className="font-semibold text-gray-700">
               {filtered.length}
             </span>{" "}
-            records
+            bản ghi
           </p>
         </div>
       </div>
@@ -208,9 +208,9 @@ export default function VendorRefundListPage() {
         isOpen={!!postTarget}
         onClose={() => setPostTarget(null)}
         onConfirm={handlePost}
-        title="Post Vendor Refund"
-        description={`Post ${postTarget?.refund_no}? This will create a GL entry and increase bank balance.`}
-        confirmText="Post"
+        title="Ghi sổ Phiếu hoàn tiền"
+        description={`Ghi sổ phiếu hoàn tiền từ NCC ${postTarget?.refund_no}? Bút toán sổ cái sẽ được tạo và tăng số dư tài khoản ngân hàng.`}
+        confirmText="Ghi sổ"
         variant="success"
         loading={actionLoading}
       />

@@ -72,7 +72,7 @@ export default function ChatPanel() {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed bottom-[88px] right-6 w-[400px] h-[580px] flex flex-col rounded-2xl overflow-hidden z-50 shadow-2xl shadow-indigo-200/40 border border-white/60 animate-in fade-in slide-in-from-bottom-4 duration-300">
+    <div className="fixed bottom-[88px] left-[272px] w-[400px] h-[580px] flex flex-col rounded-2xl overflow-hidden z-50 shadow-2xl shadow-indigo-200/40 border border-white/60 animate-in fade-in slide-in-from-bottom-4 duration-300">
       {/* Glassmorphism background */}
       <div className="absolute inset-0 bg-white/95 backdrop-blur-xl pointer-events-none" />
 

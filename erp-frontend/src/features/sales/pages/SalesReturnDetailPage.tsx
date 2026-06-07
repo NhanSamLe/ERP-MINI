@@ -353,6 +353,16 @@ export default function SalesReturnDetailPage() {
               <MetaRow label="Ngày hoàn" value={fmtDate(salesReturn?.return_date)} />
               <MetaRow label="Kho nhận" value={(salesReturn as any)?.warehouse?.name || "—"} />
               <MetaRow label="Giá trị" value={fmtMoney(salesReturn?.total_return_amount, currencyCode)} />
+              {salesReturn?.stock_move_id && (
+                <MetaRow
+                  label="Phiếu kho"
+                  value={
+                    <Link to={`/inventory/stock_move/view/${salesReturn.stock_move_id}`} className="font-medium text-orange-600 hover:underline">
+                      Xem phiếu kho
+                    </Link>
+                  }
+                />
+              )}
             </>
           )}
           {saleOrder && (

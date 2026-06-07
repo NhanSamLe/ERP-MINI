@@ -68,7 +68,7 @@ export default function WarehousePages() {
       await dispatch(fetchWarehousesThunk());
       setConfirmOpen(false);
       setSelectedId(null);
-      toast.success("Warehouse deleted successfully!");
+      toast.success("Xóa kho hàng thành công!");
     } catch (error) {
       toast.error(getErrorMessage(error));
       console.error(error);
@@ -112,9 +112,9 @@ export default function WarehousePages() {
             <WarehouseIcon className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Warehouse Management</h1>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Quản lý kho hàng</h1>
             <p className="text-gray-500 text-sm mt-0.5">
-              Manage and monitor all warehouse installations in the system
+              Quản lý và giám sát tất cả các kho hàng trong hệ thống
             </p>
           </div>
         </div>
@@ -125,7 +125,7 @@ export default function WarehousePages() {
             leftIcon={<Plus className="w-4 h-4" />}
             size="md"
           >
-            New Warehouse
+            Thêm kho mới
           </Button>
         )}
       </div>
@@ -137,7 +137,7 @@ export default function WarehousePages() {
             <WarehouseIcon className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Warehouses</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tổng số kho hàng</p>
             <p className="text-lg font-extrabold text-slate-850 mt-0.5">{items.length}</p>
           </div>
         </div>
@@ -147,7 +147,7 @@ export default function WarehousePages() {
             <Building className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Branches Covered</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Chi nhánh áp dụng</p>
             <p className="text-lg font-extrabold text-slate-850 mt-0.5">
               {Array.from(new Set(items.map(x => x.branch_id))).length}
             </p>
@@ -159,7 +159,7 @@ export default function WarehousePages() {
             <MapPin className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Located Regions</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Số kho có địa chỉ</p>
             <p className="text-lg font-extrabold text-slate-850 mt-0.5">
               {items.filter(x => x.address).length}
             </p>
@@ -174,7 +174,7 @@ export default function WarehousePages() {
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none z-10" />
             <Input
-              placeholder="Search warehouses by name, code, or address..."
+              placeholder="Tìm kiếm kho hàng theo tên, mã, hoặc địa chỉ..."
               value={search}
               onChange={setSearch}
               className="pl-9 bg-white border-slate-200 focus:ring-orange-500 focus:border-orange-500"
@@ -187,10 +187,10 @@ export default function WarehousePages() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50/80 text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-slate-100">
               <tr>
-                <th className="py-3.5 px-6 text-left">Code</th>
-                <th className="py-3.5 px-6 text-left">Name</th>
-                <th className="py-3.5 px-6 text-left">Address</th>
-                <th className="py-3.5 px-6 text-center w-28">Actions</th>
+                <th className="py-3.5 px-6 text-left">Mã kho</th>
+                <th className="py-3.5 px-6 text-left">Tên kho</th>
+                <th className="py-3.5 px-6 text-left">Địa chỉ</th>
+                <th className="py-3.5 px-6 text-center w-28">Thao tác</th>
               </tr>
             </thead>
 
@@ -200,14 +200,14 @@ export default function WarehousePages() {
                   <td colSpan={4} className="py-16 text-center text-slate-400">
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-8 h-8 border-3 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-xs font-medium">Loading warehouses...</span>
+                      <span className="text-xs font-medium">Đang tải danh sách kho...</span>
                     </div>
                   </td>
                 </tr>
               ) : totalItems === 0 ? (
                 <tr>
                   <td colSpan={4} className="py-16 text-center text-slate-400 italic">
-                    No warehouses found
+                    Không tìm thấy kho hàng nào
                   </td>
                 </tr>
               ) : (
@@ -221,7 +221,7 @@ export default function WarehousePages() {
                         <Link
                           to={`/inventory/warehouses/${w.id}/edit`}
                           className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm"
-                          title={isAdmin ? "Edit" : "View"}
+                          title={isAdmin ? "Chỉnh sửa" : "Xem"}
                         >
                           {isAdmin ? (
                             <Pencil className="w-3.5 h-3.5" />
@@ -234,7 +234,7 @@ export default function WarehousePages() {
                           <button
                             onClick={() => openDeleteModal(Number(w.id))}
                             className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-rose-600 bg-white hover:bg-rose-50 hover:text-rose-700 hover:border-rose-100 transition-colors shadow-sm"
-                            title="Delete"
+                            title="Xóa"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -252,11 +252,11 @@ export default function WarehousePages() {
         {totalItems > 0 && (
           <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/30 text-xs text-slate-500">
             <div>
-              Showing{" "}
+              Hiển thị{" "}
               <span className="font-semibold text-slate-800">
                 {startIndex + 1} - {Math.min(startIndex + pageSize, totalItems)}
               </span>{" "}
-              of <span className="font-semibold text-slate-800">{totalItems}</span> warehouses
+              trong tổng số <span className="font-semibold text-slate-800">{totalItems}</span> kho hàng
             </div>
 
             <div className="flex items-center gap-1.5">
@@ -302,10 +302,10 @@ export default function WarehousePages() {
               <Trash2 className="h-6 w-6 text-red-600" />
             </div>
             <DialogTitle className="text-center text-lg font-bold text-gray-900">
-              Delete Warehouse
+              Xóa kho hàng
             </DialogTitle>
             <DialogDescription className="text-center text-sm text-gray-500">
-              Are you sure you want to delete this warehouse? This action cannot be undone and will permanently remove this record from the system.
+              Bạn có chắc chắn muốn xóa kho hàng này không? Hành động này không thể hoàn tác và sẽ xóa vĩnh viễn bản ghi này khỏi hệ thống.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-row justify-center gap-3 mt-4">
@@ -315,7 +315,7 @@ export default function WarehousePages() {
               disabled={deleting}
               className="w-full sm:w-auto"
             >
-              Cancel
+              Hủy
             </Button>
             <Button
               variant="danger"
@@ -323,7 +323,7 @@ export default function WarehousePages() {
               loading={deleting}
               className="w-full sm:w-auto"
             >
-              Yes, Delete
+              Xác nhận xóa
             </Button>
           </DialogFooter>
         </DialogContent>

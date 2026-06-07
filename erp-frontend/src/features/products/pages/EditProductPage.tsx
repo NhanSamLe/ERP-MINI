@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { FormInput } from "../../../components/ui/FormInput";
 import { Button } from "../../../components/ui/Button";
 import { useDispatch, useSelector } from "react-redux";
@@ -376,8 +376,8 @@ export default function EditProductPage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between bg-white px-6 py-4 rounded-xl border shadow-sm">
         <div>
-          <h1 className="text-xl font-semibold text-gray-800">Edit Product</h1>
-          <p className="text-sm text-gray-500">Update product details</p>
+          <h1 className="text-xl font-semibold text-gray-800">Chỉnh sửa sản phẩm</h1>
+          <p className="text-sm text-gray-500">Cập nhật thông tin chi tiết sản phẩm</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -389,7 +389,7 @@ export default function EditProductPage() {
           <Link to="/inventory/products">
             <Button className="flex items-center gap-1 bg-[#1a1d29] hover:bg-[#0f111a] text-white px-4 py-2 rounded-lg shadow text-sm font-medium transition">
               <ArrowLeft className="w-4 h-4" />
-              Back
+              Quay lại
             </Button>
           </Link>
         </div>
@@ -402,7 +402,7 @@ export default function EditProductPage() {
             onClick={() => setActiveTab("general")}
             className={tabClass("general")}
           >
-            General Information
+            Thông tin chung
             {(errors.name ||
               errors.category_id ||
               errors.cost_price ||
@@ -415,7 +415,7 @@ export default function EditProductPage() {
             onClick={() => setActiveTab("attributes")}
             className={tabClass("attributes")}
           >
-            Attributes
+            Thuộc tính
             {(errors.weight || errors.volume || errors.warranty_months) && (
               <span className="ml-1.5 w-2 h-2 rounded-full bg-red-500 inline-block" />
             )}
@@ -425,7 +425,7 @@ export default function EditProductPage() {
             className={`${tabClass("suppliers")} ${product.source_type !== "purchased" ? "opacity-40 cursor-not-allowed" : ""}`}
             disabled={product.source_type !== "purchased"}
           >
-            Suppliers{" "}
+            Nhà cung cấp{" "}
             {supplierInfoList.length > 0 && (
               <span className="ml-1 bg-orange-100 text-orange-600 text-xs px-1.5 py-0.5 rounded-full">
                 {supplierInfoList.length}
@@ -441,10 +441,10 @@ export default function EditProductPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <FormInput
-                    label="Product Name"
+                    label="Tên sản phẩm"
                     value={product.name}
                     onChange={(v) => handleChange("name", v)}
-                    placeholder="Enter product name"
+                    placeholder="Nhập tên sản phẩm"
                     required
                     className={
                       errors.name ? "border-red-400 focus:ring-red-300" : ""
@@ -455,16 +455,16 @@ export default function EditProductPage() {
                   )}
                 </div>
                 <FormInput
-                  label="SKU"
+                  label="Mã SKU"
                   value={product.sku}
                   onChange={(v) => handleChange("sku", v)}
-                  placeholder="Enter SKU"
+                  placeholder="Nhập mã SKU"
                   readOnly
                 />
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Category <span className="text-red-500">*</span>
+                    Danh mục <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={product.category_id}
@@ -473,7 +473,7 @@ export default function EditProductPage() {
                     }
                     className={`w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-orange-400 ${errors.category_id ? "border-red-400" : ""}`}
                   >
-                    <option value={0}>-- Select Category --</option>
+                    <option value={0}>-- Chọn danh mục --</option>
                     {categories.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name}
@@ -489,7 +489,7 @@ export default function EditProductPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Product Type
+                    Loại sản phẩm
                   </label>
                   <select
                     value={product.product_type}
@@ -501,15 +501,15 @@ export default function EditProductPage() {
                     }
                     className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-orange-400"
                   >
-                    <option value="storable">Storable</option>
-                    <option value="consumable">Consumable</option>
-                    <option value="service">Service</option>
+                    <option value="storable">Lưu kho</option>
+                    <option value="consumable">Tiêu dùng</option>
+                    <option value="service">Dịch vụ</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Source Type
+                    Nguồn cung
                   </label>
                   <select
                     value={product.source_type}
@@ -522,14 +522,14 @@ export default function EditProductPage() {
                     className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-orange-400"
                     disabled={product.product_type === "service"}
                   >
-                    <option value="purchased">Purchased</option>
-                    <option value="manufactured">Manufactured</option>
+                    <option value="purchased">Mua ngoài</option>
+                    <option value="manufactured">Tự sản xuất</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Unit of Measure (UOM)
+                    Đơn vị tính (UoM)
                   </label>
                   <select
                     value={product.uom_id || ""}
@@ -541,7 +541,7 @@ export default function EditProductPage() {
                     }
                     className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-orange-400"
                   >
-                    <option value="">-- Select UOM --</option>
+                    <option value="">-- Chọn đơn vị tính --</option>
                     {uoms.map((u) => (
                       <option key={u.id} value={u.id}>
                         {u.name} ({u.code})
@@ -552,7 +552,7 @@ export default function EditProductPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Purchase UOM
+                    Đơn vị mua hàng
                   </label>
                   <select
                     value={product.purchase_uom_id || ""}
@@ -564,7 +564,7 @@ export default function EditProductPage() {
                     }
                     className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-orange-400"
                   >
-                    <option value="">-- Select Purchase UOM --</option>
+                    <option value="">-- Chọn đơn vị mua --</option>
                     {uoms.map((u) => (
                       <option key={u.id} value={u.id}>
                         {u.name} ({u.code})
@@ -574,7 +574,7 @@ export default function EditProductPage() {
                 </div>
 
                 <FormInput
-                  label="Minimum Stock Qty"
+                  label="Tồn kho tối thiểu"
                   type="text"
                   value={
                     product.min_stock_qty != null && product.min_stock_qty > 0
@@ -592,19 +592,19 @@ export default function EditProductPage() {
                   disabled={product.product_type === "service"}
                 />
                 <FormInput
-                  label="Barcode"
+                  label="Mã vạch (Barcode)"
                   value={product.barcode || ""}
                   onChange={(v) => handleChange("barcode", v)}
-                  placeholder="Enter barcode"
+                  placeholder="Nhập mã vạch"
                 />
                 <PriceInput
-                  label="Cost Price"
+                  label="Giá mua"
                   value={product.cost_price}
                   onChange={(v) => handleChange("cost_price", v)}
                   error={errors.cost_price}
                 />
                 <PriceInput
-                  label="Sale Price"
+                  label="Giá bán"
                   value={product.sale_price}
                   onChange={(v) => handleChange("sale_price", v)}
                   error={errors.sale_price}
@@ -612,7 +612,7 @@ export default function EditProductPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tax Rate
+                    Thuế suất
                   </label>
                   <select
                     value={product.tax_rate_id || ""}
@@ -624,7 +624,7 @@ export default function EditProductPage() {
                     }
                     className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-orange-400"
                   >
-                    <option value="">-- Select Tax Rate --</option>
+                    <option value="">-- Chọn thuế suất --</option>
                     {taxRates.map((r) => (
                       <option key={r.id} value={r.id}>
                         {r.name} ({r.rate}%)
@@ -635,7 +635,7 @@ export default function EditProductPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Status
+                    Trạng thái
                   </label>
                   <select
                     value={product.status}
@@ -647,20 +647,20 @@ export default function EditProductPage() {
                     }
                     className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-orange-400"
                   >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
+                    <option value="active">Đang hoạt động</option>
+                    <option value="inactive">Ngừng hoạt động</option>
                   </select>
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description
+                  Mô tả sản phẩm
                 </label>
                 <textarea
                   value={product.description}
                   onChange={(e) => handleChange("description", e.target.value)}
-                  placeholder="Enter product description..."
+                  placeholder="Nhập mô tả sản phẩm..."
                   className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-orange-400"
                   rows={3}
                 />
@@ -668,10 +668,10 @@ export default function EditProductPage() {
 
               {/* Images */}
               <div className="space-y-4">
-                <h4 className="font-medium text-gray-700">Product Images</h4>
+                <h4 className="font-medium text-gray-700">Hình ảnh sản phẩm</h4>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Thumbnail
+                    Ảnh đại diện
                   </label>
                   {previewThumbnail ? (
                     <div className="relative w-32 h-32 border rounded-xl overflow-hidden">
@@ -694,7 +694,7 @@ export default function EditProductPage() {
                   ) : (
                     <label className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-orange-400 hover:text-orange-500 cursor-pointer">
                       <Plus className="w-5 h-5 mb-1" />
-                      <span className="text-xs font-medium">Add Thumbnail</span>
+                      <span className="text-xs font-medium">Thêm ảnh đại diện</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -713,7 +713,7 @@ export default function EditProductPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Gallery
+                    Bộ sưu tập ảnh
                   </label>
                   <div className="flex flex-wrap gap-4">
                     {previewGallery.map((p, i) => (
@@ -750,7 +750,7 @@ export default function EditProductPage() {
                     ))}
                     <label className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-orange-400 hover:text-orange-500 cursor-pointer">
                       <Plus className="w-5 h-5 mb-1" />
-                      <span className="text-xs font-medium">Add Image</span>
+                      <span className="text-xs font-medium">Thêm ảnh</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -786,19 +786,19 @@ export default function EditProductPage() {
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormInput
-                  label="Internal Reference"
+                  label="Mã tham chiếu nội bộ"
                   value={product.internal_ref || ""}
                   onChange={(v) => handleChange("internal_ref", v)}
-                  placeholder="Enter internal reference"
+                  placeholder="Nhập mã tham chiếu nội bộ"
                 />
                 <FormInput
-                  label="Origin"
+                  label="Xuất xứ"
                   value={product.origin || ""}
                   onChange={(v) => handleChange("origin", v)}
-                  placeholder="Enter origin"
+                  placeholder="Nhập xuất xứ"
                 />
                 <FormInput
-                  label="Weight (kg)"
+                  label="Trọng lượng (kg)"
                   type="number"
                   value={product.weight?.toString() || ""}
                   onChange={(v) =>
@@ -807,7 +807,7 @@ export default function EditProductPage() {
                   placeholder="0.00"
                 />
                 <FormInput
-                  label="Volume (m³)"
+                  label="Thể tích (m³)"
                   type="number"
                   value={product.volume?.toString() || ""}
                   onChange={(v) =>
@@ -816,7 +816,7 @@ export default function EditProductPage() {
                   placeholder="0.00"
                 />
                 <FormInput
-                  label="Warranty (months)"
+                  label="Bảo hành (tháng)"
                   type="number"
                   value={product.warranty_months?.toString() || ""}
                   onChange={(v) =>
@@ -827,12 +827,12 @@ export default function EditProductPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Notes
+                  Ghi chú
                 </label>
                 <textarea
                   value={product.notes || ""}
                   onChange={(e) => handleChange("notes", e.target.value)}
-                  placeholder="Enter additional notes..."
+                  placeholder="Nhập ghi chú thêm..."
                   className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-orange-400"
                   rows={4}
                 />
@@ -845,7 +845,7 @@ export default function EditProductPage() {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <p className="text-sm text-gray-500">
-                  Manage suppliers for this product
+                  Quản lý nhà cung cấp cho sản phẩm này
                 </p>
                 <Button
                   onClick={() => {
@@ -854,27 +854,27 @@ export default function EditProductPage() {
                   }}
                   className="flex items-center gap-1 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm"
                 >
-                  <Plus className="w-4 h-4" /> Add Supplier
+                  <Plus className="w-4 h-4" /> Thêm nhà cung cấp
                 </Button>
               </div>
 
               {supplierInfoList.length === 0 ? (
                 <div className="text-center py-12 text-gray-400">
-                  <p className="text-sm">No suppliers added yet.</p>
+                  <p className="text-sm">Chưa có nhà cung cấp nào được thêm.</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm border-collapse">
                     <thead>
                       <tr className="bg-gray-50 text-gray-600 text-left">
-                        <th className="px-4 py-3 font-medium">Supplier</th>
-                        <th className="px-4 py-3 font-medium">Code</th>
-                        <th className="px-4 py-3 font-medium">Price</th>
+                        <th className="px-4 py-3 font-medium">Nhà cung cấp</th>
+                        <th className="px-4 py-3 font-medium">Mã SP NCC</th>
+                        <th className="px-4 py-3 font-medium">Giá mua</th>
                         <th className="px-4 py-3 font-medium">MOQ</th>
-                        <th className="px-4 py-3 font-medium">Lead Time</th>
-                        <th className="px-4 py-3 font-medium">Preferred</th>
+                        <th className="px-4 py-3 font-medium">Thời gian giao</th>
+                        <th className="px-4 py-3 font-medium">Ưu tiên</th>
                         <th className="px-4 py-3 font-medium text-right">
-                          Actions
+                          Thao tác
                         </th>
                       </tr>
                     </thead>
@@ -906,14 +906,14 @@ export default function EditProductPage() {
                             {s.is_preferred ? (
                               <span className="flex items-center gap-1 text-yellow-500 font-medium">
                                 <Star className="w-4 h-4 fill-yellow-400" />{" "}
-                                Preferred
+                                Ưu tiên
                               </span>
                             ) : (
                               <button
                                 onClick={() => handleSetPreferred(s.id)}
                                 className="text-gray-400 hover:text-yellow-500 transition text-xs underline"
                               >
-                                Set preferred
+                                Đặt làm ưu tiên
                               </button>
                             )}
                           </td>
@@ -962,7 +962,7 @@ export default function EditProductPage() {
           disabled={isSubmitting}
           className={`bg-[#ff8c00] hover:bg-[#ff7700] text-white px-6 py-3 rounded-lg font-medium shadow-md ${isSubmitting ? "opacity-70 cursor-not-allowed" : ""}`}
         >
-          {isSubmitting ? "Saving..." : "Save Changes"}
+          {isSubmitting ? "Đang lưu..." : "Lưu thay đổi"}
         </Button>
       </div>
 
@@ -987,16 +987,16 @@ export default function EditProductPage() {
               <Trash2 className="w-6 h-6 text-red-500" />
             </div>
             <h2 className="text-lg font-semibold text-gray-800 mb-2">
-              Remove Supplier?
+              Xóa nhà cung cấp?
             </h2>
             <p className="text-sm text-gray-500 mb-1">
-              You are about to remove
+              Bạn đang chuẩn bị gỡ bỏ nhà cung cấp
             </p>
             <p className="text-sm font-medium text-gray-800 mb-5">
               {deleteConfirm.supplierName}
             </p>
             <p className="text-xs text-gray-400 mb-6">
-              This action cannot be undone.
+              Hành động này không thể hoàn tác.
             </p>
             <div className="flex justify-center gap-3">
               <button
@@ -1009,7 +1009,7 @@ export default function EditProductPage() {
                 }
                 className="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition"
               >
-                Cancel
+                Hủy
               </button>
               <button
                 onClick={() => {
@@ -1019,7 +1019,7 @@ export default function EditProductPage() {
                 }}
                 className="px-5 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition"
               >
-                Yes, Remove
+                Xóa
               </button>
             </div>
           </div>

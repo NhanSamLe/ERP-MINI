@@ -10,9 +10,9 @@ import { StandardFormLayout } from "../../../../components/layout/StandardFormLa
 import { FormSection } from "../../../../components/layout/FormSection";
 
 const METHOD_OPTIONS = [
-  { value: "bank", label: "Bank Transfer" },
-  { value: "cash", label: "Cash" },
-  { value: "transfer", label: "Transfer" },
+  { value: "bank", label: "Chuyển khoản ngân hàng" },
+  { value: "cash", label: "Tiền mặt" },
+  { value: "transfer", label: "Chuyển khoản" },
 ];
 
 export default function VendorRefundCreatePage() {
@@ -48,15 +48,15 @@ export default function VendorRefundCreatePage() {
 
   const handleSubmit = async () => {
     if (!supplierId) {
-      toast.error("Supplier is required");
+      toast.error("Vui lòng chọn nhà cung cấp");
       return;
     }
     if (!refundDate) {
-      toast.error("Refund date is required");
+      toast.error("Vui lòng chọn ngày hoàn tiền");
       return;
     }
     if (!amount || Number(amount) <= 0) {
-      toast.error("Amount must be > 0");
+      toast.error("Số tiền phải lớn hơn 0");
       return;
     }
 
@@ -73,10 +73,10 @@ export default function VendorRefundCreatePage() {
           notes: notes.trim() || null,
         } as any),
       ).unwrap();
-      toast.success(`Vendor Refund ${refund.refund_no} created`);
+      toast.success(`Đã tạo Phiếu hoàn tiền từ NCC ${refund.refund_no}`);
       navigate(`/purchase/vendor-refunds/${refund.id}`);
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to create Vendor Refund");
+      toast.error(e?.message ?? "Tạo phiếu hoàn tiền từ NCC thất bại");
     } finally {
       setSubmitting(false);
     }
@@ -84,15 +84,15 @@ export default function VendorRefundCreatePage() {
 
   return (
     <StandardFormLayout
-      title="New Vendor Refund"
+      title="Tạo Phiếu hoàn tiền từ NCC mới"
       actions={[
         {
-          label: "Cancel",
+          label: "Hủy bỏ",
           variant: "outline",
           onClick: () => navigate("/purchase/vendor-refunds"),
         },
         {
-          label: "Create Refund",
+          label: "Tạo Phiếu hoàn tiền",
           variant: "primary",
           onClick: handleSubmit,
           isLoading: submitting,
@@ -100,13 +100,13 @@ export default function VendorRefundCreatePage() {
       ]}
     >
       <FormSection
-        title="Refund Details"
+        title="Chi tiết Hoàn tiền"
         icon={<Banknote className="w-4 h-4" />}
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Supplier <span className="text-red-500">*</span>
+              Nhà cung cấp <span className="text-red-500">*</span>
             </label>
             <select
               value={supplierId}
@@ -115,7 +115,7 @@ export default function VendorRefundCreatePage() {
               }
               className="w-full h-9 px-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
             >
-              <option value="">— Select Supplier —</option>
+              <option value="">— Chọn nhà cung cấp —</option>
               {partners.items.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -126,7 +126,7 @@ export default function VendorRefundCreatePage() {
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Refund Date <span className="text-red-500">*</span>
+              Ngày hoàn tiền <span className="text-red-500">*</span>
             </label>
             <input
               type="date"
@@ -138,7 +138,7 @@ export default function VendorRefundCreatePage() {
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Amount <span className="text-red-500">*</span>
+              Số tiền <span className="text-red-500">*</span>
             </label>
             <input
               type="number"
@@ -154,7 +154,7 @@ export default function VendorRefundCreatePage() {
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Payment Method <span className="text-red-500">*</span>
+              Phương thức thanh toán <span className="text-red-500">*</span>
             </label>
             <select
               value={method}
@@ -171,20 +171,20 @@ export default function VendorRefundCreatePage() {
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Transaction Reference
+              Mã giao dịch
             </label>
             <input
               type="text"
               value={transactionReference}
               onChange={(e) => setTransactionReference(e.target.value)}
-              placeholder="Bank ref / cheque no..."
+              placeholder="Mã tham chiếu ngân hàng / số séc..."
               className="w-full h-9 px-3 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
             />
           </div>
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Branch
+              Chi nhánh
             </label>
             <div className="h-9 px-3 flex items-center text-sm bg-gray-50 border border-gray-200 rounded-md text-gray-600">
               {user?.branch?.name ?? "—"}
@@ -194,13 +194,13 @@ export default function VendorRefundCreatePage() {
 
         <div className="mt-4">
           <label className="block text-xs font-medium text-gray-600 mb-1">
-            Notes
+            Ghi chú
           </label>
           <textarea
             rows={2}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Additional notes..."
+            placeholder="Ghi chú thêm..."
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-orange-500"
           />
         </div>
