@@ -17,6 +17,8 @@ import { GlEntry } from "../../finance/models/glEntry.model";
 import { GlEntryLine } from "../../finance/models/glEntryLine.model";
 import { GlAccount } from "../../finance/models/glAccount.model";
 import { notificationService } from "../../../core/services/notification.service";
+import { getMappedAccount } from "../../finance/services/glAccount.service";
+import { checkPeriodLocked } from "../../finance/services/glJournal.service";
 import { DuplicateDetectorService } from "../../document-intelligence/services/duplicateDetector.service";
 import { ThreeWayMatcherService } from "../../document-intelligence/services/threeWayMatcher.service";
 import { apInvoiceAuditLogService } from "./apInvoiceAuditLog.service";
@@ -734,6 +736,9 @@ export const apInvoiceService = {
         { transaction: t },
       );
 
+      // Kiểm tra kỳ kế toán đã khóa sổ hay chưa
+      await checkPeriodLocked(invoice.invoice_date ?? new Date(), t);
+
       const journal = await GlJournal.findOne({
         where: { code: "PURCHASE" },
         transaction: t,
@@ -753,19 +758,12 @@ export const apInvoiceService = {
         { transaction: t },
       );
 
-      const [invAcc, vatAcc, apAcc] = await Promise.all([
-        GlAccount.findOne({ where: { code: "156" }, transaction: t }),
-        GlAccount.findOne({ where: { code: "1331" }, transaction: t }),
-        GlAccount.findOne({ where: { code: "331" }, transaction: t }),
+      // Lấy các tài khoản 156, 1331, 331 qua mapping động
+      const [INVENTORY_ACC_ID, VAT_INPUT_ACC_ID, AP_ACC_ID] = await Promise.all([
+        getMappedAccount(invoice.branch_id, "AP_EXPENSE_INVENTORY", "156", t),
+        getMappedAccount(invoice.branch_id, "AP_VAT", "1331", t),
+        getMappedAccount(invoice.branch_id, "AP_PAYABLE", "331", t),
       ]);
-
-      if (!invAcc || !vatAcc || !apAcc) {
-        throw new Error("Missing GL Accounts 156 / 1331 / 331");
-      }
-
-      const INVENTORY_ACC_ID = invAcc.id;
-      const VAT_INPUT_ACC_ID = vatAcc.id;
-      const AP_ACC_ID = apAcc.id;
 
       const totalBeforeTax = Number(invoice.total_before_tax || 0);
       const totalTax = Number(invoice.total_tax || 0);

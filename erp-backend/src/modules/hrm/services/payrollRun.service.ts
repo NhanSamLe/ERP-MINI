@@ -3,6 +3,8 @@ import * as model from "../../../models/index";
 import { PAYROLL_RULE } from "../constants/payrollRule";
 import dayjs from "dayjs";
 import { notificationService } from "../../../core/services/notification.service";
+import { getPayrollConfigMap } from "./payrollConfig.service";
+import { checkPeriodLocked } from "../../finance/services/glJournal.service";
 
 export type PayrollRunStatus = "draft" | "posted";
 
@@ -165,6 +167,20 @@ export async function postPayrollRun(id: number, transaction?: any) {
     const period = (row as any).period;
     if (!period) throw new Error("Payroll period not found");
 
+    // Kiểm tra kỳ kế toán đã khóa sổ hay chưa
+    await checkPeriodLocked(period.start_date, t);
+
+    // Load configurations from DB
+    const configMap = await getPayrollConfigMap();
+    const insBaseMax = Number(configMap.INSURANCE_BASE_MAX || 46800000);
+    const insBaseBhtnMax = Number(configMap.INSURANCE_BASE_BHTN_MAX || 99200000);
+    const insEmpSocial = Number(configMap.INS_EMP_SOCIAL_RATE || 0.08);
+    const insEmpHealth = Number(configMap.INS_EMP_HEALTH_RATE || 0.015);
+    const insEmpUnemp = Number(configMap.INS_EMP_UNEMP_RATE || 0.01);
+    const insCompSocial = Number(configMap.INS_COMP_SOCIAL_RATE || 0.175);
+    const insCompHealth = Number(configMap.INS_COMP_HEALTH_RATE || 0.03);
+    const insCompUnemp = Number(configMap.INS_COMP_UNEMP_RATE || 0.01);
+
     // 1. Tự động kiểm tra/tạo các tài khoản tiền lương hệ thống làm fallback
     let acc334 = await model.GlAccount.findOne({ where: { code: "334" }, transaction: t });
     if (!acc334) {
@@ -299,10 +315,10 @@ export async function postPayrollRun(id: number, transaction?: any) {
       let compIns = 0;
 
       if (emp && emp.contract_type === "official") {
-        const insuranceBase = Math.min(baseSalary, 46800000);
-        const insuranceBaseBhtn = Math.min(baseSalary, 99200000);
-        empIns = insuranceBase * 0.095 + insuranceBaseBhtn * 0.01;
-        compIns = insuranceBase * 0.225 + insuranceBaseBhtn * 0.01;
+        const insuranceBase = Math.min(baseSalary, insBaseMax);
+        const insuranceBaseBhtn = Math.min(baseSalary, insBaseBhtnMax);
+        empIns = insuranceBase * (insEmpSocial + insEmpHealth) + insuranceBaseBhtn * insEmpUnemp;
+        compIns = insuranceBase * (insCompSocial + insCompHealth) + insuranceBaseBhtn * insCompUnemp;
       }
 
       const costCenterId = getDeptCostCenter(emp?.department_id);
@@ -602,6 +618,20 @@ export async function calculatePayrollRun(runId: number, user: any) {
 
     const results: any[] = [];
 
+    // Load configurations from DB
+    const configMap = await getPayrollConfigMap();
+    const standardWorkDays = Number(configMap.STANDARD_WORK_DAYS || 26);
+    const paidLeave = configMap.PAID_LEAVE === "true";
+    const lateFinePerDay = Number(configMap.LATE_FINE_PER_DAY || 50000);
+    const mealAllowancePerDay = Number(configMap.MEAL_ALLOWANCE_PER_DAY || 30000);
+    const insBaseMax = Number(configMap.INSURANCE_BASE_MAX || 46800000);
+    const insBaseBhtnMax = Number(configMap.INSURANCE_BASE_BHTN_MAX || 99200000);
+    const insEmpSocial = Number(configMap.INS_EMP_SOCIAL_RATE || 0.08);
+    const insEmpHealth = Number(configMap.INS_EMP_HEALTH_RATE || 0.015);
+    const insEmpUnemp = Number(configMap.INS_EMP_UNEMP_RATE || 0.01);
+    const personalDeductionVal = Number(configMap.PERSONAL_DEDUCTION || 11000000);
+    const dependentDeductionVal = Number(configMap.DEPENDENT_DEDUCTION || 4400000);
+
     // 5) Tính NET cho từng nhân viên và UPSERT payroll_run_lines
     for (const emp of employees as any[]) {
       const rows = attByEmp.get(Number(emp.id)) || [];
@@ -613,31 +643,34 @@ export async function calculatePayrollRun(runId: number, user: any) {
 
       for (const a of rows) {
         if (a.status === "present") presentDays++;
-        else if (a.status === "absent") absentDays++;
         else if (a.status === "leave") leaveDays++;
         else if (a.status === "late") lateDays++;
       }
 
-      const dailyRate =
-        Number(emp.base_salary || 0) / PAYROLL_RULE.STANDARD_WORK_DAYS;
+      // Tính số ngày nghỉ không phép theo công thức trừ lùi động
+      const calculatedAbsent = standardWorkDays - (presentDays + lateDays + leaveDays);
+      absentDays = Math.max(0, calculatedAbsent);
 
-      const paidLeaveDays = PAYROLL_RULE.PAID_LEAVE ? leaveDays : 0;
+      const dailyRate =
+        Number(emp.base_salary || 0) / standardWorkDays;
+
+      const paidLeaveDays = paidLeave ? leaveDays : 0;
       // Trả lương cho cả ngày đi muộn
       const paidDays = presentDays + lateDays + paidLeaveDays;
 
       const basePay = dailyRate * paidDays;
       const absentDeduction = 0; // Bỏ trừ kép (đã không làm thì không trả lương ở basePay)
-      const lateDeduction = lateDays * PAYROLL_RULE.LATE_FINE_PER_DAY;
-      const allowance = (presentDays + lateDays) * PAYROLL_RULE.MEAL_ALLOWANCE_PER_DAY;
+      const lateDeduction = lateDays * lateFinePerDay;
+      const allowance = (presentDays + lateDays) * mealAllowancePerDay;
 
       const gross = basePay + allowance;
 
       // Tính bảo hiểm bắt buộc trích từ lương NLĐ đóng (10.5%)
       let insuranceEmp = 0;
       if (emp.contract_type === "official") {
-        const insuranceBase = Math.min(Number(emp.base_salary || 0), 46800000);
-        const insuranceBaseBhtn = Math.min(Number(emp.base_salary || 0), 99200000);
-        insuranceEmp = insuranceBase * 0.095 + insuranceBaseBhtn * 0.01;
+        const insuranceBase = Math.min(Number(emp.base_salary || 0), insBaseMax);
+        const insuranceBaseBhtn = Math.min(Number(emp.base_salary || 0), insBaseBhtnMax);
+        insuranceEmp = insuranceBase * (insEmpSocial + insEmpHealth) + insuranceBaseBhtn * insEmpUnemp;
       }
 
       const totalDeductionBeforeTax = lateDeduction; // Bỏ absentDeduction khỏi khấu trừ kép
@@ -646,7 +679,9 @@ export async function calculatePayrollRun(runId: number, user: any) {
         emp.contract_type,
         gross,
         emp.dependent || 0,
-        insuranceEmp
+        insuranceEmp,
+        personalDeductionVal,
+        dependentDeductionVal
       );
 
       let net = gross - totalDeductionBeforeTax - insuranceEmp - pit;
@@ -747,40 +782,60 @@ export async function getPayrollEvidence(runId: number, employeeId: number) {
   });
 
   // 4) summary
+  // Load configurations from DB
+  const configMap = await getPayrollConfigMap();
+  const standardWorkDays = Number(configMap.STANDARD_WORK_DAYS || 26);
+  const paidLeave = configMap.PAID_LEAVE === "true";
+  const lateFinePerDay = Number(configMap.LATE_FINE_PER_DAY || 50000);
+  const mealAllowancePerDay = Number(configMap.MEAL_ALLOWANCE_PER_DAY || 30000);
+  const insBaseMax = Number(configMap.INSURANCE_BASE_MAX || 46800000);
+  const insBaseBhtnMax = Number(configMap.INSURANCE_BASE_BHTN_MAX || 99200000);
+  const insEmpSocial = Number(configMap.INS_EMP_SOCIAL_RATE || 0.08);
+  const insEmpHealth = Number(configMap.INS_EMP_HEALTH_RATE || 0.015);
+  const insEmpUnemp = Number(configMap.INS_EMP_UNEMP_RATE || 0.01);
+  const personalDeductionVal = Number(configMap.PERSONAL_DEDUCTION || 11000000);
+  const dependentDeductionVal = Number(configMap.DEPENDENT_DEDUCTION || 4400000);
+
+  // 4) summary
   const presentDays = attendance.filter((a: any) => a.status === "present").length;
   const leaveDays = attendance.filter((a: any) => a.status === "leave").length;
-  const absentDays = attendance.filter((a: any) => a.status === "absent").length;
   const lateDays = attendance.filter((a: any) => a.status === "late").length;
+  
+  // Tính số ngày nghỉ không phép theo công thức trừ lùi động
+  const calculatedAbsent = standardWorkDays - (presentDays + lateDays + leaveDays);
+  const absentDays = Math.max(0, calculatedAbsent);
 
   const summary = { presentDays, leaveDays, absentDays, lateDays };
 
   // 5) breakdown giống logic calculate
   const baseSalary = Number((employee as any).base_salary || 0);
-  const dailyRateRaw = baseSalary / PAYROLL_RULE.STANDARD_WORK_DAYS;
+  const dailyRateRaw = baseSalary / standardWorkDays;
 
-  const paidLeaveDays = PAYROLL_RULE.PAID_LEAVE ? leaveDays : 0;
+  const paidLeaveDays = paidLeave ? leaveDays : 0;
   const paidDays = presentDays + lateDays + paidLeaveDays;
 
   const basePayRaw = dailyRateRaw * paidDays;
   const absentDeductionRaw = 0; // Bỏ trừ kép
-  const lateDeductionRaw = lateDays * PAYROLL_RULE.LATE_FINE_PER_DAY;
-  const allowanceRaw = (presentDays + lateDays) * PAYROLL_RULE.MEAL_ALLOWANCE_PER_DAY;
+  const lateDeductionRaw = lateDays * lateFinePerDay;
+  const allowanceRaw = (presentDays + lateDays) * mealAllowancePerDay;
 
   const grossRaw = basePayRaw + allowanceRaw;
 
   // Tính bảo hiểm bắt buộc trích từ lương NLĐ đóng (10.5%)
   let insuranceEmpRaw = 0;
   if ((employee as any).contract_type === "official") {
-    const insuranceBase = Math.min(baseSalary, 46800000);
-    const insuranceBaseBhtn = Math.min(baseSalary, 99200000);
-    insuranceEmpRaw = insuranceBase * 0.095 + insuranceBaseBhtn * 0.01;
+    const insuranceBase = Math.min(baseSalary, insBaseMax);
+    const insuranceBaseBhtn = Math.min(baseSalary, insBaseBhtnMax);
+    insuranceEmpRaw = insuranceBase * (insEmpSocial + insEmpHealth) + insuranceBaseBhtn * insEmpUnemp;
   }
 
   const pitRaw = await calculatePIT(
     (employee as any).contract_type,
     grossRaw,
     (employee as any).dependent || 0,
-    insuranceEmpRaw
+    insuranceEmpRaw,
+    personalDeductionVal,
+    dependentDeductionVal
   );
 
   let netRaw = grossRaw - lateDeductionRaw - insuranceEmpRaw - pitRaw;
@@ -849,7 +904,9 @@ async function calculatePIT(
   contractType: string,
   gross: number,
   dependents: number = 0,
-  insuranceDeduction: number = 0
+  insuranceDeduction: number = 0,
+  personalDeductionVal: number = 11000000,
+  dependentDeductionVal: number = 4400000
 ) {
   if (gross <= 0) return 0;
 
@@ -859,8 +916,8 @@ async function calculatePIT(
   }
 
   // Hợp đồng chính thức áp dụng Biểu thuế lũy tiến từng phần
-  const personalDeduction = 11000000;
-  const dependentDeduction = dependents * 4400000;
+  const personalDeduction = personalDeductionVal;
+  const dependentDeduction = dependents * dependentDeductionVal;
 
   const taxableIncome = Math.max(
     gross - insuranceDeduction - personalDeduction - dependentDeduction,

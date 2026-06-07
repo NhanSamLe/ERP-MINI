@@ -11,6 +11,8 @@ import { GlEntry } from "../../finance/models/glEntry.model";
 import { GlEntryLine } from "../../finance/models/glEntryLine.model";
 import { GlAccount } from "../../finance/models/glAccount.model";
 import { notificationService } from "../../../core/services/notification.service";
+import { getMappedAccount } from "../../finance/services/glAccount.service";
+import { checkPeriodLocked } from "../../finance/services/glJournal.service";
 
 export const arReceiptService = {
   /** GET ALL — lọc theo branch và quyền */
@@ -205,21 +207,17 @@ export const arReceiptService = {
         { transaction: t }
       );
 
-      // 3. Xác định tài khoản Nợ/Có theo method
-      const debitAccCode = receipt.method === "cash" ? "111" : "112";
-      const creditAccCode = "131";
+      // Kiểm tra kỳ kế toán có khóa sổ hay chưa
+      await checkPeriodLocked(receipt.receipt_date || new Date(), t);
 
-      const [debitAcc, creditAcc] = await Promise.all([
-        GlAccount.findOne({ where: { code: debitAccCode }, transaction: t }),
-        GlAccount.findOne({ where: { code: creditAccCode }, transaction: t }),
+      // 3. Xác định tài khoản Nợ/Có theo method qua mapping động
+      const mappingKey = receipt.method === "cash" ? "CASH_ACCOUNT" : "BANK_ACCOUNT";
+      const fallbackCode = receipt.method === "cash" ? "111" : "112";
+
+      const [debitAccountId, creditAccountId] = await Promise.all([
+        getMappedAccount(receipt.branch_id, mappingKey, fallbackCode, t),
+        getMappedAccount(receipt.branch_id, "AR_RECEIVABLE", "131", t),
       ]);
-
-      if (!debitAcc || !creditAcc) {
-        throw new Error(`Missing GL Accounts ${debitAccCode} / ${creditAccCode}`);
-      }
-
-      const debitAccountId = debitAcc.id;
-      const creditAccountId = creditAcc.id;
 
       // 4. Lấy journal: CASH hoặc BANK
       const journalCode = receipt.method === "cash" ? "CASH" : "BANK";

@@ -1,8 +1,11 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { Calendar, Search, RefreshCcw, Download, FileText, TrendingUp, DollarSign } from "lucide-react";
+import { Calendar, Search, RefreshCcw, Download, FileText, TrendingUp, DollarSign, Lock, Unlock, Zap } from "lucide-react";
 import { glEntryApi } from "../api/glEntry.api";
 import { toast } from "react-toastify";
 import { exportExcelReport } from "../../../utils/excel/exportExcelReport";
+import { financeConfigApi, FiscalPeriodDTO } from "../api/finance.api";
+import { useSelector } from "react-redux";
+import { RootState } from "../../../store/store";
 
 type TrialBalanceRow = {
   id: number;
@@ -30,7 +33,7 @@ type ProfitLossData = {
 };
 
 export default function FinanceReportsPage() {
-  const [activeTab, setActiveTab] = useState<"trial-balance" | "profit-loss">("trial-balance");
+  const [activeTab, setActiveTab] = useState<"trial-balance" | "profit-loss" | "period-close">("trial-balance");
   const [loading, setLoading] = useState(false);
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
@@ -43,6 +46,73 @@ export default function FinanceReportsPage() {
 
   const [trialBalance, setTrialBalance] = useState<TrialBalanceRow[]>([]);
   const [profitLoss, setProfitLoss] = useState<ProfitLossData | null>(null);
+
+  const { user } = useSelector((s: RootState) => s.auth);
+  const [fiscalPeriods, setFiscalPeriods] = useState<FiscalPeriodDTO[]>([]);
+  const [loadingPeriods, setLoadingPeriods] = useState(false);
+
+  const loadPeriods = async () => {
+    try {
+      setLoadingPeriods(true);
+      const res = await financeConfigApi.getFiscalPeriods();
+      setFiscalPeriods(res.data);
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Không thể tải danh sách kỳ kế toán");
+    } finally {
+      setLoadingPeriods(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "period-close") {
+      loadPeriods();
+    }
+  }, [activeTab]);
+
+  const handleClosePeriod = async (id: number) => {
+    if (!window.confirm("Bạn có chắc chắn muốn khóa sổ kỳ kế toán này? Giao dịch trong kỳ này sẽ không thể sửa đổi.")) return;
+    try {
+      setLoadingPeriods(true);
+      const res = await financeConfigApi.closePeriod(id);
+      toast.success(res.data.message);
+      await loadPeriods();
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.response?.data?.message || e.message || "Khóa sổ thất bại");
+    } finally {
+      setLoadingPeriods(false);
+    }
+  };
+
+  const handleOpenPeriod = async (id: number) => {
+    if (!window.confirm("Bạn có chắc chắn muốn mở lại sổ kỳ kế toán này?")) return;
+    try {
+      setLoadingPeriods(true);
+      const res = await financeConfigApi.openPeriod(id);
+      toast.success(res.data.message);
+      await loadPeriods();
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.response?.data?.message || e.message || "Mở sổ thất bại");
+    } finally {
+      setLoadingPeriods(false);
+    }
+  };
+
+  const handleRunClosingEntries = async (periodId: number) => {
+    if (!window.confirm("Hệ thống sẽ tự động quét số dư doanh thu/chi phí của chi nhánh hiện tại và tạo bút toán kết chuyển. Tiếp tục?")) return;
+    try {
+      setLoadingPeriods(true);
+      const res = await financeConfigApi.runClosingEntries(periodId);
+      toast.success(res.data.message || "Đã tạo bút toán kết chuyển thành công!");
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.response?.data?.message || e.message || "Chạy kết chuyển thất bại");
+    } finally {
+      setLoadingPeriods(false);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -236,6 +306,14 @@ export default function FinanceReportsPage() {
           >
             Báo cáo kết quả hoạt động kinh doanh (P&L)
           </button>
+          <button
+            onClick={() => setActiveTab("period-close")}
+            className={`pb-4 text-base font-bold transition-all relative ${
+              activeTab === "period-close" ? "text-blue-600 border-b-2 border-blue-600" : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            Khóa sổ & Kết chuyển cuối kỳ
+          </button>
         </div>
 
         {/* Loading Spinner */}
@@ -425,6 +503,119 @@ export default function FinanceReportsPage() {
             ) : (
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 py-16 text-center text-slate-500 font-medium">
                 Không thể tải báo cáo kết quả hoạt động kinh doanh.
+              </div>
+            )}
+          </div>
+        )}
+
+        {!loading && activeTab === "period-close" && (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden animate-in fade-in duration-250 p-6 space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-100 pb-4 gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-slate-800">Quản lý kỳ kế toán & Kết chuyển</h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  Chạy kết chuyển doanh thu chi phí (911 & 421) và Khóa/Mở sổ các kỳ kế toán.
+                </p>
+              </div>
+              <button
+                onClick={loadPeriods}
+                disabled={loadingPeriods}
+                className="inline-flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-xl bg-white text-slate-700 text-sm font-medium hover:bg-slate-50 transition-all shadow-sm"
+              >
+                <RefreshCcw className={`w-4 h-4 ${loadingPeriods ? "animate-spin" : ""}`} />
+                Làm mới danh sách
+              </button>
+            </div>
+
+            {loadingPeriods && fiscalPeriods.length === 0 ? (
+              <div className="py-12 text-center text-slate-500">
+                <RefreshCcw className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-2" />
+                Đang tải dữ liệu kỳ kế toán...
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200 text-slate-700">
+                      <th className="px-6 py-4 text-left font-semibold uppercase tracking-wider">Kỳ kế toán</th>
+                      <th className="px-6 py-4 text-left font-semibold uppercase tracking-wider">Ngày bắt đầu</th>
+                      <th className="px-6 py-4 text-left font-semibold uppercase tracking-wider">Ngày kết thúc</th>
+                      <th className="px-6 py-4 text-center font-semibold uppercase tracking-wider">Trạng thái</th>
+                      <th className="px-6 py-4 text-right font-semibold uppercase tracking-wider w-80">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {fiscalPeriods.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
+                          Không tìm thấy kỳ kế toán nào được cấu hình trong hệ thống.
+                        </td>
+                      </tr>
+                    ) : (
+                      fiscalPeriods.map((period) => {
+                        const isClosed = period.status === "closed";
+                        const canManage = user?.role.code === "CHACC" || user?.role.code === "ADMIN";
+                        return (
+                          <tr key={period.id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="px-6 py-4 font-bold text-slate-900">{period.name}</td>
+                            <td className="px-6 py-4 text-slate-600 font-medium">{period.start_date}</td>
+                            <td className="px-6 py-4 text-slate-600 font-medium">{period.end_date}</td>
+                            <td className="px-6 py-4 text-center">
+                              {isClosed ? (
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">
+                                  <Lock className="w-3.5 h-3.5 mr-1" />
+                                  Đã khóa sổ
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
+                                  <Unlock className="w-3.5 h-3.5 mr-1" />
+                                  Đang mở
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 text-right space-x-2">
+                              {!isClosed && (
+                                <button
+                                  onClick={() => handleRunClosingEntries(period.id)}
+                                  disabled={loadingPeriods}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-bold transition-all shadow-sm disabled:opacity-50"
+                                  title="Kết chuyển doanh thu, chi phí chi nhánh này"
+                                >
+                                  <Zap className="w-3.5 h-3.5" />
+                                  Bút toán kết chuyển
+                                </button>
+                              )}
+                              
+                              {canManage ? (
+                                isClosed ? (
+                                  <button
+                                    onClick={() => handleOpenPeriod(period.id)}
+                                    disabled={loadingPeriods}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg text-xs font-bold transition-all shadow-sm disabled:opacity-50"
+                                  >
+                                    <Unlock className="w-3.5 h-3.5" />
+                                    Mở sổ
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleClosePeriod(period.id)}
+                                    disabled={loadingPeriods}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg text-xs font-bold transition-all shadow-sm disabled:opacity-50"
+                                  >
+                                    <Lock className="w-3.5 h-3.5" />
+                                    Khóa sổ
+                                  </button>
+                                )
+                              ) : (
+                                <span className="text-xs text-slate-400 font-medium">Không có quyền khóa/mở</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>

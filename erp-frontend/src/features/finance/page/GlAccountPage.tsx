@@ -292,7 +292,14 @@ const GlAccountPage: React.FC = () => {
                         {row.code}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-medium text-gray-900">{row.name}</td>
+                    <td className="px-4 py-3 font-medium text-gray-900">
+                      {row.name}
+                      {row.parent && (
+                        <div className="text-xs text-gray-400 font-normal">
+                          Thuộc: {row.parent.code} - {row.parent.name}
+                        </div>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-blue-100 text-blue-700 text-xs font-semibold">
                         {getTypeLabel(row.type)}
@@ -402,6 +409,7 @@ const GlAccountPage: React.FC = () => {
       <GlAccountFormModal
         open={modalOpen}
         initialValue={editing}
+        accounts={data}
         loading={saving}
         onCancel={() => setModalOpen(false)}
         onSubmit={handleSubmitForm}

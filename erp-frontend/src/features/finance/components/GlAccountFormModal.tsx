@@ -4,6 +4,7 @@ import { GlAccountDTO, GlAccountType } from "../dto/glAccount.dto";
 interface Props {
   open: boolean;
   initialValue?: GlAccountDTO | null;
+  accounts: GlAccountDTO[];
   loading?: boolean;
   onCancel: () => void;
   onSubmit: (data: GlAccountDTO) => void;
@@ -20,6 +21,7 @@ const ACCOUNT_TYPES: { value: GlAccountType; label: string }[] = [
 const GlAccountFormModal: React.FC<Props> = ({
   open,
   initialValue,
+  accounts,
   loading,
   onCancel,
   onSubmit,
@@ -29,17 +31,22 @@ const GlAccountFormModal: React.FC<Props> = ({
     name: "",
     type: "asset",
     normal_side: "debit",
+    parent_id: null,
   });
 
   useEffect(() => {
     if (initialValue) {
-      setFormData(initialValue);
+      setFormData({
+        ...initialValue,
+        parent_id: initialValue.parent_id ?? null,
+      });
     } else {
       setFormData({
         code: "",
         name: "",
         type: "asset",
         normal_side: "debit",
+        parent_id: null,
       });
     }
   }, [initialValue, open]);
@@ -50,7 +57,10 @@ const GlAccountFormModal: React.FC<Props> = ({
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === "parent_id" ? (value ? Number(value) : null) : value,
+    }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -88,6 +98,25 @@ const GlAccountFormModal: React.FC<Props> = ({
               className="w-full border rounded-md px-3 py-2"
               required
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Tài khoản cha</label>
+            <select
+              name="parent_id"
+              value={formData.parent_id ?? ""}
+              onChange={handleChange}
+              className="w-full border rounded-md px-3 py-2"
+            >
+              <option value="">-- Không có tài khoản cha --</option>
+              {accounts
+                .filter((acc) => acc.id !== initialValue?.id)
+                .map((acc) => (
+                  <option key={acc.id} value={acc.id}>
+                    {acc.code} - {acc.name}
+                  </option>
+                ))}
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -134,7 +163,7 @@ const GlAccountFormModal: React.FC<Props> = ({
             </button>
             <button
               type="submit"
-              className="px-4 py-2 rounded-md bg-blue-600 text-white"
+              className="px-4 py-2 rounded-md bg-orange-600 text-white font-medium hover:bg-orange-700 transition"
               disabled={loading}
             >
               {loading ? "Đang lưu..." : "Lưu"}

@@ -11,6 +11,8 @@ import { GlAccount } from "../../finance/models/glAccount.model";
 import { ApPaymentAllocation, Partner, sequelize } from "../../../models";
 import { Op, QueryTypes } from "sequelize";
 import { notificationService } from "../../../core/services/notification.service";
+import { getMappedAccount } from "../../finance/services/glAccount.service";
+import { checkPeriodLocked } from "../../finance/services/glJournal.service";
 
 export const apPaymentService = {
   // ─── READ ──────────────────────────────────────────────────────────────────
@@ -238,21 +240,17 @@ export const apPaymentService = {
         { transaction: t },
       );
 
-      // GL: cash->111, bank/transfer->112
-      const creditAccCode = payment.method === "cash" ? "111" : "112";
-      const debitAccCode = "331";
+      // Kiểm tra kỳ kế toán đã khóa sổ hay chưa
+      await checkPeriodLocked(payment.payment_date || new Date(), t);
 
-      const [debitAcc, creditAcc] = await Promise.all([
-        GlAccount.findOne({ where: { code: debitAccCode }, transaction: t }),
-        GlAccount.findOne({ where: { code: creditAccCode }, transaction: t }),
+      // GL: cash->111, bank/transfer->112 qua mapping động
+      const mappingKey = payment.method === "cash" ? "CASH_ACCOUNT" : "BANK_ACCOUNT";
+      const creditFallback = payment.method === "cash" ? "111" : "112";
+
+      const [debitAccountId, creditAccountId] = await Promise.all([
+        getMappedAccount(payment.branch_id, "AP_PAYABLE", "331", t),
+        getMappedAccount(payment.branch_id, mappingKey, creditFallback, t),
       ]);
-
-      if (!debitAcc || !creditAcc) {
-        throw new Error(`Missing GL Accounts ${debitAccCode} / ${creditAccCode}`);
-      }
-
-      const creditAccountId = creditAcc.id;
-      const debitAccountId = debitAcc.id;
 
       const journalCode = payment.method === "cash" ? "CASH" : "BANK";
       const journal = await GlJournal.findOne({

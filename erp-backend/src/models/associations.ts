@@ -95,6 +95,7 @@ import { BlogPost } from "../modules/blog/models/blogPost.model";
 // CostCenter and PayrollAccountMapping imports
 import { CostCenter } from "../modules/finance/models/costCenter.model";
 import { PayrollAccountMapping } from "../modules/hrm/models/payrollAccountMapping.model";
+import { AccountMapping } from "../modules/finance/models/accountMapping.model";
 
 export function applyAssociations() {
   // =====================
@@ -1464,6 +1465,17 @@ export function applyAssociations() {
 
   GlAccount.hasMany(PayrollAccountMapping, { foreignKey: "account_id", as: "payrollAccountMappings" });
   PayrollAccountMapping.belongsTo(GlAccount, { foreignKey: "account_id", as: "account" });
+
+  // GlAccount Self-referencing (parent-child)
+  GlAccount.hasMany(GlAccount, { foreignKey: "parent_id", as: "children" });
+  GlAccount.belongsTo(GlAccount, { foreignKey: "parent_id", as: "parent" });
+
+  // AccountMapping associations
+  AccountMapping.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
+  Branch.hasMany(AccountMapping, { foreignKey: "branch_id", as: "accountMappings" });
+
+  AccountMapping.belongsTo(GlAccount, { foreignKey: "account_id", as: "account" });
+  GlAccount.hasMany(AccountMapping, { foreignKey: "account_id", as: "accountMappings" });
 }
 
 // ===============================

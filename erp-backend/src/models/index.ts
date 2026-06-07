@@ -111,6 +111,8 @@ import { PurchasePriceListItem } from "../modules/purchase/models/purchasePriceL
 // CostCenter and PayrollAccountMapping
 import { CostCenter } from "../modules/finance/models/costCenter.model";
 import { PayrollAccountMapping } from "../modules/hrm/models/payrollAccountMapping.model";
+import { AccountMapping } from "../modules/finance/models/accountMapping.model";
+import { PayrollConfig } from "../modules/hrm/models/payrollConfig.model";
 // Associations
 import { applyAssociations } from "./associations";
 
@@ -271,4 +273,6 @@ export {
   PurchasePriceListItem,
   CostCenter,
   PayrollAccountMapping,
+  AccountMapping,
+  PayrollConfig,
 };

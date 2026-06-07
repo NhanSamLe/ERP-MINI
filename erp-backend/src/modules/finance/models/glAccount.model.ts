@@ -7,9 +7,10 @@ export interface GlAccountAttrs {
   name: string;
   type: "asset" | "liability" | "equity" | "revenue" | "expense";
   normal_side: "debit" | "credit";
+  parent_id?: number | null;
 }
 
-type GlAccountCreation = Optional<GlAccountAttrs, "id">;
+type GlAccountCreation = Optional<GlAccountAttrs, "id" | "parent_id">;
 
 export class GlAccount extends Model<GlAccountAttrs, GlAccountCreation> implements GlAccountAttrs {
   public id!: number;
@@ -17,6 +18,7 @@ export class GlAccount extends Model<GlAccountAttrs, GlAccountCreation> implemen
   public name!: string;
   public type!: "asset" | "liability" | "equity" | "revenue" | "expense";
   public normal_side!: "debit" | "credit";
+  public parent_id!: number | null;
 }
 
 GlAccount.init(
@@ -26,6 +28,8 @@ GlAccount.init(
     name: { type: DataTypes.STRING(255), allowNull: false },
     type: { type: DataTypes.ENUM("asset", "liability", "equity", "revenue", "expense"), allowNull: false },
     normal_side: { type: DataTypes.ENUM("debit", "credit"), allowNull: false },
+    parent_id: { type: DataTypes.BIGINT, allowNull: true },
   },
   { sequelize, tableName: "gl_accounts", timestamps: true, createdAt: "created_at", updatedAt: "updated_at" }
 );
+

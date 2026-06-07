@@ -26,6 +26,8 @@ import { GlEntry } from "../../finance/models/glEntry.model";
 import { GlEntryLine } from "../../finance/models/glEntryLine.model";
 import { GlAccount } from "../../finance/models/glAccount.model";
 import { notificationService } from "../../../core/services/notification.service";
+import { getMappedAccount } from "../../finance/services/glAccount.service";
+import { checkPeriodLocked } from "../../finance/services/glJournal.service";
 export const arInvoiceService = {
   /** tính thuế từng dòng */
   async calcLineTax(line: any) {
@@ -589,16 +591,15 @@ export const arInvoiceService = {
       throw new Error("GL Journal 'SALES' not found");
     }
 
-    // Lấy các tài khoản 131, 511, 3331
-    const [arAcc, revenueAcc, vatAcc] = await Promise.all([
-      GlAccount.findOne({ where: { code: "131" }, transaction: t }),
-      GlAccount.findOne({ where: { code: "511" }, transaction: t }),
-      GlAccount.findOne({ where: { code: "3331" }, transaction: t }),
-    ]);
+    // Kiểm tra kỳ kế toán có khóa sổ hay chưa
+    await checkPeriodLocked(invoice.invoice_date || new Date(), t);
 
-    if (!arAcc || !revenueAcc || !vatAcc) {
-      throw new Error("Missing GL Accounts 131 / 511 / 3331");
-    }
+    // Lấy các tài khoản 131, 511, 3331 qua mapping động
+    const [arAccId, revenueAccId, vatAccId] = await Promise.all([
+      getMappedAccount(invoice.branch_id, "AR_RECEIVABLE", "131", t),
+      getMappedAccount(invoice.branch_id, "AR_REVENUE", "511", t),
+      getMappedAccount(invoice.branch_id, "AR_VAT", "3331", t),
+    ]);
 
     const rate = Number(invoice.exchange_rate || 1);
     const totalBeforeTax = Number(invoice.total_before_tax || 0) * rate;
@@ -626,20 +627,20 @@ export const arInvoiceService = {
     const lines: Partial<GlEntryLine>[] = [
       {
         entry_id: entry.id,
-        account_id: arAcc.id,
+        account_id: arAccId,
         partner_id: partnerId as any,
         debit: totalAfterTax,
         credit: 0,
       },
       {
         entry_id: entry.id,
-        account_id: revenueAcc.id,
+        account_id: revenueAccId,
         debit: 0,
         credit: totalBeforeTax,
       },
       {
         entry_id: entry.id,
-        account_id: vatAcc.id,
+        account_id: vatAccId,
         debit: 0,
         credit: totalTax,
       },

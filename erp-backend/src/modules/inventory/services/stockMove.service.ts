@@ -20,6 +20,7 @@ import { Uom } from "../../master-data/models/uom.model";
 import { UomConversion } from "../../master-data/models/uomConversion.model";
 import { warehouseService } from "./warehouse.service";
 import { sequelize } from "../../../config/db";
+import { checkPeriodLocked } from "../../finance/services/glJournal.service";
 
 /**
  * Convert quantity từ line.uom_id sang product.uom_id (đơn vị lưu kho).
@@ -1603,6 +1604,8 @@ export const stockMoveService = {
 
     const t = await sequelize.transaction();
     try {
+      await checkPeriodLocked(move.move_date || new Date(), t);
+
       switch (move.type) {
         case "receipt":
           await this.processReceipt(move, lines, t);

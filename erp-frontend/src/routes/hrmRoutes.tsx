@@ -12,8 +12,14 @@ import PayrollRunPage from "../features/hrm/page/PayrollRunPage";
 import LeaveRequestGuard from "../features/hrm/page/LeaveRequestGuard";
 import PayrollMappingPage from "../features/hrm/page/PayrollMappingPage";
 import CostCenterPage from "../features/hrm/page/CostCenterPage";
+import PayrollConfigPage from "../features/hrm/page/PayrollConfigPage";
+import HrmDashboard from "../features/hrm/page/HrmDashboard";
 
 const hrmRoutes: RouteObject[] = [
+  {
+    path: "/hrm",
+    element: <HrmDashboard />,
+  },
   {
     path: "/hrm/leave-requests",
     element: <LeaveRequestGuard />,
@@ -67,9 +73,10 @@ const hrmRoutes: RouteObject[] = [
     path: "/hrm/cost-centers",
     element: <CostCenterPage />,
   },
-  // ví dụ sau này:
-  // { path: "/hrm/position", element: <PositionPage /> },
-  // { path: "/hrm/employees", element: <EmployeePage /> },
+  {
+    path: "/hrm/payroll-configs",
+    element: <PayrollConfigPage />,
+  },
 ];
 
 export default hrmRoutes;
