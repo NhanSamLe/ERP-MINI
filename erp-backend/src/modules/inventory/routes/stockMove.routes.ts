@@ -41,6 +41,12 @@ router.post(
 );
 
 router.post(
+  "/purchase-return/:returnId/issue",
+  authMiddleware([Role.WHSTAFF]),
+  StockMoveController.createPurchaseReturnIssue
+);
+
+router.post(
   "/transfer",
   authMiddleware([Role.WHSTAFF]),
   StockMoveController.createTransferStockMove

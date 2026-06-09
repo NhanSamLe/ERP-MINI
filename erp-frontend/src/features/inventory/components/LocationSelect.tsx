@@ -20,7 +20,7 @@ export function LocationSelect({
   value,
   onChange,
   types,
-  placeholder = "— Location —",
+  placeholder = "— Vị trí —",
   disabled = false,
   className = "",
 }: LocationSelectProps) {
@@ -55,7 +55,7 @@ export function LocationSelect({
         !warehouseId ? "bg-gray-50 text-gray-400" : ""
       } ${className}`}
     >
-      <option value="">{loading ? "Loading..." : placeholder}</option>
+      <option value="">{loading ? "Đang tải..." : placeholder}</option>
       {locations.map((l) => (
         <option key={l.id} value={l.id}>
           {l.name} ({l.code})

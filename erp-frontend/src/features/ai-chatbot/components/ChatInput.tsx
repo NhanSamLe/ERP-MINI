@@ -20,7 +20,7 @@ export default function ChatInput({
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 112)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
   }, [value]);
 
   const handleSend = () => {
@@ -39,12 +39,12 @@ export default function ChatInput({
   };
 
   return (
-    <div className="px-3 py-2.5 border-t border-slate-100 bg-white/60 backdrop-blur-sm">
+    <div className="px-4 py-3 border-t border-gray-100 bg-white">
       <div
-        className={`flex items-end gap-2 bg-slate-50 rounded-2xl border transition-all duration-200 ${
+        className={`flex items-end gap-2 bg-gray-50 rounded-2xl border-2 transition-all duration-200 ${
           canSend
-            ? "border-indigo-300 shadow-[0_0_0_3px_rgba(99,102,241,0.08)]"
-            : "border-slate-200"
+            ? "border-orange-400 shadow-[0_0_0_3px_rgba(249,115,22,0.08)]"
+            : "border-gray-200"
         }`}
       >
         <textarea
@@ -56,21 +56,21 @@ export default function ChatInput({
           placeholder={placeholder}
           maxLength={1000}
           rows={1}
-          className="flex-1 resize-none bg-transparent px-3 py-2.5 text-[13px] text-slate-700 placeholder:text-slate-400 focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed max-h-[112px] overflow-y-auto leading-relaxed"
+          className="flex-1 resize-none bg-transparent px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed max-h-[120px] overflow-y-auto leading-relaxed"
         />
         <button
           onClick={handleSend}
           disabled={!canSend}
-          className={`m-1.5 w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
+          className={`m-2 w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
             canSend
-              ? "bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-200 hover:shadow-indigo-300 hover:scale-105 active:scale-95"
-              : "bg-slate-200 text-slate-400 cursor-not-allowed"
+              ? "bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-200 hover:scale-105 active:scale-95"
+              : "bg-gray-200 text-gray-400 cursor-not-allowed"
           }`}
         >
-          <ArrowUp className="w-3.5 h-3.5" strokeWidth={2.5} />
+          <ArrowUp className="w-4 h-4" strokeWidth={2.5} />
         </button>
       </div>
-      <p className="text-[10px] text-slate-300 text-center mt-1.5">
+      <p className="text-[10px] text-gray-300 text-center mt-1.5">
         Enter để gửi · Shift+Enter xuống dòng
       </p>
     </div>

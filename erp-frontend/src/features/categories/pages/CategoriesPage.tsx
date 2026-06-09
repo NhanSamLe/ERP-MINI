@@ -47,11 +47,11 @@ export default function CategoriesPage() {
     setDeleting(true);
     try {
       await dispatch(deleteCategoryThunk(selectedCat.id)).unwrap();
-      toast.success("Category deleted successfully!");
+      toast.success("Xóa danh mục thành công!");
       setConfirmOpen(false);
     } catch (error) {
       console.error("Failed to delete category:", error);
-      toast.error("Failed to delete category!");
+      toast.error("Xóa danh mục thất bại!");
     } finally {
       setDeleting(false);
     }
@@ -69,13 +69,13 @@ export default function CategoriesPage() {
         parent_id: parentId ? Number(parentId) : null,
       };
       await dispatch(createCategoryThunk(newCategory)).unwrap();
-      toast.success("Category added successfully!");
+      toast.success("Thêm danh mục thành công!");
       setName("");
       setParentId(null);
       setOpenAddModal(false);
     } catch (error) {
       console.error("Failed to add category:", error);
-      toast.error("Failed to add category!");
+      toast.error("Thêm danh mục thất bại!");
     }
   };
 
@@ -104,30 +104,30 @@ export default function CategoriesPage() {
           body: updatedCategory,
         })
       ).unwrap();
-      toast.success("Category updated successfully!");
+      toast.success("Cập nhật danh mục thành công!");
       setName("");
       setParentId(null);
       setEditId(null);
       setOpenEditModal(false);
     } catch (error) {
       console.error("Failed to update category:", error);
-      toast.error("Failed to update category!");
+      toast.error("Cập nhật danh mục thất bại!");
     }
   };
   const columns = [
-    { key: "name", label: "Category Name" },
+    { key: "name", label: "Tên danh mục" },
 
     {
       key: "parent_id",
-      label: "Parent",
+      label: "Danh mục cha",
       render: (c: ProductCategory) => {
         const parent = categories.find((x) => x.id === c.parent_id);
-        return parent ? parent.name : "Root";
+        return parent ? parent.name : "Gốc";
       },
     },
     {
       key: "created_at",
-      label: "Created At",
+      label: "Ngày tạo",
       render: (c: ProductCategory) =>
         c.created_at
           ? new Date(c.created_at).toLocaleDateString("vi-VN", {
@@ -144,8 +144,8 @@ export default function CategoriesPage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between bg-white px-6 py-4 rounded-xl border shadow-sm">
         <div>
-          <h1 className="text-xl font-semibold text-gray-800">Categories</h1>
-          <p className="text-sm text-gray-500">Manage product categories</p>
+          <h1 className="text-xl font-semibold text-gray-800">Danh mục</h1>
+          <p className="text-sm text-gray-500">Quản lý danh mục sản phẩm</p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -169,7 +169,7 @@ export default function CategoriesPage() {
             className="flex items-center gap-1 bg-[#ff8c00] hover:bg-[#ff7700] text-white px-4 py-2 rounded-lg shadow text-sm font-medium transition"
           >
             <Plus className="w-4 h-4" />
-            Add Category
+            Thêm danh mục
           </Button>
 
         </div>
@@ -198,10 +198,10 @@ export default function CategoriesPage() {
           <div className="bg-white rounded-xl shadow-lg p-6 w-96 text-center">
             <Trash2 className="w-10 h-10 text-red-500 mx-auto mb-3" />
             <h2 className="text-lg font-semibold mb-2">
-              Are you sure you want to delete this category?
+              Bạn có chắc chắn muốn xóa danh mục này?
             </h2>
             <p className="text-sm text-gray-500 mb-5">
-              This action cannot be undone.
+              Hành động này không thể hoàn tác.
             </p>
             <div className="flex justify-center gap-3">
               <Button
@@ -209,7 +209,7 @@ export default function CategoriesPage() {
                 className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm"
                 disabled={deleting}
               >
-                Cancel
+                Hủy
               </Button>
 
               <Button
@@ -217,7 +217,7 @@ export default function CategoriesPage() {
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm"
                 disabled={deleting}
               >
-                {deleting ? "Deleting..." : "Yes, Delete"}
+                {deleting ? "Đang xóa..." : "Xóa"}
               </Button>
             </div>
           </div>
@@ -235,27 +235,27 @@ export default function CategoriesPage() {
               ✕
             </button>
 
-            <h2 className="text-xl font-semibold mb-5">Add Category</h2>
+            <h2 className="text-xl font-semibold mb-5">Thêm danh mục</h2>
 
             <div className="space-y-4">
               {/* Category */}
               <div>
                 <label className="font-medium text-sm">
-                  Category <span className="text-red-500">*</span>
+                  Danh mục <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   className="w-full mt-1 border rounded-lg px-3 py-2 focus:ring focus:ring-orange-300 outline-none"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter category name"
+                  placeholder="Nhập tên danh mục"
                 />
               </div>
 
               {/* Parent Category (Dropdown) */}
               <div>
                 <label className="font-medium text-sm">
-                  Select Category Parent <span className="text-red-500">*</span>
+                  Chọn danh mục cha <span className="text-red-500">*</span>
                 </label>
 
                 <select
@@ -263,7 +263,7 @@ export default function CategoriesPage() {
                   value={parentId || ""}
                   onChange={(e) => setParentId(e.target.value || null)}
                 >
-                  <option value="">Root</option>
+                  <option value="">Gốc</option>
 
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -280,14 +280,14 @@ export default function CategoriesPage() {
                 onClick={() => setOpenAddModal(false)}
                 className="px-4 py-2 bg-[#0f2847] hover:bg-[#071523] text-white rounded-lg text-sm"
               >
-                Cancel
+                Hủy
               </Button>
 
               <Button
                 className="px-4 py-2 bg-[#ff8c00] hover:bg-[#ff7700] text-white rounded-lg text-sm"
                 onClick={() => handleAddCategory()}
               >
-                Add Category
+                Thêm danh mục
               </Button>
             </div>
           </div>
@@ -305,27 +305,27 @@ export default function CategoriesPage() {
               ✕
             </button>
 
-            <h2 className="text-xl font-semibold mb-5">Edit Category</h2>
+            <h2 className="text-xl font-semibold mb-5">Chỉnh sửa danh mục</h2>
 
             <div className="space-y-4">
               {/* Category */}
               <div>
                 <label className="font-medium text-sm">
-                  Category <span className="text-red-500">*</span>
+                  Danh mục <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   className="w-full mt-1 border rounded-lg px-3 py-2 focus:ring focus:ring-orange-300 outline-none"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter category name"
+                  placeholder="Nhập tên danh mục"
                 />
               </div>
 
               {/* Parent Category (Dropdown) */}
               <div>
                 <label className="font-medium text-sm">
-                  Select Category Parent <span className="text-red-500">*</span>
+                  Chọn danh mục cha <span className="text-red-500">*</span>
                 </label>
 
                 <select
@@ -333,7 +333,7 @@ export default function CategoriesPage() {
                   value={parentId || ""}
                   onChange={(e) => setParentId(e.target.value || null)}
                 >
-                  <option value="">Root</option>
+                  <option value="">Gốc</option>
 
                   {categories
                     .filter((c) => c.id !== Number(editId))
@@ -352,14 +352,14 @@ export default function CategoriesPage() {
                 onClick={() => setOpenEditModal(false)}
                 className="px-4 py-2 bg-[#0f2847] hover:bg-[#071523] text-white rounded-lg text-sm"
               >
-                Cancel
+                Hủy
               </Button>
 
               <Button
                 className="px-4 py-2 bg-[#ff8c00] hover:bg-[#ff7700] text-white rounded-lg text-sm"
                 onClick={() => handleEditCategory()}
               >
-                Save Category
+                Lưu danh mục
               </Button>
             </div>
           </div>

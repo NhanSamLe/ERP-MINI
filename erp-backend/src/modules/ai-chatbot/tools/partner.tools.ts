@@ -24,7 +24,8 @@ export const partnerTools: ITool[] = [
       try {
         const { Partner } = await import("../../partner/models/partner.model");
 
-        const where: any = { branch_id: context.branchId };
+        // Partners là global data — không filter theo branch_id
+        const where: any = {};
         if (args.name) where.name = { [Op.like]: `%${args.name}%` };
         if (args.type === "customer") where.is_customer = true;
         if (args.type === "supplier") where.is_supplier = true;

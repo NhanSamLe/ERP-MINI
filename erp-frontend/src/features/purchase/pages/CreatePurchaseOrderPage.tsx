@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "../../../components/ui/Button";
 import { Input } from "../../../components/ui/input";
 import { Textarea } from "../../../components/ui/textarea";
@@ -108,7 +108,7 @@ export default function CreatePurchaseOrderPage() {
     const y = today.getFullYear();
     const m = String(today.getMonth() + 1).padStart(2, "0");
     const d = String(today.getDate()).padStart(2, "0");
-    const randomNumber = Math.floor(Math.random() * 900 + 100);
+    const randomNumber = Math.floor(Math.random() * 9000 + 1000); // 1000–9999
     setReference(`PO-${y}${m}${d}-${randomNumber}`);
   }, []);
 
@@ -161,7 +161,13 @@ export default function CreatePurchaseOrderPage() {
     const costPrice = Number(product.cost_price ?? 0);
     const purchaseUomId = product.purchase_uom_id ?? product.uom_id ?? null;
     const stockUomId = product.uom_id ?? null;
-    return convertPrice(costPrice, stockUomId, purchaseUomId, conversions, Number(product.id));
+    return convertPrice(
+      costPrice,
+      stockUomId,
+      purchaseUomId,
+      conversions,
+      Number(product.id),
+    );
   };
 
   const convertPriceToStockUom = (
@@ -240,7 +246,7 @@ export default function CreatePurchaseOrderPage() {
           line_total: lineTotal,
           price_source: priceSource,
         };
-      })
+      }),
     );
     setLines(updatedLines);
     recalcTotals(updatedLines);
@@ -261,7 +267,7 @@ export default function CreatePurchaseOrderPage() {
     ).unwrap();
     const rate = Number(tax?.rate || 0);
     const qty = 1;
-    
+
     setProductCache((prev) => ({ ...prev, [Number(product.id)]: product }));
 
     let priceInPurchaseUom = resolvePrice(product, supplierId);
@@ -351,7 +357,7 @@ export default function CreatePurchaseOrderPage() {
     if ((field === "quantity" || field === "uom_id") && supplierId) {
       const line = lines.find((l) => l.id === id);
       if (line) {
-        const newQty = field === "quantity" ? (value || 1) : line.quantity;
+        const newQty = field === "quantity" ? value || 1 : line.quantity;
         try {
           const pRes = await purchasePriceListApi.evaluatePrice({
             product_id: Number(line.product_id),
@@ -376,7 +382,7 @@ export default function CreatePurchaseOrderPage() {
           fetchedPrice.unit_price,
           updated.uom_id,
           updated.stock_uom_id,
-          Number(updated.product_id)
+          Number(updated.product_id),
         );
       }
 
@@ -395,7 +401,7 @@ export default function CreatePurchaseOrderPage() {
         updated.quantity_in_stock_uom = qtyInStockUom;
         const selectedUom = uoms.find((u: Uom) => u.id === newUomId);
         updated.uom_name = selectedUom?.name ?? "";
-        
+
         if (!fetchedPrice) {
           const newPriceInPurchaseUom = convertPriceFromStockUom(
             line.sale_price || 0,
@@ -467,13 +473,14 @@ export default function CreatePurchaseOrderPage() {
     try {
       setIsSubmitting(true);
       const today = new Date().toISOString().split("T")[0];
-      if (date > today) return toast.error("Date cannot be in the future!");
-      if (!supplierId) return toast.error("Supplier is required");
-      if (!date) return toast.error("Order date is required");
+      if (date > today)
+        return toast.error("Ngày đặt hàng không thể ở tương lai!");
+      if (!supplierId) return toast.error("Vui lòng chọn nhà cung cấp!");
+      if (!date) return toast.error("Vui lòng nhập ngày đặt hàng!");
       if (lines.length === 0)
-        return toast.error("At least 1 product is required");
+        return toast.error("Vui lòng thêm ít nhất 1 sản phẩm!");
       const invalidLine = lines.find((l) => !l.quantity || l.quantity <= 0);
-      if (invalidLine) return toast.error("Quantity must be greater than 0");
+      if (invalidLine) return toast.error("Số lượng phải lớn hơn 0!");
       const requestBody: PurchaseOrderCreate = {
         branch_id: user?.branch.id ?? 0,
         po_no: reference,
@@ -497,11 +504,11 @@ export default function CreatePurchaseOrderPage() {
         })),
       };
       await dispatch(createPurchaseOrderThunk(requestBody)).unwrap();
-      toast.success("Purchase Order created successfully!");
+      toast.success("Tạo đơn đặt hàng thành công!");
       navigate("/purchase/orders");
     } catch (error) {
       console.error("Failed to create Purchase Order:", error);
-      toast.error("Failed to create Purchase Order");
+      toast.error("Lỗi khi tạo đơn đặt hàng!");
     } finally {
       setIsSubmitting(false);
     }
@@ -514,28 +521,30 @@ export default function CreatePurchaseOrderPage() {
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            Order Summary
+            Tóm tắt đơn hàng
           </p>
         </div>
         <div className="p-4 space-y-3">
           <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-500">Items</span>
+            <span className="text-gray-500">Mặt hàng</span>
             <span className="font-semibold text-gray-900">{lines.length}</span>
           </div>
           <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-500">Subtotal</span>
+            <span className="text-gray-500">Tổng tiền trước thuế</span>
             <span className="font-medium text-gray-700">
               {formatVND(totalBeforeTax)}
             </span>
           </div>
           <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-500">Tax</span>
+            <span className="text-gray-500">Thuế</span>
             <span className="font-medium text-blue-600">
               {formatVND(totalOrderTax)}
             </span>
           </div>
           <div className="pt-3 border-t border-dashed border-gray-200 flex justify-between items-center">
-            <span className="text-sm font-semibold text-gray-800">Total</span>
+            <span className="text-sm font-semibold text-gray-800">
+              Tổng cộng
+            </span>
             <span className="text-base font-bold text-orange-600">
               {formatVND(totalAfterTax)}
             </span>
@@ -548,14 +557,14 @@ export default function CreatePurchaseOrderPage() {
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Quick Info
+              Thông tin nhanh
             </p>
           </div>
           <div className="p-4 space-y-2.5">
             {reference && (
               <div className="flex items-center gap-2 text-sm">
                 <Hash className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                <span className="text-gray-500 w-16 flex-shrink-0">Ref</span>
+                <span className="text-gray-500 w-16 flex-shrink-0">Mã PO</span>
                 <span className="font-medium text-gray-900 truncate">
                   {reference}
                 </span>
@@ -565,7 +574,7 @@ export default function CreatePurchaseOrderPage() {
               <div className="flex items-center gap-2 text-sm">
                 <Truck className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                 <span className="text-gray-500 w-16 flex-shrink-0">
-                  Supplier
+                  Nhà cung cấp
                 </span>
                 <span className="font-medium text-gray-900 truncate">
                   {(partners as any)?.items?.find(
@@ -577,14 +586,18 @@ export default function CreatePurchaseOrderPage() {
             {date && (
               <div className="flex items-center gap-2 text-sm">
                 <CalendarDays className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                <span className="text-gray-500 w-16 flex-shrink-0">Date</span>
+                <span className="text-gray-500 w-16 flex-shrink-0">
+                  Ngày đặt
+                </span>
                 <span className="font-medium text-gray-900">{date}</span>
               </div>
             )}
             {user?.branch?.name && (
               <div className="flex items-center gap-2 text-sm">
                 <Building2 className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                <span className="text-gray-500 w-16 flex-shrink-0">Branch</span>
+                <span className="text-gray-500 w-16 flex-shrink-0">
+                  Chi nhánh
+                </span>
                 <span className="font-medium text-gray-900 truncate">
                   {user.branch.name}
                 </span>
@@ -598,7 +611,7 @@ export default function CreatePurchaseOrderPage() {
       {lines.length === 0 && (
         <div className="flex items-start gap-2.5 px-3.5 py-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
           <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-          <span>Add at least one product line before saving.</span>
+          <span>Vui lòng thêm ít nhất một sản phẩm trước khi lưu.</span>
         </div>
       )}
 
@@ -613,10 +626,10 @@ export default function CreatePurchaseOrderPage() {
           {isSubmitting ? (
             <>
               <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-              Saving…
+              Đang lưu…
             </>
           ) : (
-            <>Create Purchase Order</>
+            <>Tạo đơn đặt hàng</>
           )}
         </Button>
         <Button
@@ -624,7 +637,7 @@ export default function CreatePurchaseOrderPage() {
           onClick={() => navigate("/purchase/orders")}
           className="w-full py-2.5 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-50 font-medium text-sm transition-colors"
         >
-          Cancel
+          Hủy
         </Button>
       </div>
     </div>
@@ -636,12 +649,12 @@ export default function CreatePurchaseOrderPage() {
       <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm border-t-2 border-t-orange-500">
         <div className="max-w-screen-2xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-sm text-gray-500 min-w-0">
-            <span className="text-gray-400">Purchase</span>
+            <span className="text-gray-400">Mua hàng</span>
             <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
-            <span className="text-gray-400">Orders</span>
+            <span className="text-gray-400">Đơn hàng</span>
             <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
             <span className="font-semibold text-gray-900 truncate">
-              New Purchase Order
+              Đơn đặt hàng mới
             </span>
           </div>
           <span className="text-xs text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full font-mono">
@@ -660,25 +673,25 @@ export default function CreatePurchaseOrderPage() {
               <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-100 bg-gray-50/60 rounded-t-xl">
                 <Receipt className="w-4 h-4 text-orange-500" />
                 <h2 className="text-sm font-semibold text-gray-700">
-                  General Information
+                  Thông tin chung
                 </h2>
               </div>
               <div className="p-5">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="space-y-1.5">
                     <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      PO Reference
+                      Mã tham chiếu PO
                     </label>
                     <Input
                       value={reference}
                       onChange={(value) => setReference(value)}
-                      placeholder="PO-YYYYMMDD-XXX"
+                      placeholder="PO-YYYYMMDD-NNNN"
                       className="h-9 text-sm font-mono"
                     />
                   </div>
                   <div className="space-y-1.5">
                     <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Supplier{" "}
+                      Nhà cung cấp{" "}
                       <span className="text-red-400 normal-case font-normal">
                         *
                       </span>
@@ -688,7 +701,7 @@ export default function CreatePurchaseOrderPage() {
                       onValueChange={handleSupplierChange}
                     >
                       <SelectTrigger className="h-9 text-sm">
-                        <SelectValue placeholder="Select supplier…" />
+                        <SelectValue placeholder="Chọn nhà cung cấp…" />
                       </SelectTrigger>
                       <SelectContent>
                         {(partners as any)?.items?.map((p: any) => (
@@ -701,7 +714,7 @@ export default function CreatePurchaseOrderPage() {
                   </div>
                   <div className="space-y-1.5">
                     <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Order Date{" "}
+                      Ngày đặt hàng{" "}
                       <span className="text-red-400 normal-case font-normal">
                         *
                       </span>
@@ -715,7 +728,7 @@ export default function CreatePurchaseOrderPage() {
                   </div>
                   <div className="space-y-1.5">
                     <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Branch
+                      Chi nhánh
                     </label>
                     <Input
                       value={user?.branch?.name ?? ""}
@@ -732,10 +745,10 @@ export default function CreatePurchaseOrderPage() {
               <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-100 bg-gray-50/60 rounded-t-xl">
                 <Search className="w-4 h-4 text-orange-500" />
                 <h2 className="text-sm font-semibold text-gray-700">
-                  Add Products
+                  Thêm sản phẩm
                 </h2>
                 <span className="text-xs text-gray-400 ml-auto">
-                  Type at least 2 characters to search
+                  Nhập ít nhất 2 ký tự để tìm kiếm
                 </span>
               </div>
               <div className="p-5">
@@ -746,7 +759,7 @@ export default function CreatePurchaseOrderPage() {
                       type="text"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      placeholder="Search by product name or SKU…"
+                      placeholder="Tìm theo tên sản phẩm hoặc SKU…"
                       className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
                     />
                     {searchLoading && (
@@ -793,7 +806,7 @@ export default function CreatePurchaseOrderPage() {
                     !searchLoading &&
                     searchTerm.length >= 2 && (
                       <div className="absolute z-20 mt-1.5 w-full bg-white border border-gray-200 rounded-xl shadow-xl px-4 py-6 text-center text-sm text-gray-400">
-                        No products found for "{searchTerm}"
+                        Không tìm thấy sản phẩm nào khớp với "{searchTerm}"
                       </div>
                     )}
                 </div>
@@ -805,7 +818,7 @@ export default function CreatePurchaseOrderPage() {
               <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-100 bg-gray-50/60">
                 <Package className="w-4 h-4 text-orange-500" />
                 <h2 className="text-sm font-semibold text-gray-700">
-                  Order Lines
+                  Chi tiết dòng hàng
                 </h2>
                 {lines.length > 0 && (
                   <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-600">
@@ -820,10 +833,10 @@ export default function CreatePurchaseOrderPage() {
                     <Package className="w-6 h-6 text-gray-400" />
                   </div>
                   <p className="text-sm font-medium text-gray-500">
-                    No products added
+                    Chưa có sản phẩm nào được thêm
                   </p>
                   <p className="text-xs text-gray-400 mt-1">
-                    Search and add products above
+                    Tìm kiếm và thêm sản phẩm ở phía trên
                   </p>
                 </div>
               ) : (
@@ -832,22 +845,22 @@ export default function CreatePurchaseOrderPage() {
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-100">
                         <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider w-[35%]">
-                          Product
+                          Sản phẩm
                         </th>
                         <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                          UOM
+                          Đơn vị tính
                         </th>
                         <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                          Unit Price
+                          Đơn giá
                         </th>
                         <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                          Qty
+                          Số lượng
                         </th>
                         <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                          Tax
+                          Thuế
                         </th>
                         <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                          Line Total
+                          Thành tiền
                         </th>
                         <th className="px-2 py-2.5 w-8"></th>
                       </tr>
@@ -943,22 +956,24 @@ export default function CreatePurchaseOrderPage() {
                                   className="w-32 text-right border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono"
                                 />
                                 {line.price_source && (
-                                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium border ${
-                                    line.price_source === "price_list"
-                                      ? "bg-emerald-50 text-emerald-600 border-emerald-100"
-                                      : line.price_source === "supplier_info"
-                                      ? "bg-blue-50 text-blue-600 border-blue-100"
-                                      : line.price_source === "cost_price"
-                                      ? "bg-amber-50 text-amber-600 border-amber-100"
-                                      : "bg-gray-100 text-gray-500 border-gray-200"
-                                  }`}>
+                                  <span
+                                    className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium border ${
+                                      line.price_source === "price_list"
+                                        ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                                        : line.price_source === "supplier_info"
+                                          ? "bg-blue-50 text-blue-600 border-blue-100"
+                                          : line.price_source === "cost_price"
+                                            ? "bg-amber-50 text-amber-600 border-amber-100"
+                                            : "bg-gray-100 text-gray-500 border-gray-200"
+                                    }`}
+                                  >
                                     {line.price_source === "price_list"
                                       ? "Bảng giá mua"
                                       : line.price_source === "supplier_info"
-                                      ? "Giá mặc định NCC"
-                                      : line.price_source === "cost_price"
-                                      ? "Giá vốn"
-                                      : "Nhập tay"}
+                                        ? "Giá mặc định NCC"
+                                        : line.price_source === "cost_price"
+                                          ? "Giá vốn"
+                                          : "Nhập tay"}
                                   </span>
                                 )}
                               </div>
@@ -1016,14 +1031,14 @@ export default function CreatePurchaseOrderPage() {
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-100 bg-gray-50/60">
                 <StickyNote className="w-4 h-4 text-orange-500" />
-                <h2 className="text-sm font-semibold text-gray-700">Notes</h2>
-                <span className="text-xs text-gray-400 ml-auto">Optional</span>
+                <h2 className="text-sm font-semibold text-gray-700">Ghi chú</h2>
+                <span className="text-xs text-gray-400 ml-auto">Tùy chọn</span>
               </div>
               <div className="p-5">
                 <Textarea
                   value={description}
                   onChange={(value) => setDescription(value)}
-                  placeholder="Add any notes or instructions for this purchase order…"
+                  placeholder="Thêm ghi chú hoặc hướng dẫn cho đơn đặt hàng này..."
                   rows={3}
                   className="text-sm resize-none"
                 />
@@ -1040,4 +1055,3 @@ export default function CreatePurchaseOrderPage() {
     </div>
   );
 }
-

@@ -71,7 +71,7 @@ export function LotSelect({
 
   const formatOption = (lot: StockLot) => {
     let label = lot.lot_no;
-    if (lot.expiry_date) label += ` (exp: ${lot.expiry_date})`;
+    if (lot.expiry_date) label += ` (hsd: ${lot.expiry_date})`;
     return label;
   };
 
@@ -88,7 +88,7 @@ export function LotSelect({
           !productId ? "bg-gray-50 text-gray-400" : ""
         } ${className}`}
       >
-        <option value="">{loading ? "Loading..." : "— No Lot —"}</option>
+        <option value="">{loading ? "Đang tải..." : "— Không có lô —"}</option>
         {lots.map((l) => (
           <option key={l.id} value={l.id}>
             {formatOption(l)}
@@ -112,7 +112,7 @@ export function LotSelect({
               : "bg-white text-gray-600 border-gray-300 hover:border-orange-400"
           }`}
         >
-          Existing
+          Chọn lô có sẵn
         </button>
         <button
           type="button"
@@ -123,7 +123,7 @@ export function LotSelect({
               : "bg-white text-gray-600 border-gray-300 hover:border-orange-400"
           }`}
         >
-          + New
+          + Thêm lô mới
         </button>
       </div>
 
@@ -138,7 +138,7 @@ export function LotSelect({
             !productId ? "bg-gray-50 text-gray-400" : ""
           } ${className}`}
         >
-          <option value="">{loading ? "Loading..." : "— No Lot —"}</option>
+          <option value="">{loading ? "Đang tải..." : "— Không có lô —"}</option>
           {lots.map((l) => (
             <option key={l.id} value={l.id}>
               {formatOption(l)}
@@ -149,7 +149,7 @@ export function LotSelect({
         <div className="space-y-1">
           <input
             type="text"
-            placeholder="Lot No *"
+            placeholder="Mã lô *"
             value={newLot?.lot_no ?? ""}
             onChange={(e) =>
               onNewLotChange?.({ ...newLot, lot_no: e.target.value })
@@ -158,7 +158,7 @@ export function LotSelect({
           />
           <input
             type="text"
-            placeholder="Serial No"
+            placeholder="Số Serial"
             value={newLot?.serial_no ?? ""}
             onChange={(e) =>
               onNewLotChange?.({
@@ -171,7 +171,7 @@ export function LotSelect({
           />
           <input
             type="date"
-            placeholder="Manufacture Date"
+            placeholder="Ngày sản xuất"
             value={newLot?.manufacture_date ?? ""}
             onChange={(e) =>
               onNewLotChange?.({
@@ -184,7 +184,7 @@ export function LotSelect({
           />
           <input
             type="date"
-            placeholder="Expiry Date"
+            placeholder="Hạn sử dụng"
             value={newLot?.expiry_date ?? ""}
             onChange={(e) =>
               onNewLotChange?.({
@@ -197,7 +197,7 @@ export function LotSelect({
           />
           <input
             type="text"
-            placeholder="Notes"
+            placeholder="Ghi chú"
             value={newLot?.notes ?? ""}
             onChange={(e) =>
               onNewLotChange?.({

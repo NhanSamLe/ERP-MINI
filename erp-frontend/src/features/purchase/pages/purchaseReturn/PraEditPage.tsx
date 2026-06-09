@@ -15,9 +15,9 @@ import { StandardFormLayout } from "../../../../components/layout/StandardFormLa
 import { FormSection } from "../../../../components/layout/FormSection";
 
 const RETURN_TYPE_OPTIONS = [
-  { value: "debit_note", label: "Debit Note (Trừ công nợ)" },
-  { value: "refund", label: "Refund (NCC hoàn tiền)" },
-  { value: "replacement", label: "Replacement (Đổi hàng)" },
+  { value: "debit_note", label: "Thẻ nợ (Trừ công nợ)" },
+  { value: "refund", label: "Hoàn tiền (NCC hoàn tiền)" },
+  { value: "replacement", label: "Đổi hàng (Đổi trả hàng)" },
 ];
 
 export default function PraEditPage() {
@@ -86,19 +86,19 @@ export default function PraEditPage() {
   const handleSubmit = async () => {
     if (!pra) return;
     if (!supplierId) {
-      toast.error("Supplier is required");
+      toast.error("Vui lòng chọn nhà cung cấp");
       return;
     }
     if (!purchaseOrderId) {
-      toast.error("Purchase Order is required");
+      toast.error("Vui lòng chọn đơn mua hàng");
       return;
     }
     if (!reason.trim()) {
-      toast.error("Return reason is required");
+      toast.error("Vui lòng nhập lý do trả hàng");
       return;
     }
     if (!totalReturnAmount || Number(totalReturnAmount) <= 0) {
-      toast.error("Total return amount must be > 0");
+      toast.error("Tổng giá trị trả hàng phải lớn hơn 0");
       return;
     }
 
@@ -114,10 +114,10 @@ export default function PraEditPage() {
         notes: notes.trim() || null,
       });
 
-      toast.success("PRA updated");
+      toast.success("Đã cập nhật PRA");
       navigate(`/purchase/return-authorizations/${pra.id}`);
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to update PRA");
+      toast.error(e?.message ?? "Cập nhật PRA thất bại");
     } finally {
       setSubmitting(false);
     }
@@ -135,12 +135,12 @@ export default function PraEditPage() {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-500">
         <CornerUpLeft className="w-10 h-10 text-gray-300" />
-        <p className="text-sm font-medium">Return Authorization not found</p>
+        <p className="text-sm font-medium">Không tìm thấy yêu cầu trả hàng mua (PRA)</p>
         <button
           onClick={() => navigate("/purchase/return-authorizations")}
           className="text-sm text-orange-600 hover:underline"
         >
-          Back to list
+          Quay lại danh sách
         </button>
       </div>
     );
@@ -151,12 +151,12 @@ export default function PraEditPage() {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-500">
         <ArrowLeft className="w-10 h-10 text-gray-300" />
-        <p className="text-sm font-medium">Only draft PRAs can be edited</p>
+        <p className="text-sm font-medium">Chỉ có thể chỉnh sửa PRA ở trạng thái nháp</p>
         <button
           onClick={() => navigate(`/purchase/return-authorizations/${pra.id}`)}
           className="text-sm text-orange-600 hover:underline"
         >
-          Back to PRA
+          Quay lại trang chi tiết PRA
         </button>
       </div>
     );
@@ -169,15 +169,15 @@ export default function PraEditPage() {
 
   return (
     <StandardFormLayout
-      title={`Edit Return Authorization: ${pra.pra_no}`}
+      title={`Chỉnh sửa Yêu cầu trả hàng mua: ${pra.pra_no}`}
       actions={[
         {
-          label: "Cancel",
+          label: "Hủy bỏ",
           variant: "outline",
           onClick: () => navigate(`/purchase/return-authorizations/${pra.id}`),
         },
         {
-          label: "Save Changes",
+          label: "Lưu thay đổi",
           variant: "primary",
           onClick: handleSubmit,
           isLoading: submitting,
@@ -185,14 +185,14 @@ export default function PraEditPage() {
       ]}
     >
       <FormSection
-        title="Return Authorization Details"
+        title="Chi tiết Yêu cầu trả hàng mua"
         icon={<CornerUpLeft className="w-4 h-4" />}
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Purchase Order */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Purchase Order <span className="text-red-500">*</span>
+              Đơn mua hàng (PO) <span className="text-red-500">*</span>
             </label>
             <select
               value={purchaseOrderId}
@@ -201,7 +201,7 @@ export default function PraEditPage() {
               }
               className="w-full h-9 px-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
             >
-              <option value="">— Select Purchase Order —</option>
+              <option value="">— Chọn Đơn mua hàng —</option>
               {eligiblePOs.map((po) => (
                 <option key={po.id} value={po.id}>
                   {po.po_no} — {po.status}
@@ -210,8 +210,7 @@ export default function PraEditPage() {
             </select>
             {purchaseOrders.length > 0 && eligiblePOs.length === 0 && (
               <p className="text-xs text-amber-600 mt-1">
-                No confirmed POs available. PO must be
-                confirmed/received/completed.
+                Không có đơn mua hàng nào đủ điều kiện. Đơn mua hàng phải ở trạng thái Đã xác nhận / Đã nhận hàng một phần / Đã hoàn thành.
               </p>
             )}
           </div>
@@ -219,7 +218,7 @@ export default function PraEditPage() {
           {/* Supplier */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Supplier <span className="text-red-500">*</span>
+              Nhà cung cấp <span className="text-red-500">*</span>
             </label>
             <select
               value={supplierId}
@@ -228,7 +227,7 @@ export default function PraEditPage() {
               }
               className="w-full h-9 px-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
             >
-              <option value="">— Select Supplier —</option>
+              <option value="">— Chọn nhà cung cấp —</option>
               {partners.items.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -240,7 +239,7 @@ export default function PraEditPage() {
           {/* Return Type */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Return Type <span className="text-red-500">*</span>
+              Loại trả hàng <span className="text-red-500">*</span>
             </label>
             <select
               value={returnType}
@@ -258,7 +257,7 @@ export default function PraEditPage() {
           {/* Total Return Amount */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Total Return Amount <span className="text-red-500">*</span>
+              Tổng giá trị trả hàng <span className="text-red-500">*</span>
             </label>
             <input
               type="number"
@@ -277,7 +276,7 @@ export default function PraEditPage() {
           {/* Branch (read-only) */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Branch
+              Chi nhánh
             </label>
             <div className="h-9 px-3 flex items-center text-sm bg-gray-50 border border-gray-200 rounded-md text-gray-600">
               {user?.branch?.name ?? "—"}
@@ -288,13 +287,13 @@ export default function PraEditPage() {
         {/* Reason */}
         <div className="mt-4">
           <label className="block text-xs font-medium text-gray-600 mb-1">
-            Return Reason <span className="text-red-500">*</span>
+            Lý do trả hàng <span className="text-red-500">*</span>
           </label>
           <textarea
             rows={3}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Describe the reason for return..."
+            placeholder="Mô tả chi tiết lý do trả hàng..."
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-orange-500"
           />
         </div>
@@ -302,13 +301,13 @@ export default function PraEditPage() {
         {/* Notes */}
         <div className="mt-3">
           <label className="block text-xs font-medium text-gray-600 mb-1">
-            Notes <span className="text-gray-400">(optional)</span>
+            Ghi chú <span className="text-gray-400">(tùy chọn)</span>
           </label>
           <textarea
             rows={2}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Additional notes..."
+            placeholder="Ghi chú thêm..."
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-orange-500"
           />
         </div>

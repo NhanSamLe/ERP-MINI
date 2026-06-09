@@ -13,14 +13,14 @@ import { formatVND } from "@/utils/currency.helper";
 import { Roles } from "@/types/enum";
 
 const STATUS_OPTIONS = [
-  { value: "", label: "All Status" },
-  { value: "draft", label: "Draft" },
-  { value: "sent", label: "Sent" },
-  { value: "received", label: "Received" },
-  { value: "accepted", label: "Accepted" },
-  { value: "rejected", label: "Rejected" },
-  { value: "expired", label: "Expired" },
-  { value: "cancelled", label: "Cancelled" },
+  { value: "", label: "Tất cả trạng thái" },
+  { value: "draft", label: "Nháp" },
+  { value: "sent", label: "Đã gửi" },
+  { value: "received", label: "Đã nhận" },
+  { value: "accepted", label: "Đã chấp nhận" },
+  { value: "rejected", label: "Đã từ chối" },
+  { value: "expired", label: "Hết hiệu lực" },
+  { value: "cancelled", label: "Đã hủy" },
 ];
 
 export default function RfqListPage() {
@@ -70,7 +70,7 @@ export default function RfqListPage() {
     setDeleting(true);
     try {
       await dispatch(deleteRfqThunk(deleteTarget.id)).unwrap();
-      toast.success("RFQ deleted");
+      toast.success("Đã xóa yêu cầu báo giá RFQ");
       setDeleteTarget(null);
     } catch (e: any) {
       toast.error(e);
@@ -90,10 +90,10 @@ export default function RfqListPage() {
             </span>
             <div>
               <h1 className="text-base font-semibold text-gray-900">
-                Request for Quotations
+                Yêu cầu báo giá (RFQ)
               </h1>
               <p className="text-xs text-gray-400 mt-0.5">
-                Manage supplier price requests
+                Quản lý yêu cầu báo giá của nhà cung cấp
               </p>
             </div>
             <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-600">
@@ -118,7 +118,7 @@ export default function RfqListPage() {
                   )
                 }
               >
-                Compare ({selectedIds.length})
+                So sánh ({selectedIds.length})
               </Button>
             )}
             {(role === Roles.PURCHASE || role === Roles.PURCHASEMANAGER) && (
@@ -127,7 +127,7 @@ export default function RfqListPage() {
                 leftIcon={<Plus className="w-3.5 h-3.5" />}
                 onClick={() => navigate("/purchase/rfqs/create")}
               >
-                New RFQ
+                Tạo RFQ mới
               </Button>
             )}
           </div>
@@ -138,7 +138,7 @@ export default function RfqListPage() {
           <div className="flex items-center gap-3 flex-wrap">
             <div className="relative flex-1 min-w-[200px] max-w-xs">
               <input
-                placeholder="Search RFQ No, Supplier..."
+                placeholder="Tìm kiếm số RFQ, nhà cung cấp..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full h-8 pl-3 pr-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 placeholder:text-gray-400"
@@ -162,12 +162,12 @@ export default function RfqListPage() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3 text-gray-400">
             <div className="w-6 h-6 border-2 border-orange-200 border-t-orange-500 rounded-full animate-spin" />
-            <span className="text-sm">Loading...</span>
+            <span className="text-sm">Đang tải...</span>
           </div>
         ) : filtered.length === 0 ? (
           <div className="py-16 flex flex-col items-center gap-2 text-gray-400">
             <FileText className="w-10 h-10" />
-            <p className="text-sm font-medium">No RFQs found</p>
+            <p className="text-sm font-medium">Không tìm thấy yêu cầu báo giá RFQ nào</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -181,28 +181,28 @@ export default function RfqListPage() {
                     />
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    RFQ No
+                    Số RFQ
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Supplier
+                    Nhà cung cấp
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Date
+                    Ngày
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Valid Until
+                    Hiệu lực đến
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Total
+                    Tổng tiền
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Status
+                    Trạng thái
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Approval
+                    Phê duyệt
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Actions
+                    Thao tác
                   </th>
                 </tr>
               </thead>
@@ -271,11 +271,11 @@ export default function RfqListPage() {
                                 : "bg-gray-50 text-gray-700"
                         }`}
                       >
-                        {rfq.approval_status === "draft" && "Draft"}
+                        {rfq.approval_status === "draft" && "Nháp"}
                         {rfq.approval_status === "waiting_approval" &&
-                          "Waiting"}
-                        {rfq.approval_status === "approved" && "Approved"}
-                        {rfq.approval_status === "rejected" && "Rejected"}
+                          "Chờ duyệt"}
+                        {rfq.approval_status === "approved" && "Đã duyệt"}
+                        {rfq.approval_status === "rejected" && "Từ chối"}
                       </span>
                     </td>
                     <td
@@ -286,7 +286,7 @@ export default function RfqListPage() {
                         <button
                           onClick={() => navigate(`/purchase/rfqs/${rfq.id}`)}
                           className="p-1.5 rounded text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                          title="View"
+                          title="Xem"
                         >
                           <svg
                             className="w-3.5 h-3.5"
@@ -315,7 +315,7 @@ export default function RfqListPage() {
                                 navigate(`/purchase/rfqs/${rfq.id}/edit`)
                               }
                               className="p-1.5 rounded text-gray-500 hover:text-orange-600 hover:bg-orange-50 transition-colors"
-                              title="Edit"
+                              title="Chỉnh sửa"
                             >
                               <svg
                                 className="w-3.5 h-3.5"
@@ -336,7 +336,7 @@ export default function RfqListPage() {
                           <button
                             onClick={() => setDeleteTarget(rfq)}
                             className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                            title="Delete"
+                            title="Xóa"
                           >
                             <svg
                               className="w-3.5 h-3.5"
@@ -365,11 +365,11 @@ export default function RfqListPage() {
         {/* Footer */}
         <div className="flex items-center justify-between px-5 py-3 border-t border-orange-100 bg-orange-50/30">
           <p className="text-xs text-gray-500">
-            Showing{" "}
+            Hiển thị{" "}
             <span className="font-semibold text-gray-700">
               {filtered.length}
             </span>{" "}
-            records
+            bản ghi
           </p>
         </div>
       </div>
@@ -378,9 +378,9 @@ export default function RfqListPage() {
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
-        title="Delete RFQ"
-        description={`Are you sure you want to delete ${deleteTarget?.rfq_no}? This action cannot be undone.`}
-        confirmText="Delete"
+        title="Xóa RFQ"
+        description={`Bạn có chắc chắn muốn xóa RFQ ${deleteTarget?.rfq_no}? Thao tác này không thể hoàn tác.`}
+        confirmText="Xóa"
         variant="danger"
         loading={deleting}
       />

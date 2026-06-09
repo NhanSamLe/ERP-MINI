@@ -33,7 +33,7 @@ export default function PriceListListPage() {
       const data = await purchasePriceListApi.getAll(params);
       setPriceLists(data || []);
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to load price lists");
+      toast.error(e?.message ?? "Tải danh sách bảng giá thất bại");
     } finally {
       setLoading(false);
     }
@@ -46,13 +46,13 @@ export default function PriceListListPage() {
 
   const handleDelete = async (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!window.confirm("Are you sure you want to delete this price list?")) return;
+    if (!window.confirm("Bạn có chắc chắn muốn xóa bảng giá này không?")) return;
     try {
       await purchasePriceListApi.delete(id);
-      toast.success("Price list deleted successfully");
+      toast.success("Xóa bảng giá thành công");
       fetchPriceLists();
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to delete price list");
+      toast.error(e?.message ?? "Xóa bảng giá thất bại");
     }
   };
 
@@ -75,18 +75,18 @@ export default function PriceListListPage() {
               <FileSpreadsheet className="w-5 h-5 text-orange-500" />
             </span>
             <div>
-              <h1 className="text-lg font-semibold text-gray-900">Purchase Price Lists</h1>
-              <p className="text-xs text-gray-400">Manage supplier purchase prices and volume discount policies</p>
+              <h1 className="text-lg font-semibold text-gray-900">Bảng Giá Mua Hàng</h1>
+              <p className="text-xs text-gray-400">Quản lý giá mua hàng từ nhà cung cấp và các chính sách chiết khấu theo số lượng</p>
             </div>
             <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-600">
-              {filteredLists.length} lists
+              {filteredLists.length} bảng giá
             </span>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={fetchPriceLists}
               className="inline-flex items-center justify-center w-8 h-8 text-gray-500 border border-gray-200 bg-white rounded-lg hover:bg-gray-50 hover:text-gray-900 transition"
-              title="Refresh"
+              title="Tải lại"
             >
               <RotateCw className="w-4 h-4" />
             </button>
@@ -96,7 +96,7 @@ export default function PriceListListPage() {
                 className="inline-flex items-center gap-1.5 h-8 px-4 text-sm font-semibold bg-orange-500 text-white hover:bg-orange-600 rounded-lg shadow-sm transition"
               >
                 <Plus className="w-4 h-4" />
-                New Price List
+                Thêm Bảng Giá Mới
               </button>
             )}
           </div>
@@ -107,7 +107,7 @@ export default function PriceListListPage() {
           <div className="flex items-center gap-4 flex-wrap">
             <div className="relative flex-1 min-w-[240px] max-w-sm">
               <input
-                placeholder="Search by name, code, supplier..."
+                placeholder="Tìm kiếm theo tên, mã bảng giá, nhà cung cấp..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full h-9 pl-3 pr-3 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition placeholder:text-gray-400"
@@ -118,7 +118,7 @@ export default function PriceListListPage() {
               onChange={(e) => setSupplierFilter(e.target.value)}
               className="h-9 px-3 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition w-48"
             >
-              <option value="">All Suppliers</option>
+              <option value="">Tất cả nhà cung cấp</option>
               {(partners as any)?.items?.map((p: any) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -130,9 +130,9 @@ export default function PriceListListPage() {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="h-9 px-3 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition w-44"
             >
-              <option value="">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              <option value="">Tất cả trạng thái</option>
+              <option value="active">Hoạt động</option>
+              <option value="inactive">Không hoạt động</option>
             </select>
           </div>
         </div>
@@ -141,14 +141,14 @@ export default function PriceListListPage() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3 text-gray-400">
             <div className="w-8 h-8 border-2 border-orange-200 border-t-orange-500 rounded-full animate-spin" />
-            <span className="text-sm">Loading data...</span>
+            <span className="text-sm">Đang tải dữ liệu...</span>
           </div>
         ) : filteredLists.length === 0 ? (
           <div className="py-20 flex flex-col items-center gap-3 text-gray-400 text-center">
             <FileSpreadsheet className="w-12 h-12 text-gray-300" />
             <div>
-              <p className="text-sm font-medium text-gray-600">No price lists found</p>
-              <p className="text-xs text-gray-400 mt-1">Please adjust your filters or create a new price list</p>
+              <p className="text-sm font-medium text-gray-600">Không tìm thấy bảng giá nào</p>
+              <p className="text-xs text-gray-400 mt-1">Vui lòng điều chỉnh bộ lọc hoặc tạo một bảng giá mới</p>
             </div>
           </div>
         ) : (
@@ -156,13 +156,13 @@ export default function PriceListListPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  <th className="px-6 py-3.5">Code</th>
-                  <th className="px-6 py-3.5">Name</th>
-                  <th className="px-6 py-3.5">Supplier</th>
-                  <th className="px-6 py-3.5">Start Date</th>
-                  <th className="px-6 py-3.5">End Date</th>
-                  <th className="px-6 py-3.5">Status</th>
-                  <th className="px-6 py-3.5 text-right">Actions</th>
+                  <th className="px-6 py-3.5">Mã</th>
+                  <th className="px-6 py-3.5">Tên</th>
+                  <th className="px-6 py-3.5">Nhà cung cấp</th>
+                  <th className="px-6 py-3.5">Ngày bắt đầu</th>
+                  <th className="px-6 py-3.5">Ngày kết thúc</th>
+                  <th className="px-6 py-3.5">Trạng thái</th>
+                  <th className="px-6 py-3.5 text-right">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -185,16 +185,16 @@ export default function PriceListListPage() {
                           <span>{pl.supplier.name}</span>
                         </div>
                       ) : (
-                        <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded font-medium">Generic</span>
+                        <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded font-medium">Chung</span>
                       )}
                     </td>
                     <td className="px-6 py-4 text-gray-600 font-mono text-xs">
-                      {pl.start_date ? new Date(pl.start_date).toLocaleDateString("en-US") : "—"}
+                      {pl.start_date ? new Date(pl.start_date).toLocaleDateString("vi-VN") : "—"}
                     </td>
                     <td className="px-6 py-4 text-gray-600 font-mono text-xs">
                       {pl.end_date ? (
                         <span className={new Date(pl.end_date) < new Date() ? "text-red-500" : "text-gray-600"}>
-                          {new Date(pl.end_date).toLocaleDateString("en-US")}
+                          {new Date(pl.end_date).toLocaleDateString("vi-VN")}
                         </span>
                       ) : (
                         "—"
@@ -208,7 +208,7 @@ export default function PriceListListPage() {
                         <button
                           onClick={() => navigate(`/purchase/price-lists/${pl.id}`)}
                           className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition"
-                          title="View Details"
+                          title="Xem chi tiết"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
@@ -216,7 +216,7 @@ export default function PriceListListPage() {
                           <button
                             onClick={(e) => handleDelete(pl.id, e)}
                             className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
-                            title="Delete"
+                            title="Xóa"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -233,7 +233,7 @@ export default function PriceListListPage() {
         {/* Footer */}
         <div className="flex items-center justify-between px-6 py-3 border-t border-gray-100 bg-gray-50/40">
           <p className="text-xs text-gray-400">
-            Showing <span className="font-semibold text-gray-600">{filteredLists.length}</span> of <span className="font-semibold text-gray-600">{priceLists.length}</span> records
+            Hiển thị <span className="font-semibold text-gray-600">{filteredLists.length}</span> trên <span className="font-semibold text-gray-600">{priceLists.length}</span> bản ghi
           </p>
         </div>
       </div>

@@ -49,6 +49,7 @@ import documentRoutes, {
 } from "../modules/document-intelligence/routes";
 import { narrativeRoutes } from "../modules/ai-narrative/routes";
 import aiRoutes from "../modules/ai/ai.routes";
+import agentAdminRoutes from "../modules/ai-agent/routes";
 import blogRoutes from "../modules/blog/routes/blog.route";
 import publicRoutes from "../modules/public/routes";
 import setupRoutes from "../modules/public/setupRoutes";
@@ -108,6 +109,7 @@ router.use("/document-intelligence", documentRoutes);
 router.use("/matching", matchingRouter);
 router.use("/ai-narrative", narrativeRoutes);
 router.use("/ai", aiRoutes);
+router.use("/ai-agent", agentAdminRoutes);
 router.use("/blog", blogRoutes);
 router.use("/public", publicRoutes);
 router.use("/setup", setupRoutes);

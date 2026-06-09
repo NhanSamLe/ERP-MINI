@@ -153,26 +153,26 @@ export default function CreateAdjustmentModal({
 
   const handleSubmit = () => {
     if (!form.warehouse) {
-      toast.error("Please select a Warehouse");
+      toast.error("Vui lòng chọn Kho hàng");
       return;
     }
     if (!form.move_date) {
-      toast.error("Please select a Move Date");
+      toast.error("Vui lòng chọn Ngày điều chỉnh");
       return;
     }
 
     if (lineItems.length === 0) {
-      toast.error("Please add at least one product");
+      toast.error("Vui lòng thêm ít nhất một sản phẩm");
       return;
     }
 
     for (const p of lineItems) {
       if (!p.quantity) {
-        toast.error(`Invalid quantity for product: ${p.name}`);
+        toast.error(`Số lượng không hợp lệ cho sản phẩm: ${p.name}`);
         return;
       }
       if (!p.location_from_id) {
-        toast.error(`Please select a location for product: ${p.name}`);
+        toast.error(`Vui lòng chọn vị trí cho sản phẩm: ${p.name}`);
         return;
       }
     }
@@ -194,9 +194,9 @@ export default function CreateAdjustmentModal({
             <SlidersHorizontal className="w-5 h-5" />
           </div>
           <div>
-            <DialogTitle className="text-lg font-bold text-slate-900">Create Stock Adjustment</DialogTitle>
+            <DialogTitle className="text-lg font-bold text-slate-900">Tạo phiếu điều chỉnh kho</DialogTitle>
             <DialogDescription className="text-xs text-slate-400 mt-0.5">
-              Adjust product quantities manually for variance corrections or stocktake updates
+              Điều chỉnh số lượng sản phẩm thủ công để cập nhật chênh lệch hoặc số liệu kiểm kê
             </DialogDescription>
           </div>
         </DialogHeader>
@@ -206,7 +206,7 @@ export default function CreateAdjustmentModal({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* Warehouse Select */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Warehouse *</label>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Kho hàng *</label>
               <Select
                 value={form.warehouse}
                 onValueChange={(v) =>
@@ -214,7 +214,7 @@ export default function CreateAdjustmentModal({
                 }
               >
                 <SelectTrigger className="w-full h-10 bg-white border-slate-200 focus:ring-amber-500 focus:border-amber-500 rounded-lg">
-                  <SelectValue placeholder="Select warehouse" />
+                  <SelectValue placeholder="Chọn kho hàng" />
                 </SelectTrigger>
                 <SelectContent>
                   {warehouses.map((w) => (
@@ -229,7 +229,7 @@ export default function CreateAdjustmentModal({
             {/* Move Date */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-slate-400" /> Move Date *
+                <Calendar className="w-3.5 h-3.5 text-slate-400" /> Ngày điều chỉnh *
               </label>
               <Input
                 type="date"
@@ -243,7 +243,7 @@ export default function CreateAdjustmentModal({
             {/* Move Number */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                <Clipboard className="w-3.5 h-3.5 text-slate-400" /> Move Number
+                <Clipboard className="w-3.5 h-3.5 text-slate-400" /> Số phiếu
               </label>
               <Input 
                 value={form.move_no} 
@@ -256,13 +256,13 @@ export default function CreateAdjustmentModal({
           {/* Product Search Input */}
           <div className="flex flex-col gap-1.5 relative" ref={dropdownRef}>
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-              <Search className="w-3.5 h-3.5 text-slate-400" /> Search & Add Product
+              <Search className="w-3.5 h-3.5 text-slate-400" /> Tìm kiếm & Thêm sản phẩm
             </label>
             <div className="relative">
               <Input
                 value={searchTerm}
                 onChange={(value) => setSearchTerm(value)}
-                placeholder="Type product name or SKU to search and add..."
+                placeholder="Nhập tên sản phẩm hoặc mã SKU để tìm và thêm..."
                 className="pl-10 h-10 border-slate-200 focus:ring-amber-400 focus:border-amber-400 rounded-lg placeholder:text-slate-400"
               />
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -272,7 +272,7 @@ export default function CreateAdjustmentModal({
             {showDropdown && (
               <div className="absolute w-full mt-1.5 bg-white border border-slate-100 rounded-xl shadow-lg max-h-60 overflow-y-auto z-50 divide-y divide-slate-50">
                 {searchLoading ? (
-                  <div className="p-4 text-center text-sm text-slate-400 font-medium italic">Loading results...</div>
+                  <div className="p-4 text-center text-sm text-slate-400 font-medium italic">Đang tải kết quả...</div>
                 ) : searchResults.length > 0 ? (
                   searchResults.map((p) => (
                     <div
@@ -292,7 +292,7 @@ export default function CreateAdjustmentModal({
                     </div>
                   ))
                 ) : (
-                  <div className="p-4 text-center text-sm text-slate-400 font-medium italic">No products found</div>
+                  <div className="p-4 text-center text-sm text-slate-400 font-medium italic">Không tìm thấy sản phẩm</div>
                 )}
               </div>
             )}
@@ -302,17 +302,17 @@ export default function CreateAdjustmentModal({
           <Card className="border-slate-100 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">
             <CardHeader className="px-5 py-3.5 bg-slate-50/15 border-b border-slate-100 flex flex-row items-center gap-2">
               <ListCollapse className="w-4.5 h-4.5 text-slate-700" />
-              <CardTitle className="text-sm font-semibold text-slate-800">Adjustment Item Lines</CardTitle>
+              <CardTitle className="text-sm font-semibold text-slate-800">Danh sách sản phẩm điều chỉnh</CardTitle>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-slate-50/80 text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-slate-100">
                   <tr>
-                    <th className="py-3.5 px-5 text-left">Product</th>
-                    <th className="py-3.5 px-5 text-left">SKU</th>
-                    <th className="py-3.5 px-5 text-left w-24">UOM</th>
-                    <th className="py-3.5 px-5 text-right w-24">Qty Change</th>
-                    <th className="py-3.5 px-5 text-left w-48">Location</th>
+                    <th className="py-3.5 px-5 text-left">Sản phẩm</th>
+                    <th className="py-3.5 px-5 text-left">Mã SKU</th>
+                    <th className="py-3.5 px-5 text-left w-24">ĐVT</th>
+                    <th className="py-3.5 px-5 text-right w-24">SL thay đổi</th>
+                    <th className="py-3.5 px-5 text-left w-48">Vị trí</th>
                     <th className="py-3.5 px-5 text-center w-14"></th>
                   </tr>
                 </thead>
@@ -329,7 +329,7 @@ export default function CreateAdjustmentModal({
                           )}
                           <span className="font-semibold text-slate-800">{p.name}</span>
                         </td>
-                        <td className="py-3 px-5 font-mono text-xs font-bold text-slate-450 uppercase">{p.sku}</td>
+                        <td className="py-3 px-5 font-mono text-xs font-bold text-slate-455 uppercase">{p.sku}</td>
                         <td className="py-3 px-5 text-slate-500 font-medium">{p.uom || "—"}</td>
                         <td className="py-3 px-5 text-right">
                           <input
@@ -358,7 +358,7 @@ export default function CreateAdjustmentModal({
                               )
                             }
                             types={["internal"]}
-                            placeholder="— Select —"
+                            placeholder="— Chọn —"
                           />
                         </td>
                         <td className="py-3 px-5 text-center">
@@ -369,7 +369,7 @@ export default function CreateAdjustmentModal({
                                 prev.filter((x) => x.product_id !== p.product_id),
                               )
                             }
-                            title="Delete Line"
+                            title="Xóa dòng"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -379,7 +379,7 @@ export default function CreateAdjustmentModal({
                   ) : (
                     <tr>
                       <td colSpan={6} className="py-12 text-center text-slate-400 italic">
-                        Use search box above to add adjustment products.
+                        Sử dụng ô tìm kiếm ở trên để thêm sản phẩm điều chỉnh.
                       </td>
                     </tr>
                   )}
@@ -390,25 +390,25 @@ export default function CreateAdjustmentModal({
 
           {/* Notes */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Internal Notes *</label>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Ghi chú nội bộ *</label>
             <Textarea
               value={form.notes}
               onChange={(value) => setForm((prev) => ({ ...prev, notes: value }))}
-              placeholder="Provide reason or description for manual adjustment..."
-              className="min-h-[80px] border-slate-200 focus:ring-amber-450 focus:border-amber-450 rounded-lg text-sm placeholder:text-slate-400"
+              placeholder="Nhập lý do hoặc mô tả điều chỉnh thủ công..."
+              className="min-h-[80px] border-slate-200 focus:ring-amber-455 focus:border-amber-455 rounded-lg text-sm placeholder:text-slate-400"
             />
           </div>
 
           {/* FOOTER */}
           <DialogFooter className="pt-4 border-t border-slate-100 flex-row justify-end gap-3">
             <Button variant="outline" onClick={onClose}>
-              Cancel
+              Hủy
             </Button>
             <Button
               className="bg-amber-500 hover:bg-amber-600 text-white"
               onClick={handleSubmit}
             >
-              Create Adjustment
+              Tạo phiếu điều chỉnh
             </Button>
           </DialogFooter>
         </div>

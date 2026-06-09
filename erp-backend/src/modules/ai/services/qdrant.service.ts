@@ -1,9 +1,14 @@
-import { QdrantClient } from '@qdrant/js-client-rest';
-import { env } from '../../../config/env';
-import { EMBED_DIMENSIONS } from './embedding.service';
-import type { EmbedPayload, SearchResult, ERPModule, EntityType } from '../types/ai.types';
+import { QdrantClient } from "@qdrant/js-client-rest";
+import { env } from "../../../config/env";
+import { EMBED_DIMENSIONS } from "./embedding.service";
+import type {
+  EmbedPayload,
+  SearchResult,
+  ERPModule,
+  EntityType,
+} from "../types/ai.types";
 
-const COLLECTION = 'erp_mini';
+const COLLECTION = "erp_mini";
 
 export class QdrantService {
   private client: QdrantClient;
@@ -23,32 +28,47 @@ export class QdrantService {
    */
   async initCollection(): Promise<void> {
     const collections = await this.client.getCollections();
-    const exists = collections.collections.some(c => c.name === COLLECTION);
+    const exists = collections.collections.some((c) => c.name === COLLECTION);
 
     if (!exists) {
       await this.client.createCollection(COLLECTION, {
         vectors: {
-          size:     EMBED_DIMENSIONS,
-          distance: 'Cosine',
+          size: EMBED_DIMENSIONS,
+          distance: "Cosine",
         },
       });
 
       // Tạo payload indexes để filter nhanh
       await this.client.createPayloadIndex(COLLECTION, {
-        field_name: 'module',
-        field_schema: 'keyword',
+        field_name: "module",
+        field_schema: "keyword",
       });
       await this.client.createPayloadIndex(COLLECTION, {
-        field_name: 'entity_type',
-        field_schema: 'keyword',
+        field_name: "entity_type",
+        field_schema: "keyword",
       });
       await this.client.createPayloadIndex(COLLECTION, {
-        field_name: 'entity_id',
-        field_schema: 'integer',
+        field_name: "entity_id",
+        field_schema: "integer",
+      });
+      await this.client.createPayloadIndex(COLLECTION, {
+        field_name: "branch_id",
+        field_schema: "integer",
       });
 
-      console.log(`[Qdrant] Collection '${COLLECTION}' created — ${EMBED_DIMENSIONS}d`);
+      console.log(
+        `[Qdrant] Collection '${COLLECTION}' created — ${EMBED_DIMENSIONS}d`,
+      );
     } else {
+      // Đảm bảo branch_id index tồn tại nếu collection đã cũ
+      try {
+        await this.client.createPayloadIndex(COLLECTION, {
+          field_name: "branch_id",
+          field_schema: "integer",
+        });
+      } catch {
+        // Index đã tồn tại — bỏ qua
+      }
       console.log(`[Qdrant] Collection '${COLLECTION}' already exists`);
     }
   }
@@ -60,19 +80,20 @@ export class QdrantService {
     const pointId = this.makePointId(
       payload.module,
       payload.entity_type,
-      payload.entity_id
+      payload.entity_id,
     );
 
     await this.client.upsert(COLLECTION, {
       wait: true,
       points: [
         {
-          id:      pointId,
+          id: pointId,
           vector,
           payload: {
-            module:       payload.module,
-            entity_type:  payload.entity_type,
-            entity_id:    payload.entity_id,
+            module: payload.module,
+            entity_type: payload.entity_type,
+            entity_id: payload.entity_id,
+            branch_id: payload.branch_id,
             content_text: payload.content_text,
             content_hash: payload.content_hash,
             ...(payload.extra ?? {}),
@@ -86,15 +107,20 @@ export class QdrantService {
    * Batch upsert — hiệu quả hơn khi sync nhiều records
    */
   async upsertBatch(
-    items: Array<{ payload: EmbedPayload; vector: number[] }>
+    items: Array<{ payload: EmbedPayload; vector: number[] }>,
   ): Promise<void> {
     const points = items.map(({ payload, vector }) => ({
-      id:      this.makePointId(payload.module, payload.entity_type, payload.entity_id),
+      id: this.makePointId(
+        payload.module,
+        payload.entity_type,
+        payload.entity_id,
+      ),
       vector,
       payload: {
-        module:       payload.module,
-        entity_type:  payload.entity_type,
-        entity_id:    payload.entity_id,
+        module: payload.module,
+        entity_type: payload.entity_type,
+        entity_id: payload.entity_id,
+        branch_id: payload.branch_id,
         content_text: payload.content_text,
         content_hash: payload.content_hash,
         ...(payload.extra ?? {}),
@@ -106,28 +132,40 @@ export class QdrantService {
 
   /**
    * Tìm kiếm semantic với optional filter
+   * branch_id = 0 có nghĩa là global data (vendors, products, customers) — không filter
    */
   async search(
     vector: number[],
     opts: {
-      module?:      ERPModule;
+      module?: ERPModule;
       entity_type?: EntityType;
-      top_k?:       number;
-      userRole?:    string | undefined;
-    } = {}
+      top_k?: number;
+      userRole?: string | undefined;
+      branchId?: number | undefined;
+    } = {},
   ): Promise<SearchResult[]> {
-    const { module, entity_type, top_k = 5, userRole } = opts;
+    const { module, entity_type, top_k = 5, userRole, branchId } = opts;
 
     const must: object[] = [];
-    if (module)      must.push({ key: 'module',      match: { value: module } });
-    if (entity_type) must.push({ key: 'entity_type', match: { value: entity_type } });
-    if (userRole) {
-      must.push({ key: 'allowed_roles', match: { value: userRole } });
+    if (module) must.push({ key: "module", match: { value: module } });
+    if (entity_type)
+      must.push({ key: "entity_type", match: { value: entity_type } });
+    if (userRole)
+      must.push({ key: "allowed_roles", match: { value: userRole } });
+
+    // Branch filter: lấy data của branch hiện tại HOẶC global data (branch_id = 0)
+    if (branchId) {
+      must.push({
+        should: [
+          { key: "branch_id", match: { value: branchId } },
+          { key: "branch_id", match: { value: 0 } },
+        ],
+      });
     }
 
     const searchParams: any = {
       vector,
-      limit:        top_k,
+      limit: top_k,
       with_payload: true,
     };
     if (must.length > 0) {
@@ -136,12 +174,13 @@ export class QdrantService {
 
     const results = await this.client.search(COLLECTION, searchParams);
 
-    return results.map(r => ({
-      score:        r.score,
-      entity_id:    r.payload!['entity_id']    as number,
-      entity_type:  r.payload!['entity_type']  as EntityType,
-      module:       r.payload!['module']        as ERPModule,
-      content_text: r.payload!['content_text']  as string,
+    return results.map((r) => ({
+      score: r.score,
+      entity_id: r.payload!["entity_id"] as number,
+      entity_type: r.payload!["entity_type"] as EntityType,
+      module: r.payload!["module"] as ERPModule,
+      branch_id: (r.payload!["branch_id"] as number) ?? 0,
+      content_text: r.payload!["content_text"] as string,
     }));
   }
 
@@ -151,17 +190,17 @@ export class QdrantService {
   async getContentHash(
     module: ERPModule,
     entity_type: EntityType,
-    entity_id: number
+    entity_id: number,
   ): Promise<string | null> {
     const pointId = this.makePointId(module, entity_type, entity_id);
     try {
       const points = await this.client.retrieve(COLLECTION, {
-        ids:          [pointId],
+        ids: [pointId],
         with_payload: true,
       });
       const firstPoint = points[0];
       if (!firstPoint) return null;
-      return (firstPoint.payload?.['content_hash'] as string) ?? null;
+      return (firstPoint.payload?.["content_hash"] as string) ?? null;
     } catch {
       return null;
     }
@@ -173,15 +212,15 @@ export class QdrantService {
   private makePointId(
     module: string,
     entity_type: string,
-    entity_id: number
+    entity_id: number,
   ): number {
     let offset = 0;
-    if (entity_type === 'customer') offset = 10000000;
-    else if (entity_type === 'lead') offset = 20000000;
-    else if (entity_type === 'purchase_order') offset = 30000000;
-    else if (entity_type === 'vendor') offset = 40000000;
-    else if (entity_type === 'sale_order') offset = 50000000;
-    else if (entity_type === 'product') offset = 60000000;
+    if (entity_type === "customer") offset = 10000000;
+    else if (entity_type === "lead") offset = 20000000;
+    else if (entity_type === "purchase_order") offset = 30000000;
+    else if (entity_type === "vendor") offset = 40000000;
+    else if (entity_type === "sale_order") offset = 50000000;
+    else if (entity_type === "product") offset = 60000000;
     else offset = 70000000;
 
     return offset + entity_id;

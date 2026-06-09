@@ -11,7 +11,7 @@ import { GlEntryLine } from "../../finance/models/glEntryLine.model";
 import { GlJournal } from "../../finance/models/glJournal.model";
 import { requireGlAccounts } from "../../finance/services/glAccount.helper";
 import { getCompanyIdFromBranch } from "../../finance/services/companyScope.service";
-import { Partner } from "../../../models";
+import { Partner, StockMove, Warehouse } from "../../../models";
 import { User } from "../../auth/models/user.model";
 import { Branch } from "../../company/models/branch.model";
 import { Product } from "../../product/models/product.model";
@@ -57,6 +57,8 @@ const RETURN_INCLUDE = [
       { model: Uom, as: "uom", attributes: ["id", "name"] },
     ],
   },
+  { model: StockMove, as: "stockMove" },
+  { model: Warehouse, as: "warehouse" },
 ];
 
 // ─── PRA Service ──────────────────────────────────────────────────────────────
@@ -566,6 +568,14 @@ export const purchaseReturnService = {
       if (ret.status !== "confirmed")
         throw { status: 400, message: "Only confirmed return can be completed" };
 
+      if (ret.stock_move_id) {
+        const { StockMove } = await import("../../inventory/models/stockMove.model");
+        const move = await StockMove.findByPk(ret.stock_move_id, { transaction: t });
+        if (!move || move.status !== "posted") {
+          throw { status: 400, message: "Warehouse manager has not approved the stock issue yet" };
+        }
+      }
+
       await ret.update({ status: "completed" }, { transaction: t });
 
       if (ret.pra_id) {
@@ -629,6 +639,30 @@ export const apDebitNoteService = {
       };
     }
 
+    const lines = (ret as any).lines as PurchaseReturnLine[];
+
+    // Tính số lượng thực tế để đưa vào Debit Note:
+    // Ưu tiên quantity_confirmed, fallback về quantity_returned
+    const effectiveLines = lines.map((line) => {
+      const qtyConfirmed = Number(line.quantity_confirmed ?? 0);
+      const qtyReturned = Number(line.quantity_returned ?? 0);
+      const effectiveQty = qtyConfirmed > 0 ? qtyConfirmed : qtyReturned;
+      return { line, effectiveQty };
+    });
+
+    const totalCheck = effectiveLines.reduce(
+      (sum, { effectiveQty }) => sum + effectiveQty,
+      0,
+    );
+
+    if (totalCheck <= 0) {
+      throw {
+        status: 400,
+        message:
+          "Không có dòng hàng nào có số lượng hợp lệ. Không thể tạo Thẻ nợ có giá trị 0.",
+      };
+    }
+
     // Get original AP Invoice from PRA
     let originalApInvoiceId: number | null = null;
     if (ret.pra_id) {
@@ -655,14 +689,12 @@ export const apDebitNoteService = {
         { transaction: t },
       );
 
-      const lines = (ret as any).lines as PurchaseReturnLine[];
       let totalBeforeTax = 0;
 
-      for (const line of lines) {
-        const qty = Number(line.quantity_confirmed);
-        if (qty <= 0) continue;
+      for (const { line, effectiveQty } of effectiveLines) {
+        if (effectiveQty <= 0) continue;
 
-        const lineTotal = qty * Number(line.unit_price);
+        const lineTotal = effectiveQty * Number(line.unit_price);
         totalBeforeTax += lineTotal;
 
         await ApDebitNoteLine.create(
@@ -670,7 +702,7 @@ export const apDebitNoteService = {
             debit_note_id: dn.id,
             product_id: line.product_id,
             return_line_id: line.id,
-            quantity: qty,
+            quantity: effectiveQty,
             unit_price: line.unit_price,
             line_total: lineTotal,
             line_tax: 0,
@@ -678,6 +710,13 @@ export const apDebitNoteService = {
           },
           { transaction: t },
         );
+      }
+
+      if (totalBeforeTax <= 0) {
+        throw {
+          status: 400,
+          message: "Tổng giá trị Thẻ nợ bằng 0. Vui lòng kiểm tra đơn giá các dòng hàng.",
+        };
       }
 
       await dn.update(

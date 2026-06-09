@@ -11,6 +11,8 @@ import { fetchPurchaseOrdersThunk } from "../../store/purchaseOrder.thunks";
 import { StandardFormLayout } from "../../../../components/layout/StandardFormLayout";
 import { FormSection } from "../../../../components/layout/FormSection";
 import { PurchaseOrderLine } from "../../store";
+import { fetchWarehousesThunk } from "../../../inventory/store/stock/warehouse/warehouse.thunks";
+import axiosClient from "@/api/axiosClient";
 
 interface ReturnLine {
   tempId: number;
@@ -18,6 +20,7 @@ interface ReturnLine {
   product_name: string;
   po_line_id: number | null;
   quantity_returned: number;
+  po_quantity?: number;
   uom_id: number | null;
   uom_name: string;
   qty_in_stock_uom: number;
@@ -28,9 +31,9 @@ interface ReturnLine {
 }
 
 const CONDITION_OPTIONS = [
-  { value: "good", label: "Good" },
-  { value: "damaged", label: "Damaged" },
-  { value: "defective", label: "Defective" },
+  { value: "good", label: "Tốt" },
+  { value: "damaged", label: "Hỏng hóc" },
+  { value: "defective", label: "Lỗi sản xuất" },
 ];
 
 export default function PurchaseReturnCreatePage() {
@@ -42,6 +45,7 @@ export default function PurchaseReturnCreatePage() {
   const { items: purchaseOrders, selectedPO } = useSelector(
     (s: RootState) => s.purchaseOrder,
   );
+  const warehouses = useSelector((s: RootState) => s.warehouse.items);
   const user = useSelector((s: RootState) => s.auth.user);
 
   const praId = searchParams.get("pra_id")
@@ -50,6 +54,7 @@ export default function PurchaseReturnCreatePage() {
 
   const [supplierId, setSupplierId] = useState<number | "">("");
   const [purchaseOrderId, setPurchaseOrderId] = useState<number | "">("");
+  const [warehouseId, setWarehouseId] = useState<number | "">("");
   const [returnDate, setReturnDate] = useState(
     new Date().toISOString().split("T")[0],
   );
@@ -63,7 +68,27 @@ export default function PurchaseReturnCreatePage() {
   useEffect(() => {
     dispatch(loadPartners({ type: "supplier" }));
     dispatch(fetchPurchaseOrdersThunk());
+    dispatch(fetchWarehousesThunk());
   }, [dispatch]);
+
+  // Load PRA details if praId is present
+  useEffect(() => {
+    if (!praId) return;
+    const fetchPra = async () => {
+      try {
+        const res = await axiosClient.get(`/purchase/return-authorizations/${praId}`);
+        const pra = res.data.data;
+        if (pra) {
+          if (pra.supplier_id) setSupplierId(pra.supplier_id);
+          if (pra.purchase_order_id) setPurchaseOrderId(pra.purchase_order_id);
+        }
+      } catch (err: any) {
+        console.error(err);
+        toast.error("Không thể tải thông tin yêu cầu phê duyệt PRA");
+      }
+    };
+    fetchPra();
+  }, [praId]);
 
   // Load PO lines when PO is selected
   useEffect(() => {
@@ -75,7 +100,7 @@ export default function PurchaseReturnCreatePage() {
 
   const addLineFromPO = (poLine: PurchaseOrderLine) => {
     if (lines.some((l) => l.po_line_id === poLine.id)) {
-      toast.warning("Line already added");
+      toast.warning("Mặt hàng này đã được thêm vào phiếu");
       return;
     }
     setLines((prev) => [
@@ -83,9 +108,10 @@ export default function PurchaseReturnCreatePage() {
       {
         tempId: Date.now(),
         product_id: poLine.product_id ?? 0,
-        product_name: `Product #${poLine.product_id}`,
+        product_name: poLine.product?.name ?? `Sản phẩm #${poLine.product_id}`,
         po_line_id: poLine.id ?? null,
         quantity_returned: 1,
+        po_quantity: Number(poLine.quantity ?? 0),
         uom_id: poLine.uom_id ?? null,
         uom_name: poLine.uom?.name ?? "—",
         qty_in_stock_uom: Number(poLine.qty_in_stock_uom ?? 0),
@@ -101,7 +127,18 @@ export default function PurchaseReturnCreatePage() {
     setLines((prev) =>
       prev.map((l) => {
         if (l.tempId !== tempId) return l;
-        const updated = { ...l, [field]: value };
+        let finalVal = value;
+        if (field === "quantity_returned" && l.po_quantity !== undefined) {
+          const maxQty = l.po_quantity;
+          const inputQty = Number(value);
+          if (inputQty > maxQty) {
+            toast.warn(`Số lượng trả tối đa là ${maxQty}`);
+            finalVal = maxQty;
+          } else {
+            finalVal = Math.max(1, inputQty);
+          }
+        }
+        const updated = { ...l, [field]: finalVal };
         updated.line_total = updated.quantity_returned * updated.unit_price;
         return updated;
       }),
@@ -115,24 +152,32 @@ export default function PurchaseReturnCreatePage() {
 
   const handleSubmit = async () => {
     if (!supplierId) {
-      toast.error("Supplier is required");
+      toast.error("Vui lòng chọn nhà cung cấp");
+      return;
+    }
+    if (!warehouseId) {
+      toast.error("Vui lòng chọn kho xuất hàng");
       return;
     }
     if (!returnDate) {
-      toast.error("Return date is required");
+      toast.error("Vui lòng chọn ngày trả hàng");
       return;
     }
     if (lines.length === 0) {
-      toast.error("Add at least one product line");
+      toast.error("Vui lòng thêm ít nhất một mặt hàng trả lại");
       return;
     }
     for (const l of lines) {
       if (l.quantity_returned <= 0) {
-        toast.error(`Quantity must be > 0`);
+        toast.error(`Số lượng trả hàng phải lớn hơn 0`);
+        return;
+      }
+      if (l.po_quantity !== undefined && l.quantity_returned > l.po_quantity) {
+        toast.error(`Số lượng trả hàng của ${l.product_name} không được vượt quá số lượng mua trong PO (${l.po_quantity})`);
         return;
       }
       if (l.unit_price <= 0) {
-        toast.error(`Unit price must be > 0`);
+        toast.error(`Đơn giá phải lớn hơn 0`);
         return;
       }
     }
@@ -144,6 +189,7 @@ export default function PurchaseReturnCreatePage() {
           supplier_id: supplierId as number,
           pra_id: praId,
           purchase_order_id: purchaseOrderId || null,
+          warehouse_id: warehouseId as number,
           return_date: returnDate,
           notes: notes.trim() || null,
           lines: lines.map((l) => ({
@@ -157,10 +203,10 @@ export default function PurchaseReturnCreatePage() {
           })),
         } as any),
       ).unwrap();
-      toast.success(`Purchase Return ${ret.return_no} created`);
+      toast.success(`Đã tạo Phiếu trả hàng mua ${ret.return_no}`);
       navigate(`/purchase/returns/${ret.id}`);
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to create Purchase Return");
+      toast.error(e?.message ?? "Tạo Phiếu trả hàng mua thất bại");
     } finally {
       setSubmitting(false);
     }
@@ -174,11 +220,11 @@ export default function PurchaseReturnCreatePage() {
 
   return (
     <StandardFormLayout
-      title="New Purchase Return"
+      title="Tạo Phiếu trả hàng mua mới"
       actions={[
-        { label: "Cancel", variant: "outline", onClick: () => navigate(-1) },
+        { label: "Hủy bỏ", variant: "outline", onClick: () => navigate(-1) },
         {
-          label: "Create Return",
+          label: "Tạo Phiếu trả hàng",
           variant: "primary",
           onClick: handleSubmit,
           isLoading: submitting,
@@ -187,22 +233,23 @@ export default function PurchaseReturnCreatePage() {
     >
       {/* Header */}
       <FormSection
-        title="Return Details"
+        title="Thông tin trả hàng"
         icon={<CornerUpLeft className="w-4 h-4" />}
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Purchase Order
+              Đơn mua hàng (PO)
             </label>
             <select
               value={purchaseOrderId}
+              disabled={!!praId}
               onChange={(e) =>
                 setPurchaseOrderId(e.target.value ? Number(e.target.value) : "")
               }
-              className="w-full h-9 px-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="w-full h-9 px-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-500"
             >
-              <option value="">— Select PO (optional) —</option>
+              <option value="">— Chọn Đơn mua hàng (tùy chọn) —</option>
               {eligiblePOs.map((po) => (
                 <option key={po.id} value={po.id}>
                   {po.po_no}
@@ -213,16 +260,17 @@ export default function PurchaseReturnCreatePage() {
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Supplier <span className="text-red-500">*</span>
+              Nhà cung cấp <span className="text-red-500">*</span>
             </label>
             <select
               value={supplierId}
+              disabled={!!praId}
               onChange={(e) =>
                 setSupplierId(e.target.value ? Number(e.target.value) : "")
               }
-              className="w-full h-9 px-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="w-full h-9 px-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-500"
             >
-              <option value="">— Select Supplier —</option>
+              <option value="">— Chọn nhà cung cấp —</option>
               {partners.items.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -233,7 +281,7 @@ export default function PurchaseReturnCreatePage() {
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Return Date <span className="text-red-500">*</span>
+              Ngày trả hàng <span className="text-red-500">*</span>
             </label>
             <input
               type="date"
@@ -245,7 +293,27 @@ export default function PurchaseReturnCreatePage() {
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Branch
+              Kho xuất hàng <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={warehouseId}
+              onChange={(e) =>
+                setWarehouseId(e.target.value ? Number(e.target.value) : "")
+              }
+              className="w-full h-9 px-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+            >
+              <option value="">— Chọn kho xuất hàng —</option>
+              {warehouses.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Chi nhánh
             </label>
             <div className="h-9 px-3 flex items-center text-sm bg-gray-50 border border-gray-200 rounded-md text-gray-600">
               {user?.branch?.name ?? "—"}
@@ -255,13 +323,13 @@ export default function PurchaseReturnCreatePage() {
 
         <div className="mt-4">
           <label className="block text-xs font-medium text-gray-600 mb-1">
-            Notes
+            Ghi chú
           </label>
           <textarea
             rows={2}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Additional notes..."
+            placeholder="Ghi chú thêm..."
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-orange-500"
           />
         </div>
@@ -269,7 +337,7 @@ export default function PurchaseReturnCreatePage() {
 
       {/* Lines */}
       <FormSection
-        title="Return Items"
+        title="Danh sách mặt hàng trả lại"
         icon={<Package className="w-4 h-4" />}
         noPadding
         action={
@@ -281,7 +349,7 @@ export default function PurchaseReturnCreatePage() {
                 className="inline-flex items-center gap-1 h-8 px-3 text-sm font-medium bg-orange-500 hover:bg-orange-600 text-white rounded-md transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" />
-                Add from PO
+                Thêm từ PO
               </button>
             </div>
           ) : undefined
@@ -291,7 +359,7 @@ export default function PurchaseReturnCreatePage() {
         {showPoLines && poLines.length > 0 && (
           <div className="px-5 py-3 border-b border-gray-100 bg-blue-50/40">
             <p className="text-xs font-medium text-blue-700 mb-2">
-              Select lines from PO to return:
+              Chọn các mặt hàng từ đơn mua hàng để trả lại:
             </p>
             <div className="space-y-1">
               {poLines.map((pl) => (
@@ -302,7 +370,7 @@ export default function PurchaseReturnCreatePage() {
                   disabled={lines.some((l) => l.po_line_id === pl.id)}
                   className="w-full text-left px-3 py-2 text-sm bg-white border border-gray-200 rounded hover:bg-orange-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
-                  Product #{pl.product_id} — Qty: {pl.quantity} {(pl as any).uom?.name || (pl as any).product?.uom?.name || ""} ×{" "}
+                  {pl.product?.name ?? `Sản phẩm #${pl.product_id}`} — Số lượng: {pl.quantity} {(pl as any).uom?.name || (pl as any).product?.uom?.name || ""} ×{" "}
                   {Number(pl.unit_price).toLocaleString("vi-VN")}
                 </button>
               ))}
@@ -315,18 +383,18 @@ export default function PurchaseReturnCreatePage() {
             <tr className="border-b border-orange-100 bg-orange-50/60">
               {[
                 "#",
-                "Product",
-                "Qty Returned",
-                "UOM",
-                "Unit Price",
-                "Condition",
-                "Reason",
-                "Line Total",
+                "Sản phẩm",
+                "S.Lượng trả",
+                "ĐVT",
+                "Đơn giá",
+                "Tình trạng",
+                "Lý do",
+                "Thành tiền",
                 "",
               ].map((h) => (
                 <th
                   key={h}
-                  className={`px-4 py-3 text-xs font-semibold text-gray-500 uppercase ${h === "Line Total" ? "text-right" : "text-left"}`}
+                  className={`px-4 py-3 text-xs font-semibold text-gray-500 uppercase ${h === "Thành tiền" ? "text-right" : "text-left"}`}
                 >
                   {h}
                 </th>
@@ -337,12 +405,12 @@ export default function PurchaseReturnCreatePage() {
             {lines.length === 0 ? (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={9}
                   className="px-4 py-10 text-center text-sm text-gray-400"
                 >
                   {purchaseOrderId
-                    ? 'Click "Add from PO" to add lines'
-                    : "Select a PO first, then add lines"}
+                    ? 'Nhấp vào "Thêm từ PO" để thêm các mặt hàng'
+                    : "Vui lòng chọn đơn mua hàng (PO) trước, sau đó thêm các mặt hàng"}
                 </td>
               </tr>
             ) : (
@@ -407,7 +475,7 @@ export default function PurchaseReturnCreatePage() {
                       onChange={(e) =>
                         updateLine(line.tempId, "reason", e.target.value)
                       }
-                      placeholder="Reason..."
+                      placeholder="Lý do..."
                       className="w-32 h-7 px-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-orange-500"
                     />
                   </td>
@@ -431,10 +499,10 @@ export default function PurchaseReturnCreatePage() {
             <tfoot className="border-t border-gray-200 bg-gray-50/50">
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={7}
                   className="px-4 py-2 text-right text-sm font-bold text-gray-800"
                 >
-                  Total Return Amount
+                  Tổng giá trị trả hàng
                 </td>
                 <td className="px-4 py-2 text-right text-base font-bold text-orange-600">
                   {totalAmount.toLocaleString("vi-VN")}

@@ -50,8 +50,11 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
-      <FloatingChatButton />
-      <LocalFloatingChatButton />
+      {/* Floating chat buttons — bottom-left to avoid overlapping pagination */}
+      <div className="fixed bottom-6 left-[272px] flex gap-3 z-40">
+        <LocalFloatingChatButton />
+        <FloatingChatButton />
+      </div>
     </div>
   );
 }

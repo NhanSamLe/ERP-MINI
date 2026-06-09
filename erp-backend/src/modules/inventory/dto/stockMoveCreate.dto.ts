@@ -8,7 +8,9 @@ export type ReferenceType =
   | "purchase_order"
   | "sale_order"
   | "transfer"
-  | "adjustment";
+  | "adjustment"
+  | "purchase_return"
+  | "sales_return";
 
 export interface StockMoveLineDTO {
   id: number | undefined;

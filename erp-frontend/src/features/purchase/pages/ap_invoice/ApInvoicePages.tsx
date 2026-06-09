@@ -59,7 +59,7 @@ function SourceBadge({ source }: { source: ApInvoiceSource }) {
   return (
     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
       <PenLine className="w-3 h-3" />
-      Manual
+      Thủ công
     </span>
   );
 }
@@ -70,7 +70,7 @@ function MatchingBadge({ status }: { status?: string }) {
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
         <Clock className="w-3 h-3" />
-        Pending
+        Đang chờ
       </span>
     );
   }
@@ -78,14 +78,14 @@ function MatchingBadge({ status }: { status?: string }) {
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
         <CheckCircle2 className="w-3 h-3" />
-        Matched
+        Khớp
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
       <AlertTriangle className="w-3 h-3" />
-      Mismatch
+      Lệch
     </span>
   );
 }
@@ -171,7 +171,7 @@ export default function ApInvoicePages() {
           metadata,
         }),
       ).unwrap();
-      toast.success(`AP Invoice ${invoice.invoice_no} created successfully`);
+      toast.success(`Đã tạo hóa đơn AP ${invoice.invoice_no} thành công`);
       dispatch(getPurchaseOrdersAvailableForInvoiceThunk());
       dispatch(getAllApInvoicesThunk());
     } catch (error) {
@@ -188,7 +188,7 @@ export default function ApInvoicePages() {
     setDeleting(true);
     try {
       await dispatch(deleteApInvoiceThunk(deleteTarget.id)).unwrap();
-      toast.success(`Invoice ${deleteTarget.invoice_no} deleted`);
+      toast.success(`Đã xóa hóa đơn ${deleteTarget.invoice_no}`);
       dispatch(getPurchaseOrdersAvailableForInvoiceThunk());
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -216,62 +216,62 @@ export default function ApInvoicePages() {
   const handleExport = async () => {
     try {
       await exportExcelReport({
-        title: "PURCHASE INVOICES LIST",
+        title: "DANH SÁCH HÓA ĐƠN MUA HÀNG",
         columns: [
-          { header: "Invoice No", key: "invoice_no", width: 15 },
+          { header: "Mã hóa đơn", key: "invoice_no", width: 15 },
           {
-            header: "Source",
+            header: "Nguồn",
             key: "source",
             width: 10,
             formatter: (val) =>
-              val === InvoiceSource.AI_OCR ? "OCR" : "Manual",
+              val === InvoiceSource.AI_OCR ? "OCR" : "Thủ công",
           },
           {
-            header: "Branch",
+            header: "Chi nhánh",
             key: "branch",
             width: 20,
             formatter: (val: any) => val?.name || "-",
           },
           {
-            header: "Created By",
+            header: "Người tạo",
             key: "creator",
             width: 25,
             formatter: (val: any) => val?.full_name || "-",
           },
           {
-            header: "Total Amount",
+            header: "Tổng tiền",
             key: "total_after_tax",
             width: 20,
             format: "currency",
             align: "right",
           },
           {
-            header: "Status",
+            header: "Trạng thái",
             key: "status",
             width: 15,
             formatter: (val) => String(val).toUpperCase(),
           },
           {
-            header: "Matching",
+            header: "Đối chiếu",
             key: "matching_status",
             width: 12,
             formatter: (val) => String(val || "pending").toUpperCase(),
           },
           {
-            header: "Created Date",
+            header: "Ngày tạo",
             key: "created_at",
             width: 15,
             formatter: (val) =>
-              val ? new Date(String(val)).toLocaleDateString("en-US") : "",
+              val ? new Date(String(val)).toLocaleDateString("vi-VN") : "",
           },
         ],
         data: filteredInvoices,
-        fileName: `Purchase_Invoices_${new Date().getTime()}.xlsx`,
+        fileName: `Hoa_Don_Mua_Hang_${new Date().getTime()}.xlsx`,
         footer: { creator: user?.full_name || "Admin" },
       });
     } catch (err) {
       console.error(err);
-      toast.error("Error exporting report");
+      toast.error("Lỗi khi xuất báo cáo");
     }
   };
 
@@ -286,8 +286,8 @@ export default function ApInvoicePages() {
       <div className="max-w-7xl mx-auto space-y-6">
         {/* ─── Header ─── */}
         <PageHeader
-          title="AP Invoices"
-          subtitle="Manage all purchase invoices"
+          title="Hóa đơn AP"
+          subtitle="Quản lý tất cả hóa đơn mua hàng"
           icon={<FileText className="w-5 h-5" />}
           actions={
             <div className="flex gap-2">
@@ -296,14 +296,14 @@ export default function ApInvoicePages() {
                 className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2.5 rounded-lg font-medium transition-colors"
               >
                 <Download className="w-5 h-5" />
-                Export Excel
+                Xuất Excel
               </button>
               <button
                 onClick={handleOpenCreateMethod}
                 className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-lg font-medium transition-colors"
               >
                 <Plus className="w-5 h-5" />
-                Create Invoice
+                Tạo hóa đơn
               </button>
             </div>
           }
@@ -313,19 +313,19 @@ export default function ApInvoicePages() {
         <div className="grid grid-cols-3 gap-4">
           <StatsCard
             icon={FileText}
-            label="Total Invoices"
+            label="Tổng số hóa đơn"
             value={list.length}
             color="orange"
           />
           <StatsCard
             icon={ScanLine}
-            label="From OCR"
+            label="Từ OCR"
             value={ocrCount}
             color="purple"
           />
           <StatsCard
             icon={AlertTriangle}
-            label="Mismatches"
+            label="Hóa đơn lệch"
             value={mismatchCount}
             color="red"
           />
@@ -335,12 +335,12 @@ export default function ApInvoicePages() {
         <div className="bg-white rounded-xl shadow-sm border-l-4 border-l-orange-400 border p-5">
           <div className="flex flex-wrap gap-4 items-end">
             <div className="flex-1 min-w-[240px]">
-              <label className="block text-sm font-medium mb-2">Search</label>
+              <label className="block text-sm font-medium mb-2">Tìm kiếm</label>
               <div className="relative">
                 <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Invoice no, creator..."
+                  placeholder="Mã hóa đơn, người tạo..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
@@ -349,32 +349,32 @@ export default function ApInvoicePages() {
             </div>
 
             <div className="w-44">
-              <label className="block text-sm font-medium mb-2">Status</label>
+              <label className="block text-sm font-medium mb-2">Trạng thái</label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
               >
-                <option value="All">All</option>
-                <option value={ApInvoiceStatus.DRAFT}>Draft</option>
-                <option value={ApInvoiceStatus.POSTED}>Posted</option>
+                <option value="All">Tất cả</option>
+                <option value={ApInvoiceStatus.DRAFT}>Nháp</option>
+                <option value={ApInvoiceStatus.POSTED}>Đã ghi sổ</option>
                 <option value={ApInvoiceStatus.PARTIALLY_PAID}>
-                  Partially Paid
+                  Thanh toán một phần
                 </option>
-                <option value={ApInvoiceStatus.PAID}>Paid</option>
-                <option value={ApInvoiceStatus.CANCELLED}>Cancelled</option>
+                <option value={ApInvoiceStatus.PAID}>Đã thanh toán</option>
+                <option value={ApInvoiceStatus.CANCELLED}>Đã hủy</option>
               </select>
             </div>
 
             <div className="w-44">
-              <label className="block text-sm font-medium mb-2">Source</label>
+              <label className="block text-sm font-medium mb-2">Nguồn</label>
               <select
                 value={sourceFilter}
                 onChange={(e) => setSourceFilter(e.target.value as any)}
                 className="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
               >
-                <option value="All">All</option>
-                <option value={InvoiceSource.MANUAL}>Manual</option>
+                <option value="All">Tất cả</option>
+                <option value={InvoiceSource.MANUAL}>Thủ công</option>
                 <option value={InvoiceSource.AI_OCR}>OCR</option>
               </select>
             </div>
@@ -387,31 +387,31 @@ export default function ApInvoicePages() {
             <thead className="bg-orange-50/60 border-b border-orange-100">
               <tr>
                 <th className="px-5 py-4 text-left font-semibold text-gray-700">
-                  Invoice No
+                  Mã hóa đơn
                 </th>
                 <th className="px-5 py-4 text-left font-semibold text-gray-700">
-                  Source
+                  Nguồn
                 </th>
                 <th className="px-5 py-4 text-left font-semibold text-gray-700">
-                  Branch
+                  Chi nhánh
                 </th>
                 <th className="px-5 py-4 text-left font-semibold text-gray-700">
-                  Created By
+                  Người tạo
                 </th>
                 <th className="px-5 py-4 text-right font-semibold text-gray-700">
-                  Total Amount
+                  Tổng tiền
                 </th>
                 <th className="px-5 py-4 text-left font-semibold text-gray-700">
-                  Status
+                  Trạng thái
                 </th>
                 <th className="px-5 py-4 text-left font-semibold text-gray-700">
-                  Approval
+                  Phê duyệt
                 </th>
                 <th className="px-5 py-4 text-left font-semibold text-gray-700">
-                  Matching
+                  Đối chiếu
                 </th>
                 <th className="px-5 py-4 text-center font-semibold text-gray-700">
-                  Actions
+                  Thao tác
                 </th>
               </tr>
             </thead>
@@ -422,7 +422,7 @@ export default function ApInvoicePages() {
                   <td colSpan={9} className="py-16 text-center">
                     <div className="flex flex-col items-center gap-2 text-gray-500">
                       <FileText className="w-8 h-8 animate-pulse" />
-                      Loading...
+                      Đang tải...
                     </div>
                   </td>
                 </tr>
@@ -433,10 +433,10 @@ export default function ApInvoicePages() {
                   <td colSpan={9} className="py-16 text-center">
                     <EmptyState
                       icon={FileText}
-                      title="No invoices found"
-                      description="Create your first invoice by clicking the Create Invoice button"
+                      title="Không tìm thấy hóa đơn nào"
+                      description="Tạo hóa đơn đầu tiên của bạn bằng cách nhấp vào nút Tạo hóa đơn"
                       action={{
-                        label: "Create Invoice",
+                        label: "Tạo hóa đơn",
                         onClick: handleOpenCreateMethod,
                       }}
                     />
@@ -472,7 +472,7 @@ export default function ApInvoicePages() {
                     </td>
                     <td className="px-5 py-4 text-right font-medium">
                       {Number(invoice.total_after_tax || 0).toLocaleString(
-                        "en-US",
+                        "vi-VN",
                         {
                           minimumFractionDigits: 0,
                         },
@@ -496,13 +496,13 @@ export default function ApInvoicePages() {
                           onClick={() =>
                             navigate(`/purchase/invoices/${invoice.id}`)
                           }
-                          title="View"
+                          title="Xem"
                           className="text-gray-400 hover:text-gray-700 transition-colors"
                         >
                           <Eye className="w-5 h-5" />
                         </button>
                         <button
-                          title="Export"
+                          title="Xuất"
                           className="text-gray-400 hover:text-gray-700 transition-colors"
                         >
                           <Download className="w-5 h-5" />
@@ -512,7 +512,7 @@ export default function ApInvoicePages() {
                           invoice.approval_status === "draft" && (
                             <button
                               onClick={() => setDeleteTarget(invoice)}
-                              title="Delete"
+                              title="Xóa"
                               className="text-gray-400 hover:text-red-600 transition-colors"
                             >
                               <Trash2 className="w-5 h-5" />
@@ -526,8 +526,8 @@ export default function ApInvoicePages() {
           </table>
 
           <div className="px-6 py-4 border-t bg-orange-50/40 text-sm text-gray-600">
-            Showing <strong>{filteredInvoices.length}</strong> /{" "}
-            <strong>{list.length}</strong> invoices
+            Hiển thị <strong>{filteredInvoices.length}</strong> /{" "}
+            <strong>{list.length}</strong> hóa đơn
           </div>
         </div>
       </div>
@@ -571,14 +571,14 @@ export default function ApInvoicePages() {
                 <Trash2 className="w-7 h-7 text-red-600" />
               </div>
               <h3 className="font-bold text-lg text-gray-900">
-                Delete Invoice?
+                Xóa hóa đơn?
               </h3>
               <p className="text-sm text-gray-600">
-                Invoice{" "}
+                Hóa đơn{" "}
                 <span className="font-semibold text-gray-900">
                   {deleteTarget.invoice_no}
                 </span>{" "}
-                will be permanently deleted. This cannot be undone.
+                sẽ bị xóa vĩnh viễn. Không thể hoàn tác hành động này.
               </p>
             </div>
             <div className="px-6 py-4 border-t flex justify-end gap-3 bg-gray-50">
@@ -587,7 +587,7 @@ export default function ApInvoicePages() {
                 disabled={deleting}
                 className="px-5 py-2.5 rounded-xl border border-gray-300 font-semibold text-gray-700 hover:bg-white transition"
               >
-                Cancel
+                Hủy
               </button>
               <button
                 onClick={handleDelete}
@@ -596,9 +596,9 @@ export default function ApInvoicePages() {
               >
                 {deleting && (
                   <svg
-                    className="w-4 h-4 animate-spin"
-                    viewBox="0 0 24 24"
-                    fill="none"
+                     className="w-4 h-4 animate-spin"
+                     viewBox="0 0 24 24"
+                     fill="none"
                   >
                     <circle
                       className="opacity-25"
@@ -615,7 +615,7 @@ export default function ApInvoicePages() {
                     />
                   </svg>
                 )}
-                Yes, Delete
+                Có, xóa
               </button>
             </div>
           </div>

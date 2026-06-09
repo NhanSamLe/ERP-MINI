@@ -34,6 +34,17 @@ export const StockMoveController = {
     return res.status(201).json(data);
   },
 
+  async createPurchaseReturnIssue(req: Request, res: Response) {
+    try {
+      const purchaseReturnId = Number(req.params.returnId);
+      const user = (req as any).user;
+      const data = await stockMoveService.createPurchaseReturnIssue(purchaseReturnId, user);
+      return res.status(201).json({ success: true, data });
+    } catch (err: any) {
+      return res.status(err.status ?? 500).json({ success: false, message: err.message });
+    }
+  },
+
   async createTransferStockMove(req: Request, res: Response) {
     const body = req.body as StockMoveTransferDTO;
     const user = (req as any).user;
