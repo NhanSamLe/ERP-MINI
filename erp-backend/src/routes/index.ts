@@ -33,6 +33,7 @@ import apInvoiceRoutes from "../modules/purchase/routes/apInvoice.routes";
 import apPaymentRoutes from "../modules/purchase/routes/apPayment.route";
 import rfqRoutes from "../modules/purchase/routes/rfq.routes";
 import purchasePriceListRoutes from "../modules/purchase/routes/purchasePriceList.routes";
+import purchaseOrderAuditRoutes from "../modules/purchase/routes/purchaseOrderAudit.routes";
 import {
   praRouter,
   purchaseReturnRouter,
@@ -63,6 +64,7 @@ router.use("/branch", branchRoutes);
 router.use("/partners", partnerRoutes);
 router.use("/master-data", masterDataRoutes);
 router.use("/purchase-order", purchaseOrderRoutes);
+router.use("/purchase-order", purchaseOrderAuditRoutes);
 router.use("/hrm/departments", departmentRoutes);
 router.use("/hrm/positions", positionRoutes);
 router.use("/warehouse", warehouseRoutes);

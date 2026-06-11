@@ -13,6 +13,7 @@ import {
   fetchLeadById
 } from "./lead.thunks";
 import { LeadState } from "./lead.type";
+import { Lead } from "../../dto/lead.dto";
 
 const initialState: LeadState = {
   allLeads: [],
@@ -21,6 +22,27 @@ const initialState: LeadState = {
   loading: false,
   error: null,
 };
+
+const unwrapLeadPayload = (payload: any): Lead => payload?.lead ?? payload?.data ?? payload;
+
+const mergeLead = (existing: Lead | null | undefined, updated: Lead): Lead =>
+  existing?.id === updated.id ? { ...existing, ...updated } : updated;
+
+const mergeLeadList = (leads: Lead[], updated: Lead) =>
+  leads.map((lead) => (lead.id === updated.id ? mergeLead(lead, updated) : lead));
+
+const applyUpdatedLead = (state: LeadState, payload: any) => {
+  const updated = unwrapLeadPayload(payload);
+  if (!updated?.id) return;
+
+  state.allLeads = mergeLeadList(state.allLeads, updated);
+  state.todayLeads = mergeLeadList(state.todayLeads, updated);
+
+  if (state.currentLead?.id === updated.id) {
+    state.currentLead = mergeLead(state.currentLead, updated);
+  }
+};
+
 export const leadSlice = createSlice({
   name: "lead",
   initialState,
@@ -97,53 +119,31 @@ export const leadSlice = createSlice({
 
     // ========== UPDATE  ==========
     builder.addCase(updateLeadBasic.fulfilled, (state, action) => {
-      const updated = action.payload;
-      state.allLeads = state.allLeads.map((l) => (l.id === updated.id ? updated : l));
-      // state.myLeads = state.myLeads.map((l) => (l.id === updated.id ? updated : l));
-      state.todayLeads = state.todayLeads.map((l) => (l.id === updated.id ? updated : l));
+      applyUpdatedLead(state, action.payload);
     });
 
     // UPDATE EVALUATION
     builder.addCase(updateLeadEvaluation.fulfilled, (state, action) => {
-      const updated = action.payload;
-      state.allLeads = state.allLeads.map((l) => (l.id === updated.id ? updated : l));
-      // state.myLeads = state.myLeads.map((l) => (l.id === updated.id ? updated : l));
-      state.todayLeads = state.todayLeads.map((l) => (l.id === updated.id ? updated : l));
+      applyUpdatedLead(state, action.payload);
     });
 
     // ========== CONVERT LEAD => OPP ==========
     builder.addCase(convertLead.fulfilled, (state, action) => {
-      const updated = action.payload?.lead ?? action.payload;
-      state.allLeads = state.allLeads.map((l) => (l.id === updated.id ? updated : l));
-      // state.myLeads = state.myLeads.map((l) => (l.id === updated.id ? updated : l));
-      state.todayLeads = state.todayLeads.map((l) => (l.id === updated.id ? updated : l));
-      if (state.currentLead?.id === updated.id) state.currentLead = updated;
+      applyUpdatedLead(state, action.payload);
     });
 
     // ========== MARK LOST ==========
     builder.addCase(markLeadLost.fulfilled, (state, action) => {
-      const updated = action.payload;
-      state.allLeads = state.allLeads.map((l) => (l.id === updated.id ? updated : l));
-      // state.myLeads = state.myLeads.map((l) => (l.id === updated.id ? updated : l));
-      state.todayLeads = state.todayLeads.map((l) => (l.id === updated.id ? updated : l));
+      applyUpdatedLead(state, action.payload);
     });
     // ========== REASSIGN ==========
     builder.addCase(reassignLead.fulfilled, (state, action) => {
-      const updated = action.payload;
-      state.allLeads = state.allLeads.map((l) =>
-        l.id === updated.id ? updated : l
-      );
-      state.todayLeads = state.todayLeads.map((l) =>
-        l.id === updated.id ? updated : l
-      );
+      applyUpdatedLead(state, action.payload);
     });
 
     // ========== REOPEN ==========
     builder.addCase(reopenLead.fulfilled, (state, action) => {
-      const updated = action.payload;
-      state.allLeads = state.allLeads.map((l) => (l.id === updated.id ? updated : l));
-      // state.myLeads = state.myLeads.map((l) => (l.id === updated.id ? updated : l));
-      state.todayLeads = state.todayLeads.map((l) => (l.id === updated.id ? updated : l));
+      applyUpdatedLead(state, action.payload);
     });
     // ========== DELETE LEAD ==========
     builder.addCase(deleteLead.fulfilled, (state, action) => {
@@ -151,6 +151,7 @@ export const leadSlice = createSlice({
       state.allLeads = state.allLeads.filter(l => l.id !== deletedId);
       // state.myLeads = state.myLeads.filter(l => l.id !== deletedId);
       state.todayLeads = state.todayLeads.filter(l => l.id !== deletedId);
+      if (state.currentLead?.id === deletedId) state.currentLead = null;
     });
 
   },

@@ -23,41 +23,41 @@ router.get("/:id/my-payslip", authMiddleware([]), getMyPayslipInRun);
 // HR Staff + Accountant: xem bảng lương
 router.get(
   "/",
-  authMiddleware(["HR_STAFF", "ACCOUNT"]),
+  authMiddleware(["HR_STAFF", "HRMANAGER", "ACCOUNT"]),
   getPayrollRuns
 );
 router.get(
   "/:id",
-  authMiddleware(["HR_STAFF", "ACCOUNT"]),
+  authMiddleware(["HR_STAFF", "HRMANAGER", "ACCOUNT"]),
   getPayrollRunDetail
 );
 
 // HR Staff: lập / hủy bảng lương
-router.post("/", authMiddleware(["HR_STAFF"]), createPayrollRun);
-router.delete("/:id", authMiddleware(["HR_STAFF"]), cancelPayrollRun);
+router.post("/", authMiddleware(["HR_STAFF", "HRMANAGER"]), createPayrollRun);
+router.delete("/:id", authMiddleware(["HR_STAFF", "HRMANAGER"]), cancelPayrollRun);
 
 // ✅ calculate
-router.post("/:id/calculate", authMiddleware(["HR_STAFF"]), calculateRun);
+router.post("/:id/calculate", authMiddleware(["HR_STAFF", "HRMANAGER"]), calculateRun);
 
 // Accountant: post bảng lương
 router.post("/:id/post", authMiddleware(["ACCOUNT"]), postPayrollRun);
 router.get(
   "/:runId/evidence/:employeeId",
-  authMiddleware(["HR_STAFF", "ACCOUNT"]),
+  authMiddleware(["HR_STAFF", "HRMANAGER", "ACCOUNT"]),
   getPayrollEvidence
 );
 
 
 // HR Staff: quản lý dòng lương
-router.post("/:id/lines", authMiddleware(["HR_STAFF"]), createPayrollRunLine);
+router.post("/:id/lines", authMiddleware(["HR_STAFF", "HRMANAGER"]), createPayrollRunLine);
 router.put(
   "/lines/:lineId",
-  authMiddleware(["HR_STAFF"]),
+  authMiddleware(["HR_STAFF", "HRMANAGER"]),
   updatePayrollRunLine
 );
 router.delete(
   "/lines/:lineId",
-  authMiddleware(["HR_STAFF"]),
+  authMiddleware(["HR_STAFF", "HRMANAGER"]),
   deletePayrollRunLine
 );
 

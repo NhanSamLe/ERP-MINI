@@ -21,8 +21,16 @@ export function useSaleOrderCalculation(products: Product[]) {
 
     const product = products.find(p => p.id === line.product_id);
     const taxRate = product?.taxRate?.rate || 0;
-    
-    const lineTotal = line.unit_price * (line.quantity || 1);
+
+    // Trừ chiết khấu cấp DÒNG trước khi tính thuế — khớp backend quotation.service
+    // (lineSub = qty*price*(1 - discount_percent/100), thuế tính trên lineSub).
+    const discPercent = Number((line as any).discount_percent || 0);
+    const discAmount = Number((line as any).discount_amount || 0);
+    let lineTotal = line.unit_price * (line.quantity || 1);
+    if (discPercent > 0) lineTotal = lineTotal * (1 - discPercent / 100);
+    else if (discAmount > 0) lineTotal = lineTotal - discAmount;
+    if (lineTotal < 0) lineTotal = 0;
+
     const taxAmount = (lineTotal * taxRate) / 100;
     const total = lineTotal + taxAmount;
 

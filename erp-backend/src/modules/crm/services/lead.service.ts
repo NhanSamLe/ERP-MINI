@@ -230,7 +230,7 @@ export async function updateLeadEvaluation(
 }
 
 
-export async function convertToCustomer(leadId: number, userId: number, role: string) {
+export async function convertToCustomer(leadId: number, userId: number, role: string, companyId?: number) {
   const lead = await Lead.findByPk(leadId);
   if (!lead || lead.is_deleted) throw new Error("Lead không tồn tại");
   if (lead.stage === LeadStage.LOST)
@@ -287,6 +287,10 @@ export async function convertToCustomer(leadId: number, userId: number, role: st
       industry: lead.industry ?? null,
       company_size: lead.company_size ?? null,
       sales_person_id: lead.assigned_to ?? userId,
+      // Gắn company_id để customer mới thuộc đúng công ty — nếu thiếu, danh sách
+      // partner (lọc theo company_id) sẽ không thấy customer này, khiến trang
+      // tạo Opportunity không preselect được customer vừa chuyển đổi.
+      company_id: companyId ?? null,
       status: PartnerStatus.ACTIVE,
     });
   }

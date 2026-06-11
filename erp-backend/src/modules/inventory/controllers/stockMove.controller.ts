@@ -120,6 +120,13 @@ export const StockMoveController = {
     return res.json({ message: "Status parameter is required" });
   },
 
+  async search(req: Request, res: Response) {
+    const keyword = String(req.query.q ?? "");
+    const user = (req as any).user;
+    const data = await stockMoveService.search(keyword, user);
+    return res.json(data);
+  },
+
   async submitForApproval(req: Request, res: Response) {
     try {
       const id = Number(req.params.id);

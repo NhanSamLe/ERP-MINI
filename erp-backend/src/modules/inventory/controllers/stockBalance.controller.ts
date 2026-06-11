@@ -66,6 +66,13 @@ export const stockBalanceController = {
     return res.json(data);
   },
 
+  async search(req: Request, res: Response) {
+    const user = (req as any).user;
+    const keyword = String(req.query.q ?? "");
+    const data = await stockBalanceService.search(keyword, user);
+    return res.json(data);
+  },
+
   async recalculateCosts(req: Request, res: Response) {
     try {
       const result = await stockBalanceService.recalculateCosts();

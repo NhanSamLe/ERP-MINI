@@ -16,9 +16,9 @@ router.get(
   stockBalanceController.getGrouped,
 );
 router.get(
-  "/:id",
+  "/search",
   authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
-  stockBalanceController.getById,
+  stockBalanceController.search,
 );
 router.get(
   "/warehouse/:warehouseId",
@@ -29,6 +29,30 @@ router.get(
   "/product/:productId",
   authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
   stockBalanceController.findByProduct,
+);
+
+router.get(
+  "/:id",
+  authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
+  stockBalanceController.getById,
+);
+
+router.post(
+  "/",
+  authMiddleware([Role.ADMIN, Role.WHMANAGER]),
+  stockBalanceController.create,
+);
+
+router.put(
+  "/:id",
+  authMiddleware([Role.ADMIN, Role.WHMANAGER]),
+  stockBalanceController.update,
+);
+
+router.delete(
+  "/:id",
+  authMiddleware([Role.ADMIN, Role.WHMANAGER]),
+  stockBalanceController.delete,
 );
 
 router.post(

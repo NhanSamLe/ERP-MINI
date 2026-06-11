@@ -789,23 +789,8 @@ export const apDebitNoteService = {
         { transaction: t },
       );
 
-      // Reduce paid_amount on original invoice if linked
-      if (dn.original_ap_invoice_id) {
-        await sequelize.query(
-          `UPDATE ap_invoices
-           SET paid_amount = GREATEST(0, paid_amount + ?),
-               status = CASE
-                 WHEN GREATEST(0, paid_amount + ?) >= total_after_tax THEN 'paid'
-                 WHEN GREATEST(0, paid_amount + ?) > 0 THEN 'partially_paid'
-                 ELSE 'posted'
-               END
-           WHERE id = ?`,
-          {
-            replacements: [amount, amount, amount, dn.original_ap_invoice_id],
-            transaction: t,
-          },
-        );
-      }
+      // AP debit notes reduce liability through GL and are included in AP open-amount queries.
+      // Do not mutate paid_amount here; it is sourced from payment allocations only.
     });
 
     // Trigger 7 — thông báo kế toán + buyer sau khi post debit note
@@ -932,7 +917,7 @@ export const vendorRefundService = {
         { transaction: t },
       );
 
-      const amount = Number(refund.amount);
+      const amount = Number(refund.amount) * Number(refund.exchange_rate || 1);
       const cashAccCode = refund.method === "cash" ? "111" : "112";
 
       const accounts = await requireGlAccounts(companyId, [cashAccCode, "331"], t);

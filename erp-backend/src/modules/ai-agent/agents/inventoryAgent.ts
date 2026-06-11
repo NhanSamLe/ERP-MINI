@@ -6,6 +6,7 @@
  */
 
 import { Op } from "sequelize";
+import { QueryTypes } from "sequelize";
 import { sequelize } from "../../../config/db";
 import { logger } from "../../../config/logger";
 
@@ -62,7 +63,7 @@ export const inventoryAgent = {
 
   async _getLowStockItems(): Promise<LowStockItem[]> {
     try {
-      const rows: LowStockItem[] = await sequelize.query(
+      const rows = await sequelize.query<LowStockItem>(
         `SELECT
            p.id          AS product_id,
            p.name        AS product_name,
@@ -81,7 +82,7 @@ export const inventoryAgent = {
            AND p.reorder_point > 0
          GROUP BY p.id, p.name, p.sku, p.reorder_point, p.reorder_qty, b.id, b.name
          HAVING COALESCE(SUM(sb.quantity), 0) < COALESCE(p.reorder_point, 0)`,
-        { type: "SELECT" as any },
+        { type: QueryTypes.SELECT },
       );
       return rows;
     } catch (err: any) {

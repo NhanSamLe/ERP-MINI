@@ -140,15 +140,20 @@ export default function LeadDetailPage() {
     try {
       const result = await dispatch(convertLead(leadId)).unwrap();
       const customerId = result?.customer?.id;
-      setAlert({ type: "success", message: "Đã chuyển đổi thành Customer" });
       setShowConvert(false);
-      setTimeout(() => {
-        if (customerId) {
+      if (customerId) {
+        setAlert({ type: "success", message: "Đã chuyển đổi thành Customer" });
+        setTimeout(() => {
           navigate(`/crm/opportunities/create?related_type=customer&related_id=${customerId}`);
-        } else {
-          navigate("/crm/opportunities/create");
-        }
-      }, 600);
+        }, 600);
+      } else {
+        // Convert "thành công" nhưng không có customer → báo rõ thay vì âm thầm
+        // điều hướng tới form trống.
+        setAlert({
+          type: "error",
+          message: "Chuyển đổi xong nhưng không lấy được Customer. Vui lòng kiểm tra lại.",
+        });
+      }
     } catch (error: any) {
       setAlert({ type: "error", message: typeof error === "string" ? error : "Chuyển đổi thất bại" });
     }

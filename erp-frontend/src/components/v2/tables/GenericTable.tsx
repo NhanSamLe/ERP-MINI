@@ -166,7 +166,7 @@ export function GenericTable<T extends Record<string, any>>({
       <div className="flex flex-col gap-3 px-4 sm:px-6 py-4 border-t border-gray-200 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
           <span className="text-sm text-gray-700">
-            Showing {start} to {end} of {totalItems} results
+            Hiển thị {start} đến {end} trên {totalItems} kết quả
           </span>
           
           <select
@@ -175,7 +175,7 @@ export function GenericTable<T extends Record<string, any>>({
             className="w-full sm:w-auto px-3 py-1 border border-gray-300 rounded-md text-sm"
           >
             {paginationConfig.pageSizeOptions.map(size => (
-              <option key={size} value={size}>{size} per page</option>
+              <option key={size} value={size}>{size} / trang</option>
             ))}
           </select>
         </div>
@@ -191,7 +191,7 @@ export function GenericTable<T extends Record<string, any>>({
           </Button>
           
           <span className="text-sm text-gray-700">
-            Page {currentPage} of {totalPages}
+            Trang {currentPage} / {totalPages}
           </span>
           
           <Button
@@ -227,7 +227,7 @@ export function GenericTable<T extends Record<string, any>>({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                placeholder={config.searchPlaceholder || 'Search...'}
+                placeholder={config.searchPlaceholder || 'Tìm kiếm...'}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none"
               />
             </div>
@@ -239,11 +239,11 @@ export function GenericTable<T extends Record<string, any>>({
       <div className="space-y-3 p-3 md:hidden">
         {loading ? (
           <div className="rounded-lg border border-gray-200 bg-white px-4 py-10 text-center text-sm text-gray-500">
-            {config.loadingMessage || 'Loading...'}
+            {config.loadingMessage || 'Đang tải...'}
           </div>
         ) : data.length === 0 ? (
           <div className="rounded-lg border border-gray-200 bg-white px-4 py-10 text-center text-sm text-gray-500">
-            {config.emptyMessage || 'No data available'}
+            {config.emptyMessage || 'Không có dữ liệu'}
           </div>
         ) : (
           data.map((row, rowIndex) => {
@@ -272,7 +272,7 @@ export function GenericTable<T extends Record<string, any>>({
 
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                      {primaryColumn?.label || 'Record'}
+                      {primaryColumn?.label || 'Bản ghi'}
                     </p>
                     <div className="mt-1 text-sm font-semibold text-gray-900 break-words">
                       {primaryColumn ? renderCell(primaryColumn, row, rowIndex) : row[rowKey]}
@@ -340,7 +340,7 @@ export function GenericTable<T extends Record<string, any>>({
               
               {config.actions && config.actions.length > 0 && (
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Actions
+                  Thao tác
                 </th>
               )}
             </tr>
@@ -353,7 +353,7 @@ export function GenericTable<T extends Record<string, any>>({
                   colSpan={config.columns.length + (config.selectable ? 1 : 0) + (config.actions ? 1 : 0)}
                   className="px-6 py-12 text-center text-gray-500"
                 >
-                  {config.loadingMessage || 'Loading...'}
+                  {config.loadingMessage || 'Đang tải...'}
                 </td>
               </tr>
             ) : data.length === 0 ? (
@@ -362,7 +362,7 @@ export function GenericTable<T extends Record<string, any>>({
                   colSpan={config.columns.length + (config.selectable ? 1 : 0) + (config.actions ? 1 : 0)}
                   className="px-6 py-12 text-center text-gray-500"
                 >
-                  {config.emptyMessage || 'No data available'}
+                  {config.emptyMessage || 'Không có dữ liệu'}
                 </td>
               </tr>
             ) : (

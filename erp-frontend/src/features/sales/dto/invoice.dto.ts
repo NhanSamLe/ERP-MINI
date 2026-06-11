@@ -100,6 +100,8 @@ export interface ArInvoiceDto {
       name: string;
       phone?: string;
       email?: string;
+      tax_code?: string;
+      address?: string;
     };
   };
 

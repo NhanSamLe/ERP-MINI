@@ -77,6 +77,10 @@ export interface PurchaseReturn {
   lines?: PurchaseReturnLine[];
 }
 
+type PurchaseReturnPayload = Partial<Omit<PurchaseReturn, "lines">> & {
+  lines: Partial<PurchaseReturnLine>[];
+};
+
 // ─── AP Debit Note ─────────────────────────────────────────────────────────────
 
 export interface ApDebitNoteLine {
@@ -202,16 +206,11 @@ export const purchaseReturnApi = {
     const res = await axiosClient.get(`/purchase/returns/${id}`);
     return res.data.data;
   },
-  create: async (
-    body: Partial<PurchaseReturn> & { lines: Partial<PurchaseReturnLine>[] },
-  ): Promise<PurchaseReturn> => {
+  create: async (body: PurchaseReturnPayload): Promise<PurchaseReturn> => {
     const res = await axiosClient.post("/purchase/returns", body);
     return res.data.data;
   },
-  update: async (
-    id: number,
-    body: Partial<PurchaseReturn> & { lines: Partial<PurchaseReturnLine>[] },
-  ): Promise<PurchaseReturn> => {
+  update: async (id: number, body: PurchaseReturnPayload): Promise<PurchaseReturn> => {
     const res = await axiosClient.put(`/purchase/returns/${id}`, body);
     return res.data.data;
   },

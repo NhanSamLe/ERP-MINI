@@ -255,6 +255,7 @@ export const apPaymentService = {
       const entryDate: Date = payment.payment_date || new Date();
       const amount = Number(payment.amount || 0);
       if (amount <= 0) throw new Error("Payment amount must be > 0");
+      const amountBase = amount * Number(payment.exchange_rate || 1);
 
       const entry = await GlEntry.create(
         {
@@ -275,14 +276,14 @@ export const apPaymentService = {
       const lineDebit: any = {
         entry_id: entry.id,
         account_id: debitAccountId,
-        debit: amount,
+        debit: amountBase,
         credit: 0,
       };
       const lineCredit: any = {
         entry_id: entry.id,
         account_id: creditAccountId,
         debit: 0,
-        credit: amount,
+        credit: amountBase,
       };
 
       if (supplierId) {
@@ -435,9 +436,16 @@ export const apPaymentService = {
          ai.invoice_date,
          ai.total_after_tax,
          COALESCE(SUM(apa.applied_amount), 0) AS allocated_amount,
-         ai.total_after_tax - COALESCE(SUM(apa.applied_amount), 0) AS unpaid_amount
+         COALESCE(dn.debit_amount, 0) AS debit_note_amount,
+         ai.total_after_tax - COALESCE(SUM(apa.applied_amount), 0) - COALESCE(dn.debit_amount, 0) AS unpaid_amount
        FROM ap_invoices ai
        LEFT JOIN ap_payment_allocations apa ON apa.ap_invoice_id = ai.id
+       LEFT JOIN (
+         SELECT original_ap_invoice_id, SUM(total_after_tax) AS debit_amount
+         FROM ap_debit_notes
+         WHERE status = 'posted'
+         GROUP BY original_ap_invoice_id
+       ) dn ON dn.original_ap_invoice_id = ai.id
        WHERE ai.status IN ('posted', 'partially_paid')
          AND ai.approval_status = 'approved'
          AND ai.supplier_id = ?
@@ -511,9 +519,15 @@ export const apPaymentService = {
         // Validate invoice: supplier_id trực tiếp từ ap_invoices (không JOIN PO, hỗ trợ cả invoice không có PO)
         const [invoice]: any = await sequelize.query(
           `SELECT ai.id,
-                  ai.total_after_tax - COALESCE(SUM(apa.applied_amount), 0) AS unpaid_amount
+                  ai.total_after_tax - COALESCE(SUM(apa.applied_amount), 0) - COALESCE(dn.debit_amount, 0) AS unpaid_amount
            FROM ap_invoices ai
            LEFT JOIN ap_payment_allocations apa ON apa.ap_invoice_id = ai.id
+           LEFT JOIN (
+             SELECT original_ap_invoice_id, SUM(total_after_tax) AS debit_amount
+             FROM ap_debit_notes
+             WHERE status = 'posted'
+             GROUP BY original_ap_invoice_id
+           ) dn ON dn.original_ap_invoice_id = ai.id
            WHERE ai.id = ?
              AND ai.supplier_id = ?
              AND ai.status IN ('posted', 'partially_paid')
@@ -594,7 +608,7 @@ export const apPaymentService = {
            FROM ap_payment_allocations WHERE ap_invoice_id = ?`,
           { replacements: [item.invoice_id], transaction: t, type: "SELECT" },
         );
-        const newPaidAmount = Number(paidResult?.total_paid ?? 0) + item.amount;
+        const newPaidAmount = Number(paidResult?.total_paid ?? 0);
 
         await sequelize.query(
           `UPDATE ap_invoices SET status = ?, paid_amount = ?, last_payment_date = CURDATE() WHERE id = ?`,

@@ -168,7 +168,11 @@ export default function LeadSourcePage() {
               }
               config={leadSourceFormConfig}
               mode={editItem ? "edit" : "create"}
-              onSubmit={editItem ? handleUpdate : handleCreate}
+              onSubmit={(values) =>
+                editItem
+                  ? handleUpdate(values as UpdateLeadSourceDto)
+                  : handleCreate(values as CreateLeadSourceDto)
+              }
               onCancel={() => { setShowModal(false); setEditItem(null); }}
             />
           </div>

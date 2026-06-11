@@ -88,7 +88,11 @@ export const createOpportunity = async (req: Request, res: Response) => {
       data,
     });
   } catch (err: any) {
-    return res.status(400).json({ message: err.message });
+    // Log chi tiết để chẩn đoán (Sequelize FK/validation thường có message lồng nhau)
+    console.error("createOpportunity error:", err?.parent?.sqlMessage || err?.original?.message || err?.message, err);
+    const msg =
+      err?.parent?.sqlMessage || err?.errors?.[0]?.message || err?.message || "Không thể tạo Opportunity";
+    return res.status(400).json({ message: msg });
   }
 };
 

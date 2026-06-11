@@ -40,7 +40,7 @@ export const ArReceiptController = {
     try {
       const user = (req as any).user;
 
-      const receipt = await arReceiptService.create(req.body, user);
+      const receipt = await arReceiptService.create(req.body, user, req.app);
       return res.status(201).json({ message: "Created", data: receipt });
     } catch (err: any) {
       return res.status(400).json({ message: err.message });

@@ -22,4 +22,11 @@ export const departmentApi = {
   async remove(id: number) {
     await axiosClient.delete(`/hrm/departments/${id}`);
   },
+
+  async patchStatus(id: number, status: "active" | "inactive") {
+    const res = await axiosClient.patch(`/hrm/departments/${id}/status`, {
+      status,
+    });
+    return res.data;
+  },
 };

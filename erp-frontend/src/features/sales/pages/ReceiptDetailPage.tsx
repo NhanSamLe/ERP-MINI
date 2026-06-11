@@ -92,10 +92,14 @@ export default function ReceiptDetailPage() {
   const isFullyAllocated = receipt.allocation_status === "fully_allocated";
   const isUnallocated = receipt.allocation_status === "unallocated";
 
-  const canSubmit = isDraft && ((isAccountant && isOwner) || isChiefAcc);
+  // CHACC tạo phiếu thu sẽ được tự duyệt + ghi sổ ngay (backend), nên không cần
+  // hiện nút "Gửi duyệt" cho CHACC ở phiếu nháp.
+  const canSubmit = isDraft && isAccountant && isOwner;
   const canApprove = isWaiting && isChiefAcc;
   const canReject = canApprove;
-  const canAllocate = isAccountant && isPosted && isApproved && !isFullyAllocated && remainingAmount > 0;
+  // Cho phép cả kế toán (ACCOUNT) lẫn kế toán trưởng (CHACC) phân bổ phiếu đã ghi sổ.
+  const canAllocate =
+    (isAccountant || isChiefAcc) && isPosted && isApproved && !isFullyAllocated && remainingAmount > 0;
 
   const handleAllocate = () => {
     dispatch(fetchUnpaidInvoices(receipt.customer_id));

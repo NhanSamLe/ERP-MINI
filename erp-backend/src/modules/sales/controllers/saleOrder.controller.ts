@@ -48,7 +48,7 @@ export const SaleOrderController = {
   async create(req: Request, res: Response) {
     try {
       const user = (req as any).user;
-      const result = await saleOrderService.create(req.body, user);
+      const result = await saleOrderService.create(req.body, user, req.app);
 
       return res.status(201).json({ message: "Created", data: result });
     } catch (err: any) {

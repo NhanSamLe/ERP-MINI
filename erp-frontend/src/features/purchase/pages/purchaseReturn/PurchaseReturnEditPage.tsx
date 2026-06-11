@@ -11,7 +11,7 @@ import {
 import { loadPartners } from "@/features/partner/store/partner.thunks";
 import { fetchPurchaseOrderByIdThunk } from "../../store/purchaseOrder.thunks";
 import { fetchPurchaseOrdersThunk } from "../../store/purchaseOrder.thunks";
-import { purchaseReturnApi } from "../../api/purchaseReturn.api";
+import { purchaseReturnApi, PurchaseReturnLine } from "../../api/purchaseReturn.api";
 import { StandardFormLayout } from "../../../../components/layout/StandardFormLayout";
 import { FormSection } from "../../../../components/layout/FormSection";
 import { PurchaseOrderLine } from "../../store";
@@ -198,7 +198,7 @@ export default function PurchaseReturnEditPage() {
           unit_price: l.unit_price,
           reason: l.reason || null,
           condition: l.condition,
-        })),
+        })) as Partial<PurchaseReturnLine>[],
       });
 
       toast.success("Đã cập nhật Phiếu trả hàng mua");

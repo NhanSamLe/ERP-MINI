@@ -6,6 +6,8 @@ import {
   UpdateLocationDTO,
 } from "../store/stock/stocklocation/stockLocation.types";
 
+export type { StockLocation, StockLocationType };
+
 export const stockLocationApi = {
   getAll: async (warehouseId: number): Promise<StockLocation[]> => {
     const res = await axiosClient.get("/locations", {

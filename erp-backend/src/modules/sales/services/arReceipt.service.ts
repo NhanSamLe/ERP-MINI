@@ -141,13 +141,13 @@ export const arReceiptService = {
   },
 
   /** CREATE — Accountant */
-  async create(data: any, user: any) {
+  async create(data: any, user: any, app?: any) {
     requireAccountingRole(user);
     const companyId = await getCompanyIdFromUserBranch(user);
     await assertPostingPeriodOpen(data.receipt_date || new Date(), companyId);
 
     const receipt_no = await generateReceiptNo(); // auto
-    return ArReceipt.create({
+    const receipt = await ArReceipt.create({
       branch_id: user.branch_id,
       receipt_no,
       receipt_date: data.receipt_date,
@@ -161,6 +161,16 @@ export const arReceiptService = {
       currency_id: data.currency_id || null,
       exchange_rate: data.exchange_rate || 1,
     });
+
+    // Kế toán trưởng (CHACC) tạo phiếu thu → tự duyệt + ghi sổ luôn, không cần
+    // bước gửi duyệt rồi tự duyệt cho chính mình. Sau khi posted, CHACC có thể
+    // phân bổ công nợ ngay (allocate yêu cầu status = "posted").
+    if (user?.role === "CHACC") {
+      await receipt.update({ approval_status: "waiting_approval", submitted_at: new Date() });
+      return this.approve(receipt.id, user, app);
+    }
+
+    return receipt;
   },
 
   /** SUBMIT — Accountant */

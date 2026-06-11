@@ -11,6 +11,12 @@ router.get(
   StockMoveController.getAll
 );
 
+router.get(
+  "/search",
+  authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
+  StockMoveController.search
+);
+
 router.post(
   "/:id/approve",
   authMiddleware([Role.WHMANAGER]),
@@ -23,11 +29,6 @@ router.put(
   StockMoveController.reject
 );
 
-router.get(
-  "/:id",
-  authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
-  StockMoveController.getById
-);
 router.post(
   "/receipt",
   authMiddleware([Role.WHSTAFF]),
@@ -103,6 +104,12 @@ router.post(
   "/:id/submit",
   authMiddleware([Role.WHSTAFF]),
   StockMoveController.submitForApproval
+);
+
+router.get(
+  "/:id",
+  authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
+  StockMoveController.getById
 );
 
 export default router;

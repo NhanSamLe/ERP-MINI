@@ -1,9 +1,3 @@
-/**
- * UOM Page V2
- * @description Refactored UOM page using generic components
- * @author Senior Frontend Team
- */
-
 import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
@@ -13,15 +7,15 @@ import {
   deleteUomThunk,
 } from '../store/master-data/uom/uom.thunks';
 import { Uom, CreateUomDto, UpdateUomDto } from '../dto/uom.dto';
-import { GenericTable } from '@/components/v2/tables';
+import { GenericTable, useTable } from '@/components/v2/tables';
 import { GenericForm } from '@/components/v2/forms';
-import { useTable } from '@/components/v2/tables';
 import { usePermission } from '@/hooks/usePermission';
 import { createUomTableConfig } from '../configs/uom-table.config';
 import { uomFormConfig } from '../configs/uom-form.config';
 import { Plus, Package, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { toast } from 'react-toastify';
+import { ActionConfirmModal } from '@/components/common/ActionConfirmModal';
 
 export default function UomPageV2() {
   const dispatch = useAppDispatch();
@@ -30,8 +24,9 @@ export default function UomPageV2() {
 
   const [showModal, setShowModal] = useState(false);
   const [editItem, setEditItem] = useState<Uom | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Uom | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
-  // Initialize table with search
   const {
     data: tableData,
     paginationInfo,
@@ -56,7 +51,7 @@ export default function UomPageV2() {
   const handleCreate = async (dto: CreateUomDto) => {
     const result = await dispatch(createUomThunk(dto));
     if (createUomThunk.fulfilled.match(result)) {
-      toast.success(`Tạo đơn vị "${dto.name}" thành công!`);
+      toast.success(`Tạo đơn vị "${dto.name}" thành công.`);
       setShowModal(false);
       setEditItem(null);
     } else {
@@ -68,7 +63,7 @@ export default function UomPageV2() {
     if (!editItem) return;
     const result = await dispatch(updateUomThunk({ id: editItem.id, data: dto }));
     if (updateUomThunk.fulfilled.match(result)) {
-      toast.success('Cập nhật đơn vị thành công!');
+      toast.success('Cập nhật đơn vị thành công.');
       setShowModal(false);
       setEditItem(null);
     } else {
@@ -76,87 +71,69 @@ export default function UomPageV2() {
     }
   };
 
-  const handleDelete = async (uom: Uom) => {
-    if (window.confirm(`Xóa đơn vị "${uom.name}"?`)) {
-      const result = await dispatch(deleteUomThunk(uom.id));
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const result = await dispatch(deleteUomThunk(deleteTarget.id));
       if (deleteUomThunk.fulfilled.match(result)) {
-        toast.success(`Đã xóa đơn vị "${uom.name}".`);
+        toast.success(`Đã xóa đơn vị "${deleteTarget.name}".`);
+        setDeleteTarget(null);
       } else {
         toast.error((result.payload as string) ?? 'Xóa đơn vị thất bại.');
       }
+    } finally {
+      setDeleting(false);
     }
   };
 
-  /**
-   * Handle edit click
-   */
-  const handleEditClick = (uom: Uom) => {
-    setEditItem(uom);
-    setShowModal(true);
-  };
-
-  /**
-   * Handle add click
-   */
-  const handleAddClick = () => {
-    setEditItem(null);
-    setShowModal(true);
-  };
-
-  /**
-   * Handle modal close
-   */
   const handleModalClose = () => {
     setShowModal(false);
     setEditItem(null);
   };
 
-  /**
-   * Table configuration
-   */
   const tableConfig = createUomTableConfig(
-    handleEditClick,
-    handleDelete,
+    (uom) => {
+      setEditItem(uom);
+      setShowModal(true);
+    },
+    setDeleteTarget,
     canEdit,
     canDelete
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
-        {/* Header Section */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            {/* Title */}
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-gradient-to-br from-brand-500 to-brand-600 rounded-lg shadow-md">
-                <Package className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  Unit of Measurement
-                </h1>
-                <p className="text-sm text-gray-500 mt-0.5">
-                  Manage your UOM master data
-                </p>
-              </div>
+    <div className="page-container">
+      <div className="erp-card overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+          <div className="flex items-center gap-2.5">
+            <span className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
+              <Package className="w-4 h-4 text-orange-500" />
+            </span>
+            <div>
+              <h1 className="text-base font-semibold text-gray-900">Đơn vị tính</h1>
+              <p className="text-xs text-gray-400 mt-0.5">Quản lý đơn vị dùng cho sản phẩm, mua hàng và tồn kho</p>
             </div>
-
-            {/* Add Button */}
-            {canCreate() && (
-              <Button
-                variant="primary"
-                onClick={handleAddClick}
-                className="inline-flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                Add UOM
-              </Button>
-            )}
+            <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-600">
+              {Uoms.length}
+            </span>
           </div>
+
+          {canCreate() && (
+            <Button
+              variant="primary"
+              onClick={() => {
+                setEditItem(null);
+                setShowModal(true);
+              }}
+              className="inline-flex items-center gap-1.5 h-8 px-3"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Thêm đơn vị
+            </Button>
+          )}
         </div>
 
-        {/* Table Section */}
         <GenericTable
           data={tableData}
           config={tableConfig}
@@ -166,27 +143,22 @@ export default function UomPageV2() {
           onPageSizeChange={handlePageSizeChange}
           onSortChange={handleSort}
           onSearchChange={handleSearch}
+          className="rounded-none border-0 shadow-none"
         />
       </div>
 
-      {/* Form Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-900">
-                {editItem ? 'Edit UOM' : 'Create New UOM'}
+              <h2 className="text-lg font-semibold text-gray-900">
+                {editItem ? 'Cập nhật đơn vị' : 'Thêm đơn vị'}
               </h2>
-              <button
-                onClick={handleModalClose}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
+              <button onClick={handleModalClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors" aria-label="Đóng">
                 <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
 
-            {/* Modal Content */}
             <div className="p-6">
               <GenericForm
                 initialValues={
@@ -203,6 +175,22 @@ export default function UomPageV2() {
           </div>
         </div>
       )}
+
+      <ActionConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        title="Xóa đơn vị tính"
+        description={
+          <span>
+            Bạn có chắc muốn xóa đơn vị <strong>{deleteTarget?.name}</strong>?
+          </span>
+        }
+        confirmText="Xóa"
+        cancelText="Hủy"
+        variant="danger"
+        loading={deleting}
+      />
     </div>
   );
 }

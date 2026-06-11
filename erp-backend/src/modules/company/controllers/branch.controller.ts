@@ -49,7 +49,7 @@ export const updateBranch = async (req: Request, res: Response) => {
   try {
     const company_id = await getCompanyId(req);
     await branchService.getBranchById(Number(req.params.id), company_id);
-    const row = await branchService.updateBranch(Number(req.params.id), req.body);
+    const row = await branchService.updateBranch(Number(req.params.id), req.body, company_id);
     res.json(row);
   } catch (err: any) {
     res.status(400).json({ message: err.message });

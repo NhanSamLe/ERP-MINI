@@ -116,7 +116,8 @@ export const convertToCustomer = async (req: Request, res: Response) => {
     const userId = (req as any).user.id;
     const leadId = Number(req.params.leadId);
     const role = (req as any).user.role;
-    const result = await leadService.convertToCustomer(leadId, userId, role);
+    const companyId = (req as any).user.company_id;
+    const result = await leadService.convertToCustomer(leadId, userId, role, companyId);
 
     return res.json({
       message: "Convert Lead sang Customer thành công",

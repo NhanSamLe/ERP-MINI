@@ -85,7 +85,7 @@ export function DataTable<T extends { id: number }>({
       {onView && (
         <button
           onClick={() => onView(item)}
-          title="View"
+          title="Xem"
           className={
             compact
               ? "p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
@@ -98,7 +98,7 @@ export function DataTable<T extends { id: number }>({
       {onEdit && canEdit?.(item) && (
         <button
           onClick={() => onEdit(item)}
-          title="Edit"
+          title="Sửa"
           className={
             compact
               ? "p-1.5 rounded text-gray-400 hover:text-orange-600 hover:bg-orange-50 transition-colors"
@@ -111,7 +111,7 @@ export function DataTable<T extends { id: number }>({
       {onDelete && canDelete?.(item) && (
         <button
           onClick={() => onDelete(item)}
-          title="Delete"
+          title="Xóa"
           className={
             compact
               ? "p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
@@ -133,7 +133,7 @@ export function DataTable<T extends { id: number }>({
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3 text-gray-400">
         <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
-        <span className="text-sm">Loading data...</span>
+        <span className="text-sm">Đang tải dữ liệu...</span>
       </div>
     );
   }
@@ -146,7 +146,7 @@ export function DataTable<T extends { id: number }>({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
           <input
             type="text"
-            placeholder="Search..."
+            placeholder="Tìm kiếm..."
             value={searchTerm}
             onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
             className="w-full h-9 pl-9 pr-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 placeholder:text-gray-400"
@@ -160,7 +160,7 @@ export function DataTable<T extends { id: number }>({
           <div className="rounded-lg border border-gray-200 bg-white py-12 text-center">
             <div className="flex flex-col items-center gap-2 text-gray-400">
               <Inbox className="w-10 h-10" />
-              <p className="text-sm font-medium">No records found</p>
+              <p className="text-sm font-medium">Không có dữ liệu</p>
             </div>
           </div>
         ) : (
@@ -186,7 +186,7 @@ export function DataTable<T extends { id: number }>({
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                      {primaryCol?.label ?? "Record"}
+                      {primaryCol?.label ?? "Bản ghi"}
                     </p>
                     <div className="mt-1 text-sm font-semibold text-gray-900 break-words">
                       {primaryCol ? renderCellValue(item, primaryCol) : item.id}
@@ -247,7 +247,7 @@ export function DataTable<T extends { id: number }>({
               ))}
               {showActions && (
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider w-28">
-                  Actions
+                  Thao tác
                 </th>
               )}
             </tr>
@@ -262,7 +262,7 @@ export function DataTable<T extends { id: number }>({
                 >
                   <div className="flex flex-col items-center gap-2 text-gray-400">
                     <Inbox className="w-10 h-10" />
-                    <p className="text-sm font-medium">No records found</p>
+                    <p className="text-sm font-medium">Không có dữ liệu</p>
                   </div>
                 </td>
               </tr>
@@ -306,11 +306,11 @@ export function DataTable<T extends { id: number }>({
       {sortedData.length > 0 && (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-1">
           <p className="text-xs text-gray-500">
-            Showing{" "}
+            Hiển thị{" "}
             <span className="font-semibold text-gray-700">
               {(currentPage - 1) * itemsPerPage + 1}–{Math.min(currentPage * itemsPerPage, sortedData.length)}
             </span>{" "}
-            of <span className="font-semibold text-gray-700">{sortedData.length}</span> records
+            trên <span className="font-semibold text-gray-700">{sortedData.length}</span> bản ghi
           </p>
 
           <div className="flex flex-wrap items-center gap-1">

@@ -203,6 +203,7 @@ export interface LineTransferItem {
   quantity: number;
   location_from_id?: number | null;
   location_to_id?: number | null;
+  lot_id?: number | null;
 }
 
 export interface TransferForm {

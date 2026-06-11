@@ -7,15 +7,15 @@ import {
   deleteTaxRateThunk,
 } from '../store/master-data/tax/tax.thunks';
 import { Tax, CreateTaxRateDto, UpdateTaxRateDto } from '../dto/tax.dto';
-import { GenericTable } from '@/components/v2/tables';
+import { GenericTable, useTable } from '@/components/v2/tables';
 import { GenericForm } from '@/components/v2/forms';
-import { useTable } from '@/components/v2/tables';
 import { usePermission } from '@/hooks/usePermission';
 import { createTaxTableConfig } from '../configs/tax-table.config';
 import { taxFormConfig } from '../configs/tax-form.config';
 import { Plus, Receipt, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { toast } from 'react-toastify';
+import { ActionConfirmModal } from '@/components/common/ActionConfirmModal';
 
 export default function TaxPageV2() {
   const dispatch = useAppDispatch();
@@ -24,6 +24,8 @@ export default function TaxPageV2() {
 
   const [showModal, setShowModal] = useState(false);
   const [editItem, setEditItem] = useState<Tax | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Tax | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const {
     data: tableData,
@@ -49,7 +51,7 @@ export default function TaxPageV2() {
   const handleCreate = async (dto: CreateTaxRateDto) => {
     const result = await dispatch(createTaxRateThunk(dto));
     if (createTaxRateThunk.fulfilled.match(result)) {
-      toast.success(`Tạo thuế "${dto.name}" thành công!`);
+      toast.success(`Tạo thuế "${dto.name}" thành công.`);
       setShowModal(false);
       setEditItem(null);
     } else {
@@ -61,7 +63,7 @@ export default function TaxPageV2() {
     if (!editItem) return;
     const result = await dispatch(updateTaxRateThunk({ id: editItem.id, data: dto }));
     if (updateTaxRateThunk.fulfilled.match(result)) {
-      toast.success('Cập nhật thuế thành công!');
+      toast.success('Cập nhật thuế thành công.');
       setShowModal(false);
       setEditItem(null);
     } else {
@@ -69,25 +71,20 @@ export default function TaxPageV2() {
     }
   };
 
-  const handleDelete = async (tax: Tax) => {
-    if (window.confirm(`Xóa thuế "${tax.name}"?`)) {
-      const result = await dispatch(deleteTaxRateThunk(tax.id));
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const result = await dispatch(deleteTaxRateThunk(deleteTarget.id));
       if (deleteTaxRateThunk.fulfilled.match(result)) {
-        toast.success(`Đã xóa thuế "${tax.name}".`);
+        toast.success(`Đã xóa thuế "${deleteTarget.name}".`);
+        setDeleteTarget(null);
       } else {
         toast.error((result.payload as string) ?? 'Xóa thuế thất bại.');
       }
+    } finally {
+      setDeleting(false);
     }
-  };
-
-  const handleEditClick = (tax: Tax) => {
-    setEditItem(tax);
-    setShowModal(true);
-  };
-
-  const handleAddClick = () => {
-    setEditItem(null);
-    setShowModal(true);
   };
 
   const handleModalClose = () => {
@@ -96,36 +93,38 @@ export default function TaxPageV2() {
   };
 
   const tableConfig = createTaxTableConfig(
-    handleEditClick,
-    handleDelete,
+    (tax) => {
+      setEditItem(tax);
+      setShowModal(true);
+    },
+    setDeleteTarget,
     canEdit,
     canDelete
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-gradient-to-br from-brand-500 to-brand-600 rounded-lg shadow-md">
-                <Receipt className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Tax Rates</h1>
-                <p className="text-sm text-gray-500 mt-0.5">
-                  Manage your tax rates and configurations
-                </p>
-              </div>
+    <div className="page-container">
+      <div className="erp-card overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+          <div className="flex items-center gap-2.5">
+            <span className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
+              <Receipt className="w-4 h-4 text-orange-500" />
+            </span>
+            <div>
+              <h1 className="text-base font-semibold text-gray-900">Thuế</h1>
+              <p className="text-xs text-gray-400 mt-0.5">Quản lý thuế suất, phạm vi áp dụng và thời hạn hiệu lực</p>
             </div>
-
-            {canCreate() && (
-              <Button variant="primary" onClick={handleAddClick} className="inline-flex items-center gap-2">
-                <Plus className="w-4 h-4" />
-                Add Tax Rate
-              </Button>
-            )}
+            <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-600">
+              {Taxes.length}
+            </span>
           </div>
+
+          {canCreate() && (
+            <Button variant="primary" onClick={() => setShowModal(true)} className="inline-flex items-center gap-1.5 h-8 px-3">
+              <Plus className="w-3.5 h-3.5" />
+              Thêm thuế
+            </Button>
+          )}
         </div>
 
         <GenericTable
@@ -137,6 +136,7 @@ export default function TaxPageV2() {
           onPageSizeChange={handlePageSizeChange}
           onSortChange={handleSort}
           onSearchChange={handleSearch}
+          className="rounded-none border-0 shadow-none"
         />
       </div>
 
@@ -144,10 +144,10 @@ export default function TaxPageV2() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-900">
-                {editItem ? 'Edit Tax Rate' : 'Create New Tax Rate'}
+              <h2 className="text-lg font-semibold text-gray-900">
+                {editItem ? 'Cập nhật thuế' : 'Thêm thuế'}
               </h2>
-              <button onClick={handleModalClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+              <button onClick={handleModalClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors" aria-label="Đóng">
                 <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
@@ -193,6 +193,22 @@ export default function TaxPageV2() {
           </div>
         </div>
       )}
+
+      <ActionConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        title="Xóa thuế"
+        description={
+          <span>
+            Bạn có chắc muốn xóa thuế <strong>{deleteTarget?.name}</strong>?
+          </span>
+        }
+        confirmText="Xóa"
+        cancelText="Hủy"
+        variant="danger"
+        loading={deleting}
+      />
     </div>
   );
 }

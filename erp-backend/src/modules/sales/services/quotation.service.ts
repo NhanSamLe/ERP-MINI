@@ -4,8 +4,11 @@ import { generateReceiptNo } from "../../../core/utils/receipt.util";
 import { sequelize } from "../../../config/db";
 import { SaleOrder } from "../models/saleOrder.model";
 import { SaleOrderLine } from "../models/saleOrderLine.model";
-import { Currency, ExchangeRate, Opportunity, PriceList, PriceListItem, Product, TaxRate, StockMove, StockMoveLine, Uom, Partner, User, Branch } from "../../../models";
+import { StockMove } from "../../inventory/models/stockMove.model";
+import { StockMoveLine } from "../../inventory/models/stockMoveLine.model";
+import { Currency, ExchangeRate, Opportunity, PriceList, PriceListItem, Product, TaxRate, Uom, Partner, User, Branch } from "../../../models";
 import { Op } from "sequelize";
+import { Role } from "../../../core/types/enum";
 
 async function getCurrencyRateToVnd(currencyId?: number | null, fallbackRate?: number | null) {
   if (!currencyId) return Number(fallbackRate || 1);
@@ -34,6 +37,10 @@ async function convertBetweenCurrencies(
   const sourceRate = await getCurrencyRateToVnd(sourceCurrencyId);
   const targetRateToVnd = await getCurrencyRateToVnd(targetCurrencyId, targetRate);
   return (amount * sourceRate) / targetRateToVnd;
+}
+
+function canAutoApproveSaleOrder(user: any) {
+  return [Role.SALESMANAGER, Role.ADMIN].includes(user?.role);
 }
 
 export const quotationService = {
@@ -274,11 +281,17 @@ export const quotationService = {
         totalTax += lineTaxAmt;
       }
 
+      // Chiết khấu cấp đơn (order-level discount): giảm trừ vào doanh thu chịu thuế
+      // TRƯỚC khi tính VAT (chuẩn thuế GTGT VN). Áp dụng cùng hệ số lên cả base và
+      // tax (thuế tỉ lệ thuận với base) để thuế giảm theo, đồng thời tránh để tổng âm.
+      let discountFactor = 1;
       if (quotation.discount_percent > 0) {
-        totalBeforeTax = totalBeforeTax * (1 - quotation.discount_percent / 100);
-      } else if (quotation.discount_amount > 0) {
-        totalBeforeTax = totalBeforeTax - quotation.discount_amount;
+        discountFactor = 1 - quotation.discount_percent / 100;
+      } else if (quotation.discount_amount > 0 && totalBeforeTax > 0) {
+        discountFactor = Math.max(0, 1 - quotation.discount_amount / totalBeforeTax);
       }
+      totalBeforeTax = totalBeforeTax * discountFactor;
+      totalTax = totalTax * discountFactor;
       totalAftertax = totalBeforeTax + totalTax;
 
       await quotation.update({
@@ -426,11 +439,43 @@ export const quotationService = {
     const t = await sequelize.transaction();
     try {
       const q = await Quotation.findByPk(id, {
-        include: [{ model: QuotationLine, as: "lines" }]
+        include: [{ model: QuotationLine, as: "lines" }],
+        lock: t.LOCK.UPDATE,
+        transaction: t,
       }) as any;
-      if (!q) throw new Error("Quotation not found");
+      if (!q) throw new Error("Không tìm thấy báo giá.");
+
+      // Chống tạo đơn trùng (kể cả khi 2 request đồng thời): nếu đã tồn tại đơn
+      // hàng gắn với báo giá này thì dừng ngay.
+      const dupOrder = await SaleOrder.findOne({
+        where: { quotation_id: q.id },
+        order: [["id", "DESC"]],
+        transaction: t,
+      });
+      if (dupOrder) {
+        throw new Error(
+          `Báo giá này đã được tạo đơn hàng trước đó (${dupOrder.order_no}). Không thể chuyển đổi lại.`,
+        );
+      }
+
+      // Đã chuyển đổi trước đó → báo rõ ràng thay vì để rơi vào lỗi trạng thái chung.
+      if (q.status === "converted") {
+        const existingOrder = await SaleOrder.findOne({
+          where: { quotation_id: q.id },
+          order: [["id", "DESC"]],
+        });
+        throw new Error(
+          existingOrder
+            ? `Báo giá này đã được tạo đơn hàng trước đó (${existingOrder.order_no}). Không thể chuyển đổi lại.`
+            : "Báo giá này đã được chuyển thành đơn hàng trước đó. Không thể chuyển đổi lại.",
+        );
+      }
+
       if (q.status !== "accepted") {
-        throw new Error("Chỉ được chuyển đổi Đơn hàng từ Báo giá đã được Khách hàng đồng ý.");
+        throw new Error("Chỉ được chuyển đổi đơn hàng từ báo giá đã được khách hàng đồng ý.");
+      }
+      if (q.approval_status !== "approved") {
+        throw new Error("Báo giá phải được duyệt trước khi chuyển thành đơn hàng.");
       }
       const now = new Date();
       const yyyy = now.getFullYear();
@@ -463,20 +508,16 @@ export const quotationService = {
         internal_notes: q.internal_notes,
         order_date: new Date(),
         created_by: user.id,
-        status: "draft", 
+        status: "draft",
         approval_status: "draft",
       }, { transaction: t });
 
-      // ... sau khi create Lines sẽ gọi submit/approve hoặc xử lý StockMove ở đây
-      // Để đạt chuẩn, ta bọc logic approve vào đây luôn:
-      const orderStatus: any = "confirmed";
-      const approvalStatus: any = "approved";
-      await order.update({ status: orderStatus, approval_status: approvalStatus }, { transaction: t });
-
+      const createdLines = [];
       for (const line of q.lines) {
-        await SaleOrderLine.create({
+        const createdLine = await SaleOrderLine.create({
           order_id: order.id,
           product_id: line.product_id,
+          uom_id: line.uom_id ?? null,
           description: line.description,
           quantity: line.quantity,
           unit_price: line.unit_price,
@@ -487,6 +528,7 @@ export const quotationService = {
           line_tax: line.line_tax,
           line_total_after_tax: line.line_total_after_tax,
         }, { transaction: t });
+        createdLines.push(createdLine);
       }
 
       await order.update({
@@ -495,36 +537,76 @@ export const quotationService = {
         total_after_tax: q.total_after_tax
       }, { transaction: t });
 
-      // GIAO HÀNG TỰ ĐỘNG (STOCK MOVE)
-      const nowSm = new Date();
-      const prefixSm = `SM-${nowSm.getFullYear()}${String(nowSm.getMonth() + 1).padStart(2, "0")}${String(nowSm.getDate()).padStart(2, "0")}`;
-      const latestSm = await StockMove.findOne({
-        where: { move_no: { [Op.like]: `${prefixSm}%` } },
-        order: [["id", "DESC"]],
-        transaction: t
-      });
-      let seqSm = 1;
-      if (latestSm && latestSm.move_no) seqSm = Number(latestSm.move_no.slice(-4)) + 1;
-      const moveNo = `${prefixSm}-${String(seqSm).padStart(4, "0")}`;
+      if (canAutoApproveSaleOrder(user)) {
+        const partner = await Partner.findByPk(order.customer_id, { transaction: t });
+        if (partner && partner.credit_limit && Number(partner.credit_limit) > 0) {
+          const confirmedOrders = await SaleOrder.findAll({
+            where: { customer_id: partner.id, status: { [Op.in]: ["confirmed"] } },
+            transaction: t,
+          });
+          const totalDebt = confirmedOrders.reduce(
+            (sum, item) => sum + Number(item.total_after_tax || 0) * Number(item.exchange_rate || 1),
+            0,
+          );
+          const currentDebt = totalDebt + Number(order.total_after_tax || 0) * Number(order.exchange_rate || 1);
+          if (currentDebt > Number(partner.credit_limit)) {
+            throw new Error(
+              `Don hang vuot qua han muc cong no toi da cua khach hang. (Muc no du kien: ${currentDebt} > Han muc: ${partner.credit_limit})`,
+            );
+          }
+        }
 
-      const newMove = await StockMove.create({
-        move_no: moveNo,
-        move_date: new Date(),
-        type: "issue",
-        reference_type: "sale_order",
-        reference_id: order.id,
-        branch_id: order.branch_id || null,
-        status: "waiting_approval",
-        created_by: user.id,
-        note: `Tự động tạo từ Báo giá: ${q.quotation_no}`,
-      }, { transaction: t });
-
-      for (const line of q.lines) {
-        await StockMoveLine.create({
-          move_id: newMove.id,
-          product_id: line.product_id,
-          quantity: line.quantity,
+        await order.update({
+          approval_status: "approved",
+          approved_at: new Date(),
+          approved_by: user.id,
+          status: "confirmed",
+          delivery_status: "pending",
         }, { transaction: t });
+
+        const moveDate = new Date();
+        const movePrefix = `SM-${moveDate.getFullYear()}${String(moveDate.getMonth() + 1).padStart(2, "0")}${String(moveDate.getDate()).padStart(2, "0")}`;
+        const latestMove = await StockMove.findOne({
+          where: { move_no: { [Op.like]: `${movePrefix}%` } },
+          order: [["id", "DESC"]],
+          transaction: t,
+        });
+        const moveSeq = latestMove?.move_no ? Number(latestMove.move_no.slice(-4)) + 1 : 1;
+        const stockMove = await StockMove.create({
+          move_no: `${movePrefix}-${String(moveSeq).padStart(4, "0")}`,
+          move_date: new Date(),
+          type: "issue",
+          reference_type: "sale_order",
+          reference_id: order.id,
+          branch_id: order.branch_id ?? null,
+          warehouse_from_id: null,
+          status: "draft",
+          created_by: user.id,
+          note: `Tu dong tao lenh xuat kho cho Sale Order: ${order.order_no}`,
+        }, { transaction: t });
+
+        if (createdLines.length) {
+          await StockMoveLine.bulkCreate(
+            createdLines.map((line: any) => ({
+              move_id: stockMove.id,
+              product_id: line.product_id,
+              quantity: line.quantity,
+            })),
+            { transaction: t },
+          );
+        }
+
+        if (q.opportunity_id) {
+          const opp = await Opportunity.findByPk(q.opportunity_id, { transaction: t });
+          if (opp && opp.stage !== "won") {
+            await opp.update({
+              stage: "won",
+              expected_value: order.total_after_tax || 0,
+              currency_id: order.currency_id ?? null,
+              exchange_rate: Number(order.exchange_rate || 1),
+            }, { transaction: t });
+          }
+        }
       }
 
       await q.update({ status: "converted" }, { transaction: t });

@@ -83,3 +83,18 @@ export async function complete(req: Request, res: Response) {
     return res.status(400).json({ message: err.message });
   }
 }
+
+export async function inviteMembers(req: Request, res: Response) {
+  try {
+    const members = Array.isArray(req.body?.members) ? req.body.members : [];
+    return res.json({
+      message: 'ÄÃ£ ghi nháº­n danh sÃ¡ch thÃ nh viÃªn má»i',
+      data: {
+        invited_count: members.length,
+        members,
+      },
+    });
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message });
+  }
+}

@@ -148,6 +148,33 @@ export const stockBalanceService = {
     return await StockBalance.findAll({ where: { product_id: productId } });
   },
 
+  async search(keyword: string, user: JwtPayload) {
+    const q = keyword.trim();
+    if (!q) return this.getAll(user);
+
+    return StockBalance.findAll({
+      include: [
+        {
+          model: Warehouse,
+          as: "warehouse",
+          where: { branch_id: user.branch_id },
+          attributes: ["id", "name", "code"],
+        },
+        {
+          model: Product,
+          as: "product",
+          where: {
+            [Op.or]: [
+              { name: { [Op.like]: `%${q}%` } },
+              { sku: { [Op.like]: `%${q}%` } },
+            ],
+          },
+          attributes: ["id", "name", "sku", "image_url"],
+        },
+      ],
+    });
+  },
+
   async findByProductAndWarehouse(productId: number, warehouseId: number) {
     return await StockBalance.findOne({
       where: { product_id: productId, warehouse_id: warehouseId },

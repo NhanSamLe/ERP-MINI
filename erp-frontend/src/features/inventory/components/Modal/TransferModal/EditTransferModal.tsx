@@ -13,7 +13,6 @@ import { useDispatch } from "react-redux";
 import { AppDispatch } from "../../../../../store/store";
 import { Product } from "@/features/products/store/product.types";
 import {
-  fetchProductByIdThunk,
   searchProductsThunk,
 } from "@/features/products/store/product.thunks";
 import { toast } from "react-toastify";

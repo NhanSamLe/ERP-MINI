@@ -5,6 +5,8 @@ import {
   UpdateLotDTO,
 } from "../store/stock/stocklot/stockLot.types";
 
+export type { StockLot };
+
 export const stockLotApi = {
   getAll: async (params?: {
     productId?: number;

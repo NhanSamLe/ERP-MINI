@@ -20,6 +20,7 @@ interface LotSelectProps {
   onNewLotChange?: (data: NewLotData | null) => void;
   /** Cho phép tạo lot mới inline */
   allowCreate?: boolean;
+  placeholder?: string;
   disabled?: boolean;
   className?: string;
   /** supplier_id mặc định khi tạo new lot (lấy từ PO) */
@@ -33,6 +34,7 @@ export function LotSelect({
   newLot,
   onNewLotChange,
   allowCreate = false,
+  placeholder = "— Không có lô —",
   disabled = false,
   className = "",
   defaultSupplierId,
@@ -88,7 +90,7 @@ export function LotSelect({
           !productId ? "bg-gray-50 text-gray-400" : ""
         } ${className}`}
       >
-        <option value="">{loading ? "Đang tải..." : "— Không có lô —"}</option>
+        <option value="">{loading ? "Đang tải..." : placeholder}</option>
         {lots.map((l) => (
           <option key={l.id} value={l.id}>
             {formatOption(l)}
@@ -138,7 +140,7 @@ export function LotSelect({
             !productId ? "bg-gray-50 text-gray-400" : ""
           } ${className}`}
         >
-          <option value="">{loading ? "Đang tải..." : "— Không có lô —"}</option>
+          <option value="">{loading ? "Đang tải..." : placeholder}</option>
           {lots.map((l) => (
             <option key={l.id} value={l.id}>
               {formatOption(l)}

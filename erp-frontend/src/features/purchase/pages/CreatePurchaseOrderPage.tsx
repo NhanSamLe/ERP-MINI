@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "../../../components/ui/Button";
+import { NumberField } from "../../../components/ui/NumberField";
 import { Input } from "../../../components/ui/input";
 import { Textarea } from "../../../components/ui/textarea";
 import { useDispatch, useSelector } from "react-redux";
@@ -935,26 +936,18 @@ export default function CreatePurchaseOrderPage() {
                             {/* Unit Price */}
                             <td className="px-4 py-3 text-right">
                               <div className="flex flex-col items-end gap-1">
-                                <input
-                                  type="number"
-                                  min={0}
-                                  value={
-                                    priceInputs[line.id] ??
-                                    String(line.price_in_purchase_uom ?? 0)
-                                  }
-                                  onChange={(e) => {
-                                    setPriceInputs((prev) => ({
-                                      ...prev,
-                                      [line.id]: e.target.value,
-                                    }));
-                                    updateLine(
-                                      line.id,
-                                      "price_in_purchase_uom",
-                                      Number(e.target.value),
-                                    );
-                                  }}
-                                  className="w-32 text-right border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono"
-                                />
+                                <div className="w-32">
+                                  <NumberField
+                                    value={line.price_in_purchase_uom ?? 0}
+                                    onChange={(v) =>
+                                      updateLine(
+                                        line.id,
+                                        "price_in_purchase_uom",
+                                        v ?? 0,
+                                      )
+                                    }
+                                  />
+                                </div>
                                 {line.price_source && (
                                   <span
                                     className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium border ${
