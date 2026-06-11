@@ -105,4 +105,10 @@ router.post(
   StockMoveController.submitForApproval
 );
 
+router.post(
+  "/:id/receive",
+  authMiddleware([Role.WHMANAGER, Role.WHSTAFF]),
+  StockMoveController.receiveTransfer
+);
+
 export default router;

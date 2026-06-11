@@ -6,6 +6,12 @@ import { Role } from "../../../core/types/enum";
 const router = Router();
 
 router.get(
+  "/available",
+  authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
+  stockBalanceController.getAvailableStock,
+);
+
+router.get(
   "/",
   authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
   stockBalanceController.getAll,

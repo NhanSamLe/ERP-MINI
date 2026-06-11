@@ -55,6 +55,23 @@ export const physicalInventoryApi = {
     return res.data;
   },
 
+  submit: async (id: number): Promise<PhysicalInventory> => {
+    const res = await axiosClient.post(`/physical-inventories/${id}/submit`);
+    return res.data;
+  },
+
+  approve: async (id: number): Promise<PhysicalInventory> => {
+    const res = await axiosClient.post(`/physical-inventories/${id}/approve`);
+    return res.data;
+  },
+
+  reject: async (id: number, reject_reason: string): Promise<PhysicalInventory> => {
+    const res = await axiosClient.post(`/physical-inventories/${id}/reject`, {
+      reject_reason,
+    });
+    return res.data;
+  },
+
   cancel: async (id: number): Promise<PhysicalInventory> => {
     const res = await axiosClient.post(`/physical-inventories/${id}/cancel`);
     return res.data;

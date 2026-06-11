@@ -42,6 +42,18 @@ export const physicalInventoryService = {
     return physicalInventoryApi.validate(id);
   },
 
+  async submit(id: number): Promise<PhysicalInventory> {
+    return physicalInventoryApi.submit(id);
+  },
+
+  async approve(id: number): Promise<PhysicalInventory> {
+    return physicalInventoryApi.approve(id);
+  },
+
+  async reject(id: number, reject_reason: string): Promise<PhysicalInventory> {
+    return physicalInventoryApi.reject(id, reject_reason);
+  },
+
   async cancel(id: number): Promise<PhysicalInventory> {
     return physicalInventoryApi.cancel(id);
   },

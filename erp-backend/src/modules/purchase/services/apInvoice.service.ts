@@ -5,6 +5,8 @@ import {
   Product,
   sequelize,
   TaxRate,
+  PaymentTerm,
+  Currency,
 } from "../../../models";
 import { User } from "../../auth/models/user.model";
 import { Branch } from "../../company/models/branch.model";
@@ -56,6 +58,9 @@ export interface CreateAPInvoiceInput {
   total_tax?: number;
   total_after_tax?: number;
   lines: CreateAPInvoiceLineInput[];
+  payment_term_id?: number | null;
+  currency_id?: number | null;
+  exchange_rate?: number | null;
   // Cho phép ghi đè cảnh báo trùng lặp
   overrideDuplicate?: boolean;
   override_reason?: string;
@@ -104,6 +109,16 @@ export const apInvoiceService = {
           model: User,
           as: "approver",
           attributes: ["id", "full_name", "email", "phone", "avatar_url"],
+        },
+        {
+          model: PaymentTerm,
+          as: "paymentTerm",
+          attributes: ["id", "name", "days", "code"],
+        },
+        {
+          model: Currency,
+          as: "currency",
+          attributes: ["id", "code", "symbol", "name"],
         },
         {
           model: ApInvoiceLine,
@@ -472,24 +487,25 @@ export const apInvoiceService = {
 
     const invoiceNo = `AP-${new Date().getFullYear()}-${Date.now()}`;
     const invoiceDate = new Date();
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 30);
 
     const result = await this.createAPInvoice(
       {
         source: "manual",
         invoice_no: invoiceNo,
         invoice_date: invoiceDate,
-        due_date: dueDate,
+        // Không truyền due_date → createAPInvoice() tự tính từ payment_term_id
         supplier_id: po.supplier_id!,
         ...(po.id && { po_id: po.id }),
         branch_id: po.branch_id!,
         created_by: user.id,
+        ...(po.payment_term_id && { payment_term_id: po.payment_term_id }),
+        ...(po.currency_id && { currency_id: po.currency_id }),
+        exchange_rate: (po as any).exchange_rate ?? 1.0,
         ...(totalBeforeTax > 0 && { total_before_tax: totalBeforeTax }),
         ...(totalTax > 0 && { total_tax: totalTax }),
         ...(totalAfterTax > 0 && { total_after_tax: totalAfterTax }),
         lines,
-      },
+      } as any,
       user,
     );
 
@@ -633,24 +649,24 @@ export const apInvoiceService = {
     };
 
     const invoiceDate = parseDate(metadata?.invoice_date);
-    const dueDate = metadata?.due_date
+    // Nếu user cung cấp due_date thì dùng, ngược lại để createAPInvoice() tính từ payment_term_id
+    const explicitDueDate = metadata?.due_date
       ? parseDate(metadata.due_date)
-      : (() => {
-          const d = new Date(invoiceDate);
-          d.setDate(d.getDate() + 30);
-          return d;
-        })();
+      : undefined;
 
     const result = await this.createAPInvoice(
       {
         source: "manual",
         invoice_no: invoiceNo,
         invoice_date: invoiceDate,
-        due_date: dueDate,
+        ...(explicitDueDate && { due_date: explicitDueDate }),
         supplier_id: po.supplier_id!,
         ...(po.id && { po_id: po.id }),
         branch_id: po.branch_id!,
         created_by: user.id,
+        ...(po.payment_term_id && { payment_term_id: po.payment_term_id }),
+        ...(po.currency_id && { currency_id: po.currency_id }),
+        exchange_rate: (po as any).exchange_rate ?? 1.0,
         invoice_series: metadata?.invoice_series ?? null,
         invoice_template: metadata?.invoice_template ?? null,
         tax_code: metadata?.tax_code ?? null,
@@ -658,7 +674,7 @@ export const apInvoiceService = {
         ...(totalTax > 0 && { total_tax: totalTax }),
         ...(totalAfterTax > 0 && { total_after_tax: totalAfterTax }),
         lines,
-      },
+      } as any,
       user,
     );
 
@@ -722,6 +738,15 @@ export const apInvoiceService = {
         throw new Error("Cross-branch denied");
       if (invoice.approval_status !== "waiting_approval")
         throw new Error("Invoice is not waiting for approval");
+
+      if (invoice.matching_status === "mismatch") {
+        throw {
+          status: 422,
+          code: "MISMATCH_REQUIRES_OVERRIDE",
+          message: "Hóa đơn có kết quả 3-Way Matching không khớp. Cần ghi đè mismatch trước khi duyệt.",
+          invoice_id: id,
+        };
+      }
 
       await invoice.update(
         {
@@ -991,7 +1016,9 @@ export const apInvoiceService = {
 
     // Filter by supplierName if provided
     if (query.supplierName) {
-      where["$invoiceSupplier.name$"] = { [Op.like]: `%${query.supplierName}%` };
+      where["$invoiceSupplier.name$"] = {
+        [Op.like]: `%${query.supplierName}%`,
+      };
     }
 
     // Date range on invoice_date
@@ -1131,5 +1158,32 @@ export const apInvoiceService = {
     const d = new Date(invoiceDate);
     d.setDate(d.getDate() + days);
     return d;
+  },
+
+  async overrideMismatch(id: number, user: any, reason: string) {
+    if (user.role !== Role.CHACC) {
+      throw { status: 403, message: "Chỉ Kế toán trưởng mới được ghi đè mismatch" };
+    }
+    const invoice = await ApInvoice.findByPk(id);
+    if (!invoice) throw { status: 404, message: "Không tìm thấy hóa đơn" };
+    if (invoice.matching_status !== "mismatch") {
+      throw { status: 400, message: "Hóa đơn không ở trạng thái mismatch" };
+    }
+    if (!reason?.trim()) {
+      throw { status: 400, message: "override_reason là bắt buộc" };
+    }
+
+    // Chuyển matching_status → "matched"
+    await invoice.update({ matching_status: "matched" });
+
+    // Ghi audit log
+    await apInvoiceAuditLogService.logOverride({
+      ap_invoice_id: id,
+      created_by: user.id,
+      override_type: "mismatch",
+      override_reason: reason,
+    });
+
+    return this.getById(id, user);
   },
 };

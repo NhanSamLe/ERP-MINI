@@ -8,6 +8,7 @@ import { StockLot } from "../models/stockLot.model";
 import { Warehouse } from "../models/warehouse.model";
 import { User } from "../../auth/models/user.model";
 import { Uom } from "../../master-data/models/uom.model";
+import { sequelize } from "../../../config/db";
 import {
   CreateInventoryDTO,
   CreateInventoryLineDTO,
@@ -200,63 +201,140 @@ export const physicalInventoryService = {
   },
 
   /** in_progress → validated: tạo stock adjustment cho các dòng chênh lệch */
-  async validate(id: number, userId: number) {
+  async applyAdjustments(inv: any, lines: any[], t: any) {
+    // Cập nhật stock_balances cho các dòng có chênh lệch
+    for (const line of lines) {
+      if (Number(line.difference_qty) === 0) continue;
+
+      const where: any = {
+        warehouse_id: inv.warehouse_id,
+        product_id: line.product_id,
+      };
+      if (line.location_id) where.location_id = line.location_id;
+      if (line.lot_id) where.lot_id = line.lot_id;
+
+      const balance = await StockBalance.findOne({
+        where,
+        lock: t.LOCK.UPDATE,
+        transaction: t,
+      });
+      const diff = Number(line.difference_qty);
+
+      if (balance) {
+        const newQty = Number(balance.quantity) + diff;
+        const newValue = newQty * Number(balance.unit_cost ?? 0);
+        await balance.update(
+          {
+            quantity: newQty,
+            total_value: newValue,
+          },
+          { transaction: t }
+        );
+      } else if (diff > 0) {
+        // Tạo mới balance nếu chưa có và diff dương
+        await StockBalance.create(
+          {
+            warehouse_id: inv.warehouse_id,
+            product_id: line.product_id,
+            location_id: line.location_id ?? null,
+            lot_id: line.lot_id ?? null,
+            quantity: diff,
+            unit_cost: line.unit_cost ?? 0,
+            total_value: diff * Number(line.unit_cost ?? 0),
+          },
+          { transaction: t }
+        );
+      }
+    }
+  },
+
+  /** in_progress → waiting_approval: gửi phê duyệt */
+  async submitForApproval(id: number, userId: number) {
+    const inv = await PhysicalInventory.findByPk(id);
+    if (!inv) throw { status: 404, message: "Physical inventory not found" };
+    if (inv.status !== "in_progress") {
+      throw {
+        status: 400,
+        message: "Chỉ phiếu kiểm kê có trạng thái đang tiến hành mới được gửi duyệt",
+      };
+    }
+
+    await inv.update({
+      status: "waiting_approval",
+    });
+
+    return this.getById(id);
+  },
+
+  /** waiting_approval → validated: phê duyệt và cập nhật tồn kho */
+  async approve(id: number, userId: number) {
     const inv = await PhysicalInventory.findByPk(id, {
       include: [{ model: PhysicalInventoryLine, as: "lines" }],
     });
     if (!inv) throw { status: 404, message: "Physical inventory not found" };
-    if (inv.status !== "in_progress")
+    if (inv.status !== "waiting_approval") {
       throw {
         status: 400,
-        message: "Only in_progress inventories can be validated",
+        message: "Chỉ phiếu kiểm kê đang chờ duyệt mới được phê duyệt",
       };
+    }
 
     const lines = (inv as any).lines as PhysicalInventoryLine[];
 
-    // Cập nhật stock_balances cho các dòng có chênh lệch
-    await Promise.all(
-      lines
-        .filter((l) => Number(l.difference_qty) !== 0)
-        .map(async (line) => {
-          const where: any = {
-            warehouse_id: inv.warehouse_id,
-            product_id: line.product_id,
-          };
-          if (line.location_id) where.location_id = line.location_id;
-          if (line.lot_id) where.lot_id = line.lot_id;
+    const t = await sequelize.transaction();
+    try {
+      await this.applyAdjustments(inv, lines, t);
 
-          const balance = await StockBalance.findOne({ where });
-          const diff = Number(line.difference_qty);
+      await inv.update(
+        {
+          status: "validated",
+          approved_by: userId,
+          approved_at: new Date(),
+          validated_by: userId,
+          validated_at: new Date(),
+          reject_reason: null, // Xóa lý do từ chối trước đó nếu có
+        },
+        { transaction: t }
+      );
 
-          if (balance) {
-            const newQty = Number(balance.quantity) + diff;
-            const newValue = newQty * Number(balance.unit_cost ?? 0);
-            await balance.update({
-              quantity: newQty,
-              total_value: newValue,
-            });
-          } else if (diff > 0) {
-            // Tạo mới balance nếu chưa có và diff dương
-            await StockBalance.create({
-              warehouse_id: inv.warehouse_id,
-              product_id: line.product_id,
-              location_id: line.location_id ?? null,
-              lot_id: line.lot_id ?? null,
-              quantity: diff,
-              unit_cost: line.unit_cost ?? 0,
-              total_value: diff * Number(line.unit_cost ?? 0),
-            });
-          }
-        }),
-    );
+      await t.commit();
+    } catch (error) {
+      await t.rollback();
+      throw error;
+    }
+
+    return this.getById(id);
+  },
+
+  /** waiting_approval → in_progress: từ chối phê duyệt */
+  async reject(id: number, userId: number, reason: string) {
+    const inv = await PhysicalInventory.findByPk(id);
+    if (!inv) throw { status: 404, message: "Physical inventory not found" };
+    if (inv.status !== "waiting_approval") {
+      throw {
+        status: 400,
+        message: "Chỉ phiếu kiểm kê đang chờ duyệt mới có thể từ chối",
+      };
+    }
+    if (!reason?.trim()) {
+      throw {
+        status: 400,
+        message: "Lý do từ chối là bắt buộc",
+      };
+    }
 
     await inv.update({
-      status: "validated",
-      validated_by: userId,
-      validated_at: new Date(),
+      status: "in_progress",
+      reject_reason: reason,
     });
 
     return this.getById(id);
+  },
+
+  /** in_progress → validated: giữ validate cũ để tương thích ngược nếu cần, gọi thẳng submit & approve */
+  async validate(id: number, userId: number) {
+    const inv = await this.submitForApproval(id, userId);
+    return await this.approve(id, userId);
   },
 
   /** draft | in_progress → cancelled */

@@ -90,6 +90,11 @@ export const stockMoveApi = {
   },
   approve: (id: number) => axiosClient.post(`/stock-move/${id}/approve`),
 
+  receiveTransfer: async (id: number): Promise<StockMove> => {
+    const res = await axiosClient.post(`/stock-move/${id}/receive`);
+    return res.data;
+  },
+
   rejectStockMove: (id: number, rejectReason: string) =>
     axiosClient.put(`/stock-move/${id}/reject`, { rejectReason }),
 };

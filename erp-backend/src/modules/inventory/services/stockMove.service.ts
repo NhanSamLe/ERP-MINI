@@ -7,7 +7,9 @@ import {
 import { StockMove } from "../models/stockMove.model";
 import { StockMoveLine } from "../models/stockMoveLine.model";
 import { Warehouse } from "../models/warehouse.model";
+import { StockReservation } from "../models/stockReservation.model";
 import { stockBalanceService } from "./stockBalance.service";
+import { stockReservationService } from "./stockReservation.service";
 import { productService } from "../../product/services/product.service";
 import { purchaseOrderService } from "../../purchase/services/purchaseOrder.service";
 import { PurchaseOrderLine } from "../../purchase/models/purchaseOrderLine.model";
@@ -95,6 +97,7 @@ async function convertToStockUom(
 import { StockLot } from "../models/stockLot.model";
 import { StockLocation } from "../models/stockLocation.model";
 import { StockBalance } from "../models/stockBalance.model";
+import { StockInTransit } from "../models/stockInTransit.model";
 import { PurchaseOrder } from "../../purchase/models/purchaseOrder.model";
 import { SaleOrder } from "../../sales/models/saleOrder.model";
 import { SaleOrderLine } from "../../sales/models/saleOrderLine.model";
@@ -445,13 +448,26 @@ export const stockMoveService = {
           };
         }
 
-        const available = Number(balance.quantity);
+        // Lấy số lượng đã reserve cho chính SO này (nếu có) để cộng ngược lại vào lượng khả dụng
+        const myReservation = await StockReservation.findOne({
+          where: {
+            product_id: line.product_id,
+            warehouse_id: body.warehouse_id,
+            reference_type: "sale_order",
+            reference_id: body.reference_id,
+            status: "active",
+          },
+          transaction: t,
+        });
+        const myReservedQty = myReservation ? Number(myReservation.qty) : 0;
+
+        const available = Number(balance.quantity) - Number(balance.reserved_qty ?? 0) + myReservedQty;
         const required = Number(line.quantity);
 
         if (available < required) {
           throw {
             status: 400,
-            message: `Not enough quantity for product ${productResult?.name}. Available: ${available}, Required: ${required}`,
+            message: `Không đủ tồn kho khả dụng cho sản phẩm ${productResult?.name}. Khả dụng: ${available}, Yêu cầu: ${required} (Đã giữ chỗ cho đơn khác: ${Number(balance.reserved_qty ?? 0) - myReservedQty})`,
           };
         }
       }
@@ -727,6 +743,7 @@ export const stockMoveService = {
             uom_id: line.uom_id ?? null,
             location_from_id: line.location_from_id ?? null,
             location_to_id: line.location_to_id ?? null,
+            lot_id: line.lot_id ?? null,
           }, { transaction: t }),
         ),
       );
@@ -1286,6 +1303,7 @@ export const stockMoveService = {
           uom_id: line.uom_id ?? null,
           location_from_id: line.location_from_id ?? null,
           location_to_id: line.location_to_id ?? null,
+          lot_id: line.lot_id ?? null,
         }),
       ),
     );
@@ -1457,8 +1475,8 @@ export const stockMoveService = {
       throw new Error("Only draft stock moves can be submitted.");
     }
 
-    // Chỉ creator mới submit được
-    if (stockMove.created_by !== user.id) {
+    // Chỉ creator mới submit được (ngoại trừ phiếu tự động liên kết chứng từ)
+    if (stockMove.created_by !== user.id && !stockMove.reference_type) {
       throw new Error("Only the creator can submit this stock move.");
     }
 
@@ -1606,28 +1624,41 @@ export const stockMoveService = {
       switch (move.type) {
         case "receipt":
           await this.processReceipt(move, lines, t);
+          await move.update(
+            { status: "posted", approved_by: user.id, approved_at: new Date() },
+            { transaction: t },
+          );
           break;
 
         case "issue":
           await this.processIssue(move, lines, t);
+          await move.update(
+            { status: "posted", approved_by: user.id, approved_at: new Date() },
+            { transaction: t },
+          );
           break;
 
         case "transfer":
-          await this.processTransfer(move, lines, t);
+          // ── Phase 1: xuất kho nguồn → trạng thái in_transit ──────────────
+          // Kho đích nhận hàng qua endpoint POST /:id/receive riêng
+          await this.processTransferPhase1(move, lines, t);
+          await move.update(
+            { status: "in_transit", approved_by: user.id, approved_at: new Date() },
+            { transaction: t },
+          );
           break;
 
         case "adjustment":
           await this.processAdjustment(move, lines, t);
+          await move.update(
+            { status: "posted", approved_by: user.id, approved_at: new Date() },
+            { transaction: t },
+          );
           break;
 
         default:
           throw new Error("Unknown stock move type");
       }
-      await move.update({
-        status: "posted",
-        approved_by: user.id,
-        approved_at: new Date(),
-      }, { transaction: t });
 
       await t.commit();
     } catch (error) {
@@ -1808,6 +1839,18 @@ export const stockMoveService = {
         undefined,
         t
       );
+
+      // Fulfill reservation nếu xuất kho từ SO
+      if (move.reference_type === "sale_order" && move.reference_id) {
+        await stockReservationService.fulfill(
+          line.product_id,
+          move.warehouse_from_id,
+          actualQty,
+          "sale_order",
+          move.reference_id,
+          t
+        );
+      }
     }
     if (move.reference_type === "sale_order" && move.reference_id) {
       const so = await SaleOrder.findByPk(move.reference_id, { transaction: t });
@@ -1882,9 +1925,9 @@ export const stockMoveService = {
   },
 
   // ==================================================
-  // TYPE: transfer
+  // TYPE: transfer — Phase 1: Kho nguồn xuất hàng
   // ==================================================
-  async processTransfer(move: any, lines: any[], t: any) {
+  async processTransferPhase1(move: any, lines: any[], t: any) {
     for (const line of lines) {
       const product = await Product.findByPk(line.product_id, {
         attributes: ["uom_id"],
@@ -1896,6 +1939,8 @@ export const stockMoveService = {
         product?.uom_id,
         line.product_id,
       );
+
+      // Trừ tồn kho nguồn
       await this.updateStockBalance(
         move.warehouse_from_id,
         line.product_id,
@@ -1905,16 +1950,123 @@ export const stockMoveService = {
         undefined,
         t
       );
+
+      // Lấy unit_cost hiện tại của kho nguồn để lưu vào in_transit
+      const sourceBalance = await StockBalance.findOne({
+        where: { warehouse_id: move.warehouse_from_id, product_id: line.product_id },
+        transaction: t,
+      });
+      const unitCost = sourceBalance ? parseFloat(String(sourceBalance.unit_cost ?? 0)) : 0;
+
+      // Ghi nhận hàng đang vận chuyển
+      await StockInTransit.create({
+        stock_move_id: move.id,
+        product_id: line.product_id,
+        warehouse_from_id: move.warehouse_from_id,
+        warehouse_to_id: move.warehouse_to_id,
+        qty: actualQty,
+        unit_cost: unitCost,
+        lot_id: line.lot_id ?? null,
+        location_from_id: line.location_from_id ?? null,
+        location_to_id: line.location_to_id ?? null,
+        dispatched_at: new Date(),
+      }, { transaction: t });
+    }
+  },
+
+  // ==================================================
+  // TYPE: transfer — Phase 2: Kho đích nhận hàng
+  // ==================================================
+  async processTransferPhase2(move: any, inTransitItems: StockInTransit[], t: any) {
+    for (const item of inTransitItems) {
+      // Cộng tồn kho đích, giữ nguyên unit_cost từ kho nguồn
       await this.updateStockBalance(
-        move.warehouse_to_id,
-        line.product_id,
-        +actualQty,
-        line.location_to_id ?? null,
-        line.lot_id ?? null,
-        undefined,
+        item.warehouse_to_id,
+        item.product_id,
+        +Number(item.qty),
+        item.location_to_id ?? null,
+        item.lot_id ?? null,
+        item.unit_cost ?? undefined,
         t
       );
+
+      // Đánh dấu đã nhận
+      await item.update({ received_at: new Date() }, { transaction: t });
     }
+  },
+
+  /**
+   * receiveTransfer — Phase 2: Kho đích xác nhận nhận hàng.
+   * Chỉ WHMANAGER hoặc WHSTAFF của kho đích mới được gọi.
+   *
+   * Flow:
+   *   in_transit → posted
+   *   stock_in_transit.received_at = now
+   *   stock_balance (kho đích) += qty
+   */
+  async receiveTransfer(stockMoveId: number, user: any) {
+    const allowedRoles = [Role.WHMANAGER, Role.WHSTAFF];
+    if (!allowedRoles.includes(user.role)) {
+      throw new Error("You do not have permission to receive transfer.");
+    }
+
+    const move = await this.getById(stockMoveId);
+    if (!move) throw { status: 404, message: "Stock Move not found" };
+
+    if (move.type !== "transfer") {
+      throw {
+        status: 400,
+        message: "Chỉ phiếu điều chuyển (transfer) mới có thể xác nhận nhận hàng.",
+      };
+    }
+
+    if (move.status !== "in_transit") {
+      throw {
+        status: 400,
+        message: `Phiếu điều chuyển đang ở trạng thái '${move.status}', không thể nhận. Chỉ nhận được khi status = in_transit.`,
+      };
+    }
+
+    // Validate: user phải thuộc branch của kho đích
+    const warehouseTo = await Warehouse.findByPk(move.warehouse_to_id!);
+    if (!warehouseTo) throw { status: 400, message: "Kho đích không tìm thấy." };
+    if (warehouseTo.branch_id !== user.branch_id) {
+      throw {
+        status: 403,
+        message: "Bạn chỉ có thể nhận hàng cho kho thuộc chi nhánh của mình.",
+      };
+    }
+
+    // Lấy tất cả items đang in-transit của phiếu này
+    const inTransitItems = await StockInTransit.findAll({
+      where: { stock_move_id: stockMoveId },
+    });
+
+    if (inTransitItems.length === 0) {
+      throw {
+        status: 400,
+        message: "Không tìm thấy hàng đang vận chuyển cho phiếu này.",
+      };
+    }
+
+    const t = await sequelize.transaction();
+    try {
+      // Phase 2: cộng tồn kho đích
+      await this.processTransferPhase2(move, inTransitItems, t);
+
+      // Chuyển status → posted
+      await StockMove.update(
+        { status: "posted" },
+        { where: { id: stockMoveId }, transaction: t },
+      );
+
+      await t.commit();
+    } catch (error) {
+      await t.rollback();
+      throw error;
+    }
+
+    return this.getById(stockMoveId);
   },
 
   async processAdjustment(move: any, lines: any[], t: any) {

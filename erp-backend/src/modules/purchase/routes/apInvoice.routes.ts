@@ -64,6 +64,9 @@ router.put("/:id/approve", chaccOnly, apInvoiceController.approve);
 // PUT /api/ap/invoices/:id/reject
 router.put("/:id/reject", chaccOnly, apInvoiceController.reject);
 
+// POST /api/ap/invoices/:id/override-mismatch
+router.post("/:id/override-mismatch", chaccOnly, apInvoiceController.overrideMismatch);
+
 // DELETE /api/ap/invoices/:id  — chỉ draft chưa submit
 router.delete("/:id", accountOnly, apInvoiceController.deleteInvoice);
 

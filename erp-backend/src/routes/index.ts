@@ -33,6 +33,7 @@ import apInvoiceRoutes from "../modules/purchase/routes/apInvoice.routes";
 import apPaymentRoutes from "../modules/purchase/routes/apPayment.route";
 import rfqRoutes from "../modules/purchase/routes/rfq.routes";
 import purchasePriceListRoutes from "../modules/purchase/routes/purchasePriceList.routes";
+import matchingToleranceRoutes from "../modules/purchase/routes/matchingTolerance.routes";
 import {
   praRouter,
   purchaseReturnRouter,
@@ -93,6 +94,7 @@ router.use("/purchase/return-authorizations", praRouter);
 router.use("/purchase/returns", purchaseReturnRouter);
 router.use("/purchase/debit-notes", apDebitNoteRouter);
 router.use("/purchase/vendor-refunds", vendorRefundRouter);
+router.use("/purchase/matching-tolerances", matchingToleranceRoutes);
 
 import { reportRoutes } from "../modules/reports/routes";
 

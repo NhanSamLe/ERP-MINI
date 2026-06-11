@@ -341,6 +341,23 @@ export default function ViewApInvoicePage() {
               label="Ngày đến hạn"
               value={new Date(invoice.due_date).toLocaleDateString("vi-VN")}
             />
+            <InfoRow
+              icon={<Calendar className="w-4 h-4" />}
+              label="Điều khoản TT"
+              value={invoice.paymentTerm?.name || "—"}
+            />
+            <InfoRow
+              icon={<FileText className="w-4 h-4" />}
+              label="Tiền tệ"
+              value={invoice.currency?.code || "VND"}
+            />
+            {invoice.currency?.code && invoice.currency?.code !== "VND" && invoice.exchange_rate && (
+              <InfoRow
+                icon={<TrendingUp className="w-4 h-4" />}
+                label="Tỷ giá"
+                value={Number(invoice.exchange_rate).toLocaleString("vi-VN") + " ₫"}
+              />
+            )}
             {(invoice as any).invoice_series && (
               <InfoRow
                 icon={<FileText className="w-4 h-4" />}

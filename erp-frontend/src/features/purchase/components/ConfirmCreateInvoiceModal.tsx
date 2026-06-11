@@ -51,9 +51,9 @@ interface Props {
 const fmt = (v: number) =>
   v.toLocaleString("en-US", { minimumFractionDigits: 0 });
 
-const today = () => new Date().toISOString().split("T")[0];
-const plusDays = (days: number) => {
-  const d = new Date();
+const plusDays = (days: number, baseDateStr?: string) => {
+  const d = baseDateStr ? new Date(baseDateStr) : new Date();
+  if (isNaN(d.getTime())) return baseDateStr || "";
   d.setDate(d.getDate() + days);
   return d.toISOString().split("T")[0];
 };
@@ -76,29 +76,33 @@ export default function ConfirmCreateInvoiceModal({
   const [fetchingLines, setFetchingLines] = useState(false);
   const [showLines, setShowLines] = useState(true);
 
+  const getTodayStr = () => new Date().toISOString().split("T")[0];
+
   const [meta, setMeta] = useState<InvoiceMetadata>({
     invoice_no: genInvoiceNo(),
-    invoice_date: today(),
+    invoice_date: getTodayStr(),
     due_date: plusDays(30),
     invoice_series: "",
     invoice_template: "",
     tax_code: "",
   });
 
-  // Reset khi mở lại
+  // Reset khi mở lại hoặc PO thay đổi
   useEffect(() => {
     if (open) {
       setStep(1);
+      const termDays = po?.paymentTerm?.days ?? 30;
+      const todayStr = getTodayStr();
       setMeta({
         invoice_no: genInvoiceNo(),
-        invoice_date: today(),
-        due_date: plusDays(30),
+        invoice_date: todayStr,
+        due_date: plusDays(termDays, todayStr),
         invoice_series: "",
         invoice_template: "",
         tax_code: "",
       });
     }
-  }, [open]);
+  }, [open, po]);
 
   // Fetch line summary khi chọn PO
   useEffect(() => {
@@ -491,12 +495,15 @@ export default function ConfirmCreateInvoiceModal({
                       <input
                         type="date"
                         value={meta.invoice_date}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const newDate = e.target.value;
+                          const termDays = po?.paymentTerm?.days ?? 30;
                           setMeta((p) => ({
                             ...p,
-                            invoice_date: e.target.value,
-                          }))
-                        }
+                            invoice_date: newDate,
+                            due_date: plusDays(termDays, newDate),
+                          }));
+                        }}
                         className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none"
                       />
                     </FormField>

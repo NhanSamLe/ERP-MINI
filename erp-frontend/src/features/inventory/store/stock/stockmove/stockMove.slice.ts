@@ -14,6 +14,7 @@ import {
   submitStockMoveThunk,
   approveStockMoveThunk,
   rejectStockMoveThunk,
+  receiveTransferThunk,
 } from "./stockMove.thunks";
 
 import { StockMoveState } from "./stockMove.types";
@@ -147,6 +148,20 @@ export const stockMoveSlice = createSlice({
       .addCase(rejectStockMoveThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || "Error rejecting stock move";
+      })
+      .addCase(receiveTransferThunk.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(receiveTransferThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.items.findIndex((m) => m.id === action.payload.id);
+        if (index !== -1) state.items[index] = action.payload;
+        state.selected = action.payload;
+      })
+      .addCase(receiveTransferThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || "Error receiving transfer";
       });
   },
 });

@@ -129,6 +129,9 @@ export interface ApInvoice {
   reject_reason: string | null;
 
   branch_id: number;
+  payment_term_id?: number | null;
+  currency_id?: number | null;
+  exchange_rate?: string | number | null;
 
   created_at: string;
   updated_at: string;
@@ -139,6 +142,18 @@ export interface ApInvoice {
   order?: PurchaseOrder;
   lines?: ApInvoiceLine[];
   audit_trail?: ApInvoiceAuditLog[];
+  paymentTerm?: {
+    id: number;
+    name: string;
+    code: string;
+    days?: number;
+  } | null;
+  currency?: {
+    id: number;
+    name: string;
+    code: string;
+    symbol?: string;
+  } | null;
 }
 export interface ApInvoiceSummary {
   id: number;

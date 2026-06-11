@@ -801,6 +801,23 @@ export default function ViewPurchaseOrderPage() {
                   value={date}
                 />
                 <InfoRow
+                  icon={<Calendar className="w-3.5 h-3.5" />}
+                  label="Điều khoản TT"
+                  value={(finalPO as any)?.paymentTerm?.name || "—"}
+                />
+                <InfoRow
+                  icon={<FileText className="w-3.5 h-3.5" />}
+                  label="Tiền tệ"
+                  value={(finalPO as any)?.currency?.code || "VND"}
+                />
+                {(finalPO as any)?.currency?.code && (finalPO as any)?.currency?.code !== "VND" && (
+                  <InfoRow
+                    icon={<TrendingUp className="w-3.5 h-3.5" />}
+                    label="Tỷ giá"
+                    value={Number((finalPO as any).exchange_rate).toLocaleString("vi-VN") + " ₫"}
+                  />
+                )}
+                <InfoRow
                   icon={<Building2 className="w-3.5 h-3.5" />}
                   label="Chi nhánh"
                   value={selectedBranchName}

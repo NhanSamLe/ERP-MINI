@@ -581,14 +581,25 @@ export default function ViewApPaymentPage() {
                 </p>
               </div>
             )}
-            {(payment as any).bank_account_id && (
+            {((payment as any).bankAccount || (payment as any).bank_account_id) && (
               <div className="bg-gray-50 rounded-xl p-4">
                 <p className="text-xs text-gray-500 font-medium mb-1">
                   Tài khoản ngân hàng
                 </p>
-                <p className="font-semibold text-gray-800">
-                  #{(payment as any).bank_account_id}
-                </p>
+                {(payment as any).bankAccount ? (
+                  <>
+                    <p className="font-semibold text-gray-800">
+                      {(payment as any).bankAccount.bank_name} - {(payment as any).bankAccount.account_number}
+                    </p>
+                    <p className="text-[10px] text-gray-400 font-semibold uppercase mt-0.5">
+                      {(payment as any).bankAccount.account_name}
+                    </p>
+                  </>
+                ) : (
+                  <p className="font-semibold text-gray-800">
+                    #{(payment as any).bank_account_id}
+                  </p>
+                )}
               </div>
             )}
           </div>

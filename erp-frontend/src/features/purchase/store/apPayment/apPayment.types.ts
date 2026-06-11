@@ -62,6 +62,14 @@ export interface ApPayment {
     bank_name?: string;
     status: "active" | "inactive";
   };
+  bank_account_id?: number | null;
+  bankAccount?: {
+    id: number;
+    account_name: string;
+    account_number: string;
+    bank_name: string;
+    bank_branch?: string | null;
+  } | null;
 
   created_at: string;
   updated_at: string;

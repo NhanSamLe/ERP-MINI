@@ -11,6 +11,8 @@ import {
 import { ActionConfirmModal, StatusBadge } from "@/components/common";
 import { StandardFormLayout, FormSection } from "@/components/layout";
 import { formatVND } from "@/utils/currency.helper";
+import { toast } from "react-toastify";
+import { getErrorMessage } from "@/utils/ErrorHelper";
 import {
   ShoppingCart, User, Building2, CreditCard,
   Phone, Mail, MapPin, Package, FileText, AlertTriangle,
@@ -433,8 +435,13 @@ export default function SaleOrderDetailPage() {
         confirmText="Gửi duyệt"
         variant="primary"
         onConfirm={async () => {
-          await dispatch(submitSaleOrder(order.id)).unwrap();
-          setActiveModal(null);
+          try {
+            await dispatch(submitSaleOrder(order.id)).unwrap();
+            toast.success("Gửi duyệt đơn hàng thành công");
+            setActiveModal(null);
+          } catch (err) {
+            toast.error(getErrorMessage(err));
+          }
         }}
       />
 
@@ -446,8 +453,13 @@ export default function SaleOrderDetailPage() {
         confirmText="Duyệt"
         variant="success"
         onConfirm={async () => {
-          await dispatch(approveSaleOrder(order.id)).unwrap();
-          setActiveModal(null);
+          try {
+            await dispatch(approveSaleOrder(order.id)).unwrap();
+            toast.success("Duyệt đơn hàng thành công");
+            setActiveModal(null);
+          } catch (err) {
+            toast.error(getErrorMessage(err));
+          }
         }}
       />
 
@@ -462,8 +474,13 @@ export default function SaleOrderDetailPage() {
         reasonLabel="Lý do từ chối"
         reasonPlaceholder="VD: Giá không khớp thỏa thuận, không đủ hàng..."
         onConfirm={async (reason) => {
-          await dispatch(rejectSaleOrder({ id: order.id, reason: reason ?? "" })).unwrap();
-          setActiveModal(null);
+          try {
+            await dispatch(rejectSaleOrder({ id: order.id, reason: reason ?? "" })).unwrap();
+            toast.success("Đã từ chối đơn hàng");
+            setActiveModal(null);
+          } catch (err) {
+            toast.error(getErrorMessage(err));
+          }
         }}
       />
     </StandardFormLayout>

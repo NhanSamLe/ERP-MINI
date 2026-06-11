@@ -16,6 +16,8 @@ import {
   TaxRate,
   User,
   Uom,
+  PaymentTerm,
+  Currency,
 } from "../../../models";
 import { Role } from "../../../core/types/enum";
 import { literal, Op } from "sequelize";
@@ -208,6 +210,16 @@ export const purchaseOrderService = {
           as: "approver",
           attributes: ["id", "full_name", "email", "phone", "avatar_url"],
         },
+        {
+          model: PaymentTerm,
+          as: "paymentTerm",
+          attributes: ["id", "name", "days", "code"],
+        },
+        {
+          model: Currency,
+          as: "currency",
+          attributes: ["id", "code", "symbol", "name"],
+        },
       ],
     });
 
@@ -249,6 +261,9 @@ export const purchaseOrderService = {
           branch_id: data.branch_id,
           po_no: data.po_no,
           supplier_id: data.supplier_id,
+          payment_term_id: data.payment_term_id || null,
+          currency_id: data.currency_id || null,
+          exchange_rate: data.exchange_rate || 1.0,
           order_date: data.order_date,
           created_by: user.id,
           status: "draft",
@@ -366,6 +381,9 @@ export const purchaseOrderService = {
           branch_id: data.branch_id,
           po_no: data.po_no,
           supplier_id: data.supplier_id,
+          payment_term_id: data.payment_term_id || null,
+          currency_id: data.currency_id || null,
+          exchange_rate: data.exchange_rate || 1.0,
           order_date: new Date(data.order_date),
           description: data.description,
         },
@@ -735,6 +753,16 @@ export const purchaseOrderService = {
           model: Partner,
           as: "supplier",
           attributes: ["id", "email", "name", "phone"],
+        },
+        {
+          model: PaymentTerm,
+          as: "paymentTerm",
+          required: false,
+        },
+        {
+          model: Currency,
+          as: "currency",
+          required: false,
         },
       ],
       order: [["created_at", "DESC"]],

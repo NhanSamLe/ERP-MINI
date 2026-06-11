@@ -17,6 +17,9 @@ export interface PurchaseOrderUpdateDto {
   total_tax: number;
   total_after_tax: number;
   description: string;
+  payment_term_id?: number | null;
+  currency_id?: number | null;
+  exchange_rate?: number;
   approved_by?: string | null;
   submitted_at?: string | null;
   approved_at?: string | null;

@@ -2,7 +2,8 @@
 import { SaleOrder } from "../models/saleOrder.model";
 import { SaleOrderLine } from "../models/saleOrderLine.model";
 import { TaxRate } from "../../master-data/models/taxRate.model";
-import { Branch, Currency, Partner, Product, User, Uom, sequelize } from "../../../models";
+import { Branch, Currency, Partner, Product, User, Uom, Warehouse, sequelize } from "../../../models";
+import { stockReservationService } from "../../inventory/services/stockReservation.service";
 import { Quotation } from "../models/quotation.model";
 import { Opportunity } from "../../crm/models/opportunity.model";
 import { StockMove } from "../../inventory/models/stockMove.model";
@@ -520,6 +521,30 @@ export const saleOrderService = {
         }
       }
 
+      const warehouse = await Warehouse.findOne({
+        where: { branch_id: order.branch_id },
+        transaction: t,
+      });
+      if (!warehouse) {
+        throw new Error("Không tìm thấy kho nào thuộc chi nhánh này để thực hiện giữ chỗ hàng hóa.");
+      }
+      const warehouseId = warehouse.id;
+
+      if (order.lines?.length) {
+        for (const line of order.lines) {
+          await stockReservationService.reserve(
+            {
+              product_id: line.product_id,
+              warehouse_id: warehouseId,
+              qty: Number(line.quantity),
+              reference_type: "sale_order",
+              reference_id: order.id,
+            },
+            t
+          );
+        }
+      }
+
       await order.update(
         {
           approval_status: "approved",
@@ -554,7 +579,8 @@ export const saleOrderService = {
           reference_type: "sale_order",
           reference_id: order.id,
           branch_id: order.branch_id,
-          status: "waiting_approval",
+          status: "draft",
+          warehouse_from_id: warehouseId,
           created_by: manager.id,
           note: `Tự động tạo lệnh xuất kho cho Sale Order: ${order.order_no}`,
         },

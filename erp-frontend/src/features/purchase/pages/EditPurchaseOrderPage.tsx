@@ -51,6 +51,7 @@ import { PurchaseOrderStatus } from "../constants/purchaseStatus.enum";
 import { formatVND } from "@/utils/currency.helper";
 import { StatusBadge } from "../components/Common";
 import { purchasePriceListApi } from "../api/purchasePriceList.api";
+import axiosClient from "../../../api/axiosClient";
 
 interface LineItem {
   id?: number;
@@ -106,12 +107,23 @@ export default function EditPurchaseOrderPage() {
   const [lines, setLines] = useState<LineItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [priceInputs, setPriceInputs] = useState<Record<number, string>>({});
+  const [paymentTerms, setPaymentTerms] = useState<any[]>([]);
+  const [paymentTermId, setPaymentTermId] = useState("");
+  const [currencies, setCurrencies] = useState<any[]>([]);
+  const [currencyId, setCurrencyId] = useState("");
+  const [exchangeRate, setExchangeRate] = useState("1.0");
 
   useEffect(() => {
     if (id) dispatch(fetchPurchaseOrderByIdThunk(Number(id)));
     dispatch(loadPartners({ type: "supplier" }));
     dispatch(fetchAllUomsThunk());
     dispatch(fetchAllConversionsThunk());
+    axiosClient.get("/master-data/payment-terms")
+      .then((res) => setPaymentTerms(res.data || []))
+      .catch((err) => console.error("Error fetching payment terms:", err));
+    axiosClient.get("/master-data/currencies")
+      .then((res) => setCurrencies(res.data?.currencies || []))
+      .catch((err) => console.error("Error fetching currencies:", err));
   }, [dispatch, id]);
 
   useEffect(() => {
@@ -296,6 +308,21 @@ export default function EditPurchaseOrderPage() {
       }
       setReference(finalPO?.po_no || "");
       setDescription(finalPO?.description || "");
+      if (finalPO?.payment_term_id) {
+        setPaymentTermId(finalPO.payment_term_id.toString());
+      } else {
+        setPaymentTermId("");
+      }
+      if (finalPO?.currency_id) {
+        setCurrencyId(finalPO.currency_id.toString());
+      } else {
+        setCurrencyId("");
+      }
+      if (finalPO?.exchange_rate) {
+        setExchangeRate(finalPO.exchange_rate.toString());
+      } else {
+        setExchangeRate("1.0");
+      }
       const enrichedLines = await Promise.all(
         linesToLoad.map(async (l: PurchaseOrderLine) => {
           const product = await dispatch(
@@ -420,6 +447,30 @@ export default function EditPurchaseOrderPage() {
         newPriceInputs[l.temp_id] = String(l.price_in_purchase_uom ?? 0);
     });
     setPriceInputs(newPriceInputs);
+  };
+
+  const handleCurrencyChange = async (newCurrencyId: string) => {
+    setCurrencyId(newCurrencyId);
+    const selected = currencies.find((c) => String(c.id) === newCurrencyId);
+    if (!selected || selected.code === "VND") {
+      setExchangeRate("1.0");
+      return;
+    }
+    try {
+      const res = await axiosClient.get("/master-data/currencies/rates");
+      const rates = res.data?.rates || [];
+      const rateObj = rates.find((r: any) => String(r.quote_currency_id) === newCurrencyId);
+      if (rateObj) {
+        const val = Number(rateObj.rate);
+        const rateToVnd = val > 0 ? (1 / val).toFixed(2) : "1.0";
+        setExchangeRate(rateToVnd);
+      } else {
+        setExchangeRate("1.0");
+      }
+    } catch (e) {
+      console.error("Failed to load exchange rate", e);
+      setExchangeRate("1.0");
+    }
   };
 
   const updateLine = async (
@@ -563,6 +614,9 @@ export default function EditPurchaseOrderPage() {
         po_no: reference,
         supplier_id: Number(supplierId),
         order_date: date,
+        payment_term_id: paymentTermId ? Number(paymentTermId) : null,
+        currency_id: currencyId ? Number(currencyId) : null,
+        exchange_rate: Number(exchangeRate) || 1.0,
         total_before_tax: totalBeforeTax,
         total_tax: totalOrderTax,
         total_after_tax: totalAfterTax,
@@ -780,6 +834,58 @@ export default function EditPurchaseOrderPage() {
                       onChange={setReference}
                       placeholder="PO-2025-XXXX"
                       className="h-9 text-sm font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Điều khoản thanh toán
+                    </label>
+                    <Select
+                      value={paymentTermId}
+                      onValueChange={setPaymentTermId}
+                    >
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder="Chọn điều khoản..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {paymentTerms.map((t) => (
+                          <SelectItem key={t.id} value={String(t.id)}>
+                            {`${t.name} (${t.days} ngày)`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Tiền tệ
+                    </label>
+                    <Select
+                      value={currencyId}
+                      onValueChange={handleCurrencyChange}
+                    >
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder="Chọn tiền tệ..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {currencies.map((c) => (
+                          <SelectItem key={c.id} value={String(c.id)}>
+                            {`${c.code} (${c.name})`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Tỷ giá (VND/Ngoại tệ)
+                    </label>
+                    <Input
+                      type="number"
+                      value={exchangeRate}
+                      onChange={setExchangeRate}
+                      disabled={!currencyId || currencies.find(c => String(c.id) === currencyId)?.code === "VND"}
+                      className="h-9 text-sm"
                     />
                   </div>
                 </div>

@@ -23,6 +23,8 @@ interface GroupedBalance {
   warehouse: { id: number; name: string };
   product: { id: number; name: string; sku: string; image_url?: string };
   total_quantity: number;
+  total_reserved_qty?: number;
+  total_available_qty?: number;
   total_value: number;
   unit_cost: number;
   lots: Array<{
@@ -32,6 +34,8 @@ interface GroupedBalance {
     manufacture_date?: string;
     serial_no?: string;
     quantity: number;
+    reserved_qty?: number;
+    available_qty?: number;
     unit_cost: number;
     location_id?: number | null;
   }>;
@@ -103,8 +107,20 @@ export default function StockBalancePages() {
             formatter: (val: any) => val?.name || "-",
           },
           {
-            header: "Số lượng tồn",
+            header: "Tồn thực tế",
             key: "total_quantity",
+            width: 15,
+            align: "right",
+          },
+          {
+            header: "Đang giữ chỗ",
+            key: "total_reserved_qty",
+            width: 15,
+            align: "right",
+          },
+          {
+            header: "Khả dụng",
+            key: "total_available_qty",
             width: 15,
             align: "right",
           },
@@ -233,7 +249,9 @@ export default function StockBalancePages() {
                 <th className="px-6 py-3 text-left w-10"></th>
                 <th className="px-6 py-3 text-left">Kho hàng</th>
                 <th className="px-6 py-3 text-left">Sản phẩm</th>
-                <th className="px-6 py-3 text-right">Tổng số lượng</th>
+                <th className="px-6 py-3 text-right">Tồn thực tế</th>
+                <th className="px-6 py-3 text-right">Đang giữ chỗ</th>
+                <th className="px-6 py-3 text-right">Khả dụng</th>
                 <th className="px-6 py-3 text-right">Giá vốn đơn vị</th>
                 <th className="px-6 py-3 text-right">Tổng giá trị</th>
                 <th className="px-6 py-3 text-left">Cập nhật lúc</th>
@@ -242,7 +260,7 @@ export default function StockBalancePages() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-16 text-slate-400">
+                  <td colSpan={9} className="text-center py-16 text-slate-400">
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-8 h-8 border-3 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
                       <span className="text-xs font-medium">Đang tải số dư tồn kho...</span>
@@ -251,7 +269,7 @@ export default function StockBalancePages() {
                 </tr>
               ) : data.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-16 text-slate-400 italic">
+                  <td colSpan={9} className="text-center py-16 text-slate-400 italic">
                     Không có dữ liệu tồn kho
                   </td>
                 </tr>
@@ -303,6 +321,16 @@ export default function StockBalancePages() {
                             maximumFractionDigits: 3,
                           })}
                         </td>
+                        <td className="px-6 py-3.5 text-right font-semibold text-amber-600 bg-amber-50/20">
+                          {Number(row.total_reserved_qty ?? 0).toLocaleString("vi-VN", {
+                            maximumFractionDigits: 3,
+                          })}
+                        </td>
+                        <td className="px-6 py-3.5 text-right font-bold text-emerald-600 bg-emerald-50/20">
+                          {Number(row.total_available_qty ?? row.total_quantity).toLocaleString("vi-VN", {
+                            maximumFractionDigits: 3,
+                          })}
+                        </td>
                         <td className="px-6 py-3.5 text-right font-mono text-slate-600">
                           {Number(row.unit_cost).toLocaleString("vi-VN")}
                         </td>
@@ -346,6 +374,16 @@ export default function StockBalancePages() {
                             </td>
                             <td className="px-6 py-2.5 text-right text-xs text-indigo-700 font-bold font-mono">
                               {Number(lot.quantity).toLocaleString("vi-VN", {
+                                maximumFractionDigits: 3,
+                              })}
+                            </td>
+                            <td className="px-6 py-2.5 text-right text-xs font-semibold font-mono text-amber-600">
+                              {Number(lot.reserved_qty ?? 0).toLocaleString("vi-VN", {
+                                maximumFractionDigits: 3,
+                              })}
+                            </td>
+                            <td className="px-6 py-2.5 text-right text-xs font-bold font-mono text-emerald-600">
+                              {Number(lot.available_qty ?? lot.quantity).toLocaleString("vi-VN", {
                                 maximumFractionDigits: 3,
                               })}
                             </td>

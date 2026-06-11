@@ -72,6 +72,7 @@ export const stockBalanceService = {
     for (const row of rows) {
       const key = `${row.warehouse_id}_${row.product_id}`;
       const qty = parseFloat(String(row.quantity ?? 0));
+      const reserved = parseFloat(String(row.reserved_qty ?? 0));
       const cost = parseFloat(String(row.unit_cost ?? 0));
 
       if (!groupMap.has(key)) {
@@ -81,6 +82,8 @@ export const stockBalanceService = {
           warehouse: (row as any).warehouse,
           product: (row as any).product,
           total_quantity: 0,
+          total_reserved_qty: 0,
+          total_available_qty: 0,
           total_value: 0,
           unit_cost: cost,
           lots: [],
@@ -91,6 +94,8 @@ export const stockBalanceService = {
 
       const group = groupMap.get(key)!;
       group.total_quantity += qty;
+      group.total_reserved_qty += reserved;
+      group.total_available_qty = group.total_quantity - group.total_reserved_qty;
       group.total_value += qty * cost;
       group.updated_at =
         row.updated_at > group.updated_at ? row.updated_at : group.updated_at;
@@ -104,6 +109,8 @@ export const stockBalanceService = {
           manufacture_date: (row as any).lot?.manufacture_date,
           serial_no: (row as any).lot?.serial_no,
           quantity: qty,
+          reserved_qty: reserved,
+          available_qty: qty - reserved,
           unit_cost: cost,
           location_id: row.location_id,
         });
@@ -150,6 +157,45 @@ export const stockBalanceService = {
   async findByProductAndWarehouse(productId: number, warehouseId: number) {
     return await StockBalance.findOne({
       where: { product_id: productId, warehouse_id: warehouseId },
+    });
+  },
+
+  async getAvailableStock(user: JwtPayload, productId?: number, warehouseId?: number) {
+    const where: any = {};
+    if (productId) where.product_id = productId;
+    if (warehouseId) where.warehouse_id = warehouseId;
+
+    const balances = await StockBalance.findAll({
+      where,
+      include: [
+        {
+          model: Warehouse,
+          as: "warehouse",
+          where: { branch_id: user.branch_id },
+          attributes: ["id", "name"],
+        },
+        {
+          model: Product,
+          as: "product",
+          attributes: ["id", "name", "sku"],
+        },
+      ],
+    });
+
+    return balances.map((b) => {
+      const quantity = Number(b.quantity || 0);
+      const reserved = Number(b.reserved_qty || 0);
+      return {
+        id: b.id,
+        warehouse_id: b.warehouse_id,
+        warehouse_name: (b as any).warehouse?.name,
+        product_id: b.product_id,
+        product_name: (b as any).product?.name,
+        product_sku: (b as any).product?.sku,
+        quantity,
+        reserved_qty: reserved,
+        available_qty: quantity - reserved,
+      };
     });
   },
 

@@ -8,7 +8,7 @@ import { GlJournal } from "../../finance/models/glJournal.model";
 import { GlEntry } from "../../finance/models/glEntry.model";
 import { GlEntryLine } from "../../finance/models/glEntryLine.model";
 import { GlAccount } from "../../finance/models/glAccount.model";
-import { ApPaymentAllocation, Partner, sequelize } from "../../../models";
+import { ApPaymentAllocation, Partner, sequelize, BankAccount } from "../../../models";
 import { Op, QueryTypes } from "sequelize";
 import { notificationService } from "../../../core/services/notification.service";
 
@@ -48,6 +48,11 @@ export const apPaymentService = {
           as: "approver",
           attributes: ["id", "full_name", "email", "phone", "avatar_url"],
         },
+        {
+          model: BankAccount,
+          as: "bankAccount",
+          required: false,
+        },
       ],
       order: [["created_at", "DESC"]],
     });
@@ -78,6 +83,11 @@ export const apPaymentService = {
           model: User,
           as: "approver",
           attributes: ["id", "full_name", "email", "phone", "avatar_url"],
+        },
+        {
+          model: BankAccount,
+          as: "bankAccount",
+          required: false,
         },
       ],
     });
@@ -264,6 +274,8 @@ export const apPaymentService = {
       const entryDate: Date = payment.payment_date || new Date();
       const amount = Number(payment.amount || 0);
       if (amount <= 0) throw new Error("Payment amount must be > 0");
+      const exchangeRate = Number(payment.exchange_rate ?? 1.0);
+      const baseAmount = amount * exchangeRate; // Quy đổi ra VND để ghi sổ cái
 
       const entry = await GlEntry.create(
         {
@@ -283,14 +295,14 @@ export const apPaymentService = {
       const lineDebit: any = {
         entry_id: entry.id,
         account_id: debitAccountId,
-        debit: amount,
+        debit: baseAmount,
         credit: 0,
       };
       const lineCredit: any = {
         entry_id: entry.id,
         account_id: creditAccountId,
         debit: 0,
-        credit: amount,
+        credit: baseAmount,
       };
 
       if (supplierId) {
