@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { UniqueConstraintError } from 'sequelize';
 import * as model from '../../../models/index';
 import { hashPassword } from '../../../core/utils/security';
 import { sendEmail, newEmployeeAccountTemplate } from '../../../core/utils/email';
@@ -19,6 +20,17 @@ export interface RegisterPayload {
   phone?: string;
 }
 
+async function generateUniqueCompanyCode(transaction: any) {
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const code = `C-${crypto.randomBytes(16).toString('hex')}`;
+    const existing = await model.Company.findOne({ where: { code }, transaction });
+
+    if (!existing) return code;
+  }
+
+  throw new Error('Không thể sinh mã công ty duy nhất. Vui lòng thử lại.');
+}
+
 export async function registerCompany(payload: RegisterPayload) {
   return sequelize.transaction(async (t) => {
     // 1. Validate unique tax_code
@@ -30,19 +42,28 @@ export async function registerCompany(payload: RegisterPayload) {
     if (existingUser) throw new Error('Email này đã được sử dụng.');
 
     // 3. Create Company
-    const company = await model.Company.create({
-      code: `C-${payload.tax_code.replace(/\W/g, '').substring(0, 20)}`,
-      name: payload.company_name,
-      tax_code: payload.tax_code,
-      phone: payload.company_phone,
-      email: payload.company_email,
-      address: payload.address,
-      industry: payload.industry,
-      employee_count: payload.employee_count,
-      is_setup_done: false,
-      default_currency: 'VND',
-      fiscal_year_start_month: 1,
-    } as any, { transaction: t });
+    let company: any;
+    try {
+      company = await model.Company.create({
+        code: await generateUniqueCompanyCode(t),
+        name: payload.company_name,
+        tax_code: payload.tax_code,
+        phone: payload.company_phone,
+        email: payload.company_email,
+        address: payload.address,
+        industry: payload.industry,
+        employee_count: payload.employee_count,
+        is_setup_done: false,
+        default_currency: 'VND',
+        fiscal_year_start_month: 1,
+      } as any, { transaction: t });
+    } catch (err: any) {
+      if (err instanceof UniqueConstraintError && err.errors?.some((item: any) => item.path === 'code')) {
+        throw new Error('Mã công ty đã tồn tại. Vui lòng thử đăng ký lại.');
+      }
+
+      throw err;
+    }
 
     const companyId = (company as any).id as number;
 

@@ -21,8 +21,15 @@ GlJournal.init(
   {
     id: { type: DataTypes.BIGINT, autoIncrement: true, primaryKey: true },
     company_id: { type: DataTypes.BIGINT, allowNull: true },
-    code: { type: DataTypes.STRING(20), allowNull: false, unique: true },
+    code: { type: DataTypes.STRING(20), allowNull: false },
     name: { type: DataTypes.STRING(100), allowNull: false },
   },
-  { sequelize, tableName: "gl_journals", timestamps: true, createdAt: "created_at", updatedAt: "updated_at" }
+  {
+    sequelize,
+    tableName: "gl_journals",
+    timestamps: true,
+    createdAt: "created_at",
+    updatedAt: "updated_at",
+    indexes: [{ unique: true, fields: ["code", "company_id"] }],
+  }
 );

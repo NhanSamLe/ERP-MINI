@@ -204,11 +204,17 @@ export default function RegisterPage() {
       await publicApi.register(payload);
       setSuccess(true);
     } catch (err) {
-      const axiosErr = err as AxiosError<{ message: string }>;
-      setServerError(
-        axiosErr.response?.data?.message ||
-          'Đăng ký thất bại. Vui lòng thử lại.'
-      );
+      const axiosErr = err as AxiosError<unknown>;
+      const responseData = axiosErr.response?.data as any;
+      const serverMessage =
+        responseData?.message ||
+        responseData?.error ||
+        (Array.isArray(responseData?.errors)
+          ? responseData.errors.map((item: any) => item.message || item).join('; ')
+          : undefined) ||
+        axiosErr.message ||
+        'Đăng ký thất bại. Vui lòng thử lại.';
+      setServerError(serverMessage);
     } finally {
       setLoading(false);
     }

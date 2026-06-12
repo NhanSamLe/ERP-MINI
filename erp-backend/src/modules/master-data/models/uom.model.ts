@@ -24,5 +24,12 @@ Uom.init(
     name: { type: DataTypes.STRING(50), allowNull: false },
     company_id: { type: DataTypes.BIGINT, allowNull: true, defaultValue: null },
   },
-  { sequelize, tableName: "uoms", timestamps: true, createdAt: "created_at", updatedAt: "updated_at" }
+  {
+    sequelize,
+    tableName: "uoms",
+    timestamps: true,
+    createdAt: "created_at",
+    updatedAt: "updated_at",
+    indexes: [{ unique: true, fields: ["code", "company_id"] }],
+  }
 );

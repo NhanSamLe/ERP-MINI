@@ -60,5 +60,12 @@ TaxRate.init(
     status: { type: DataTypes.ENUM("active", "inactive"), defaultValue: "active" },
     company_id: { type: DataTypes.BIGINT, allowNull: true, defaultValue: null },
   },
-  { sequelize, tableName: "tax_rates", timestamps: true, createdAt: "created_at", updatedAt: "updated_at" }
+  {
+    sequelize,
+    tableName: "tax_rates",
+    timestamps: true,
+    createdAt: "created_at",
+    updatedAt: "updated_at",
+    indexes: [{ unique: true, fields: ["code", "company_id"] }],
+  }
 );

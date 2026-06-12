@@ -52,7 +52,14 @@ Branch.init(
     bank_name: { type: DataTypes.STRING(100) },
     status: { type: DataTypes.ENUM("active", "inactive"), defaultValue: "active" },
   },
-  { sequelize, tableName: "branches", timestamps: true , createdAt: "created_at", updatedAt: "updated_at"}
+  {
+    sequelize,
+    tableName: "branches",
+    timestamps: true,
+    createdAt: "created_at",
+    updatedAt: "updated_at",
+    indexes: [{ unique: true, fields: ["code", "company_id"] }],
+  }
 );
 
 // // Quan hệ

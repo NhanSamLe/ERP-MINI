@@ -33,5 +33,12 @@ PaymentTerm.init(
     is_active: { type: DataTypes.TINYINT, defaultValue: 1 },
     company_id: { type: DataTypes.BIGINT, allowNull: true, defaultValue: null },
   },
-  { sequelize, tableName: "payment_terms", timestamps: true, createdAt: "created_at", updatedAt: "updated_at" }
+  {
+    sequelize,
+    tableName: "payment_terms",
+    timestamps: true,
+    createdAt: "created_at",
+    updatedAt: "updated_at",
+    indexes: [{ unique: true, fields: ["code", "company_id"] }],
+  }
 );
