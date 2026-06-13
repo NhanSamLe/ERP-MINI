@@ -1,6 +1,7 @@
 import * as model from "../../../models";
 import dayjs from "dayjs";
 import { notificationService } from "../../../core/services/notification.service";
+import { checkPeriodLocked } from "../../finance/services/glJournal.service";
 
 export async function getAll(filter: any = {}) {
   const where: any = {};
@@ -64,6 +65,9 @@ export async function create(
   user?: any,
   app?: any
 ) {
+  await checkPeriodLocked(payload.start_date);
+  await checkPeriodLocked(payload.end_date);
+
   const row = await model.LeaveRequest.create({
     employee_id: payload.employee_id,
     branch_id: payload.branch_id,
@@ -117,6 +121,9 @@ export async function updateStatus(
 ) {
   const row = await model.LeaveRequest.findByPk(id);
   if (!row) throw new Error("Leave request not found");
+
+  await checkPeriodLocked(row.start_date);
+  await checkPeriodLocked(row.end_date);
 
   if (row.status !== "pending") {
     throw new Error("This leave request has already been processed");

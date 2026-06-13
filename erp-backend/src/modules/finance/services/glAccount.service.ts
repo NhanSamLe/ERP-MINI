@@ -82,18 +82,31 @@ export async function updateGlAccount(
   return row;
 }
 
-/**
- * Chỉ cho xóa khi chưa phát sinh bút toán:
- * kiểm tra bảng gl_entry_lines có record nào dùng account_id hay chưa.
- */
 export async function deleteGlAccount(id: number) {
   const row = await GlAccount.findByPk(id);
   if (!row) throw new Error("GL Account not found");
 
+  // 1. Check if has sub-accounts
+  const childCount = await GlAccount.count({ where: { parent_id: id } });
+  if (childCount > 0) {
+    throw new Error(
+      "Cannot delete GL Account because it has sub-accounts. Please delete or re-assign sub-accounts first."
+    );
+  }
+
+  // 2. Check if used in journal entry lines
   const usedCount = await GlEntryLine.count({ where: { account_id: id } });
   if (usedCount > 0) {
     throw new Error(
       "Cannot delete GL Account because it has related journal entries"
+    );
+  }
+
+  // 3. Check if mapped in Account Determination settings
+  const mappingCount = await AccountMapping.count({ where: { account_id: id } });
+  if (mappingCount > 0) {
+    throw new Error(
+      "Cannot delete GL Account because it is currently mapped in Account Determination configurations."
     );
   }
 
