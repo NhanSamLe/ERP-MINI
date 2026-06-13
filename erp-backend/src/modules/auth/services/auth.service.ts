@@ -31,6 +31,7 @@ export async function createUser(
     email?: string;
     phone?: string;
     role_id: number;
+	employee_id?: number;
   },
   requestingUser?: { company_id?: number },
 ) {
@@ -41,11 +42,24 @@ export async function createUser(
     data.email ? model.User.findOne({ where: { email: data.email } }) : Promise.resolve(null),
     model.Branch.findByPk(data.branch_id, { attributes: ["id", "company_id"] }),
   ]);
+	 if (data.employee_id) checks.push(model.User.findOne({ where: { employee_id: data.employee_id } }));
+  const results = await Promise.all(checks);
+  const role = results[0];
+  const checkUser = results[1];
+  
+  let checkPhone = null;
+  let checkEmail = null;
+  let checkEmp = null;
+  let idx = 2;
+  if (data.phone) checkPhone = results[idx++];
+  if (data.email) checkEmail = results[idx++];
+  if (data.employee_id) checkEmp = results[idx++];
 
   if (!role) throw new Error("Invalid role ID provided");
   if (checkUser) throw new Error("Username already exists");
-  if (checkEmail) throw new Error("Email already exists");
-  if (checkPhone) throw new Error("Phone number already exists");
+  if (data.email && checkEmail) throw new Error("Email already exists");
+  if (data.phone && checkPhone) throw new Error("Phone number already exists");
+  if (data.employee_id && checkEmp) throw new Error("Nhân viên này đã được liên kết với một tài khoản khác.");
 
   // Bảo vệ multi-tenant: branch phải thuộc cùng company với người tạo
   if (!branch) throw new Error("Branch not found");
@@ -66,6 +80,7 @@ export async function createUser(
     is_active: false,
     reset_token: resetToken,
     reset_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    employee_id: data.employee_id || null,
   });
   await user.save();
   if (user.email) {

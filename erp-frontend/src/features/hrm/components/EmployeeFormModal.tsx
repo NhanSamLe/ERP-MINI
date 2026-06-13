@@ -7,6 +7,7 @@ interface Props {
   onClose: () => void;
   initialData?: EmployeeDTO | null;
   onSubmit: (data: EmployeeFormPayload) => Promise<void>;
+  isHRStaff?: boolean;
 }
 
 interface Bank {
@@ -20,6 +21,7 @@ export default function EmployeeFormModal({
   onClose,
   initialData,
   onSubmit,
+  isHRStaff = false,
 }: Props) {
   const [form, setForm] = useState<EmployeeFormPayload>({
     emp_code: "",
@@ -91,7 +93,7 @@ export default function EmployeeFormModal({
         gender: "male",
         contract_type: "official",
         base_salary: 0,
-        status: "active",
+        status: isHRStaff ? "inactive" : "active",
         branch_id: null,
         birth_date: null,
         cccd: null,
@@ -131,10 +133,10 @@ export default function EmployeeFormModal({
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-bold text-white">
-                {initialData ? "Update Employee Details" : "Add New Employee"}
+                {initialData ? "Cập nhật thông tin nhân viên" : "Thêm nhân viên mới"}
               </h2>
               <p className="text-blue-100 text-sm mt-1">
-                {initialData ? `Emp ID: ${initialData.emp_code}` : "Please fill in all details below"}
+                {initialData ? `Mã nhân viên: ${initialData.emp_code}` : "Vui lòng điền đầy đủ các thông tin bên dưới"}
               </p>
             </div>
             <button
@@ -153,12 +155,12 @@ export default function EmployeeFormModal({
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-1 h-6 bg-blue-600 rounded"></div>
-              <h3 className="text-lg font-semibold text-gray-800">Basic Information</h3>
+              <h3 className="text-lg font-semibold text-gray-800">Thông tin cơ bản</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Branch <span className="text-red-500">*</span>
+                  Chi nhánh <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={form.branch_id ?? ""}
@@ -170,7 +172,7 @@ export default function EmployeeFormModal({
                   }
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
                 >
-                  <option value="">-- Select branch --</option>
+                  <option value="">-- Chọn chi nhánh --</option>
                   {branches.map((b) => (
                     <option key={b.id} value={b.id}>
                       {b.code} - {b.name}
@@ -181,61 +183,68 @@ export default function EmployeeFormModal({
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Employee Code <span className="text-red-500">*</span>
+                  Mã nhân viên (Để trống để tự sinh)
                 </label>
                 <input
                   name="emp_code"
                   value={form.emp_code}
                   onChange={handleChange}
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="e.g. EMP001"
+                  placeholder="Ví dụ: EMP001 (Hoặc tự sinh)"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Status <span className="text-red-500">*</span>
+                  Trạng thái <span className="text-red-500">*</span>
                 </label>
                 <select
                   name="status"
-                  value={form.status ?? "active"}
+                  value={form.status ?? (isHRStaff ? "inactive" : "active")}
                   onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
+                  disabled={isHRStaff}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
                 >
-                  <option value="active">✓ Active</option>
-                  <option value="inactive">✗ Inactive</option>
+                  {isHRStaff ? (
+                    <option value="inactive">✗ Chờ duyệt</option>
+                  ) : (
+                    <>
+                      <option value="active">✓ Hoạt động</option>
+                      <option value="inactive">✗ Ngừng hoạt động</option>
+                    </>
+                  )}
                 </select>
               </div>
 
               <div className="md:col-span-2">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Full Name <span className="text-red-500">*</span>
+                  Họ và tên <span className="text-red-500">*</span>
                 </label>
                 <input
                   name="full_name"
                   value={form.full_name}
                   onChange={handleChange}
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Enter full name"
+                  placeholder="Nhập họ và tên"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  National ID / Passport
+                  Số CCCD / Hộ chiếu
                 </label>
                 <input
                   name="cccd"
                   value={form.cccd ?? ""}
                   onChange={handleChange}
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="National ID / Passport No"
+                  placeholder="Nhập số CCCD / Hộ chiếu"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Gender <span className="text-red-500">*</span>
+                  Giới tính <span className="text-red-500">*</span>
                 </label>
                 <select
                   name="gender"
@@ -243,15 +252,15 @@ export default function EmployeeFormModal({
                   onChange={handleChange}
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
                 >
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
+                  <option value="male">Nam</option>
+                  <option value="female">Nữ</option>
+                  <option value="other">Khác</option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Birth Date
+                  Ngày sinh
                 </label>
                 <input
                   type="date"
@@ -264,7 +273,7 @@ export default function EmployeeFormModal({
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Hire Date
+                  Ngày tuyển dụng
                 </label>
                 <input
                   type="date"
@@ -281,12 +290,12 @@ export default function EmployeeFormModal({
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-1 h-6 bg-blue-600 rounded"></div>
-              <h3 className="text-lg font-semibold text-gray-800">Employment Details</h3>
+              <h3 className="text-lg font-semibold text-gray-800">Thông tin công việc</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Department
+                  Phòng ban
                 </label>
                 <select
                   name="department_id"
@@ -299,7 +308,7 @@ export default function EmployeeFormModal({
                   }
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
                 >
-                  <option value="">-- Select department --</option>
+                  <option value="">-- Chọn phòng ban --</option>
                   {departments.map((d) => (
                     <option key={d.id} value={d.id}>
                       {d.name}
@@ -310,7 +319,7 @@ export default function EmployeeFormModal({
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Position / Job Title
+                  Chức vụ
                 </label>
                 <select
                   name="position_id"
@@ -323,7 +332,7 @@ export default function EmployeeFormModal({
                   }
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
                 >
-                  <option value="">-- Select position --</option>
+                  <option value="">-- Chọn chức vụ --</option>
                   {positions.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
@@ -334,7 +343,7 @@ export default function EmployeeFormModal({
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Contract Type <span className="text-red-500">*</span>
+                  Loại hợp đồng <span className="text-red-500">*</span>
                 </label>
                 <select
                   name="contract_type"
@@ -342,15 +351,15 @@ export default function EmployeeFormModal({
                   onChange={handleChange}
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
                 >
-                  <option value="trial">Probationary</option>
-                  <option value="official">Official</option>
-                  <option value="seasonal">Seasonal</option>
+                  <option value="trial">Thử việc</option>
+                  <option value="official">Chính thức</option>
+                  <option value="seasonal">Thời vụ</option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Base Salary <span className="text-red-500">*</span>
+                  Lương cơ bản <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <input
@@ -373,12 +382,12 @@ export default function EmployeeFormModal({
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-1 h-6 bg-blue-600 rounded"></div>
-              <h3 className="text-lg font-semibold text-gray-800">Payment Details</h3>
+              <h3 className="text-lg font-semibold text-gray-800">Thông tin tài khoản</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Bank
+                  Ngân hàng
                 </label>
                 <select
                   value={
@@ -396,7 +405,7 @@ export default function EmployeeFormModal({
                   }}
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
                 >
-                  <option value="">-- Select bank --</option>
+                  <option value="">-- Chọn ngân hàng --</option>
                   {banks.map((b) => (
                     <option key={b.code} value={b.code}>
                       {b.shortName || b.name}
@@ -407,14 +416,14 @@ export default function EmployeeFormModal({
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Account Number
+                  Số tài khoản
                 </label>
                 <input
                   name="bank_account"
                   value={form.bank_account ?? ""}
                   onChange={handleChange}
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Enter bank account number"
+                  placeholder="Nhập số tài khoản ngân hàng"
                 />
               </div>
             </div>
@@ -428,7 +437,7 @@ export default function EmployeeFormModal({
               disabled={loading}
               className="px-6 py-2.5 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all disabled:opacity-50"
             >
-              Cancel
+              Hủy
             </button>
             <button
               type="button"
@@ -442,14 +451,14 @@ export default function EmployeeFormModal({
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Processing...
+                  Đang xử lý...
                 </>
               ) : (
                 <>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  {initialData ? "Update" : "Add New"}
+                  {initialData ? "Lưu thay đổi" : "Thêm mới"}
                 </>
               )}
             </button>

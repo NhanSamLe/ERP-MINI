@@ -1,8 +1,11 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { Calendar, Search, RefreshCcw, Download, FileText, TrendingUp, DollarSign } from "lucide-react";
+import { Calendar, Search, RefreshCcw, Download, FileText, TrendingUp, DollarSign, Lock, Unlock, Zap } from "lucide-react";
 import { glEntryApi } from "../api/glEntry.api";
 import { toast } from "react-toastify";
 import { exportExcelReport } from "../../../utils/excel/exportExcelReport";
+import { financeConfigApi, FiscalPeriodDTO } from "../api/finance.api";
+import { useSelector } from "react-redux";
+import { RootState } from "../../../store/store";
 
 type TrialBalanceRow = {
   id: number;
@@ -30,7 +33,7 @@ type ProfitLossData = {
 };
 
 export default function FinanceReportsPage() {
-  const [activeTab, setActiveTab] = useState<"trial-balance" | "profit-loss">("trial-balance");
+  const [activeTab, setActiveTab] = useState<"trial-balance" | "profit-loss" | "period-close">("trial-balance");
   const [loading, setLoading] = useState(false);
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
@@ -43,6 +46,73 @@ export default function FinanceReportsPage() {
 
   const [trialBalance, setTrialBalance] = useState<TrialBalanceRow[]>([]);
   const [profitLoss, setProfitLoss] = useState<ProfitLossData | null>(null);
+
+  const { user } = useSelector((s: RootState) => s.auth);
+  const [fiscalPeriods, setFiscalPeriods] = useState<FiscalPeriodDTO[]>([]);
+  const [loadingPeriods, setLoadingPeriods] = useState(false);
+
+  const loadPeriods = async () => {
+    try {
+      setLoadingPeriods(true);
+      const res = await financeConfigApi.getFiscalPeriods();
+      setFiscalPeriods(res.data);
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Không thể tải danh sách kỳ kế toán");
+    } finally {
+      setLoadingPeriods(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "period-close") {
+      loadPeriods();
+    }
+  }, [activeTab]);
+
+  const handleClosePeriod = async (id: number) => {
+    if (!window.confirm("Bạn có chắc chắn muốn khóa sổ kỳ kế toán này? Giao dịch trong kỳ này sẽ không thể sửa đổi.")) return;
+    try {
+      setLoadingPeriods(true);
+      const res = await financeConfigApi.closePeriod(id);
+      toast.success(res.data.message);
+      await loadPeriods();
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.response?.data?.message || e.message || "Khóa sổ thất bại");
+    } finally {
+      setLoadingPeriods(false);
+    }
+  };
+
+  const handleOpenPeriod = async (id: number) => {
+    if (!window.confirm("Bạn có chắc chắn muốn mở lại sổ kỳ kế toán này?")) return;
+    try {
+      setLoadingPeriods(true);
+      const res = await financeConfigApi.openPeriod(id);
+      toast.success(res.data.message);
+      await loadPeriods();
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.response?.data?.message || e.message || "Mở sổ thất bại");
+    } finally {
+      setLoadingPeriods(false);
+    }
+  };
+
+  const handleRunClosingEntries = async (periodId: number) => {
+    if (!window.confirm("Hệ thống sẽ tự động quét số dư doanh thu/chi phí của chi nhánh hiện tại và tạo bút toán kết chuyển. Tiếp tục?")) return;
+    try {
+      setLoadingPeriods(true);
+      const res = await financeConfigApi.runClosingEntries(periodId);
+      toast.success(res.data.message || "Đã tạo bút toán kết chuyển thành công!");
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.response?.data?.message || e.message || "Chạy kết chuyển thất bại");
+    } finally {
+      setLoadingPeriods(false);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -58,7 +128,7 @@ export default function FinanceReportsPage() {
       setProfitLoss(plRes.data.data || null);
     } catch (err: any) {
       console.error(err);
-      toast.error(err.response?.data?.message || err.message || "Failed to load financial reports");
+      toast.error(err.response?.data?.message || err.message || "Lỗi khi tải báo cáo tài chính");
     } finally {
       setLoading(false);
     }
@@ -90,21 +160,21 @@ export default function FinanceReportsPage() {
   const handleExport = () => {
     if (activeTab === "trial-balance") {
       exportExcelReport<any>({
-        title: "TRIAL BALANCE",
-        subtitle: `From ${startDate} to ${endDate}`,
+        title: "BẢNG CÂN ĐỐI PHÁT SINH",
+        subtitle: `Từ ngày ${startDate} đến ngày ${endDate}`,
         meta: {
-          "Total Opening Balance": tbTotals.totalOpening.toLocaleString("vi-VN") + "đ",
-          "Total Period Debit": tbTotals.totalDebit.toLocaleString("vi-VN") + "đ",
-          "Total Period Credit": tbTotals.totalCredit.toLocaleString("vi-VN") + "đ",
-          "Total Closing Balance": tbTotals.totalClosing.toLocaleString("vi-VN") + "đ",
+          "Tổng số dư đầu kỳ": tbTotals.totalOpening.toLocaleString("vi-VN") + "đ",
+          "Tổng phát sinh Nợ": tbTotals.totalDebit.toLocaleString("vi-VN") + "đ",
+          "Tổng phát sinh Có": tbTotals.totalCredit.toLocaleString("vi-VN") + "đ",
+          "Tổng số dư cuối kỳ": tbTotals.totalClosing.toLocaleString("vi-VN") + "đ",
         },
         columns: [
-          { header: "Account Code", key: "code", width: 15 },
-          { header: "Account Name", key: "name", width: 35 },
-          { header: "Opening Balance", key: "opening", width: 20, align: "right" },
-          { header: "Period Debit", key: "debit", width: 20, align: "right" },
-          { header: "Period Credit", key: "credit", width: 20, align: "right" },
-          { header: "Closing Balance", key: "closing", width: 20, align: "right" },
+          { header: "Mã tài khoản", key: "code", width: 15 },
+          { header: "Tên tài khoản", key: "name", width: 35 },
+          { header: "Số dư đầu kỳ", key: "opening", width: 20, align: "right" },
+          { header: "Phát sinh Nợ", key: "debit", width: 20, align: "right" },
+          { header: "Phát sinh Có", key: "credit", width: 20, align: "right" },
+          { header: "Số dư cuối kỳ", key: "closing", width: 20, align: "right" },
         ],
         data: trialBalance.map(row => ({
           code: row.code,
@@ -114,36 +184,36 @@ export default function FinanceReportsPage() {
           credit: row.periodCredit,
           closing: row.closingBalance,
         })),
-        fileName: `TrialBalance_${startDate}_to_${endDate}.xlsx`,
+        fileName: `BangCanDoiPhatSinh_${startDate}_to_${endDate}.xlsx`,
       });
     } else if (activeTab === "profit-loss" && profitLoss) {
       exportExcelReport<any>({
-        title: "PROFIT AND LOSS STATEMENT",
-        subtitle: `From ${startDate} to ${endDate}`,
+        title: "BÁO CÁO KẾT QUẢ HOẠT ĐỘNG KINH DOANH",
+        subtitle: `Từ ngày ${startDate} đến ngày ${endDate}`,
         meta: {
-          "Net Revenue": profitLoss.totalRevenue.toLocaleString("vi-VN") + "đ",
-          "Cost of Goods Sold": profitLoss.totalCogs.toLocaleString("vi-VN") + "đ",
-          "Gross Profit": profitLoss.grossProfit.toLocaleString("vi-VN") + "đ",
-          "Selling Expenses": (profitLoss.totalSelling || 0).toLocaleString("vi-VN") + "đ",
-          "G&A Expenses": (profitLoss.totalAdmin || 0).toLocaleString("vi-VN") + "đ",
-          "Net Operating Profit": (profitLoss.netOperatingProfit || 0).toLocaleString("vi-VN") + "đ",
+          "Doanh thu thuần": profitLoss.totalRevenue.toLocaleString("vi-VN") + "đ",
+          "Giá vốn bán hàng": profitLoss.totalCogs.toLocaleString("vi-VN") + "đ",
+          "Lợi nhuận gộp": profitLoss.grossProfit.toLocaleString("vi-VN") + "đ",
+          "Chi phí bán hàng": (profitLoss.totalSelling || 0).toLocaleString("vi-VN") + "đ",
+          "Chi phí quản lý doanh nghiệp": (profitLoss.totalAdmin || 0).toLocaleString("vi-VN") + "đ",
+          "Lợi nhuận thuần từ HĐKD": (profitLoss.netOperatingProfit || 0).toLocaleString("vi-VN") + "đ",
         },
         columns: [
-          { header: "Line Item", key: "item", width: 45 },
-          { header: "Code", key: "code", width: 10, align: "center" },
-          { header: "Amount", key: "amount", width: 25, align: "right" },
+          { header: "Chỉ tiêu", key: "item", width: 45 },
+          { header: "Mã số", key: "code", width: 10, align: "center" },
+          { header: "Số tiền", key: "amount", width: 25, align: "right" },
         ],
         data: [
-          { item: "1. Revenue from sales and services", code: "01", amount: profitLoss.totalRevenue },
-          { item: "2. Revenue deductions", code: "02", amount: 0 },
-          { item: "3. Net revenue from sales and services (10 = 01 - 02)", code: "10", amount: profitLoss.totalRevenue },
-          { item: "4. Cost of goods sold", code: "11", amount: profitLoss.totalCogs },
-          { item: "5. Gross profit from sales and services (20 = 10 - 11)", code: "20", amount: profitLoss.grossProfit },
-          { item: "6. Selling expenses", code: "21", amount: profitLoss.totalSelling || 0 },
-          { item: "7. General and administration expenses", code: "22", amount: profitLoss.totalAdmin || 0 },
-          { item: "8. Net operating profit (30 = 20 - 21 - 22)", code: "30", amount: profitLoss.netOperatingProfit || 0 },
+          { item: "1. Doanh thu bán hàng và cung cấp dịch vụ", code: "01", amount: profitLoss.totalRevenue },
+          { item: "2. Các khoản giảm trừ doanh thu", code: "02", amount: 0 },
+          { item: "3. Doanh thu thuần về bán hàng và cung cấp dịch vụ (10 = 01 - 02)", code: "10", amount: profitLoss.totalRevenue },
+          { item: "4. Giá vốn bán hàng", code: "11", amount: profitLoss.totalCogs },
+          { item: "5. Lợi nhuận gộp về bán hàng và cung cấp dịch vụ (20 = 10 - 11)", code: "20", amount: profitLoss.grossProfit },
+          { item: "6. Chi phí bán hàng", code: "21", amount: profitLoss.totalSelling || 0 },
+          { item: "7. Chi phí quản lý doanh nghiệp", code: "22", amount: profitLoss.totalAdmin || 0 },
+          { item: "8. Lợi nhuận thuần từ hoạt động kinh doanh (30 = 20 - 21 - 22)", code: "30", amount: profitLoss.netOperatingProfit || 0 },
         ],
-        fileName: `ProfitLoss_${startDate}_to_${endDate}.xlsx`,
+        fileName: `BaoCaoKetQuaKinhDoanh_${startDate}_to_${endDate}.xlsx`,
       });
     }
   };
@@ -155,8 +225,8 @@ export default function FinanceReportsPage() {
         {/* Page Title Header */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 mb-1">Financial Reports</h1>
-            <p className="text-sm text-slate-500">View Trial Balance and Profit & Loss statement</p>
+            <h1 className="text-2xl font-bold text-slate-900 mb-1">Báo cáo tài chính</h1>
+            <p className="text-sm text-slate-500">Xem Bảng cân đối phát sinh và Báo cáo kết quả hoạt động kinh doanh</p>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -165,7 +235,7 @@ export default function FinanceReportsPage() {
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-700 font-medium hover:bg-slate-50 hover:border-slate-400 transition-all disabled:opacity-50"
             >
               <Download className="w-4 h-4" />
-              <span>Export Excel</span>
+              <span>Xuất Excel</span>
             </button>
             <button
               onClick={loadData}
@@ -173,7 +243,7 @@ export default function FinanceReportsPage() {
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50 transition-all shadow-sm hover:shadow-md"
             >
               <RefreshCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-              <span>Reload</span>
+              <span>Tải lại</span>
             </button>
           </div>
         </div>
@@ -182,7 +252,7 @@ export default function FinanceReportsPage() {
         <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
           <div className="flex flex-col md:flex-row md:items-end gap-4">
             <div className="flex-1">
-              <label className="block text-sm font-semibold text-slate-700 mb-2">From date</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">Từ ngày</label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 <input
@@ -195,7 +265,7 @@ export default function FinanceReportsPage() {
             </div>
 
             <div className="flex-1">
-              <label className="block text-sm font-semibold text-slate-700 mb-2">To date</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">Đến ngày</label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 <input
@@ -213,7 +283,7 @@ export default function FinanceReportsPage() {
               className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-slate-900 text-white font-medium hover:bg-slate-800 disabled:opacity-50 transition-all shadow-sm h-[42px]"
             >
               <Search className="w-4 h-4" />
-              <span>View Report</span>
+              <span>Xem Báo cáo</span>
             </button>
           </div>
         </div>
@@ -226,7 +296,7 @@ export default function FinanceReportsPage() {
               activeTab === "trial-balance" ? "text-blue-600 border-b-2 border-blue-600" : "text-slate-500 hover:text-slate-700"
             }`}
           >
-            Trial Balance
+            Bảng cân đối phát sinh
           </button>
           <button
             onClick={() => setActiveTab("profit-loss")}
@@ -234,7 +304,15 @@ export default function FinanceReportsPage() {
               activeTab === "profit-loss" ? "text-blue-600 border-b-2 border-blue-600" : "text-slate-500 hover:text-slate-700"
             }`}
           >
-            Profit & Loss Statement (P&L)
+            Báo cáo kết quả hoạt động kinh doanh (P&L)
+          </button>
+          <button
+            onClick={() => setActiveTab("period-close")}
+            className={`pb-4 text-base font-bold transition-all relative ${
+              activeTab === "period-close" ? "text-blue-600 border-b-2 border-blue-600" : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            Khóa sổ & Kết chuyển cuối kỳ
           </button>
         </div>
 
@@ -242,7 +320,7 @@ export default function FinanceReportsPage() {
         {loading && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 py-24 text-center">
             <RefreshCcw className="w-10 h-10 text-blue-600 animate-spin mx-auto mb-4" />
-            <p className="text-slate-600 font-medium">Loading and calculating financial reports...</p>
+            <p className="text-slate-600 font-medium">Đang tải và tính toán báo cáo tài chính...</p>
           </div>
         )}
 
@@ -253,19 +331,19 @@ export default function FinanceReportsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200">
-                    <th className="px-6 py-4 text-left font-semibold text-slate-700 uppercase tracking-wider w-24">Account Code</th>
-                    <th className="px-6 py-4 text-left font-semibold text-slate-700 uppercase tracking-wider">Account Name</th>
-                    <th className="px-6 py-4 text-right font-semibold text-slate-700 uppercase tracking-wider w-36">Opening Balance</th>
-                    <th className="px-6 py-4 text-right font-semibold text-slate-700 uppercase tracking-wider w-36">Period Debit</th>
-                    <th className="px-6 py-4 text-right font-semibold text-slate-700 uppercase tracking-wider w-36">Period Credit</th>
-                    <th className="px-6 py-4 text-right font-semibold text-slate-700 uppercase tracking-wider w-36">Closing Balance</th>
+                    <th className="px-6 py-4 text-left font-semibold text-slate-700 uppercase tracking-wider w-24">Mã tài khoản</th>
+                    <th className="px-6 py-4 text-left font-semibold text-slate-700 uppercase tracking-wider">Tên tài khoản</th>
+                    <th className="px-6 py-4 text-right font-semibold text-slate-700 uppercase tracking-wider w-36">Số dư đầu kỳ</th>
+                    <th className="px-6 py-4 text-right font-semibold text-slate-700 uppercase tracking-wider w-36">Phát sinh Nợ</th>
+                    <th className="px-6 py-4 text-right font-semibold text-slate-700 uppercase tracking-wider w-36">Phát sinh Có</th>
+                    <th className="px-6 py-4 text-right font-semibold text-slate-700 uppercase tracking-wider w-36">Số dư cuối kỳ</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {trialBalance.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="px-6 py-12 text-center text-slate-500 font-medium">
-                        No accounting entries found for this period.
+                        Không tìm thấy bút toán kế toán nào trong kỳ này.
                       </td>
                     </tr>
                   ) : (
@@ -295,7 +373,7 @@ export default function FinanceReportsPage() {
                 {trialBalance.length > 0 && (
                   <tfoot>
                     <tr className="bg-gradient-to-r from-slate-100 to-slate-50 border-t-2 border-slate-300 font-bold text-slate-900">
-                      <td colSpan={2} className="px-6 py-4 text-left">TOTAL</td>
+                      <td colSpan={2} className="px-6 py-4 text-left">TỔNG CỘNG</td>
                       <td className="px-6 py-4 text-right font-mono">{tbTotals.totalOpening.toLocaleString("vi-VN")}đ</td>
                       <td className="px-6 py-4 text-right font-mono text-emerald-800">{tbTotals.totalDebit.toLocaleString("vi-VN")}đ</td>
                       <td className="px-6 py-4 text-right font-mono text-blue-800">{tbTotals.totalCredit.toLocaleString("vi-VN")}đ</td>
@@ -316,7 +394,7 @@ export default function FinanceReportsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-semibold text-slate-500 uppercase mb-1">Net Revenue</p>
+                      <p className="text-sm font-semibold text-slate-500 uppercase mb-1">Doanh thu thuần</p>
                       <h3 className="text-2xl font-bold text-blue-600 font-mono">{profitLoss.totalRevenue.toLocaleString("vi-VN")}đ</h3>
                     </div>
                     <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
@@ -326,7 +404,7 @@ export default function FinanceReportsPage() {
 
                   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-semibold text-slate-500 uppercase mb-1">Cost of Goods Sold</p>
+                      <p className="text-sm font-semibold text-slate-500 uppercase mb-1">Giá vốn bán hàng</p>
                       <h3 className="text-2xl font-bold text-amber-600 font-mono">{profitLoss.totalCogs.toLocaleString("vi-VN")}đ</h3>
                     </div>
                     <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
@@ -336,7 +414,7 @@ export default function FinanceReportsPage() {
 
                   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-semibold text-slate-500 uppercase mb-1">Gross Profit</p>
+                      <p className="text-sm font-semibold text-slate-500 uppercase mb-1">Lợi nhuận gộp</p>
                       <h3 className="text-2xl font-bold text-emerald-600 font-mono">{profitLoss.grossProfit.toLocaleString("vi-VN")}đ</h3>
                     </div>
                     <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
@@ -346,7 +424,7 @@ export default function FinanceReportsPage() {
 
                   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-semibold text-slate-500 uppercase mb-1">Operating Profit</p>
+                      <p className="text-sm font-semibold text-slate-500 uppercase mb-1">Lợi nhuận từ HĐKD</p>
                       <h3 className="text-2xl font-bold text-purple-600 font-mono">{(profitLoss.netOperatingProfit || 0).toLocaleString("vi-VN")}đ</h3>
                     </div>
                     <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center">
@@ -358,61 +436,61 @@ export default function FinanceReportsPage() {
                 {/* Main Statement Box */}
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                   <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
-                    <h3 className="font-bold text-slate-950 uppercase tracking-wide text-sm">Profit & Loss Statement (VAS-P&L)</h3>
+                    <h3 className="font-bold text-slate-950 uppercase tracking-wide text-sm">Báo cáo kết quả hoạt động kinh doanh (VAS-P&L)</h3>
                   </div>
                   <div className="p-6">
                     <div className="overflow-x-auto">
                       <table className="w-full text-base">
                         <thead>
                           <tr className="border-b border-slate-200 text-slate-500 font-bold text-xs uppercase tracking-wider">
-                            <th className="py-3 text-left w-3/5">Line Item</th>
-                            <th className="py-3 text-center w-24">Code</th>
-                            <th className="py-3 text-right">Amount</th>
+                            <th className="py-3 text-left w-3/5">Chỉ tiêu</th>
+                            <th className="py-3 text-center w-24">Mã số</th>
+                            <th className="py-3 text-right">Số tiền</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-semibold text-slate-900">
                           <tr className="hover:bg-slate-50/50">
-                            <td className="py-4">1. Revenue from sales and services (A/C 511)</td>
+                            <td className="py-4">1. Doanh thu bán hàng và cung cấp dịch vụ (TK 511)</td>
                             <td className="py-4 text-center font-mono text-slate-500">01</td>
                             <td className="py-4 text-right font-mono">{profitLoss.totalRevenue.toLocaleString("vi-VN")}đ</td>
                           </tr>
                           <tr className="hover:bg-slate-50/50">
-                            <td className="py-4 font-normal text-slate-600 pl-4">In: Revenue from merchandise sales</td>
+                            <td className="py-4 font-normal text-slate-600 pl-4">Trong đó: Doanh thu bán hàng hóa</td>
                             <td className="py-4 text-center font-mono text-slate-400">01.1</td>
                             <td className="py-4 text-right font-mono font-normal text-slate-700">{profitLoss.totalRevenue.toLocaleString("vi-VN")}đ</td>
                           </tr>
                           <tr className="hover:bg-slate-50/50">
-                            <td className="py-4">2. Revenue deductions</td>
+                            <td className="py-4">2. Các khoản giảm trừ doanh thu</td>
                             <td className="py-4 text-center font-mono text-slate-500">02</td>
                             <td className="py-4 text-right font-mono">—</td>
                           </tr>
                           <tr className="hover:bg-slate-50/50 bg-blue-50/20 text-blue-900">
-                            <td className="py-4 font-bold">3. Net revenue from sales and services (10 = 01 - 02)</td>
+                            <td className="py-4 font-bold">3. Doanh thu thuần về bán hàng và cung cấp dịch vụ (10 = 01 - 02)</td>
                             <td className="py-4 text-center font-mono font-bold text-blue-600">10</td>
                             <td className="py-4 text-right font-mono font-bold">{profitLoss.totalRevenue.toLocaleString("vi-VN")}đ</td>
                           </tr>
                           <tr className="hover:bg-slate-50/50">
-                            <td className="py-4">4. Cost of goods sold (A/C 632)</td>
+                            <td className="py-4">4. Giá vốn hàng bán (TK 632)</td>
                             <td className="py-4 text-center font-mono text-slate-500">11</td>
                             <td className="py-4 text-right font-mono text-amber-700">({profitLoss.totalCogs.toLocaleString("vi-VN")}đ)</td>
                           </tr>
                           <tr className="hover:bg-slate-50/50 bg-slate-50 text-slate-900 border-y">
-                            <td className="py-4 font-bold">5. Gross profit from sales and services (20 = 10 - 11)</td>
+                            <td className="py-4 font-bold">5. Lợi nhuận gộp về bán hàng và cung cấp dịch vụ (20 = 10 - 11)</td>
                             <td className="py-4 text-center font-mono font-bold text-slate-700">20</td>
                             <td className="py-4 text-right font-mono font-bold">{profitLoss.grossProfit.toLocaleString("vi-VN")}đ</td>
                           </tr>
                           <tr className="hover:bg-slate-50/50">
-                            <td className="py-4">6. Selling expenses (A/C 641)</td>
+                            <td className="py-4">6. Chi phí bán hàng (TK 641)</td>
                             <td className="py-4 text-center font-mono text-slate-500">21</td>
                             <td className="py-4 text-right font-mono text-red-600">({(profitLoss.totalSelling || 0).toLocaleString("vi-VN")}đ)</td>
                           </tr>
                           <tr className="hover:bg-slate-50/50">
-                            <td className="py-4">7. General and administration expenses (A/C 642)</td>
+                            <td className="py-4">7. Chi phí quản lý doanh nghiệp (TK 642)</td>
                             <td className="py-4 text-center font-mono text-slate-500">22</td>
                             <td className="py-4 text-right font-mono text-red-600">({(profitLoss.totalAdmin || 0).toLocaleString("vi-VN")}đ)</td>
                           </tr>
                           <tr className="hover:bg-slate-50/50 bg-emerald-50/20 text-emerald-900 border-t-2">
-                            <td className="py-4 font-bold">8. Net operating profit (30 = 20 - 21 - 22)</td>
+                            <td className="py-4 font-bold">8. Lợi nhuận thuần từ hoạt động kinh doanh (30 = 20 - 21 - 22)</td>
                             <td className="py-4 text-center font-mono font-bold text-emerald-600">30</td>
                             <td className="py-4 text-right font-mono font-bold text-emerald-700">{(profitLoss.netOperatingProfit || 0).toLocaleString("vi-VN")}đ</td>
                           </tr>
@@ -424,7 +502,120 @@ export default function FinanceReportsPage() {
               </>
             ) : (
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 py-16 text-center text-slate-500 font-medium">
-                Failed to load Profit & Loss statement.
+                Không thể tải báo cáo kết quả hoạt động kinh doanh.
+              </div>
+            )}
+          </div>
+        )}
+
+        {!loading && activeTab === "period-close" && (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden animate-in fade-in duration-250 p-6 space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-100 pb-4 gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-slate-800">Quản lý kỳ kế toán & Kết chuyển</h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  Chạy kết chuyển doanh thu chi phí (911 & 421) và Khóa/Mở sổ các kỳ kế toán.
+                </p>
+              </div>
+              <button
+                onClick={loadPeriods}
+                disabled={loadingPeriods}
+                className="inline-flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-xl bg-white text-slate-700 text-sm font-medium hover:bg-slate-50 transition-all shadow-sm"
+              >
+                <RefreshCcw className={`w-4 h-4 ${loadingPeriods ? "animate-spin" : ""}`} />
+                Làm mới danh sách
+              </button>
+            </div>
+
+            {loadingPeriods && fiscalPeriods.length === 0 ? (
+              <div className="py-12 text-center text-slate-500">
+                <RefreshCcw className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-2" />
+                Đang tải dữ liệu kỳ kế toán...
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200 text-slate-700">
+                      <th className="px-6 py-4 text-left font-semibold uppercase tracking-wider">Kỳ kế toán</th>
+                      <th className="px-6 py-4 text-left font-semibold uppercase tracking-wider">Ngày bắt đầu</th>
+                      <th className="px-6 py-4 text-left font-semibold uppercase tracking-wider">Ngày kết thúc</th>
+                      <th className="px-6 py-4 text-center font-semibold uppercase tracking-wider">Trạng thái</th>
+                      <th className="px-6 py-4 text-right font-semibold uppercase tracking-wider w-80">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {fiscalPeriods.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
+                          Không tìm thấy kỳ kế toán nào được cấu hình trong hệ thống.
+                        </td>
+                      </tr>
+                    ) : (
+                      fiscalPeriods.map((period) => {
+                        const isClosed = period.status === "closed";
+                        const canManage = user?.role.code === "CHACC" || user?.role.code === "ADMIN";
+                        return (
+                          <tr key={period.id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="px-6 py-4 font-bold text-slate-900">{period.name}</td>
+                            <td className="px-6 py-4 text-slate-600 font-medium">{period.start_date}</td>
+                            <td className="px-6 py-4 text-slate-600 font-medium">{period.end_date}</td>
+                            <td className="px-6 py-4 text-center">
+                              {isClosed ? (
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">
+                                  <Lock className="w-3.5 h-3.5 mr-1" />
+                                  Đã khóa sổ
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
+                                  <Unlock className="w-3.5 h-3.5 mr-1" />
+                                  Đang mở
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 text-right space-x-2">
+                              {!isClosed && (
+                                <button
+                                  onClick={() => handleRunClosingEntries(period.id)}
+                                  disabled={loadingPeriods}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-bold transition-all shadow-sm disabled:opacity-50"
+                                  title="Kết chuyển doanh thu, chi phí chi nhánh này"
+                                >
+                                  <Zap className="w-3.5 h-3.5" />
+                                  Bút toán kết chuyển
+                                </button>
+                              )}
+                              
+                              {canManage ? (
+                                isClosed ? (
+                                  <button
+                                    onClick={() => handleOpenPeriod(period.id)}
+                                    disabled={loadingPeriods}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg text-xs font-bold transition-all shadow-sm disabled:opacity-50"
+                                  >
+                                    <Unlock className="w-3.5 h-3.5" />
+                                    Mở sổ
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleClosePeriod(period.id)}
+                                    disabled={loadingPeriods}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg text-xs font-bold transition-all shadow-sm disabled:opacity-50"
+                                  >
+                                    <Lock className="w-3.5 h-3.5" />
+                                    Khóa sổ
+                                  </button>
+                                )
+                              ) : (
+                                <span className="text-xs text-slate-400 font-medium">Không có quyền khóa/mở</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>

@@ -171,3 +171,37 @@ export const getPayrollEvidence = async (req: Request, res: Response) => {
     return res.status(400).json({ message: err.message });
   }
 };
+
+export const submitPayrollRun = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const user = (req as any).user;
+    const row = await payrollRunService.submitForApproval(id, user, req.app);
+    return res.json(row);
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message });
+  }
+};
+
+export const approvePayrollRun = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const user = (req as any).user;
+    const row = await payrollRunService.approvePayrollRun(id, user, req.app);
+    return res.json(row);
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message });
+  }
+};
+
+export const rejectPayrollRun = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const { reason } = req.body;
+    const user = (req as any).user;
+    const row = await payrollRunService.rejectPayrollRun(id, reason, user, req.app);
+    return res.json(row);
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message });
+  }
+};

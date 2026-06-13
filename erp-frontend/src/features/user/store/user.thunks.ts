@@ -1,7 +1,7 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import * as userService from "../user.service";
 import { getErrorMessage } from "../../../utils/ErrorHelper";
-import { updateUserDTO } from "../dto/userDTO";
+import { createUserDTO, updateUserDTO } from "../dto/userDTO";
 
 export const fetchAllUsers = createAsyncThunk("user/fetchAllUsers", async (_, { rejectWithValue }) => {
   try {
@@ -24,15 +24,7 @@ export const fetchAllRoles = createAsyncThunk("user/fetchAllRoles", async (_, { 
 export const createUserThunk = createAsyncThunk(
   "user/createUser",
   async (
-    data: {
-      branch_id: number;
-      username: string;
-      password: string;
-      full_name?: string;
-      email?: string;
-      phone?: string;
-      role_id: number;
-    },
+    data: createUserDTO,
     { rejectWithValue }
   ) => {
     try {

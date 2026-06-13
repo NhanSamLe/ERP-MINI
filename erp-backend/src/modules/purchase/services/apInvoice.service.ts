@@ -16,6 +16,8 @@ import { GlJournal } from "../../finance/models/glJournal.model";
 import { GlEntry } from "../../finance/models/glEntry.model";
 import { GlEntryLine } from "../../finance/models/glEntryLine.model";
 import { notificationService } from "../../../core/services/notification.service";
+import { getMappedAccount } from "../../finance/services/glAccount.service";
+import { checkPeriodLocked } from "../../finance/services/glJournal.service";
 import { requireGlAccounts } from "../../finance/services/glAccount.helper";
 import { getCompanyIdFromBranch } from "../../finance/services/companyScope.service";
 import { DuplicateDetectorService } from "../../document-intelligence/services/duplicateDetector.service";
@@ -737,6 +739,9 @@ export const apInvoiceService = {
         { transaction: t },
       );
 
+      // Kiểm tra kỳ kế toán đã khóa sổ hay chưa
+      await checkPeriodLocked(invoice.invoice_date ?? new Date(), t);
+
       const journal = await GlJournal.findOne({
         where: { code: "PURCHASE" },
         transaction: t,
@@ -757,11 +762,12 @@ export const apInvoiceService = {
         { transaction: t },
       );
 
-      // Lấy tài khoản theo company_id — multi-tenant safe
-      const accounts = await requireGlAccounts(companyId, ["156", "1331", "331"], t);
-      const INVENTORY_ACC_ID = accounts["156"]!.id;
-      const VAT_INPUT_ACC_ID = accounts["1331"]!.id;
-      const AP_ACC_ID = accounts["331"]!.id;
+      // Lấy các tài khoản 156, 1331, 331 qua mapping động
+      const [INVENTORY_ACC_ID, VAT_INPUT_ACC_ID, AP_ACC_ID] = await Promise.all([
+        getMappedAccount(invoice.branch_id, "AP_EXPENSE_INVENTORY", "156", t),
+        getMappedAccount(invoice.branch_id, "AP_VAT", "1331", t),
+        getMappedAccount(invoice.branch_id, "AP_PAYABLE", "331", t),
+      ]);
 
       const totalBeforeTax = Number(invoice.total_before_tax || 0);
       const totalTax = Number(invoice.total_tax || 0);

@@ -25,6 +25,8 @@ import { GlJournal } from "../../finance/models/glJournal.model";
 import { GlEntry } from "../../finance/models/glEntry.model";
 import { GlEntryLine } from "../../finance/models/glEntryLine.model";
 import { notificationService } from "../../../core/services/notification.service";
+import { getMappedAccount } from "../../finance/services/glAccount.service";
+import { checkPeriodLocked } from "../../finance/services/glJournal.service";
 import { assertPostingPeriodOpen } from "../../finance/services/fiscalGuard.service";
 import { requireGlAccounts } from "../../finance/services/glAccount.helper";
 import { getCompanyIdFromBranch } from "../../finance/services/companyScope.service";
@@ -621,11 +623,15 @@ export const arInvoiceService = {
 
     const companyId = await getCompanyIdFromBranch(invoice.branch_id, t);
 
-    // Lay tai khoan theo company cua branch
-    const accounts = await requireGlAccounts(companyId, ["131", "511", "3331"], t);
-    const arAcc = accounts["131"];
-    const revenueAcc = accounts["511"];
-    const vatAcc = accounts["3331"];
+    // Kiểm tra kỳ kế toán có khóa sổ hay chưa
+    await checkPeriodLocked(invoice.invoice_date || new Date(), t);
+
+    // Lấy các tài khoản 131, 511, 3331 qua mapping động
+    const [arAccId, revenueAccId, vatAccId] = await Promise.all([
+      getMappedAccount(invoice.branch_id, "AR_RECEIVABLE", "131", t),
+      getMappedAccount(invoice.branch_id, "AR_REVENUE", "511", t),
+      getMappedAccount(invoice.branch_id, "AR_VAT", "3331", t),
+    ]);
 
     const rate = Number(invoice.exchange_rate || 1);
     const totalBeforeTax = Number(invoice.total_before_tax || 0) * rate;
@@ -653,9 +659,25 @@ export const arInvoiceService = {
     );
 
     const lines: Partial<GlEntryLine>[] = [
-      { entry_id: entry.id, account_id: arAcc!.id, partner_id: partnerId as any, debit: totalAfterTax, credit: 0 },
-      { entry_id: entry.id, account_id: revenueAcc!.id, debit: 0, credit: totalBeforeTax },
-      { entry_id: entry.id, account_id: vatAcc!.id, debit: 0, credit: totalTax },
+      {
+        entry_id: entry.id,
+        account_id: arAccId,
+        partner_id: partnerId as any,
+        debit: totalAfterTax,
+        credit: 0,
+      },
+      {
+        entry_id: entry.id,
+        account_id: revenueAccId,
+        debit: 0,
+        credit: totalBeforeTax,
+      },
+      {
+        entry_id: entry.id,
+        account_id: vatAccId,
+        debit: 0,
+        credit: totalTax,
+      },
     ];
 
     await GlEntryLine.bulkCreate(lines as any, { transaction: t });

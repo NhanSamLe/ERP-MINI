@@ -12,6 +12,8 @@ import { requireGlAccounts } from "../../finance/services/glAccount.helper";
 import { getCompanyIdFromBranch } from "../../finance/services/companyScope.service";
 import { Op, QueryTypes } from "sequelize";
 import { notificationService } from "../../../core/services/notification.service";
+import { getMappedAccount } from "../../finance/services/glAccount.service";
+import { checkPeriodLocked } from "../../finance/services/glJournal.service";
 import { generatePaymentNo } from "../utils";
 
 export const apPaymentService = {
@@ -242,11 +244,17 @@ export const apPaymentService = {
         { transaction: t },
       );
 
-      // GL: Nợ 331 (AP), Có 111/112 (Cash/Bank) — lấy tài khoản theo company
-      const cashAccCode = payment.method === "cash" ? "111" : "112";
-      const accounts = await requireGlAccounts(companyId, ["331", cashAccCode], t);
-      const debitAccountId = accounts["331"]!.id;
-      const creditAccountId = accounts[cashAccCode]!.id;
+      // Kiểm tra kỳ kế toán đã khóa sổ hay chưa
+      await checkPeriodLocked(payment.payment_date || new Date(), t);
+
+      // GL: cash->111, bank/transfer->112 qua mapping động
+      const mappingKey = payment.method === "cash" ? "CASH_ACCOUNT" : "BANK_ACCOUNT";
+      const creditFallback = payment.method === "cash" ? "111" : "112";
+
+      const [debitAccountId, creditAccountId] = await Promise.all([
+        getMappedAccount(payment.branch_id, "AP_PAYABLE", "331", t),
+        getMappedAccount(payment.branch_id, mappingKey, creditFallback, t),
+      ]);
 
       const journalCode = payment.method === "cash" ? "CASH" : "BANK";
       const journal = await GlJournal.findOne({ where: { code: journalCode }, transaction: t });

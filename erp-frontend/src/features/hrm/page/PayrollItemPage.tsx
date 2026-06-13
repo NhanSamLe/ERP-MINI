@@ -42,8 +42,8 @@ const PayrollItemPage: React.FC = () => {
   const roleCode =
     (authUser as any)?.role?.code ?? (authUser as any)?.role ?? "UNKNOWN";
 
-  const isHRStaff = roleCode === "HR_STAFF";
-  const isChiefAcc = roleCode === "CHIEF_ACCOUNTANT";
+  const isHRStaff = roleCode === "HR_STAFF" || roleCode === "HRMANAGER" || roleCode === "ADMIN";
+  const isChiefAcc = roleCode === "CHIEF_ACCOUNTANT" || roleCode === "CHACC";
 
   // Filter
   const [typeFilter, setTypeFilter] = useState<PayrollItemType | "all">("all");
@@ -116,7 +116,7 @@ const PayrollItemPage: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this payroll item?")) return;
+    if (!window.confirm("Bạn có chắc chắn muốn xóa khoản mục lương này không?")) return;
     try {
       await dispatch(deletePayrollItemThunk(id) as any).unwrap();
     } catch {
@@ -134,7 +134,7 @@ const PayrollItemPage: React.FC = () => {
             : "bg-red-50 text-red-700 border-red-200"
         }`}
       >
-        {isEarning ? "Earning" : "Deduction"}
+        {isEarning ? "Thu nhập" : "Khấu trừ"}
       </span>
     );
   };
@@ -147,7 +147,7 @@ const PayrollItemPage: React.FC = () => {
           : "bg-gray-50 text-gray-600 border-gray-200"
       }`}
     >
-      {is_active ? "Active" : "Inactive"}
+      {is_active ? "Hoạt động" : "Không hoạt động"}
     </span>
   );
 
@@ -159,7 +159,7 @@ const PayrollItemPage: React.FC = () => {
           : "bg-gray-50 text-gray-600 border-gray-200"
       }`}
     >
-      {is_taxable ? "Taxable" : "Non-taxable"}
+      {is_taxable ? "Chịu thuế" : "Không chịu thuế"}
     </span>
   );
 
@@ -169,7 +169,7 @@ const PayrollItemPage: React.FC = () => {
       <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold flex items-center gap-3">
           <Calendar className="w-8 h-8 text-blue-600" />
-          Payroll Items
+          Khoản mục lương
         </h1>
 
         {isHRStaff && (
@@ -177,7 +177,7 @@ const PayrollItemPage: React.FC = () => {
             onClick={openCreateModal}
             className="bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-orange-700 transition-colors shadow-md"
           >
-            <Plus className="w-5 h-5" /> Create Payroll Item
+            <Plus className="w-5 h-5" /> Tạo khoản mục lương
           </button>
         )}
       </div>
@@ -187,12 +187,12 @@ const PayrollItemPage: React.FC = () => {
         <div className="flex items-center gap-2">
           <Filter className="w-5 h-5 text-gray-500" />
           <span className="text-sm font-medium text-gray-700">
-            Filters:
+            Bộ lọc:
           </span>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600">Branch:</span>
+          <span className="text-sm text-gray-600">Chi nhánh:</span>
           <select
             className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             value={branchFilter}
@@ -202,7 +202,7 @@ const PayrollItemPage: React.FC = () => {
               )
             }
           >
-            <option value="all">All</option>
+            <option value="all">Tất cả</option>
             {branches.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.name}
@@ -212,15 +212,15 @@ const PayrollItemPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600">Item Type:</span>
+          <span className="text-sm text-gray-600">Loại khoản mục:</span>
           <select
             className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value as any)}
           >
-            <option value="all">All</option>
-            <option value="earning">Earning</option>
-            <option value="deduction">Deduction</option>
+            <option value="all">Tất cả</option>
+            <option value="earning">Thu nhập</option>
+            <option value="deduction">Khấu trừ</option>
           </select>
         </div>
       </div>
@@ -240,25 +240,25 @@ const PayrollItemPage: React.FC = () => {
             <thead>
               <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b">
                 <th className="px-6 py-4 text-left font-semibold text-gray-700">
-                  Item Code
+                  Mã khoản mục
                 </th>
                 <th className="px-6 py-4 text-left font-semibold text-gray-700">
-                  Item Name
+                  Tên khoản mục
                 </th>
                 <th className="px-6 py-4 text-left font-semibold text-gray-700">
-                  Branch
+                  Chi nhánh
                 </th>
                 <th className="px-6 py-4 text-center font-semibold text-gray-700">
-                  Type
+                  Loại
                 </th>
                 <th className="px-6 py-4 text-center font-semibold text-gray-700">
-                  Taxable
+                  Chịu thuế
                 </th>
                 <th className="px-6 py-4 text-center font-semibold text-gray-700">
-                  Status
+                  Trạng thái
                 </th>
                 <th className="px-6 py-4 text-center font-semibold text-gray-700">
-                  Actions
+                  Thao tác
                 </th>
               </tr>
             </thead>
@@ -268,7 +268,7 @@ const PayrollItemPage: React.FC = () => {
                   <td colSpan={7} className="text-center py-12">
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-8 h-8 border-4 border-orange-200 border-t-orange-600 rounded-full animate-spin" />
-                      <span className="text-gray-500">Loading...</span>
+                      <span className="text-gray-500">Đang tải...</span>
                     </div>
                   </td>
                 </tr>
@@ -278,7 +278,7 @@ const PayrollItemPage: React.FC = () => {
                     <div className="flex flex-col items-center gap-3">
                       <Calendar className="w-12 h-12 text-gray-300" />
                       <span className="text-gray-500">
-                        No payroll items available
+                        Không có khoản mục lương nào
                       </span>
                     </div>
                   </td>
@@ -315,14 +315,14 @@ const PayrollItemPage: React.FC = () => {
                             <button
                               onClick={() => openEditModal(row)}
                               className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                              title="Edit"
+                              title="Sửa"
                             >
                               <Pencil className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => handleDelete(row.id!)}
                               className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Delete"
+                              title="Xóa"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -330,7 +330,7 @@ const PayrollItemPage: React.FC = () => {
                         )}
                         {isChiefAcc && (
                           <span className="text-xs text-gray-400 italic">
-                            Read-only
+                            Chỉ đọc
                           </span>
                         )}
                       </div>
@@ -351,7 +351,7 @@ const PayrollItemPage: React.FC = () => {
             <div className="border-b px-6 py-4 bg-gradient-to-r from-orange-500 to-orange-600">
               <h2 className="text-xl font-semibold text-white flex items-center gap-2">
                 <Calendar className="w-6 h-6" />
-                {editingId ? "Update Payroll Item" : "Create New Payroll Item"}
+                {editingId ? "Cập nhật khoản mục lương" : "Tạo khoản mục lương mới"}
               </h2>
             </div>
 
@@ -359,7 +359,7 @@ const PayrollItemPage: React.FC = () => {
             <form className="p-6 space-y-5" onSubmit={handleSubmit}>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Branch <span className="text-red-500">*</span>
+                  Chi nhánh <span className="text-red-500">*</span>
                 </label>
                 <select
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
@@ -383,7 +383,7 @@ const PayrollItemPage: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Item Code <span className="text-red-500">*</span>
+                    Mã khoản mục <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -392,13 +392,13 @@ const PayrollItemPage: React.FC = () => {
                     onChange={(e) =>
                       setForm((f) => ({ ...f, item_code: e.target.value }))
                     }
-                    placeholder="e.g. BASIC_SALARY"
+                    placeholder="Ví dụ: BASIC_SALARY"
                     required
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Item Type <span className="text-red-500">*</span>
+                    Loại khoản mục <span className="text-red-500">*</span>
                   </label>
                   <select
                     className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
@@ -411,15 +411,15 @@ const PayrollItemPage: React.FC = () => {
                     }
                     required
                   >
-                    <option value="earning">Earning</option>
-                    <option value="deduction">Deduction</option>
+                    <option value="earning">Thu nhập</option>
+                    <option value="deduction">Khấu trừ</option>
                   </select>
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Item Name <span className="text-red-500">*</span>
+                  Tên khoản mục <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -428,7 +428,7 @@ const PayrollItemPage: React.FC = () => {
                   onChange={(e) =>
                     setForm((f) => ({ ...f, name: e.target.value }))
                   }
-                  placeholder="e.g. Basic Salary, Lunch Allowance..."
+                  placeholder="Ví dụ: Lương cơ bản, Phụ cấp ăn trưa..."
                   required
                 />
               </div>
@@ -447,7 +447,7 @@ const PayrollItemPage: React.FC = () => {
                     }
                   />
                   <span className="text-sm text-gray-700">
-                    This item is taxable
+                    Khoản này chịu thuế
                   </span>
                 </label>
 
@@ -465,7 +465,7 @@ const PayrollItemPage: React.FC = () => {
                       }
                     />
                     <span className="text-sm text-gray-700">
-                      Active
+                      Hoạt động
                     </span>
                   </label>
                 )}
@@ -485,13 +485,13 @@ const PayrollItemPage: React.FC = () => {
                   onClick={() => setShowModal(false)}
                   className="px-5 py-2.5 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                 >
-                  Cancel
+                  Hủy
                 </button>
                 <button
                   type="submit"
                   className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-orange-500 to-orange-600 text-white text-sm font-medium hover:from-orange-600 hover:to-orange-700 transition-all shadow-md"
                 >
-                  {editingId ? "Update" : "Create"}
+                  {editingId ? "Cập nhật" : "Tạo mới"}
                 </button>
               </div>
             </form>

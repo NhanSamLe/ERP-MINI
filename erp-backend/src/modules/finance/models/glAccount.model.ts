@@ -9,7 +9,7 @@ export interface GlAccountAttrs {
   type: "asset" | "liability" | "equity" | "revenue" | "expense";
   normal_side: "debit" | "credit";
   is_active?: boolean;
-  parent_id?: number | null;  // Há»— trá»£ cÃ¢y tÃ i khoáº£n cha-con
+  parent_id?: number | null;  // H? tr? cây tài kho?n cha-con
   description?: string | null;
 }
 
@@ -31,7 +31,7 @@ GlAccount.init(
   {
     id: { type: DataTypes.BIGINT, autoIncrement: true, primaryKey: true },
     company_id: { type: DataTypes.BIGINT, allowNull: true, defaultValue: null },
-    // (code, company_id) pháº£i unique â€” má»—i cÃ´ng ty cÃ³ chart of accounts riÃªng
+    // (code, company_id) ph?i unique — m?i công ty có chart of accounts riêng
     code: { type: DataTypes.STRING(20), allowNull: false },
     name: { type: DataTypes.STRING(255), allowNull: false },
     type: { type: DataTypes.ENUM("asset", "liability", "equity", "revenue", "expense"), allowNull: false },
@@ -51,3 +51,4 @@ GlAccount.init(
     ],
   }
 );
+

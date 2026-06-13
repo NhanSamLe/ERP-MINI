@@ -287,6 +287,11 @@ const menuItems: MenuItem[] = [
         allowedRoles: ["ACCOUNT", "CHACC"],
       },
       {
+        name: "Thiết lập định khoản",
+        path: "/finance/mappings",
+        allowedRoles: ["ACCOUNT", "CHACC"],
+      },
+      {
         name: "Báo cáo tài chính",
         path: "/finance/reports",
         allowedRoles: ["ACCOUNT", "CHACC", "CEO", "ADMIN"],
@@ -351,7 +356,22 @@ const menuItems: MenuItem[] = [
       {
         name: "Tính lương",
         path: "/hrm/payroll-runs",
-        allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC"],
+        allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC", "CEO", "ADMIN"],
+      },
+      {
+        name: "Payroll Mapping",
+        path: "/hrm/payroll-mappings",
+        allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC", "CEO", "ADMIN"],
+      },
+      {
+        name: "Cost Centers",
+        path: "/hrm/cost-centers",
+        allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC", "CEO", "ADMIN"],
+      },
+      {
+        name: "Cấu hình lương",
+        path: "/hrm/payroll-configs",
+        allowedRoles: ["HRMANAGER", "HR_STAFF", "CHACC", "ADMIN"],
       },
     ],
   },

@@ -1,9 +1,10 @@
 export const roleRoutes: Record<string, string> = {
-  ADMIN: "/admin/users",
+  ADMIN: "/admin",
   CEO: "/sales/orders",
   SALESMANAGER: "/sales",
   SALES: "/sales",
-  HRMANAGER: "/hrm/department",
+  HRMANAGER: "/hrm",
+  HR_STAFF: "/hrm",
   WHMANAGER: "/inventory",
   WHSTAFF: "/inventory",
   CHACC: "/finance",

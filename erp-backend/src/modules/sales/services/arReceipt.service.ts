@@ -13,6 +13,8 @@ import { notificationService } from "../../../core/services/notification.service
 import { assertPostingPeriodOpen } from "../../finance/services/fiscalGuard.service";
 import { requireGlAccounts } from "../../finance/services/glAccount.helper";
 import { getCompanyIdFromBranch, getCompanyIdFromUserBranch } from "../../finance/services/companyScope.service";
+import { getMappedAccount } from "../../finance/services/glAccount.service";
+import { checkPeriodLocked } from "../../finance/services/glJournal.service";
 
 const ACCOUNTING_ROLES = ["ACCOUNT", "CHACC", "BRANCH_MANAGER", "BRMN"];
 
@@ -237,11 +239,17 @@ export const arReceiptService = {
         { transaction: t }
       );
 
-      // 3. Lấy tài khoản Nợ/Có theo company_id (multi-tenant safe)
-      const debitAccCode = receipt.method === "cash" ? "111" : "112";
-      const accounts = await requireGlAccounts(companyId, [debitAccCode, "131"], t);
-      const debitAccountId = accounts[debitAccCode]!.id;
-      const creditAccountId = accounts["131"]!.id;
+      // Kiểm tra kỳ kế toán có khóa sổ hay chưa
+      await checkPeriodLocked(receipt.receipt_date || new Date(), t);
+
+      // 3. Xác định tài khoản Nợ/Có theo method qua mapping động
+      const mappingKey = receipt.method === "cash" ? "CASH_ACCOUNT" : "BANK_ACCOUNT";
+      const fallbackCode = receipt.method === "cash" ? "111" : "112";
+
+      const [debitAccountId, creditAccountId] = await Promise.all([
+        getMappedAccount(receipt.branch_id, mappingKey, fallbackCode, t),
+        getMappedAccount(receipt.branch_id, "AR_RECEIVABLE", "131", t),
+      ]);
 
       // 4. Lấy journal: CASH hoặc BANK
       const journalCode = receipt.method === "cash" ? "CASH" : "BANK";

@@ -5,6 +5,8 @@ import { Position } from "../models/position.model";
 import { PayrollRunLine } from "../models/payrollRunLine.model";
 import { EmployeeFace } from "../models/employeeFace.model";
 import { Branch } from "../../company/models/branch.model";
+import { User } from "../../auth/models/user.model";
+import { notificationService } from "../../../core/services/notification.service";
 
 export interface EmployeeFilter {
   search?: string;
@@ -52,6 +54,7 @@ export async function listEmployees(filter: EmployeeFilter, user: UserJwt) {
       { model: Position, as: "position", attributes: ["id", "name"] },
       { model: Branch, as: "branch", attributes: ["id", "name"] },
       { model: EmployeeFace, as: "faces", attributes: ["id"] },
+      { model: User, as: "user", attributes: ["id", "username", "is_active"] },
     ],
     order: [["full_name", "ASC"]],
   });
@@ -66,6 +69,7 @@ export async function getEmployeeById(id: number, user: UserJwt) {
     include: [
       { model: Department, as: "department", attributes: ["id", "code", "name"] },
       { model: Position, as: "position", attributes: ["id", "name"] },
+      { model: User, as: "user", attributes: ["id", "username", "is_active"] },
     ],
   });
 
@@ -84,7 +88,7 @@ export async function getEmployeeById(id: number, user: UserJwt) {
 
 export interface EmployeePayload {
   branch_id?: number;
-  emp_code: string;
+  emp_code?: string;
   full_name: string;
   gender: "male" | "female" | "other";
   birth_date?: string;
@@ -101,7 +105,7 @@ export interface EmployeePayload {
 
 // ============ CREATE ============
 
-export async function createEmployee(payload: EmployeePayload, user: UserJwt) {
+export async function createEmployee(payload: EmployeePayload, user: UserJwt, app?: any) {
   const branchId =
     user.role === "HR_STAFF" && user.branchId
       ? Number(user.branchId)
@@ -109,17 +113,41 @@ export async function createEmployee(payload: EmployeePayload, user: UserJwt) {
 
   if (!branchId) throw new Error("branch_id is required");
 
-  const exists = await Employee.findOne({ where: { emp_code: payload.emp_code } });
-  if (exists) throw new Error("Employee code already exists");
+  let emp_code = payload.emp_code;
+  if (!emp_code || emp_code.trim() === "") {
+    const employees = await Employee.findAll({
+      attributes: ["emp_code"],
+      where: {
+        emp_code: { [Op.like]: "EMP%" }
+      },
+      raw: true
+    });
+    let maxNum = 0;
+    for (const e of employees) {
+      const numPart = e.emp_code.replace("EMP", "");
+      const num = parseInt(numPart, 10);
+      if (!isNaN(num) && num > maxNum) {
+        maxNum = num;
+      }
+    }
+    emp_code = "EMP" + String(maxNum + 1).padStart(3, "0");
+  } else {
+    const exists = await Employee.findOne({ where: { emp_code } });
+    if (exists) throw new Error("Employee code already exists");
+  }
 
-  // build object rõ ràng, convert date từ string -> Date
+  // Nếu là HR_STAFF thêm nhân viên mới, trạng thái mặc định là inactive (chờ HR Manager duyệt/kích hoạt)
+  const defaultStatus = user.role === "HR_STAFF" ? "inactive" : "active";
+  const statusToSet = user.role === "HR_STAFF" ? "inactive" : (payload.status || defaultStatus);
+
   const dataToCreate: any = {
     branch_id: branchId,
-    emp_code: payload.emp_code,
+    emp_code,
     full_name: payload.full_name,
     gender: payload.gender,
     contract_type: payload.contract_type,
     base_salary: payload.base_salary,
+    status: statusToSet,
   };
 
   if (payload.birth_date) dataToCreate.birth_date = new Date(payload.birth_date);
@@ -129,9 +157,31 @@ export async function createEmployee(payload: EmployeePayload, user: UserJwt) {
   if (payload.position_id) dataToCreate.position_id = payload.position_id;
   if (payload.bank_account) dataToCreate.bank_account = payload.bank_account;
   if (payload.bank_name) dataToCreate.bank_name = payload.bank_name;
-  if (payload.status) dataToCreate.status = payload.status;
 
   const emp = await Employee.create(dataToCreate);
+
+  // Gửi thông báo nếu tạo ở trạng thái inactive (chờ duyệt)
+  if (emp.status === "inactive" && app) {
+    const io = app.get("io");
+    setImmediate(async () => {
+      try {
+        await notificationService.createNotification({
+          type: "SUBMIT",
+          referenceType: "EMPLOYEE",
+          referenceId: emp.id,
+          referenceNo: emp.emp_code,
+          employeeName: emp.full_name,
+          branchId: emp.branch_id,
+          submitterId: user.id,
+          submitterName: user.username,
+          io,
+        });
+      } catch (err) {
+        console.error("Error creating employee notification:", err);
+      }
+    });
+  }
+
   return emp;
 }
 
@@ -140,10 +190,13 @@ export async function createEmployee(payload: EmployeePayload, user: UserJwt) {
 export async function updateEmployee(
   id: number,
   payload: Partial<EmployeePayload>,
-  user: UserJwt
+  user: UserJwt,
+  app?: any
 ) {
   const emp = await Employee.findByPk(id);
   if (!emp) throw new Error("Employee not found");
+
+  const oldStatus = emp.status;
 
   if (user.role === "HR_STAFF" && user.branchId) {
     if (emp.branch_id !== Number(user.branchId)) {
@@ -151,6 +204,13 @@ export async function updateEmployee(
     }
     // HR không được đổi branch
     delete (payload as any).branch_id;
+  }
+
+  // Chặn HR_STAFF tự ý chuyển trạng thái thành active (tự duyệt)
+  if (payload.status === "active" && oldStatus !== "active") {
+    if (user.role === "HR_STAFF") {
+      throw new Error("Chỉ HR Manager hoặc Admin mới có quyền phê duyệt nhân viên");
+    }
   }
 
   const dataToUpdate: any = {};
@@ -185,6 +245,54 @@ export async function updateEmployee(
   if (payload.status !== undefined) dataToUpdate.status = payload.status;
 
   await emp.update(dataToUpdate);
+
+  // Nếu chuyển từ inactive sang active (được duyệt)
+  if (payload.status === "active" && oldStatus === "inactive") {
+    if (app) {
+      const io = app.get("io");
+      
+      // Tìm người submit ban đầu từ bảng notifications
+      let originalSubmitterId: number | undefined = undefined;
+      try {
+        const { Notification } = await import("../../../core/models/notification.model");
+        const submitNotification = await Notification.findOne({
+          where: {
+            reference_type: "EMPLOYEE",
+            reference_id: emp.id,
+            type: "SUBMIT"
+          },
+          order: [["created_at", "ASC"]]
+        });
+        if (submitNotification) {
+          originalSubmitterId = submitNotification.user_id;
+        }
+      } catch (err) {
+        console.error("Error finding original submitter:", err);
+      }
+
+      setImmediate(async () => {
+        try {
+          const params: any = {
+            type: "APPROVE",
+            referenceType: "EMPLOYEE",
+            referenceId: emp.id,
+            referenceNo: emp.emp_code,
+            employeeName: emp.full_name,
+            branchId: emp.branch_id,
+            approverName: user.username,
+            io,
+          };
+          if (originalSubmitterId !== undefined) {
+            params.submitterId = originalSubmitterId;
+          }
+          await notificationService.createNotification(params);
+        } catch (err) {
+          console.error("Error sending approve notification:", err);
+        }
+      });
+    }
+  }
+
   return emp;
 }
 

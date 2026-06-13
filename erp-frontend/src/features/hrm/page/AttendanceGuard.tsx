@@ -17,8 +17,8 @@ const AttendanceGuard: React.FC = () => {
     return null;
   }
 
-  if (roleCode === "HR_STAFF") {
-    // ✅ chỉ HR_STAFF mới thấy màn quản lý chấm công
+  if (roleCode === "HR_STAFF" || roleCode === "HRMANAGER" || roleCode === "ADMIN") {
+    // ✅ chỉ HR_STAFF, HRMANAGER, ADMIN mới thấy màn quản lý chấm công
     return <AttendancePage />;
   }
 

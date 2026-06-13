@@ -1,13 +1,7 @@
 import axiosClient from "../../../api/axiosClient";
-export function createUser(data: {
-  branch_id: number;
-  username: string;
-  password: string;
-  full_name?: string;
-  email?: string;
-  phone?: string;
-  role_id: number;
-}) {
+import { createUserDTO } from "../dto/userDTO";
+
+export function createUser(data: createUserDTO) {
   return axiosClient.post("/auth/users", data);
 }
 export function updateUser(data: {

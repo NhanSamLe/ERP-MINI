@@ -19,6 +19,7 @@ import {
 import { clearCurrentRun } from "../store/payrollRun/payrollRun.slice";
 import apiClient from "../../../api/axiosClient";
 import { PayrollEvidenceDTO } from "../dto/payrollEvidence.dto";
+import { payrollRunApi } from "../api/payrollRun.api";
 
 import {
   Plus,
@@ -39,13 +40,14 @@ import {
   Building2,
   ClipboardList,
   Info,
+  XCircle,
 } from "lucide-react";
 
 const statusLabel: Record<string, string> = {
-  present: "Present",
-  absent: "Absent",
-  leave: "Leave",
-  late: "Late",
+  present: "Có mặt",
+  absent: "Vắng mặt",
+  leave: "Nghỉ phép",
+  late: "Muộn",
 };
 
 const statusPillClass = (s: string) => {
@@ -161,8 +163,10 @@ const PayrollRunPage: React.FC = () => {
 
   const roleCode =
     (authUser as any)?.role?.code ?? (authUser as any)?.role ?? "UNKNOWN";
-  const isHRStaff = roleCode === "HR_STAFF";
-  const isAccountant = roleCode === "ACCOUNT";
+  const isHRStaff = roleCode === "HR_STAFF" || roleCode === "HRMANAGER" || roleCode === "ADMIN";
+  const isChiefAcc = roleCode === "CHACC" || roleCode === "CHIEF_ACCOUNTANT" || roleCode === "ADMIN";
+  const isCEO = roleCode === "CEO" || roleCode === "ADMIN";
+  const isAccountant = roleCode === "ACCOUNT" || isChiefAcc;
 
   // filter
   const [statusFilter, setStatusFilter] = useState<PayrollRunStatus | "all">(
@@ -181,6 +185,18 @@ const PayrollRunPage: React.FC = () => {
   const [lineEmployeeId, setLineEmployeeId] = useState<number | "">("");
   const [lineAmount, setLineAmount] = useState<number | "">("");
   const [editingLineId, setEditingLineId] = useState<number | null>(null);
+
+  const isEditable = useMemo(() => {
+    if (!currentRun) return false;
+    return (
+      isHRStaff &&
+      currentRun.status === "draft" &&
+      (currentRun.approval_status === "draft" ||
+        currentRun.approval_status === "rejected" ||
+        !currentRun.approval_status) &&
+      currentRun.period?.status !== "closed"
+    );
+  }, [currentRun, isHRStaff]);
 
   // ===== EVIDENCE =====
   const [showEvidenceModal, setShowEvidenceModal] = useState(false);
@@ -211,7 +227,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
 
 
     } catch (e: any) {
-      setEvidenceError(e?.response?.data?.message || "Unable to load evidence");
+      setEvidenceError(e?.response?.data?.message || "Không thể tải chứng từ chấm công");
     } finally {
       setEvidenceLoading(false);
     }
@@ -254,7 +270,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
   const handleCreateRun = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createPeriodId || !runNo.trim()) {
-      toast.error("Please select a payroll period and enter a payroll run number");
+      toast.error("Vui lòng chọn kỳ lương và nhập mã tính lương");
       return;
     }
     try {
@@ -271,7 +287,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
   };
 
   const handleCancelRun = async (id: number) => {
-    if (!window.confirm("Are you sure you want to cancel this payroll run?")) return;
+    if (!window.confirm("Bạn có chắc chắn muốn hủy lượt chạy lương này không?")) return;
     try {
       await dispatch(cancelPayrollRunThunk(id) as any).unwrap();
     } catch {
@@ -282,7 +298,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
   const handlePostRun = async (id: number) => {
     if (
       !window.confirm(
-        "Are you sure you want to POST this payroll run to General Ledger? This action cannot be undone."
+        "Bạn có chắc chắn muốn GHI SỔ lượt chạy lương này vào Sổ cái không? Hành động này không thể hoàn tác."
       )
     )
       return;
@@ -295,18 +311,71 @@ console.log("attendance keys:", Object.keys(res.data || {}));
 
   const handleCalculate = async () => {
     if (!currentRun) return;
-    if (!window.confirm("Calculate payroll automatically based on attendance for this period?")) return;
+    if (!window.confirm("Tự động tính lương dựa trên dữ liệu chấm công của kỳ này?")) return;
 
     try {
       await apiClient.post(`/hrm/payroll-runs/${currentRun.id}/calculate`, {});
       await dispatch(fetchPayrollRunDetail(currentRun.id!) as any).unwrap();
-      toast.success("Payroll calculation completed!");
+      toast.success("Tính lương thành công!");
       // refresh evidence nếu đang mở
       if (showEvidenceModal && evidenceEmployeeId) {
         await openEvidence(evidenceEmployeeId);
       }
     } catch (e: any) {
-      toast.error(e?.response?.data?.message || "Payroll calculation failed");
+      toast.error(e?.response?.data?.message || "Tính lương thất bại");
+    }
+  };
+
+  const handleSendSubmit = async () => {
+    if (!currentRun?.id) return;
+    if (!window.confirm("Bạn có chắc chắn muốn nộp bảng lương này để duyệt không?")) return;
+    try {
+      await payrollRunApi.submit(currentRun.id);
+      toast.success("Đã nộp bảng lương thành công!");
+      await dispatch(fetchPayrollRunDetail(currentRun.id) as any).unwrap();
+      const filter: any = {};
+      if (statusFilter !== "all") filter.status = statusFilter;
+      if (periodFilter !== "all") filter.period_id = Number(periodFilter);
+      dispatch(fetchPayrollRuns(filter) as any);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || "Nộp duyệt thất bại");
+    }
+  };
+
+  const handleSendApprove = async () => {
+    if (!currentRun?.id) return;
+    if (!window.confirm("Bạn có chắc chắn phê duyệt bảng lương này?")) return;
+    try {
+      await payrollRunApi.approve(currentRun.id);
+      toast.success("Phê duyệt bảng lương thành công!");
+      await dispatch(fetchPayrollRunDetail(currentRun.id) as any).unwrap();
+      const filter: any = {};
+      if (statusFilter !== "all") filter.status = statusFilter;
+      if (periodFilter !== "all") filter.period_id = Number(periodFilter);
+      dispatch(fetchPayrollRuns(filter) as any);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || "Duyệt thất bại");
+    }
+  };
+
+  const handleSendReject = async () => {
+    if (!currentRun?.id) return;
+    const reason = window.prompt("Nhập lý do từ chối bảng lương:");
+    if (reason === null) return; // cancel
+    if (!reason.trim()) {
+      toast.error("Vui lòng nhập lý do từ chối");
+      return;
+    }
+    try {
+      await payrollRunApi.reject(currentRun.id, reason.trim());
+      toast.success("Đã từ chối bảng lương!");
+      await dispatch(fetchPayrollRunDetail(currentRun.id) as any).unwrap();
+      const filter: any = {};
+      if (statusFilter !== "all") filter.status = statusFilter;
+      if (periodFilter !== "all") filter.period_id = Number(periodFilter);
+      dispatch(fetchPayrollRuns(filter) as any);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || "Từ chối thất bại");
     }
   };
 
@@ -326,7 +395,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
     e.preventDefault();
     if (!currentRun) return;
     if (!lineEmployeeId || !lineAmount) {
-      toast.error("Please enter employee ID and amount");
+      toast.error("Vui lòng nhập ID nhân viên và số tiền");
       return;
     }
     const employee_id = Number(lineEmployeeId);
@@ -370,7 +439,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
 
   const handleDeleteLine = async (line: PayrollRunLineDTO) => {
     if (!currentRun) return;
-    if (!window.confirm("Delete this payroll line?")) return;
+    if (!window.confirm("Xóa dòng lương này?")) return;
     try {
       await dispatch(
         deletePayrollRunLineThunk({
@@ -388,29 +457,60 @@ console.log("attendance keys:", Object.keys(res.data || {}));
     }
   };
 
-  const getStatusBadge = (status: PayrollRunStatus) => {
-    const isDraft = status === "draft";
-    return (
-      <span
-        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${
-          isDraft
-            ? "bg-amber-100 text-amber-700 border border-amber-200"
-            : "bg-emerald-100 text-emerald-700 border border-emerald-200"
-        }`}
-      >
-        {isDraft ? (
-          <>
+  const getStatusBadge = (row: PayrollRunDTO) => {
+    if (row.status === "posted") {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
+          <CheckCircle2 className="w-3.5 h-3.5" />
+          Đã ghi sổ
+        </span>
+      );
+    }
+
+    const appStatus = row.approval_status || "draft";
+    switch (appStatus) {
+      case "draft":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
             <Clock className="w-3.5 h-3.5" />
-            Draft
-          </>
-        ) : (
-          <>
+            Nháp
+          </span>
+        );
+      case "waiting_chief_accountant":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200 animate-pulse">
+            <Clock className="w-3.5 h-3.5" />
+            Chờ Kế toán trưởng
+          </span>
+        );
+      case "waiting_ceo":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 border border-purple-200 animate-pulse">
+            <Clock className="w-3.5 h-3.5" />
+            Chờ CEO duyệt
+          </span>
+        );
+      case "approved":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
             <CheckCircle2 className="w-3.5 h-3.5" />
-            Posted
-          </>
-        )}
-      </span>
-    );
+            Đã duyệt
+          </span>
+        );
+      case "rejected":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200">
+            <XCircle className="w-3.5 h-3.5" />
+            Bị từ chối
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+            {appStatus}
+          </span>
+        );
+    }
   };
 
   // Filter items by search
@@ -453,10 +553,10 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                 <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg">
                   <FileText className="w-7 h-7 text-white" />
                 </div>
-                Payroll Run Management
+                Quản lý tính lương
               </h1>
               <p className="text-sm text-gray-600">
-                Track and manage employee payroll runs
+                Theo dõi và quản lý các lượt tính lương cho nhân viên
               </p>
             </div>
 
@@ -466,7 +566,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                 className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg hover:shadow-xl font-medium"
               >
                 <Plus className="w-5 h-5" />
-                Create New Payroll Run
+                Tạo lượt tính lương mới
               </button>
             )}
           </div>
@@ -477,7 +577,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600 font-medium mb-1">
-                    Total Runs
+                    Tổng lượt chạy
                   </p>
                   <p className="text-2xl font-bold text-gray-900">
                     {stats.total}
@@ -493,7 +593,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600 font-medium mb-1">
-                    Draft Runs
+                    Lượt chạy nháp
                   </p>
                   <p className="text-2xl font-bold text-amber-600">
                     {stats.draft}
@@ -509,7 +609,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600 font-medium mb-1">
-                    Posted
+                    Đã ghi sổ
                   </p>
                   <p className="text-2xl font-bold text-emerald-600">
                     {stats.posted}
@@ -531,7 +631,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search by payroll run code or period..."
+                  placeholder="Tìm kiếm theo mã chạy lương hoặc kỳ lương..."
                   className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -549,9 +649,9 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                     setStatusFilter(e.target.value as PayrollRunStatus | "all")
                   }
                 >
-                  <option value="all">All Statuses</option>
-                  <option value="draft">Draft</option>
-                  <option value="posted">Posted</option>
+                  <option value="all">Tất cả trạng thái</option>
+                  <option value="draft">Nháp</option>
+                  <option value="posted">Đã ghi sổ</option>
                 </select>
               </div>
 
@@ -566,7 +666,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                     )
                   }
                 >
-                  <option value="all">All Payroll Periods</option>
+                  <option value="all">Tất cả kỳ lương</option>
                   {periods.map((p: any) => (
                     <option key={p.id} value={p.id}>
                       {p.period_code}
@@ -585,7 +685,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
               <div>
                 <h3 className="text-sm font-semibold text-red-800 mb-1">
-                  An error occurred
+                  Đã xảy ra lỗi
                 </h3>
                 <p className="text-sm text-red-700">{error}</p>
               </div>
@@ -600,22 +700,22 @@ console.log("attendance keys:", Object.keys(res.data || {}));
               <thead>
                 <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Payroll Run Code
+                    Mã chạy lương
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Payroll Period
+                    Kỳ lương
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Branch
+                    Chi nhánh
                   </th>
                   <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Status
+                    Trạng thái
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Created Date
+                    Ngày tạo
                   </th>
                   <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Actions
+                    Thao tác
                   </th>
                 </tr>
               </thead>
@@ -626,7 +726,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                       <div className="flex flex-col items-center gap-4">
                         <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
                         <span className="text-sm text-gray-500 font-medium">
-                          Loading data...
+                          Đang tải dữ liệu...
                         </span>
                       </div>
                     </td>
@@ -640,12 +740,12 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                         </div>
                         <div className="text-center">
                           <p className="text-sm font-medium text-gray-900 mb-1">
-                            No payroll runs found
+                            Không tìm thấy lượt chạy lương nào
                           </p>
                           <p className="text-sm text-gray-500">
                             {searchTerm
-                              ? "Try changing your search keywords"
-                              : "No payroll runs have been created yet"}
+                              ? "Thử thay đổi từ khóa tìm kiếm"
+                              : "Chưa có lượt chạy lương nào được tạo"}
                           </p>
                         </div>
                       </div>
@@ -689,7 +789,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                       </td>
 
                       <td className="px-6 py-4 text-center">
-                        {getStatusBadge(row.status)}
+                        {getStatusBadge(row)}
                       </td>
 
                       <td className="px-6 py-4 text-sm text-gray-700">
@@ -698,40 +798,22 @@ console.log("attendance keys:", Object.keys(res.data || {}));
 
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-center gap-2">
-                          {isHRStaff && row.status === "draft" && (
-                            <button
-                              onClick={() => openLinesModal(row.id!)}
-                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all hover:scale-110"
-                              title="Manage payroll lines"
-                            >
-                              <Users className="w-4 h-4" />
-                            </button>
-                          )}
+                          <button
+                            onClick={() => openLinesModal(row.id!)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all hover:scale-110"
+                            title="Xem chi tiết & Dòng lương"
+                          >
+                            <Users className="w-4 h-4" />
+                          </button>
 
-                          {isAccountant && row.status === "draft" && (
-                            <button
-                              onClick={() => handlePostRun(row.id!)}
-                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-all hover:scale-110"
-                              title="Post payroll run"
-                            >
-                              <Upload className="w-4 h-4" />
-                            </button>
-                          )}
-
-                          {isHRStaff && row.status === "draft" && (
+                          {isHRStaff && (row.approval_status === "draft" || row.approval_status === "rejected" || !row.approval_status) && row.status === "draft" && (
                             <button
                               onClick={() => handleCancelRun(row.id!)}
                               className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all hover:scale-110"
-                              title="Cancel payroll run"
+                              title="Hủy lượt chạy lương"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
-                          )}
-
-                          {!isHRStaff && !isAccountant && (
-                            <span className="text-xs text-gray-400 italic px-2 py-1 bg-gray-50 rounded">
-                              Read-only
-                            </span>
                           )}
                         </div>
                       </td>
@@ -750,11 +832,11 @@ console.log("attendance keys:", Object.keys(res.data || {}));
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
             <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5">
               <div className="flex justify-between items-center">
-                <h2 className="text-xl font-bold text-white flex items-center gap-3">
+                <h2 className="text-xl font-bold text-white flex items-center gap-3 mb-2">
                   <div className="p-2 bg-white/20 rounded-lg">
                     <FileText className="w-5 h-5" />
                   </div>
-                  Create New Payroll Run
+                  Tạo lượt tính lương mới
                 </h2>
                 <button
                   onClick={() => setShowCreateModal(false)}
@@ -768,7 +850,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
             <form className="p-6 space-y-6" onSubmit={handleCreateRun}>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Payroll Period <span className="text-red-500">*</span>
+                  Kỳ lương <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -782,7 +864,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                     }
                     required
                   >
-                    <option value="">-- Select Payroll Period --</option>
+                    <option value="">-- Chọn kỳ lương --</option>
                     {periods.map((p: any) => (
                       <option key={p.id} value={p.id}>
                         {p.period_code} ({d10(p.start_date)} - {d10(p.end_date)})
@@ -794,7 +876,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Payroll Run Code <span className="text-red-500">*</span>
+                  Mã chạy lương <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -803,7 +885,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                     value={runNo}
                     onChange={(e) => setRunNo(e.target.value)}
-                    placeholder="e.g., RUN-2024-01"
+                    placeholder="Ví dụ: RUN-2024-01"
                     required
                   />
                 </div>
@@ -815,13 +897,13 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                   onClick={() => setShowCreateModal(false)}
                   className="px-5 py-2.5 rounded-lg border-2 border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
                 >
-                  Cancel
+                  Hủy
                 </button>
                 <button
                   type="submit"
                   className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-semibold hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg hover:shadow-xl"
                 >
-                  Create Payroll Run
+                  Tạo lượt chạy lương
                 </button>
               </div>
             </form>
@@ -845,7 +927,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                   <div className="flex items-center gap-2 text-blue-100 text-sm">
                     <Calendar className="w-4 h-4" />
                     <span>
-                      Period:{" "}
+                      Kỳ lương:{" "}
                       {currentRun.period
                         ? `${currentRun.period.period_code} (${d10(
                             currentRun.period.start_date
@@ -870,12 +952,52 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                 </div>
               )}
 
+              {/* Báo cáo trạng thái duyệt */}
+              {currentRun.approval_status === "rejected" && currentRun.reject_reason && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3 text-red-800 shadow-sm">
+                  <AlertCircle className="w-5 h-5 mt-0.5 shrink-0 text-red-600" />
+                  <div>
+                    <h4 className="font-semibold text-sm">Bảng lương bị từ chối duyệt</h4>
+                    <p className="text-sm mt-1">
+                      Lý do: <span className="font-semibold">{currentRun.reject_reason}</span>
+                    </p>
+                  </div>
+                </div>
+              )}
+              {currentRun.approval_status === "waiting_chief_accountant" && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3 text-blue-800 shadow-sm">
+                  <Info className="w-5 h-5 mt-0.5 shrink-0 text-blue-600" />
+                  <div>
+                    <h4 className="font-semibold text-sm">Chờ Kế toán trưởng duyệt</h4>
+                    <p className="text-sm mt-1">Bảng lương đã nộp và đang chờ Kế toán trưởng xem xét.</p>
+                  </div>
+                </div>
+              )}
+              {currentRun.approval_status === "waiting_ceo" && (
+                <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 flex items-start gap-3 text-purple-800 shadow-sm">
+                  <Info className="w-5 h-5 mt-0.5 shrink-0 text-purple-600" />
+                  <div>
+                    <h4 className="font-semibold text-sm">Chờ CEO phê duyệt</h4>
+                    <p className="text-sm mt-1">Bảng lương đã được Kế toán trưởng duyệt thông qua, đang chờ CEO ký duyệt cuối cùng để ghi sổ.</p>
+                  </div>
+                </div>
+              )}
+              {currentRun.status === "posted" && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-start gap-3 text-emerald-800 shadow-sm">
+                  <CheckCircle2 className="w-5 h-5 mt-0.5 shrink-0 text-emerald-600" />
+                  <div>
+                    <h4 className="font-semibold text-sm">Đã duyệt & Ghi sổ</h4>
+                    <p className="text-sm mt-1">Bảng lương đã được CEO phê duyệt và hạch toán tự động vào Sổ cái.</p>
+                  </div>
+                </div>
+              )}
+
               {/* Form line */}
-              {isHRStaff && currentRun.status === "draft" && !loadingDetail && (
+              {isEditable && !loadingDetail && (
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-5">
                   <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <Plus className="w-4 h-4 text-blue-600" />
-                    {editingLineId ? "Update Payroll Line" : "Add New Payroll Line"}
+                    {editingLineId ? "Cập nhật dòng lương" : "Thêm dòng lương mới"}
                   </h3>
 
                   <form
@@ -884,7 +1006,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                   >
                     <div className="flex-1 min-w-[180px]">
                       <label className="block text-xs font-semibold text-gray-700 mb-2">
-                        Employee ID <span className="text-red-500">*</span>
+                        ID nhân viên <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="number"
@@ -895,7 +1017,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                             e.target.value ? Number(e.target.value) : ("" as any)
                           )
                         }
-                        placeholder="e.g., 101"
+                        placeholder="Ví dụ: 101"
                       />
                     </div>
 
@@ -914,7 +1036,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                               e.target.value ? Number(e.target.value) : ("" as any)
                             )
                           }
-                          placeholder="e.g., 15000000"
+                          placeholder="Ví dụ: 15000000"
                         />
                       </div>
                     </div>
@@ -926,12 +1048,12 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                       {editingLineId ? (
                         <>
                           <RefreshCw className="w-4 h-4" />
-                          Update
+                          Cập nhật
                         </>
                       ) : (
                         <>
                           <Plus className="w-4 h-4" />
-                          Add
+                          Thêm
                         </>
                       )}
                     </button>
@@ -946,7 +1068,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                         }}
                         className="px-4 py-2.5 rounded-lg border-2 border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
                       >
-                        Cancel Edit
+                        Hủy sửa
                       </button>
                     )}
                   </form>
@@ -958,7 +1080,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                 <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-5 py-3 border-b-2 border-gray-200">
                   <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                     <Users className="w-4 h-4 text-gray-600" />
-                    Payroll Lines List
+                    Danh sách dòng lương
                     {currentRun.lines && currentRun.lines.length > 0 && (
                       <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">
                         {currentRun.lines.length}
@@ -972,13 +1094,13 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200">
                         <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                          Employee
+                          Nhân viên
                         </th>
                         <th className="px-5 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                          Amount
+                          Số tiền
                         </th>
                         <th className="px-5 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider w-40">
-                          Actions
+                          Thao tác
                         </th>
                       </tr>
                     </thead>
@@ -992,11 +1114,11 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                                 <Users className="w-8 h-8 text-gray-400" />
                               </div>
                               <p className="text-sm font-medium text-gray-500">
-                                No payroll lines yet
+                                Chưa có dòng lương nào
                               </p>
                               {isHRStaff && currentRun.status === "draft" && (
                                 <p className="text-xs text-gray-400">
-                                  Use the form above to add a payroll line
+                                  Sử dụng biểu mẫu phía trên để thêm dòng lương
                                 </p>
                               )}
                             </div>
@@ -1022,19 +1144,19 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                                       type="button"
                                       onClick={() => openEvidence(line.employee_id)}
                                       className="text-left group"
-                                      title="View attendance evidence"
+                                      title="Xem chứng từ chấm công"
                                     >
                                       <p className="text-sm font-semibold text-gray-900 group-hover:underline flex items-center gap-2">
                                         {line.employee?.full_name ||
-                                          `Employee #${line.employee_id}`}
+                                          `Nhân viên #${line.employee_id}`}
                                         <span className="inline-flex items-center gap-1 text-xs text-blue-600">
                                           <ClipboardList className="w-3.5 h-3.5" />
-                                          Evidence
+                                          Chứng từ
                                         </span>
                                       </p>
                                       {line.employee?.code && (
                                         <p className="text-xs text-gray-500">
-                                          Code: {line.employee.code}
+                                          Mã nhân viên: {line.employee.code}
                                         </p>
                                       )}
                                     </button>
@@ -1055,26 +1177,26 @@ console.log("attendance keys:", Object.keys(res.data || {}));
 
                               <td className="px-5 py-4">
                                 <div className="flex items-center justify-center gap-2">
-                                  {isHRStaff && currentRun.status === "draft" ? (
+                                  {isEditable ? (
                                     <>
                                       <button
                                         onClick={() => handleEditLine(line)}
                                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all hover:scale-110"
-                                        title="Edit"
+                                        title="Sửa"
                                       >
                                         <Pencil className="w-4 h-4" />
                                       </button>
                                       <button
                                         onClick={() => handleDeleteLine(line)}
                                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all hover:scale-110"
-                                        title="Delete"
+                                        title="Xóa"
                                       >
                                         <Trash2 className="w-4 h-4" />
                                       </button>
                                     </>
                                   ) : (
                                     <span className="text-xs text-gray-400 italic px-2 py-1 bg-gray-50 rounded">
-                                      Read-only
+                                      Chỉ đọc
                                     </span>
                                   )}
                                 </div>
@@ -1092,7 +1214,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                   <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-5 py-4 border-t-2 border-gray-200">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-semibold text-gray-700">
-                        Total:
+                        Tổng cộng:
                       </span>
                       <div className="flex flex-col items-end">
                         <span className="text-lg font-bold text-gray-900">
@@ -1107,25 +1229,83 @@ console.log("attendance keys:", Object.keys(res.data || {}));
             </div>
 
             {/* Lines modal footer */}
-            <div className="border-t-2 border-gray-200 px-6 py-4 bg-gray-50 flex justify-between items-center">
-              <div>
-                {isHRStaff && currentRun.status === "draft" && (
+            <div className="border-t-2 border-gray-200 px-6 py-4 bg-gray-50 flex flex-wrap justify-between items-center gap-4">
+              <div className="flex items-center gap-2">
+                {isEditable && (
                   <button
                     onClick={handleCalculate}
-                    className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold hover:from-green-700 hover:to-green-800 transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
+                    className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold hover:from-green-700 hover:to-green-800 transition-all shadow-lg hover:shadow-xl flex items-center gap-2 text-sm"
                   >
                     <RefreshCw className="w-4 h-4" />
-                    Auto Calculate
+                    Tự động tính
                   </button>
                 )}
+
+                {isHRStaff &&
+                  currentRun.status === "draft" &&
+                  (currentRun.approval_status === "draft" ||
+                    currentRun.approval_status === "rejected" ||
+                    !currentRun.approval_status) &&
+                  currentRun.period?.status !== "closed" &&
+                  currentRun.lines &&
+                  currentRun.lines.length > 0 && (
+                    <button
+                      onClick={handleSendSubmit}
+                      className="px-5 py-2.5 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-all shadow-lg flex items-center gap-2 text-sm"
+                    >
+                      Nộp duyệt
+                    </button>
+                  )}
               </div>
 
-              <button
-                onClick={() => setShowLinesModal(false)}
-                className="px-6 py-2.5 rounded-lg border-2 border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
-              >
-                Close
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Chief Accountant actions */}
+                {isChiefAcc &&
+                  currentRun.approval_status === "waiting_chief_accountant" &&
+                  currentRun.period?.status !== "closed" && (
+                    <>
+                      <button
+                        onClick={handleSendReject}
+                        className="px-5 py-2.5 rounded-lg bg-red-500 text-white font-semibold hover:bg-red-600 transition-all shadow-lg text-sm"
+                      >
+                        Từ chối
+                      </button>
+                      <button
+                        onClick={handleSendApprove}
+                        className="px-5 py-2.5 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition-all shadow-lg text-sm"
+                      >
+                        Duyệt & Chuyển CEO
+                      </button>
+                    </>
+                  )}
+
+                {/* CEO actions */}
+                {isCEO &&
+                  currentRun.approval_status === "waiting_ceo" &&
+                  currentRun.period?.status !== "closed" && (
+                    <>
+                      <button
+                        onClick={handleSendReject}
+                        className="px-5 py-2.5 rounded-lg bg-red-500 text-white font-semibold hover:bg-red-600 transition-all shadow-lg text-sm"
+                      >
+                        Từ chối
+                      </button>
+                      <button
+                        onClick={handleSendApprove}
+                        className="px-5 py-2.5 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-all shadow-lg text-sm"
+                      >
+                        Duyệt & Ghi sổ
+                      </button>
+                    </>
+                  )}
+
+                <button
+                  onClick={() => setShowLinesModal(false)}
+                  className="px-6 py-2.5 rounded-lg border-2 border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  Đóng
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1140,14 +1320,14 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                         <div className="p-2 bg-white/10 rounded-lg">
                           <ClipboardList className="w-5 h-5" />
                         </div>
-                        Payroll Evidence
+                        Chứng từ chạy lương
                       </h3>
                       <p className="text-sm text-slate-200">
                         {evidence?.employee?.full_name
                           ? `${evidence.employee.full_name} • ${d10(
                               evidence.period?.start_date
                             )} → ${d10(evidence.period?.end_date)}`
-                          : "Loading..."}
+                          : "Đang tải..."}
                       </p>
                     </div>
 
@@ -1173,7 +1353,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                         <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
                         <div>
                           <p className="text-sm font-semibold text-red-800">
-                            Unable to load evidence
+                            Không thể tải chứng từ chấm công
                           </p>
                           <p className="text-sm text-red-700">{evidenceError}</p>
                         </div>
@@ -1187,23 +1367,23 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         {[
                           {
-                            label: "Present",
+                            label: "Có mặt",
                             value: evidence.summary.presentDays,
                             cls:
                               "bg-emerald-50 border-emerald-200 text-emerald-700",
                           },
                           {
-                            label: "Leave",
+                            label: "Nghỉ phép",
                             value: evidence.summary.leaveDays,
                             cls: "bg-blue-50 border-blue-200 text-blue-700",
                           },
                           {
-                            label: "Absent",
+                            label: "Vắng mặt",
                             value: evidence.summary.absentDays,
                             cls: "bg-red-50 border-red-200 text-red-700",
                           },
                           {
-                            label: "Late",
+                            label: "Muộn",
                             value: evidence.summary.lateDays,
                             cls:
                               "bg-amber-50 border-amber-200 text-amber-700",
@@ -1226,64 +1406,64 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                         <div className="px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
                           <Info className="w-4 h-4 text-gray-500" />
                           <h4 className="text-sm font-semibold text-gray-900">
-                            Payroll Breakdown Explanation
+                            Giải trình chi tiết lương
                           </h4>
                         </div>
 
                         <div className="p-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
                           <div className="space-y-2 text-sm">
                             <div className="flex justify-between">
-                              <span className="text-gray-600">Basic Salary</span>
+                              <span className="text-gray-600">Lương cơ bản</span>
                               <span className="font-semibold">
                                 {money(evidence.employee.base_salary)} VND
                               </span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-gray-600">Daily Rate</span>
+                              <span className="text-gray-600">Lương theo ngày</span>
                               <span className="font-semibold">
                                 {money(evidence.breakdown.dailyRate)} VND
                               </span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-gray-600">Base Pay</span>
+                              <span className="text-gray-600">Lương thực tế</span>
                               <span className="font-semibold">
                                 {money(evidence.breakdown.basePay)} VND
                               </span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-gray-600">Allowances</span>
+                              <span className="text-gray-600">Phụ cấp</span>
                               <span className="font-semibold">
                                 {money(evidence.breakdown.allowance)} VND
                               </span>
                             </div>
                             <div className="flex justify-between">
-  <span className="text-gray-600">Gross Income</span>
+  <span className="text-gray-600">Tổng thu nhập</span>
   <span className="font-semibold text-emerald-700">
     {money(evidence.breakdown.gross)} VND
   </span>
 </div>
                             <div className="flex justify-between">
-                              <span className="text-gray-600">Absence Deduction</span>
+                              <span className="text-gray-600">Khấu trừ vắng mặt</span>
                               <span className="font-semibold text-red-600">
                                 -{money(evidence.breakdown.absentDeduction)} VND
                               </span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-gray-600">Tardiness Penalty</span>
+                              <span className="text-gray-600">Phạt đi muộn</span>
                               <span className="font-semibold text-red-600">
                                 -{money(evidence.breakdown.lateDeduction)} VND
                               </span>
                             </div>
                             {evidence.breakdown.insuranceEmp > 0 && (
                               <div className="flex justify-between">
-                                <span className="text-gray-600">Social Insurance (10.5%)</span>
+                                <span className="text-gray-600">Bảo hiểm xã hội (10.5%)</span>
                                 <span className="font-semibold text-red-600">
                                   -{money(evidence.breakdown.insuranceEmp)} VND
                                 </span>
                               </div>
                             )}
                             <div className="flex justify-between">
-                              <span className="text-gray-600">Personal Income Tax (PIT)</span>
+                              <span className="text-gray-600">Thuế thu nhập cá nhân (PIT)</span>
                               <span className="font-semibold text-red-600">
                                 -{money(evidence.breakdown.pit)} VND
                               </span>
@@ -1292,18 +1472,18 @@ console.log("attendance keys:", Object.keys(res.data || {}));
 
                           <div className="border border-gray-200 rounded-xl p-4 bg-gradient-to-br from-gray-50 to-white">
                             <p className="text-xs font-semibold text-gray-600 mb-2">
-                              Result
+                              Kết quả
                             </p>
                           <div className="mt-3 pt-3 border-t border-gray-200 space-y-2 text-sm">
   <div className="flex justify-between">
-    <span className="text-gray-600">Contract Type</span>
+    <span className="text-gray-600">Loại hợp đồng</span>
     <span className="font-semibold capitalize">
       {evidence.employee.contract_type}
     </span>
   </div>
 
   <div className="flex justify-between">
-    <span className="text-gray-600">Dependents</span>
+    <span className="text-gray-600">Người phụ thuộc</span>
     <span className="font-semibold">
       {evidence.employee.dependent || 0}
     </span>
@@ -1311,7 +1491,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
 </div>
                             <div className="flex justify-between items-end">
                               <span className="text-sm text-gray-600">
-                                NET (recalculated)
+                                Thực nhận (Tính toán lại)
                               </span>
                               <span className="text-2xl font-bold text-gray-900">
                                 {money(evidence.breakdown.net)} VND
@@ -1321,7 +1501,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                             <div className="mt-3 pt-3 border-t border-gray-200 space-y-2 text-sm">
                               <div className="flex justify-between">
                                 <span className="text-gray-600">
-                                  Stored Amount
+                                  Số tiền đã lưu
                                 </span>
                                 <span className="font-semibold">
                                   {evidence.breakdown.storedAmount == null
@@ -1333,7 +1513,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                               </div>
 
                               <div className="flex justify-between">
-                                <span className="text-gray-600">Difference</span>
+                                <span className="text-gray-600">Chênh lệch</span>
                                 <span
                                   className={`font-semibold ${
                                     (evidence.breakdown.diff || 0) === 0
@@ -1350,12 +1530,12 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                               <div className="mt-3 p-3 rounded-lg border border-gray-200 bg-white flex items-start gap-2">
                                 <Info className="w-4 h-4 text-gray-500 mt-0.5" />
                                 <p className="text-xs text-gray-600 leading-5">
-                                  NET (recalculated) is computed based on:
-• Attendance records
-• Allowances
-• Deductions for absence/lateness
-• Personal Income Tax based on contract type
-• Dependent deductions
+                                  Thực nhận (Tính toán lại) được tính dựa trên:
+• Dữ liệu chấm công thực tế
+• Các khoản phụ cấp được nhận
+• Khấu trừ nghỉ không phép / đi muộn
+• Thuế TNCN dựa theo loại hợp đồng
+• Giảm trừ gia cảnh cho người phụ thuộc
                                 </p>
                               </div>
                             </div>
@@ -1369,7 +1549,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                           <div className="flex items-center gap-2">
                             <Users className="w-4 h-4 text-gray-600" />
                             <h4 className="text-sm font-semibold text-gray-900">
-                              Attendance Records
+                              Dữ liệu chấm công
                             </h4>
                             <span className="ml-2 px-2 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-bold">
                               {evidence.attendance?.length || 0}
@@ -1382,10 +1562,10 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                               if (evidenceEmployeeId) openEvidence(evidenceEmployeeId);
                             }}
                             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition"
-                            title="Reload Evidence"
+                            title="Tải lại chứng từ"
                           >
                             <RefreshCw className="w-4 h-4" />
-                            Refresh
+                            Làm mới
                           </button>
                         </div>
 
@@ -1394,19 +1574,19 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                             <thead>
                               <tr className="bg-white border-b border-gray-200">
                                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                  Date
+                                  Ngày
                                 </th>
                                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                  Status
+                                  Trạng thái
                                 </th>
                                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                  Check-in
+                                  Giờ vào
                                 </th>
                                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                  Check-out
+                                  Giờ ra
                                 </th>
                                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                  Notes
+                                  Ghi chú
                                 </th>
                               </tr>
                             </thead>
@@ -1421,10 +1601,10 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                                         <ClipboardList className="w-7 h-7 text-gray-400" />
                                       </div>
                                       <p className="text-sm font-semibold text-gray-800">
-                                        No attendance data available
+                                        Không có dữ liệu chấm công
                                       </p>
                                       <p className="text-xs text-gray-500">
-                                        No attendance records found for this employee in this period.
+                                        Không tìm thấy bản ghi chấm công nào của nhân viên này trong kỳ.
                                       </p>
                                     </div>
                                   </td>
@@ -1491,7 +1671,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                     onClick={closeEvidence}
                     className="px-6 py-2.5 rounded-lg border-2 border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
                   >
-                    Close
+                    Đóng
                   </button>
                 </div>
               </div>

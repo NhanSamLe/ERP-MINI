@@ -16,12 +16,23 @@ export const authMiddleware = (requiredRoles: string[]) => (req: AuthRequest, re
   }
   try {
     const decoded = jwt.verify(token, env.jwt.secret);
-    if (typeof decoded === 'object' && decoded !== null && 'id' in decoded && 'role' in decoded) {
-      if (requiredRoles && requiredRoles.length > 0 && !requiredRoles.includes((decoded as any).role)) {
-          return res.status(403).json({ message: "Forbidden: insufficient role" });
-      }
-      req.user = decoded as JwtPayload;
-      next();
+      console.log("DECODED TOKEN --->", decoded);
+     if (typeof decoded === 'object' && decoded !== null && 'id' in decoded && 'role' in decoded) {
+       const userRole = (decoded as any).role;
+       const rolesToCheck = [userRole];
+       if (userRole === "HRMANAGER") rolesToCheck.push("HR_STAFF");
+       if (userRole === "HR_STAFF") rolesToCheck.push("HRMANAGER");
+       if (userRole === "CHACC") rolesToCheck.push("CHIEF_ACCOUNTANT");
+       if (userRole === "CHIEF_ACCOUNTANT") rolesToCheck.push("CHACC");
+
+       const isAdmin = userRole === "ADMIN";
+       const hasPermission = isAdmin || !requiredRoles || requiredRoles.length === 0 || requiredRoles.some(r => rolesToCheck.includes(r));
+
+       if (!hasPermission) {
+           return res.status(403).json({ message: "Forbidden: insufficient role" });
+       }
+       req.user = decoded as JwtPayload;
+       next();
     } else {
       return res.status(401).json({ message: "Invalid token format" });
     }
