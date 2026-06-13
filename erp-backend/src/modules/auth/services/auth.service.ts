@@ -35,25 +35,23 @@ export async function createUser(
   },
   requestingUser?: { company_id?: number },
 ) {
-  const [role, checkUser, checkPhone, checkEmail, branch] = await Promise.all([
+  const checks: Promise<any>[] = [
     model.Role.findOne({ where: { id: data.role_id } }),
     model.User.findOne({ where: { username: data.username } }),
     data.phone ? model.User.findOne({ where: { phone: data.phone } }) : Promise.resolve(null),
     data.email ? model.User.findOne({ where: { email: data.email } }) : Promise.resolve(null),
     model.Branch.findByPk(data.branch_id, { attributes: ["id", "company_id"] }),
-  ]);
-	 if (data.employee_id) checks.push(model.User.findOne({ where: { employee_id: data.employee_id } }));
+  ];
+  if (data.employee_id) {
+    checks.push(model.User.findOne({ where: { employee_id: data.employee_id } }));
+  }
   const results = await Promise.all(checks);
   const role = results[0];
   const checkUser = results[1];
-  
-  let checkPhone = null;
-  let checkEmail = null;
-  let checkEmp = null;
-  let idx = 2;
-  if (data.phone) checkPhone = results[idx++];
-  if (data.email) checkEmail = results[idx++];
-  if (data.employee_id) checkEmp = results[idx++];
+  const checkPhone = results[2];
+  const checkEmail = results[3];
+  const branch = results[4];
+  const checkEmp = data.employee_id ? results[5] : null;
 
   if (!role) throw new Error("Invalid role ID provided");
   if (checkUser) throw new Error("Username already exists");

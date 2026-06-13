@@ -228,9 +228,6 @@ export async function getTrialBalance(filter: { from: string; to: string; branch
     entryWhere.branch_id = filter.branch_id;
   }
 
-  const entryWhere: any = { status: "posted" };
-  if (filter.branch_id) entryWhere.branch_id = filter.branch_id;
-
   const entries = await model.GlEntry.findAll({
     where: entryWhere,
     include: [{
@@ -238,11 +235,13 @@ export async function getTrialBalance(filter: { from: string; to: string; branch
       as: "lines"
     }]
   });
+
+  const accounts = await model.GlAccount.findAll({ where: accountWhere });
   
   const fromDate = new Date(filter.from + " 00:00:00");
   const toDate = new Date(filter.to + " 23:59:59");
   
-  const trialBalance = accounts.map(acc => {
+  const trialBalance = accounts.map((acc: any) => {
     let openingDebit = 0;
     let openingCredit = 0;
     let periodDebit = 0;
@@ -314,20 +313,20 @@ export async function getProfitLoss(filter: { from: string; to: string; branch_i
   const trialBalance = await getTrialBalance({ ...filter, excludeClosing: true });
   
   // Doanh thu (Revenue): TK đầu 5 (511)
-  const revenueAccounts = trialBalance.filter(acc => acc.code.startsWith("5"));
-  const totalRevenue = revenueAccounts.reduce((sum, acc) => sum + acc.periodCredit - acc.periodDebit, 0);
+  const revenueAccounts = trialBalance.filter((acc: any) => acc.code.startsWith("5"));
+  const totalRevenue = revenueAccounts.reduce((sum: number, acc: any) => sum + acc.periodCredit - acc.periodDebit, 0);
   
   // Giá vốn (COGS): Chỉ lấy TK 632
-  const cogsAccounts = trialBalance.filter(acc => acc.code === "632");
-  const totalCogs = cogsAccounts.reduce((sum, acc) => sum + acc.periodDebit - acc.periodCredit, 0);
+  const cogsAccounts = trialBalance.filter((acc: any) => acc.code === "632");
+  const totalCogs = cogsAccounts.reduce((sum: number, acc: any) => sum + acc.periodDebit - acc.periodCredit, 0);
   
   // Chi phí bán hàng: TK 641
-  const sellingAccounts = trialBalance.filter(acc => acc.code === "641");
-  const totalSelling = sellingAccounts.reduce((sum, acc) => sum + acc.periodDebit - acc.periodCredit, 0);
-
+  const sellingAccounts = trialBalance.filter((acc: any) => acc.code === "641");
+  const totalSelling = sellingAccounts.reduce((sum: number, acc: any) => sum + acc.periodDebit - acc.periodCredit, 0);
+ 
   // Chi phí quản lý doanh nghiệp: TK 642
-  const adminAccounts = trialBalance.filter(acc => acc.code === "642");
-  const totalAdmin = adminAccounts.reduce((sum, acc) => sum + acc.periodDebit - acc.periodCredit, 0);
+  const adminAccounts = trialBalance.filter((acc: any) => acc.code === "642");
+  const totalAdmin = adminAccounts.reduce((sum: number, acc: any) => sum + acc.periodDebit - acc.periodCredit, 0);
 
   const grossProfit = totalRevenue - totalCogs;
   const netOperatingProfit = grossProfit - totalSelling - totalAdmin;
@@ -423,7 +422,7 @@ export async function closeBranchPeriod(periodId: number, branchId: number, user
 
   // 4. Lọc các tài khoản doanh thu (đầu 5, 7) và chi phí (đầu 6, 8, 9)
   // có phát sinh số dư (cần kết chuyển về 911)
-  const nominalAccounts = trialBalance.filter(acc => {
+  const nominalAccounts = trialBalance.filter((acc: any) => {
     const isNominal = acc.code.startsWith("5") || acc.code.startsWith("6") || acc.code.startsWith("7") || acc.code.startsWith("8") || acc.code.startsWith("9");
     return isNominal && acc.closingBalance !== 0;
   });

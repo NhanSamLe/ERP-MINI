@@ -185,12 +185,28 @@ export async function postPayrollRun(id: number, transaction?: any) {
     const insCompSocial = Number(configMap.INS_COMP_SOCIAL_RATE || 0.175);
     const insCompHealth = Number(configMap.INS_COMP_HEALTH_RATE || 0.03);
     const insCompUnemp = Number(configMap.INS_COMP_UNEMP_RATE || 0.01);
-	 const branchRecord = await model.Branch.findByPk(period.branch_id, {
-	      attributes: ["id", "company_id"],
-	      transaction: t,
-	    });
-	    if (!branchRecord || !(branchRecord as any).company_id) {
-	      throw new Error("Không xác định được công ty từ chi nhánh — không thể hạch toán lương");
+    const branchRecord = await model.Branch.findByPk(period.branch_id, {
+      attributes: ["id", "company_id"],
+      transaction: t,
+    });
+    if (!branchRecord || !(branchRecord as any).company_id) {
+      throw new Error("Không xác định được công ty từ chi nhánh — không thể hạch toán lương");
+    }
+    const companyId = (branchRecord as any).company_id;
+
+    const totalPit = lines.reduce((sum, l) => sum + Number(l.pit_amount || 0), 0);
+    if (totalPit > 0) {
+      const checkAcc3335 = await model.GlAccount.findOne({
+        where: { company_id: companyId, code: "3335" },
+        transaction: t,
+      });
+      if (!checkAcc3335) {
+        throw new Error(
+          `Tài khoản "3335 - Thuế TNCN phải nộp" chưa được thiết lập cho công ty này. ` +
+          `Vui lòng thêm vào Chart of Accounts trước khi post bảng lương có phát sinh thuế TNCN.`,
+        );
+      }
+    }
 
     // 1. Tự động kiểm tra/tạo các tài khoản tiền lương hệ thống làm fallback
     let acc334 = await model.GlAccount.findOne({ where: { code: "334" }, transaction: t });
@@ -354,18 +370,7 @@ export async function postPayrollRun(id: number, transaction?: any) {
       if (net > 0) {
         const netAccId = getMappedAccount(emp?.department_id, "net_payable", "334");
         addEntryLine(netAccId, null, null, 0, net);
-
-let acc3335: any = null;
-    if (totalPit > 0) {
-      acc3335 = await model.GlAccount.findOne({
-        where: { company_id: companyId, code: "3335" },
-        transaction: t,
-      });
-      if (!acc3335) {
-        throw new Error(
-          `Tài khoản "3335 - Thuế TNCN phải nộp" chưa được thiết lập cho công ty này. ` +
-          `Vui lòng thêm vào Chart of Accounts trước khi post bảng lương có phát sinh thuế TNCN.`,
-        );      }
+      }
 
       // Credit PIT (TK 3335)
       if (pit > 0) {
