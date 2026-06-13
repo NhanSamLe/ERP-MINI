@@ -80,7 +80,10 @@ export const createTaskActivity = async (req: Request, res: Response) => {
 
 export const updateActivity = async (req: Request, res: Response) => {
   try {
-    const updated = await activityService.updateActivity(req.body);
+    const updated = await activityService.updateActivity({
+      ...req.body,
+      activityId: Number(req.params.id || req.body.activityId),
+    });
 
     return res.json({
       message: "Cập nhật Activity thành công",
@@ -93,7 +96,10 @@ export const updateActivity = async (req: Request, res: Response) => {
 
 export const updateCallDetail = async (req: Request, res: Response) => {
   try {
-    const updated = await activityService.updateCallDetail(req.body);
+    const updated = await activityService.updateCallDetail({
+      ...req.body,
+      activity_id: Number(req.params.id || req.body.activity_id),
+    });
     return res.json({ 
       message: "Cập nhật Call detail thành công", 
       data: updated 
@@ -105,7 +111,10 @@ export const updateCallDetail = async (req: Request, res: Response) => {
 
 export const updateEmailDetail = async (req: Request, res: Response) => {
   try {
-    const updated = await activityService.updateEmailDetail(req.body);
+    const updated = await activityService.updateEmailDetail({
+      ...req.body,
+      activity_id: Number(req.params.id || req.body.activity_id),
+    });
     return res.json({ 
       message: "Cập nhật Email detail thành công", 
       data: updated 
@@ -117,7 +126,10 @@ export const updateEmailDetail = async (req: Request, res: Response) => {
 
 export const updateMeetingDetail = async (req: Request, res: Response) => {
   try {
-    const updated = await activityService.updateMeetingDetail(req.body);
+    const updated = await activityService.updateMeetingDetail({
+      ...req.body,
+      activity_id: Number(req.params.id || req.body.activity_id),
+    });
     return res.json({ 
       message: "Cập nhật Meeting detail thành công", 
       data: updated 
@@ -129,7 +141,10 @@ export const updateMeetingDetail = async (req: Request, res: Response) => {
 
 export const updateTaskDetail = async (req: Request, res: Response) => {
   try {
-    const updated = await activityService.updateTaskDetail(req.body);
+    const updated = await activityService.updateTaskDetail({
+      ...req.body,
+      activity_id: Number(req.params.id || req.body.activity_id),
+    });
     return res.json({
       message: "Cập nhật Task detail thành công",
       data: updated,
@@ -199,7 +214,8 @@ export const completeTask = async (req: Request, res: Response) => {
 export const reassignActivity = async (req: Request, res: Response) => {
   try {
     const manager = (req as any).user;
-    const { activityId, newUserId } = req.body;
+    const { newUserId } = req.body;
+    const activityId = Number(req.params.id || req.body.activityId);
 
     const result = await activityService.reassignActivity(
       { activityId, newUserId },

@@ -21,7 +21,7 @@ export default function CreateInvoiceMethodModal({
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-bold text-gray-900">Create AP Invoice</h2>
+          <h2 className="text-xl font-bold text-gray-900">Tạo hóa đơn AP</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
@@ -33,7 +33,7 @@ export default function CreateInvoiceMethodModal({
         {/* Content */}
         <div className="p-8">
           <p className="text-gray-600 mb-8 text-center">
-            Choose how you want to create the invoice
+            Chọn phương thức bạn muốn tạo hóa đơn
           </p>
 
           <div className="grid grid-cols-2 gap-6">
@@ -48,10 +48,10 @@ export default function CreateInvoiceMethodModal({
                 </div>
                 <div className="text-center">
                   <h3 className="font-semibold text-gray-900 mb-2">
-                    From Purchase Order
+                    Từ đơn đặt hàng (PO)
                   </h3>
                   <p className="text-sm text-gray-600">
-                    Create invoice from an existing confirmed or completed PO
+                    Tạo hóa đơn từ đơn đặt hàng đã xác nhận hoặc hoàn thành sẵn có
                   </p>
                 </div>
               </div>
@@ -68,10 +68,10 @@ export default function CreateInvoiceMethodModal({
                 </div>
                 <div className="text-center">
                   <h3 className="font-semibold text-gray-900 mb-2">
-                    From OCR Scan
+                    Từ quét AI OCR
                   </h3>
                   <p className="text-sm text-gray-600">
-                    Upload and scan invoice document using AI OCR
+                    Tải lên và quét tài liệu hóa đơn bằng công nghệ AI OCR
                   </p>
                 </div>
               </div>
@@ -82,7 +82,7 @@ export default function CreateInvoiceMethodModal({
         {/* Footer */}
         <div className="flex justify-end gap-3 p-6 border-t bg-gray-50">
           <Button variant="outline" onClick={onClose} className="px-6">
-            Cancel
+            Hủy
           </Button>
         </div>
       </div>

@@ -3,6 +3,7 @@ import { sequelize } from "../../../config/db";
 
 export interface PartnerAttrs {
   id: number;
+  company_id?: number | null;
   type: "customer" | "supplier" | "internal";
   name: string;
   contact_person?: string | null;
@@ -33,6 +34,7 @@ type PartnerCreation = Optional<PartnerAttrs, "id" | "status">;
 
 export class Partner extends Model<PartnerAttrs, PartnerCreation> implements PartnerAttrs {
   public id!: number;
+  public company_id?: number | null;
   public type!: "customer" | "supplier" | "internal";
   public name!: string;
   public contact_person?: string;
@@ -65,6 +67,7 @@ export class Partner extends Model<PartnerAttrs, PartnerCreation> implements Par
 Partner.init(
   {
     id: { type: DataTypes.BIGINT, autoIncrement: true, primaryKey: true },
+    company_id: { type: DataTypes.BIGINT, allowNull: true },
     type: { type: DataTypes.ENUM("customer", "supplier", "internal"), allowNull: false },
     name: { type: DataTypes.STRING(255), allowNull: false },
     contact_person: { type: DataTypes.STRING(100) },

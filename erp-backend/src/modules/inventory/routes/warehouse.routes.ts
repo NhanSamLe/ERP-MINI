@@ -7,7 +7,17 @@ const router = Router();
 
 router.get(
   "/",
-  authMiddleware([Role.ADMIN, Role.WHSTAFF, Role.WHMANAGER]),
+  authMiddleware([
+    Role.ADMIN,
+    Role.WHSTAFF,
+    Role.WHMANAGER,
+    Role.PURCHASE,
+    Role.PURCHASEMANAGER,
+    Role.ACCOUNT,
+    Role.CHACC,
+    Role.SALES,
+    Role.SALESMANAGER,
+  ]),
   WarehouseController.getAll
 );
 router.get(

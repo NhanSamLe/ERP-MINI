@@ -12,7 +12,7 @@ interface ReportConfigModalProps {
 
 export interface ReportConfig {
     reportType: "detailed" | "summary";
-    period: "day" | "month" | "year";
+    period: "day" | "week" | "month" | "year";
     startDate?: string;
     endDate?: string;
 }

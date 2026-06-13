@@ -92,10 +92,14 @@ export default function ReceiptDetailPage() {
   const isFullyAllocated = receipt.allocation_status === "fully_allocated";
   const isUnallocated = receipt.allocation_status === "unallocated";
 
-  const canSubmit = isDraft && ((isAccountant && isOwner) || isChiefAcc);
+  // CHACC tạo phiếu thu sẽ được tự duyệt + ghi sổ ngay (backend), nên không cần
+  // hiện nút "Gửi duyệt" cho CHACC ở phiếu nháp.
+  const canSubmit = isDraft && isAccountant && isOwner;
   const canApprove = isWaiting && isChiefAcc;
   const canReject = canApprove;
-  const canAllocate = isAccountant && isPosted && isApproved && !isFullyAllocated && remainingAmount > 0;
+  // Cho phép cả kế toán (ACCOUNT) lẫn kế toán trưởng (CHACC) phân bổ phiếu đã ghi sổ.
+  const canAllocate =
+    (isAccountant || isChiefAcc) && isPosted && isApproved && !isFullyAllocated && remainingAmount > 0;
 
   const handleAllocate = () => {
     dispatch(fetchUnpaidInvoices(receipt.customer_id));
@@ -136,8 +140,8 @@ export default function ReceiptDetailPage() {
       if (a.applied_amount <= 0) { setMessage({ type: "error", text: "Số tiền phải lớn hơn 0" }); return; }
     }
 
-    if (totalAllocInput !== remainingAmount) {
-      setMessage({ type: "error", text: `Tổng phân bổ phải bằng đúng ${fmtMoney(remainingAmount)}` });
+    if (totalAllocInput > remainingAmount) {
+      setMessage({ type: "error", text: `Tổng phân bổ (${fmtMoney(totalAllocInput)}) vượt quá số tiền còn lại (${fmtMoney(remainingAmount)})` });
       return;
     }
 
@@ -566,13 +570,13 @@ export default function ReceiptDetailPage() {
 
             {/* Panel Footer */}
             <div className="px-6 py-4 border-t border-gray-100 bg-gray-50">
-              <div className={`flex justify-between items-center mb-3 ${totalAllocInput === remainingAmount ? "text-green-600" : "text-red-600"}`}>
+              <div className={`flex justify-between items-center mb-3 ${totalAllocInput > 0 && totalAllocInput <= remainingAmount ? "text-green-600" : totalAllocInput > remainingAmount ? "text-red-600" : "text-gray-500"}`}>
                 <span className="text-sm font-semibold">Tổng đã chọn</span>
                 <span className="text-lg font-bold font-mono">{fmtMoney(totalAllocInput)}</span>
               </div>
-              {totalAllocInput !== remainingAmount && (
+              {totalAllocInput > remainingAmount && (
                 <p className="text-xs text-red-500 mb-3 text-center">
-                  Tổng phân bổ phải bằng đúng {fmtMoney(remainingAmount)}
+                  Vượt quá số tiền có thể phân bổ ({fmtMoney(remainingAmount)})
                 </p>
               )}
               <div className="flex gap-2">
@@ -584,7 +588,7 @@ export default function ReceiptDetailPage() {
                 </button>
                 <button
                   onClick={handleApplyAllocation}
-                  disabled={actionLoading || totalAllocInput !== remainingAmount}
+                  disabled={actionLoading || totalAllocInput <= 0 || totalAllocInput > remainingAmount}
                   className="flex-1 h-9 bg-orange-500 text-white text-sm font-semibold rounded-md hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   {actionLoading ? "Đang lưu..." : "Xác nhận phân bổ"}

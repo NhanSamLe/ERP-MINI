@@ -1,9 +1,9 @@
-import { Request, Response } from 'express';
-import { chatService } from './services/chat.service';
-import { syncService } from './services/sync.service';
-import type { ChatRequest, ERPModule } from './types/ai.types';
-import { ChatMessage } from '../ai-chatbot/models/message.model';
-import { Conversation } from '../ai-chatbot/models/conversation.model';
+import { Request, Response } from "express";
+import { chatService } from "./services/chat.service";
+import { syncService } from "./services/sync.service";
+import type { ChatRequest, ERPModule } from "./types/ai.types";
+import { ChatMessage } from "../ai-chatbot/models/message.model";
+import { Conversation } from "../ai-chatbot/models/conversation.model";
 
 export class AIController {
   /**
@@ -14,16 +14,21 @@ export class AIController {
       const body = req.body as ChatRequest;
 
       if (!body.message?.trim()) {
-        res.status(400).json({ error: 'message is required' });
+        res.status(400).json({ error: "message is required" });
         return;
       }
 
       const userRole = (req as any).user?.role;
-      const result = await chatService.chat({ ...body, userRole });
+      const branchId = (req as any).user?.branch_id as number | undefined;
+      const result = await chatService.chat({
+        ...body,
+        userRole,
+        ...(branchId !== undefined && { branchId }),
+      });
       res.json(result);
     } catch (err) {
-      console.error('[AI] chat error:', err);
-      res.status(500).json({ error: 'Internal server error' });
+      console.error("[AI] chat error:", err);
+      res.status(500).json({ error: "Internal server error" });
     }
   }
 
@@ -36,7 +41,7 @@ export class AIController {
       const body = req.body as ChatRequest;
 
       if (!body.message?.trim()) {
-        res.status(400).json({ error: 'message is required' });
+        res.status(400).json({ error: "message is required" });
         return;
       }
 
@@ -44,7 +49,7 @@ export class AIController {
       if (body.conversationId) {
         await ChatMessage.create({
           conversation_id: body.conversationId,
-          role: 'user',
+          role: "user",
           content: body.message,
         });
 
@@ -56,16 +61,21 @@ export class AIController {
       }
 
       // 1. Set SSE Headers
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
       res.flushHeaders();
 
       const userRole = (req as any).user?.role;
+      const branchId = (req as any).user?.branch_id as number | undefined;
       // 2. Lấy stream từ chatService
-      const generator = chatService.chatStream({ ...body, userRole });
+      const generator = chatService.chatStream({
+        ...body,
+        userRole,
+        ...(branchId !== undefined && { branchId }),
+      });
 
-      let fullAssistantText = '';
+      let fullAssistantText = "";
 
       // 3. Đọc từng chunk và gửi về client
       for await (const item of generator) {
@@ -79,7 +89,7 @@ export class AIController {
       if (body.conversationId && fullAssistantText) {
         await ChatMessage.create({
           conversation_id: body.conversationId,
-          role: 'assistant',
+          role: "assistant",
           content: fullAssistantText,
         });
 
@@ -91,11 +101,13 @@ export class AIController {
       }
 
       // 4. Kết thúc stream
-      res.write('data: [DONE]\n\n');
+      res.write("data: [DONE]\n\n");
       res.end();
     } catch (err) {
-      console.error('[AI] chatStream error:', err);
-      res.write(`data: ${JSON.stringify({ error: 'Internal server error' })}\n\n`);
+      console.error("[AI] chatStream error:", err);
+      res.write(
+        `data: ${JSON.stringify({ error: "Internal server error" })}\n\n`,
+      );
       res.end();
     }
   }
@@ -109,8 +121,8 @@ export class AIController {
       const results = await syncService.fullSync();
       res.json({ success: true, results });
     } catch (err) {
-      console.error('[AI] sync error:', err);
-      res.status(500).json({ error: 'Sync failed' });
+      console.error("[AI] sync error:", err);
+      res.status(500).json({ error: "Sync failed" });
     }
   }
 
@@ -119,11 +131,11 @@ export class AIController {
    */
   async health(_req: Request, res: Response): Promise<void> {
     res.json({
-      status:  'ok',
-      ollama:  'http://localhost:11434',
-      qdrant:  'http://localhost:6333',
-      model:   'qwen2.5:7b',
-      embed:   'bge-m3',
+      status: "ok",
+      ollama: "http://localhost:11434",
+      qdrant: "http://localhost:6333",
+      model: "qwen2.5:7b",
+      embed: "bge-m3",
     });
   }
 }

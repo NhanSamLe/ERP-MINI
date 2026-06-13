@@ -135,9 +135,9 @@ export default function StockBalancePages() {
             <PackageSearch className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Stock Balances</h1>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Số dư tồn kho</h1>
             <p className="text-gray-500 text-sm mt-0.5">
-              Monitor and analyze stock on hand, valuation, and lot-level breakdowns
+              Theo dõi và phân tích lượng tồn kho, giá trị định giá và phân bổ chi tiết lô hàng
             </p>
           </div>
         </div>
@@ -149,7 +149,7 @@ export default function StockBalancePages() {
           size="md"
           className="self-end sm:self-auto"
         >
-          Export Excel
+          Xuất Excel
         </Button>
       </div>
 
@@ -160,7 +160,7 @@ export default function StockBalancePages() {
             <PackageSearch className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Stock Products</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sản phẩm tồn kho</p>
             <p className="text-lg font-extrabold text-slate-850 mt-0.5">{data.length}</p>
           </div>
         </div>
@@ -170,7 +170,7 @@ export default function StockBalancePages() {
             <Layers className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Quantity</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tổng số lượng</p>
             <p className="text-lg font-extrabold text-slate-850 mt-0.5">
               {data.reduce((s, x) => s + Number(x.total_quantity), 0).toLocaleString("vi-VN", { maximumFractionDigits: 2 })}
             </p>
@@ -182,7 +182,7 @@ export default function StockBalancePages() {
             <CircleDollarSign className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Valuation</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tổng giá trị</p>
             <p className="text-lg font-extrabold text-indigo-600 mt-0.5">
               {data.reduce((s, x) => s + Number(x.total_value), 0).toLocaleString("vi-VN")} ₫
             </p>
@@ -197,10 +197,10 @@ export default function StockBalancePages() {
           <div className="flex flex-wrap items-center gap-3 w-full">
             <Select value={warehouseId} onValueChange={setWarehouseId}>
               <SelectTrigger className="w-full sm:w-[220px] h-10 bg-white border-slate-200 focus:ring-orange-500 focus:border-orange-500 rounded-lg">
-                <SelectValue placeholder="All Warehouses" />
+                <SelectValue placeholder="Tất cả kho hàng" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Warehouses</SelectItem>
+                <SelectItem value="">Tất cả kho hàng</SelectItem>
                 {warehouses.map((w) => (
                   <SelectItem key={w.id} value={String(w.id)}>
                     {w.name}
@@ -211,10 +211,10 @@ export default function StockBalancePages() {
 
             <Select value={productId} onValueChange={setProductId}>
               <SelectTrigger className="w-full sm:w-[260px] h-10 bg-white border-slate-200 focus:ring-orange-500 focus:border-orange-500 rounded-lg">
-                <SelectValue placeholder="All Products" />
+                <SelectValue placeholder="Tất cả sản phẩm" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Products</SelectItem>
+                <SelectItem value="">Tất cả sản phẩm</SelectItem>
                 {products.map((p) => (
                   <SelectItem key={p.id} value={String(p.id)}>
                     {p.name}
@@ -231,12 +231,12 @@ export default function StockBalancePages() {
             <thead className="bg-slate-50/80 text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-slate-100">
               <tr>
                 <th className="px-6 py-3 text-left w-10"></th>
-                <th className="px-6 py-3 text-left">Warehouse</th>
-                <th className="px-6 py-3 text-left">Product</th>
-                <th className="px-6 py-3 text-right">Total Qty</th>
-                <th className="px-6 py-3 text-right">Unit Cost</th>
-                <th className="px-6 py-3 text-right">Total Value</th>
-                <th className="px-6 py-3 text-left">Updated At</th>
+                <th className="px-6 py-3 text-left">Kho hàng</th>
+                <th className="px-6 py-3 text-left">Sản phẩm</th>
+                <th className="px-6 py-3 text-right">Tổng số lượng</th>
+                <th className="px-6 py-3 text-right">Giá vốn đơn vị</th>
+                <th className="px-6 py-3 text-right">Tổng giá trị</th>
+                <th className="px-6 py-3 text-left">Cập nhật lúc</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -245,14 +245,14 @@ export default function StockBalancePages() {
                   <td colSpan={7} className="text-center py-16 text-slate-400">
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-8 h-8 border-3 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-xs font-medium">Loading stock balances...</span>
+                      <span className="text-xs font-medium">Đang tải số dư tồn kho...</span>
                     </div>
                   </td>
                 </tr>
               ) : data.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="text-center py-16 text-slate-400 italic">
-                    No stock data available
+                    Không có dữ liệu tồn kho
                   </td>
                 </tr>
               ) : (
@@ -311,8 +311,8 @@ export default function StockBalancePages() {
                         </td>
                         <td className="px-6 py-3.5 text-slate-500 text-xs font-medium">
                           {row.updated_at
-                            ? new Date(row.updated_at).toLocaleString("vi-VN")
-                            : "N/A"}
+                             ? new Date(row.updated_at).toLocaleString("vi-VN")
+                             : "N/A"}
                         </td>
                       </tr>
 
@@ -325,16 +325,16 @@ export default function StockBalancePages() {
                           >
                             <td className="px-6 py-2.5"></td>
                             <td className="px-6 py-2.5 text-xs text-indigo-500 font-bold uppercase tracking-wider pl-8">
-                              ↳ Lot Breakdown
+                              ↳ Chi tiết lô
                             </td>
                             <td className="px-6 py-2.5 text-xs text-slate-700 font-medium">
                               <div className="flex flex-wrap items-center gap-3">
                                 <span className="font-mono bg-indigo-100/60 text-indigo-800 px-2 py-0.5 rounded font-bold">
-                                  {lot.lot_no ?? "No Lot"}
+                                  {lot.lot_no ?? "Không có lô"}
                                 </span>
                                 {lot.expiry_date && (
                                   <span className="text-rose-600 font-bold text-[10px] bg-rose-50 border border-rose-100 px-1.5 py-0.5 rounded uppercase tracking-wide">
-                                    Exp: {lot.expiry_date}
+                                    HSD: {lot.expiry_date}
                                   </span>
                                 )}
                                 {lot.serial_no && (

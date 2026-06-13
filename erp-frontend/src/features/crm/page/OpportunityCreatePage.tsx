@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { toast } from "react-toastify";
 import { ArrowLeft, BadgeCheck, Briefcase, Building2, CalendarDays, DollarSign, GitBranch, Hash, Mail, MapPin, Phone, Target, UserRound } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { FormInput } from "@/components/ui/FormInput";
+import { NumberField } from "@/components/ui/NumberField";
 import { UiAlert } from "@/types/ui";
 import { formatStageProbability } from "../helpers/pipeline.helpers";
 import { fetchAllLeads } from "../store/lead/lead.thunks";
@@ -220,22 +222,22 @@ export default function OpportunityCreatePage() {
 
   const handleCreate = async () => {
     if (!form.name || !form.related_id) {
-      setAlert({ type: "warning", message: "Hãy chọn Lead/Customer và nhập tên Opportunity." });
+      toast.warning("Hãy chọn Lead/Customer và nhập tên Opportunity.");
       return;
     }
 
     if (form.closing_date && form.closing_date <= todayInput) {
-      setAlert({ type: "warning", message: "Ngày chốt dự kiến phải lớn hơn ngày hôm nay." });
+      toast.warning("Ngày chốt dự kiến phải lớn hơn ngày hôm nay.");
       return;
     }
 
     if (form.next_action_date && form.next_action_date <= todayInput) {
-      setAlert({ type: "warning", message: "Ngày hành động tiếp theo phải lớn hơn ngày hôm nay." });
+      toast.warning("Ngày hành động tiếp theo phải lớn hơn ngày hôm nay.");
       return;
     }
 
     if (isForeignCurrency && exchangeRate <= 0) {
-      setAlert({ type: "warning", message: "Chưa có tỷ giá mới nhất cho tiền tệ đã chọn." });
+      toast.warning("Chưa có tỷ giá mới nhất cho tiền tệ đã chọn.");
       return;
     }
 
@@ -256,12 +258,13 @@ export default function OpportunityCreatePage() {
 
     try {
       const result = await dispatch(createOpportunity(payload)).unwrap();
-      setAlert({ type: "success", message: "Tạo Opportunity thành công!" });
+      toast.success("Tạo Opportunity thành công!");
       setTimeout(() => {
         navigate(`/crm/opportunities/${result.id}`);
       }, 700);
-    } catch {
-      setAlert({ type: "error", message: "Không thể tạo Opportunity" });
+    } catch (error: any) {
+      // error giờ là string message từ thunk (rejectWithValue) — hiển thị lý do thật
+      toast.error(typeof error === "string" ? error : "Không thể tạo Opportunity");
     }
   };
 
@@ -460,20 +463,23 @@ export default function OpportunityCreatePage() {
                 required
                 placeholder="VD: Triển khai ERP cho công ty ABC"
               />
-              <FormInput
-                label="Giá trị kỳ vọng"
-                value={form.expected_value}
-                onChange={(value) => updateField("expected_value", value)}
-                placeholder="50000000"
-                type="number"
-              />
-              <FormInput
-                label="Xác suất (%)"
-                value={form.probability}
-                onChange={(value) => updateField("probability", value)}
-                placeholder="50"
-                type="number"
-              />
+              <div>
+                <FieldLabel>Giá trị kỳ vọng</FieldLabel>
+                <NumberField
+                  value={form.expected_value === "" ? null : Number(form.expected_value)}
+                  onChange={(v) => updateField("expected_value", v == null ? "" : String(v))}
+                  placeholder="50.000.000"
+                />
+              </div>
+              <div>
+                <FieldLabel>Xác suất (%)</FieldLabel>
+                <NumberField
+                  variant="percent"
+                  value={form.probability === "" ? null : Number(form.probability)}
+                  onChange={(v) => updateField("probability", v == null ? "" : String(v))}
+                  placeholder="50"
+                />
+              </div>
               <div>
                 <FieldLabel>Tiền tệ</FieldLabel>
                 <select className={inputClass} value={currencyId || ""} onChange={(e) => handleCurrencyChange(e.target.value)}>

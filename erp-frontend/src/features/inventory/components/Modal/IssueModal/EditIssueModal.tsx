@@ -26,6 +26,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Card, CardHeader, CardTitle, CardContent } from "../../../../../components/ui/Card";
 import { Truck, Calendar, Clipboard, ShoppingBag, ListCollapse } from "lucide-react";
 
+interface LineIssueItemWithOrdered extends LineIssueItem {
+  ordered_quantity?: number;
+}
+
 interface EditIssueModalProps {
   open: boolean;
   warehouses: Array<{ id: number; name: string }>;
@@ -61,7 +65,7 @@ export default function EditIssueModal({
     reference_type: "sale_order",
   });
 
-  const [lineItems, setLineItems] = useState<LineIssueItem[]>([]);
+  const [lineItems, setLineItems] = useState<LineIssueItemWithOrdered[]>([]);
   const [selectedSOId, setSelectedSOId] = useState<string>("");
   const [isInitializing, setIsInitializing] = useState(false);
 
@@ -71,30 +75,43 @@ export default function EditIssueModal({
   const selectedSaleOrder =
     saleOrder.items.find((p) => p.id === data?.reference_id)?.order_no || "";
 
+  // Lấy SO lines để biết ordered_quantity
+  const getSOOrderedQty = (productId: number): number | undefined => {
+    if (!data?.reference_id) return undefined;
+    const so = saleOrder.items.find((s) => s.id === data.reference_id);
+    if (!so || !so.lines) return undefined;
+    const line = so.lines.find((l) => l.product_id === productId);
+    return line?.quantity ?? undefined;
+  };
+
   useEffect(() => {
     if (!open) return;
     setLineItems([]);
     if (!data?.lines || data.lines.length === 0) return;
 
-    const items: LineIssueItem[] = (data.lines as any[]).map((line) => ({
-      id: line.id,
-      product_id: Number(line.product_id ?? line.product?.id),
-      name: line.product?.name ?? "Unknown",
-      sku: line.product?.sku ?? "",
-      image: line.product?.image_url ?? "",
-      uom: line.product?.uom?.name ?? line.product?.uom?.code ?? "",
-      uom_id: line.uom_id ?? line.product?.uom_id ?? null,
-      uomOptions: [
-        ...(line.product?.uom ? [line.product.uom] : []),
-        ...(line.product?.purchaseUom &&
-        line.product.purchaseUom.id !== line.product?.uom?.id
-          ? [line.product.purchaseUom]
-          : []),
-      ],
-      quantity: Number(line.quantity) ?? 0,
-      location_from_id: line.location_from_id ?? null,
-      lot_id: line.lot_id ?? null,
-    }));
+    const items: LineIssueItemWithOrdered[] = (data.lines as any[]).map((line) => {
+      const orderedQty = getSOOrderedQty(Number(line.product_id ?? line.product?.id));
+      return {
+        id: line.id,
+        product_id: Number(line.product_id ?? line.product?.id),
+        name: line.product?.name ?? "Unknown",
+        sku: line.product?.sku ?? "",
+        image: line.product?.image_url ?? "",
+        uom: line.product?.uom?.name ?? line.product?.uom?.code ?? "",
+        uom_id: line.uom_id ?? line.product?.uom_id ?? null,
+        uomOptions: [
+          ...(line.product?.uom ? [line.product.uom] : []),
+          ...(line.product?.purchaseUom &&
+          line.product.purchaseUom.id !== line.product?.uom?.id
+            ? [line.product.purchaseUom]
+            : []),
+        ],
+        quantity: Number(line.quantity) ?? 0,
+        ordered_quantity: orderedQty,
+        location_from_id: line.location_from_id ?? null,
+        lot_id: line.lot_id ?? null,
+      };
+    });
     setLineItems(items);
   }, [open, data]);
 
@@ -149,54 +166,70 @@ export default function EditIssueModal({
               name: result.name,
               sku: result.sku,
               uom: result.uom?.name ?? result.uom?.code ?? "",
+              uom_id: result.uom_id ?? null,
               image: result.image_url,
               quantity: line.quantity,
-            } as LineIssueItem;
+              ordered_quantity: line.quantity,
+            } as LineIssueItemWithOrdered;
           }),
         );
 
         setLineItems(fetchedProducts);
       } catch (err) {
         console.error(err);
-        toast.error("Failed to load product details");
+        toast.error("Tải chi tiết sản phẩm thất bại");
       }
     };
 
     loadProducts();
   }, [selectedSOId, saleOrder.items, dispatch]);
 
+  const handleQuantityChange = (productId: number, value: number) => {
+    setLineItems((prev) =>
+      prev.map((item) =>
+        item.product_id === productId ? { ...item, quantity: value } : item,
+      ),
+    );
+  };
+
   const handleSubmit = () => {
     if (!selectedSOId) {
-      toast.error("Please select a Sale order");
+      toast.error("Vui lòng chọn đơn bán hàng");
       return;
     }
 
     if (!form.warehouse) {
-      toast.error("Please select a Warehouse");
+      toast.error("Vui lòng chọn Kho hàng");
       return;
     }
 
     if (!form.move_date) {
-      toast.error("Please select a Move Date");
+      toast.error("Vui lòng chọn Ngày xuất kho");
       return;
     }
 
     if (lineItems.length === 0) {
-      toast.error("Please add at least one product");
+      toast.error("Vui lòng thêm ít nhất một sản phẩm");
       return;
     }
 
     for (const p of lineItems) {
       if (!p.product_id) {
-        toast.error("Some product items are missing ID");
+        toast.error("Một số sản phẩm bị thiếu ID");
         return;
       }
       if (!p.quantity || p.quantity <= 0) {
-        toast.error(`Invalid quantity for product: ${p.name}`);
+        toast.error(`Số lượng không hợp lệ cho sản phẩm: ${p.name}`);
+        return;
+      }
+      if (p.ordered_quantity !== undefined && p.quantity > p.ordered_quantity) {
+        toast.error(
+          `Số lượng xuất của "${p.name}" (${p.quantity}) vượt quá số lượng đặt hàng (${p.ordered_quantity})`,
+        );
         return;
       }
       if (!p.lot_id) {
-        toast.error(`Please select lot for product: ${p.name}`);
+        toast.error(`Vui lòng chọn số lô cho sản phẩm: ${p.name}`);
         return;
       }
     }
@@ -214,15 +247,15 @@ export default function EditIssueModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="w-full sm:max-w-4xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="w-full sm:max-w-5xl max-h-[85vh] overflow-y-auto">
         <DialogHeader className="pb-4 border-b border-slate-100 flex flex-row items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-500 shadow-sm shrink-0">
             <Truck className="w-5 h-5" />
           </div>
           <div>
-            <DialogTitle className="text-lg font-bold text-slate-900">Edit Stock Issue</DialogTitle>
+            <DialogTitle className="text-lg font-bold text-slate-900">Sửa phiếu xuất kho</DialogTitle>
             <DialogDescription className="text-xs text-slate-400 mt-0.5">
-              Modify finished goods or products released to fulfill sale orders
+              Chỉnh sửa thông tin hàng hóa hoặc sản phẩm xuất kho để thực hiện đơn bán hàng
             </DialogDescription>
           </div>
         </DialogHeader>
@@ -232,7 +265,7 @@ export default function EditIssueModal({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* Warehouse Select */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Warehouse *</label>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Kho hàng *</label>
               <Select
                 value={form.warehouse}
                 onValueChange={(v) =>
@@ -241,7 +274,7 @@ export default function EditIssueModal({
                 defaultLabel={selectedWarehouse}
               >
                 <SelectTrigger className="w-full h-10 bg-white border-slate-200 focus:ring-rose-500 focus:border-rose-500 rounded-lg">
-                  <SelectValue placeholder="Select warehouse" />
+                  <SelectValue placeholder="Chọn kho hàng" />
                 </SelectTrigger>
                 <SelectContent>
                   {warehouses.map((w) => (
@@ -256,13 +289,13 @@ export default function EditIssueModal({
             {/* Move Date */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-slate-400" /> Move Date *
+                <Calendar className="w-3.5 h-3.5 text-slate-400" /> Ngày xuất kho *
               </label>
               <Input
                 type="date"
                 value={form.move_date}
                 onChange={(value) => setForm({ ...form, move_date: value })}
-                className="border-slate-200 focus:ring-rose-450 focus:border-rose-450 h-10"
+                className="border-slate-200 focus:ring-rose-455 focus:border-rose-455 h-10"
                 max={new Date().toISOString().split("T")[0]}
               />
             </div>
@@ -270,7 +303,7 @@ export default function EditIssueModal({
             {/* Sale Order Select */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                <ShoppingBag className="w-3.5 h-3.5 text-slate-400" /> Sale Order *
+                <ShoppingBag className="w-3.5 h-3.5 text-slate-400" /> Đơn bán hàng (SO) *
               </label>
               <Select
                 value={selectedSOId}
@@ -278,7 +311,7 @@ export default function EditIssueModal({
                 defaultLabel={selectedSaleOrder}
               >
                 <SelectTrigger className="w-full h-10 bg-white border-slate-200 focus:ring-rose-500 focus:border-rose-500 rounded-lg">
-                  <SelectValue placeholder="Select SO" />
+                  <SelectValue placeholder="Chọn SO" />
                 </SelectTrigger>
                 <SelectContent>
                   {saleOrder.items?.map((so: SaleOrderDto) => (
@@ -293,10 +326,10 @@ export default function EditIssueModal({
             {/* Reference Number */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                <Clipboard className="w-3.5 h-3.5 text-slate-400" /> Reference No
+                <Clipboard className="w-3.5 h-3.5 text-slate-400" /> Mã tham chiếu
               </label>
               <Input 
-                value={form.referenceNo || "Auto-assigned"} 
+                value={form.referenceNo || "Tự động gán"} 
                 disabled 
                 className="h-10 border-slate-200 bg-slate-50 text-slate-500 font-mono font-semibold"
               />
@@ -304,7 +337,7 @@ export default function EditIssueModal({
 
             {/* Move Number */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Move Number</label>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Số phiếu</label>
               <Input 
                 value={form.move_no} 
                 disabled 
@@ -317,18 +350,19 @@ export default function EditIssueModal({
           <Card className="border-slate-100 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">
             <CardHeader className="px-5 py-3.5 bg-slate-50/15 border-b border-slate-100 flex flex-row items-center gap-2">
               <ListCollapse className="w-4.5 h-4.5 text-slate-700" />
-              <CardTitle className="text-sm font-semibold text-slate-800">Dispatch Item Lines</CardTitle>
+              <CardTitle className="text-sm font-semibold text-slate-800">Danh sách sản phẩm xuất kho</CardTitle>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-slate-50/80 text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-slate-100">
                   <tr>
-                    <th className="py-3.5 px-5 text-left">Product</th>
-                    <th className="py-3.5 px-5 text-left">SKU</th>
-                    <th className="py-3.5 px-5 text-left w-24">UOM</th>
-                    <th className="py-3.5 px-5 text-right w-24">Qty</th>
-                    <th className="py-3.5 px-5 text-left w-44">Location (From)</th>
-                    <th className="py-3.5 px-5 text-left w-44">Lot</th>
+                    <th className="py-3.5 px-5 text-left">Sản phẩm</th>
+                    <th className="py-3.5 px-5 text-left">Mã SKU</th>
+                    <th className="py-3.5 px-5 text-left w-24">ĐVT</th>
+                    <th className="py-3.5 px-4 text-right w-28">SL đặt hàng</th>
+                    <th className="py-3.5 px-4 text-right w-32">SL thực xuất *</th>
+                    <th className="py-3.5 px-5 text-left w-44">Vị trí (Từ)</th>
+                    <th className="py-3.5 px-5 text-left w-44">Số lô</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -344,9 +378,33 @@ export default function EditIssueModal({
                           )}
                           <span className="font-semibold text-slate-800">{p.name}</span>
                         </td>
-                        <td className="py-3 px-5 font-mono text-xs font-bold text-slate-450 uppercase">{p.sku}</td>
+                        <td className="py-3 px-5 font-mono text-xs font-bold text-slate-455 uppercase">{p.sku}</td>
                         <td className="py-3 px-5 text-slate-500 font-medium">{p.uom || "—"}</td>
-                        <td className="py-3 px-5 text-right font-mono font-bold text-slate-800 pr-8">{p.quantity}</td>
+                        {/* SL đặt hàng — chỉ đọc */}
+                        <td className="py-3 px-4 text-right font-mono font-bold text-slate-500">
+                          {p.ordered_quantity ?? "—"}
+                        </td>
+                        {/* SL thực xuất — chỉnh sửa */}
+                        <td className="py-3 px-4 text-right">
+                          <input
+                            type="number"
+                            value={p.quantity}
+                            min={0.001}
+                            max={p.ordered_quantity ?? undefined}
+                            step="any"
+                            className={`w-24 h-9 border rounded-lg px-2.5 text-right font-mono font-bold focus:outline-none focus:ring-2 transition
+                              ${p.ordered_quantity !== undefined && (p.quantity ?? 0) > p.ordered_quantity
+                                ? "border-rose-400 ring-2 ring-rose-200 text-rose-600"
+                                : "border-slate-200 focus:ring-rose-400 focus:border-rose-400 text-slate-800"
+                              }`}
+                            onChange={(e) =>
+                              handleQuantityChange(p.product_id!, Number(e.target.value))
+                            }
+                          />
+                          {p.ordered_quantity !== undefined && (p.quantity ?? 0) > p.ordered_quantity && (
+                            <p className="text-[10px] text-rose-500 mt-0.5 text-right">Vượt SL đặt hàng</p>
+                          )}
+                        </td>
                         <td className="py-3 px-5">
                           <LocationSelect
                             warehouseId={
@@ -363,7 +421,7 @@ export default function EditIssueModal({
                               )
                             }
                             types={["internal", "output"]}
-                            placeholder="— Select —"
+                            placeholder="— Chọn —"
                           />
                         </td>
                         <td className="py-3 px-5">
@@ -379,15 +437,15 @@ export default function EditIssueModal({
                                 ),
                               )
                             }
-                            placeholder="— Lot —"
+                            placeholder="— Số lô —"
                           />
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={6} className="py-12 text-center text-slate-400 italic">
-                        No sale order selected or loaded product lines.
+                      <td colSpan={7} className="py-12 text-center text-slate-400 italic">
+                        Chưa chọn đơn bán hàng hoặc chưa tải danh sách sản phẩm.
                       </td>
                     </tr>
                   )}
@@ -398,11 +456,11 @@ export default function EditIssueModal({
 
           {/* Notes */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Internal Notes</label>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Ghi chú nội bộ</label>
             <Textarea
               value={form.notes}
               onChange={(v) => setForm((prev) => ({ ...prev, notes: v }))}
-              placeholder="Provide notes or special outbound instructions..."
+              placeholder="Cung cấp ghi chú hoặc hướng dẫn xuất kho đặc biệt..."
               className="min-h-[80px] border-slate-200 focus:ring-rose-455 focus:border-rose-455 rounded-lg text-sm placeholder:text-slate-400"
             />
           </div>
@@ -410,13 +468,13 @@ export default function EditIssueModal({
           {/* FOOTER */}
           <DialogFooter className="pt-4 border-t border-slate-100 flex-row justify-end gap-3">
             <Button variant="outline" onClick={onClose}>
-              Cancel
+              Hủy
             </Button>
             <Button
               className="bg-rose-500 hover:bg-rose-600 text-white"
               onClick={handleSubmit}
             >
-              Update Issue
+              Cập nhật phiếu xuất
             </Button>
           </DialogFooter>
         </div>

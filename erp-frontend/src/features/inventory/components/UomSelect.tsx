@@ -66,7 +66,7 @@ export function UomSelect({
         options.length === 0 ? "bg-gray-50 text-gray-400" : ""
       } ${className}`}
     >
-      {loading && <option value="">Loading...</option>}
+      {loading && <option value="">Đang tải...</option>}
       {!loading && options.length === 0 && <option value="">—</option>}
       {options.map((u) => (
         <option key={u.id} value={u.id}>

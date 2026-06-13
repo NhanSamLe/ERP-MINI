@@ -4,124 +4,130 @@ import { CreateTaxRateDto, UpdateTaxRateDto } from '../dto/tax.dto';
 export const taxFormConfig: FormConfig<CreateTaxRateDto | UpdateTaxRateDto> = {
   sections: [
     {
-      title: 'Basic Information',
+      title: 'Thông tin cơ bản',
       columns: 2,
       fields: [
         {
           name: 'code',
-          label: 'Tax Code',
+          label: 'Mã thuế',
           type: 'text',
-          placeholder: 'e.g., VAT10, GST',
+          placeholder: 'VD: VAT10, GST',
           required: true,
           validation: (value) => {
-            if (!value) return 'Tax Code is required';
-            if (value.length < 2) return 'Tax Code must be at least 2 characters';
-            if (value.length > 20) return 'Tax Code must not exceed 20 characters';
+            if (!value) return 'Vui lòng nhập mã thuế';
+            if (String(value).length < 2) return 'Mã thuế phải có ít nhất 2 ký tự';
+            if (String(value).length > 20) return 'Mã thuế không được vượt quá 20 ký tự';
             return undefined;
           },
           gridColumn: 'span 1',
         },
         {
           name: 'name',
-          label: 'Tax Name',
+          label: 'Tên thuế',
           type: 'text',
-          placeholder: 'e.g., Value Added Tax 10%',
+          placeholder: 'VD: Thuế GTGT 10%',
           required: true,
           validation: (value) => {
-            if (!value) return 'Tax Name is required';
-            if (value.length < 2) return 'Tax Name must be at least 2 characters';
+            if (!value) return 'Vui lòng nhập tên thuế';
+            if (String(value).length < 2) return 'Tên thuế phải có ít nhất 2 ký tự';
             return undefined;
           },
           gridColumn: 'span 1',
         },
         {
           name: 'type',
-          label: 'Tax Type',
+          label: 'Loại thuế',
           type: 'select',
           required: true,
           options: [
-            { value: 'percentage', label: 'Percentage' },
-            { value: 'fixed', label: 'Fixed Amount' },
+            { value: 'VAT', label: 'VAT' },
+            { value: 'CIT', label: 'Thuế thu nhập doanh nghiệp' },
+            { value: 'PIT', label: 'Thuế thu nhập cá nhân' },
+            { value: 'IMPORT', label: 'Thuế nhập khẩu' },
+            { value: 'EXPORT', label: 'Thuế xuất khẩu' },
+            { value: 'EXCISE', label: 'Thuế tiêu thụ đặc biệt' },
+            { value: 'ENVIRONMENTAL', label: 'Thuế bảo vệ môi trường' },
+            { value: 'OTHER', label: 'Khác' },
           ],
           gridColumn: 'span 1',
         },
         {
           name: 'rate',
-          label: 'Tax Rate',
+          label: 'Thuế suất',
           type: 'number',
           placeholder: '0.00',
           required: true,
           validation: (value) => {
-            if (value === null || value === undefined) return 'Tax Rate is required';
-            if (value < 0) return 'Tax Rate cannot be negative';
-            if (value > 100) return 'Tax Rate cannot exceed 100%';
+            if (value === null || value === undefined || value === '') return 'Vui lòng nhập thuế suất';
+            if (Number(value) < 0) return 'Thuế suất không được âm';
+            if (Number(value) > 100) return 'Thuế suất không được vượt quá 100%';
             return undefined;
           },
-          helpText: 'Enter percentage (e.g., 10 for 10%)',
+          helpText: 'Nhập theo phần trăm, ví dụ 10 tương ứng 10%',
           gridColumn: 'span 1',
         },
       ],
     },
     {
-      title: 'Application Settings',
+      title: 'Thiết lập áp dụng',
       columns: 2,
       fields: [
         {
           name: 'applies_to',
-          label: 'Applies To',
+          label: 'Áp dụng cho',
           type: 'select',
           required: true,
           options: [
-            { value: 'sales', label: 'Sales' },
-            { value: 'purchases', label: 'Purchases' },
-            { value: 'both', label: 'Both' },
+            { value: 'sale', label: 'Bán hàng' },
+            { value: 'purchase', label: 'Mua hàng' },
+            { value: 'both', label: 'Cả hai' },
           ],
           gridColumn: 'span 1',
         },
         {
           name: 'status',
-          label: 'Status',
+          label: 'Trạng thái',
           type: 'select',
           required: true,
           options: [
-            { value: 'active', label: 'Active' },
-            { value: 'inactive', label: 'Inactive' },
+            { value: 'active', label: 'Đang áp dụng' },
+            { value: 'inactive', label: 'Ngừng áp dụng' },
           ],
           defaultValue: 'active',
           gridColumn: 'span 1',
         },
         {
           name: 'is_vat',
-          label: 'Is VAT',
+          label: 'Là thuế GTGT',
           type: 'checkbox',
           defaultValue: false,
-          helpText: 'Check if this is a VAT tax',
+          helpText: 'Đánh dấu nếu đây là thuế giá trị gia tăng',
           gridColumn: 'span 2',
         },
       ],
     },
     {
-      title: 'Validity Period',
+      title: 'Thời hạn hiệu lực',
       columns: 2,
       fields: [
         {
           name: 'effective_date',
-          label: 'Effective Date',
+          label: 'Ngày hiệu lực',
           type: 'date',
           required: true,
           gridColumn: 'span 1',
         },
         {
           name: 'expiry_date',
-          label: 'Expiry Date',
+          label: 'Ngày hết hiệu lực',
           type: 'date',
-          helpText: 'Leave empty for no expiry',
+          helpText: 'Để trống nếu không giới hạn thời hạn',
           gridColumn: 'span 1',
         },
       ],
     },
   ],
-  submitLabel: 'Save Tax Rate',
-  cancelLabel: 'Cancel',
+  submitLabel: 'Lưu thuế',
+  cancelLabel: 'Hủy',
   showCancel: true,
 };

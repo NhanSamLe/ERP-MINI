@@ -4,13 +4,13 @@
  * @author Senior Frontend Team
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { FormState, FormFieldConfig, ValidationFn } from './types';
+import { useState, useCallback, useRef } from 'react';
+import { FormState, FormFieldConfig } from './types';
 
 interface UseFormOptions<T> {
   initialValues: T;
   fields?: FormFieldConfig<T>[];
-  validate?: (values: T) => Partial<Record<keyof T, string>>;
+  validate?: (values: T) => Partial<Record<keyof T | string, string>>;
   onSubmit: (values: T) => Promise<void>;
   validateOnChange?: boolean;
   validateOnBlur?: boolean;

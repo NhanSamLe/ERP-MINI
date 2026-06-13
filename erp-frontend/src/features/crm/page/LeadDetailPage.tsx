@@ -140,15 +140,20 @@ export default function LeadDetailPage() {
     try {
       const result = await dispatch(convertLead(leadId)).unwrap();
       const customerId = result?.customer?.id;
-      setAlert({ type: "success", message: "Đã chuyển đổi thành Customer" });
       setShowConvert(false);
-      setTimeout(() => {
-        if (customerId) {
+      if (customerId) {
+        setAlert({ type: "success", message: "Đã chuyển đổi thành Customer" });
+        setTimeout(() => {
           navigate(`/crm/opportunities/create?related_type=customer&related_id=${customerId}`);
-        } else {
-          navigate("/crm/opportunities/create");
-        }
-      }, 600);
+        }, 600);
+      } else {
+        // Convert "thành công" nhưng không có customer → báo rõ thay vì âm thầm
+        // điều hướng tới form trống.
+        setAlert({
+          type: "error",
+          message: "Chuyển đổi xong nhưng không lấy được Customer. Vui lòng kiểm tra lại.",
+        });
+      }
     } catch (error: any) {
       setAlert({ type: "error", message: typeof error === "string" ? error : "Chuyển đổi thất bại" });
     }
@@ -202,6 +207,22 @@ export default function LeadDetailPage() {
     warm: "bg-amber-100 text-amber-700",
     hot: "bg-red-100 text-red-700",
   };
+  const leadRecommendation = (() => {
+    const score = lead.lead_score ?? 0;
+    const matchedFields = new Set(scoreReasons.map((reason) => reason.field));
+    if (score >= 75) {
+      if (!lead.contacted_at) return "Khuyến nghị: đây là Lead mức Hot, cần liên hệ trong vòng 2 giờ.";
+      if (matchedFields.has("activity.meeting.completed_count")) return "Khuyến nghị: meeting đã hoàn thành, có thể tạo Cơ hội hoặc Báo giá nếu nhu cầu đã rõ.";
+      return "Khuyến nghị: ưu tiên theo dõi trong ngày và thống nhất bước tiếp theo với khách hàng.";
+    }
+    if (score >= 40) {
+      if (!lead.has_budget) return "Khuyến nghị: cần xác minh ngân sách để đánh giá mức độ ưu tiên chính xác hơn.";
+      if (!lead.ready_to_buy) return "Khuyến nghị: cần làm rõ thời điểm mua và mức độ sẵn sàng ra quyết định.";
+      return "Khuyến nghị: tiếp tục chăm sóc và lên lịch tương tác tiếp theo.";
+    }
+    if (!lead.phone && !lead.email) return "Khuyến nghị: cần bổ sung thông tin liên hệ trước khi đưa vào danh sách ưu tiên.";
+    return "Khuyến nghị: tiếp tục nuôi dưỡng hoặc thu thập thêm thông tin trước khi đánh giá đủ điều kiện.";
+  })();
 
   // Early return if lead not loaded yet
   if (!lead) {
@@ -451,6 +472,9 @@ export default function LeadDetailPage() {
               <p className="text-xs text-gray-400 mt-1">
                 Tính lần cuối: {fmtDateTime(lead.last_scored_at)}
               </p>
+              <div className="mt-4 rounded-lg border border-orange-100 bg-orange-50 px-3 py-2 text-sm text-orange-700">
+                {leadRecommendation}
+              </div>
               <div className="mt-4 space-y-2">
                 {scoreReasons.length === 0 ? (
                   <p className="text-sm text-gray-400">Chưa có rule nào khớp với Lead này.</p>

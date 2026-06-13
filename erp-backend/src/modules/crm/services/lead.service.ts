@@ -17,13 +17,14 @@ export function canManage(role: string, userId: number, ownerId: number) {
 export async function getAllLeads(user: any) {
   const where: any = { is_deleted: false };
   if (user.role === "ADMIN") {
-    // ADMIN: xem tất cả không giới hạn
+    // ADMIN: lọc theo company qua branch nếu có company_id
+    if (user.company_id) {
+      // sẽ join branch bên dưới để filter
+    }
   } else if (user.role === "SALESMANAGER") {
-    // SALESMANAGER: xem tất cả lead trong branch của mình
-    where.branch_id = user.branch_id;
+    if (user.branch_id) where.branch_id = user.branch_id;
   } else {
-    // SALES: chỉ xem lead được giao cho mình
-    where.branch_id = user.branch_id;
+    if (user.branch_id) where.branch_id = user.branch_id;
     where.assigned_to = user.id;
   }
   return Lead.findAll({
@@ -229,7 +230,7 @@ export async function updateLeadEvaluation(
 }
 
 
-export async function convertToCustomer(leadId: number, userId: number, role: string) {
+export async function convertToCustomer(leadId: number, userId: number, role: string, companyId?: number) {
   const lead = await Lead.findByPk(leadId);
   if (!lead || lead.is_deleted) throw new Error("Lead không tồn tại");
   if (lead.stage === LeadStage.LOST)
@@ -286,6 +287,10 @@ export async function convertToCustomer(leadId: number, userId: number, role: st
       industry: lead.industry ?? null,
       company_size: lead.company_size ?? null,
       sales_person_id: lead.assigned_to ?? userId,
+      // Gắn company_id để customer mới thuộc đúng công ty — nếu thiếu, danh sách
+      // partner (lọc theo company_id) sẽ không thấy customer này, khiến trang
+      // tạo Opportunity không preselect được customer vừa chuyển đổi.
+      company_id: companyId ?? null,
       status: PartnerStatus.ACTIVE,
     });
   }

@@ -2,6 +2,7 @@ import { Op } from "sequelize";
 import * as model from "../../../models/index";
 import { PAYROLL_RULE } from "../constants/payrollRule";
 import dayjs from "dayjs";
+import { requireGlAccounts } from "../../finance/services/glAccount.helper";
 
 export type PayrollRunStatus = "draft" | "posted";
 
@@ -23,7 +24,7 @@ export interface PayrollRunLinePayload {
 
 // ========== RUN LIST ==========
 
-export async function getAllPayrollRuns(filter: PayrollRunFilter = {}) {
+export async function getAllPayrollRuns(filter: PayrollRunFilter = {}, branchId?: number) {
   const where: any = {};
 
   if (typeof filter.period_id === "number") {
@@ -34,6 +35,9 @@ export async function getAllPayrollRuns(filter: PayrollRunFilter = {}) {
     where.status = filter.status;
   }
 
+  const periodWhere: any = {};
+  if (branchId) periodWhere.branch_id = branchId;
+
   const rows = await model.PayrollRun.findAll({
     where,
     order: [["created_at", "DESC"]],
@@ -41,6 +45,8 @@ export async function getAllPayrollRuns(filter: PayrollRunFilter = {}) {
       {
         model: model.PayrollPeriod,
         as: "period",
+        where: Object.keys(periodWhere).length > 0 ? periodWhere : undefined,
+        required: !!branchId,
         include: [
           {
             model: model.Branch,
@@ -159,55 +165,28 @@ export async function postPayrollRun(id: number) {
     const period = (row as any).period;
     if (!period) throw new Error("Payroll period not found");
 
-    // 1. Tự động kiểm tra/tạo các tài khoản tiền lương: 334, 641, 642, 3335, 338
-    let acc334 = await model.GlAccount.findOne({ where: { code: "334" }, transaction: t });
-    if (!acc334) {
-      acc334 = await model.GlAccount.create({
-        code: "334",
-        name: "Phải trả người lao động",
-        type: "liability",
-        normal_side: "credit",
-      } as any, { transaction: t });
+    // Lấy company_id từ branch của period (không lưu company_id dư thừa — branch đã biết company)
+    const branchRecord = await model.Branch.findByPk(period.branch_id, {
+      attributes: ["id", "company_id"],
+      transaction: t,
+    });
+    if (!branchRecord || !(branchRecord as any).company_id) {
+      throw new Error("Không xác định được công ty từ chi nhánh — không thể hạch toán lương");
     }
+    const companyId = (branchRecord as any).company_id as number;
 
-    let acc641 = await model.GlAccount.findOne({ where: { code: "641" }, transaction: t });
-    if (!acc641) {
-      acc641 = await model.GlAccount.create({
-        code: "641",
-        name: "Chi phí bán hàng",
-        type: "expense",
-        normal_side: "debit",
-      } as any, { transaction: t });
-    }
+    // 1. Lấy tài khoản lương theo company (phải được thiết lập trong Chart of Accounts)
+    // Danh sách tài khoản bắt buộc; nếu thiếu → throw lỗi rõ ràng, không tự tạo
+    const requiredCodes = ["334", "641", "642", "338"];
+    const accs = await requireGlAccounts(companyId, requiredCodes, t);
+    const acc334 = accs["334"]!;
+    const acc641 = accs["641"]!;
+    const acc642 = accs["642"]!;
+    const acc338 = accs["338"]!;
 
-    let acc642 = await model.GlAccount.findOne({ where: { code: "642" }, transaction: t });
-    if (!acc642) {
-      acc642 = await model.GlAccount.create({
-        code: "642",
-        name: "Chi phí quản lý doanh nghiệp",
-        type: "expense",
-        normal_side: "debit",
-      } as any, { transaction: t });
-    }
-
-    let acc338 = await model.GlAccount.findOne({ where: { code: "338" }, transaction: t });
-    if (!acc338) {
-      acc338 = await model.GlAccount.create({
-        code: "338",
-        name: "Phải trả phải nộp khác (Bảo hiểm xã hội)",
-        type: "liability",
-        normal_side: "credit",
-      } as any, { transaction: t });
-    }
-
-    // 2. Tự động kiểm tra/tạo Nhật ký chung (GENERAL)
-    let journal = await model.GlJournal.findOne({ where: { code: "GENERAL" }, transaction: t });
-    if (!journal) {
-      journal = await model.GlJournal.create({
-        code: "GENERAL",
-        name: "Nhật ký chung",
-      }, { transaction: t });
-    }
+    // 2. Nhật ký chung
+    const journal = await model.GlJournal.findOne({ where: { code: "GENERAL" }, transaction: t });
+    if (!journal) throw new Error("Nhật ký 'GENERAL' không tồn tại — vui lòng thiết lập trước khi post lương");
 
     // 3. Tính toán tổng lương và bảo hiểm theo bộ phận để hạch toán chi phí
     let salesSalary = 0; // Chi phí lương bộ phận bán hàng (TK 641)
@@ -260,17 +239,18 @@ export async function postPayrollRun(id: number) {
       }
     }
 
-    // Kiểm tra và tạo TK 3335 nếu có thuế TNCN phát sinh
-    let acc3335 = null;
+    // TK 3335 (Thuế TNCN) — optional: chỉ dùng khi có phát sinh PIT
+    let acc3335: any = null;
     if (totalPit > 0) {
-      acc3335 = await model.GlAccount.findOne({ where: { code: "3335" }, transaction: t });
+      acc3335 = await model.GlAccount.findOne({
+        where: { company_id: companyId, code: "3335" },
+        transaction: t,
+      });
       if (!acc3335) {
-        acc3335 = await model.GlAccount.create({
-          code: "3335",
-          name: "Thuế thu nhập cá nhân phải nộp",
-          type: "liability",
-          normal_side: "credit",
-        } as any, { transaction: t });
+        throw new Error(
+          `Tài khoản "3335 - Thuế TNCN phải nộp" chưa được thiết lập cho công ty này. ` +
+          `Vui lòng thêm vào Chart of Accounts trước khi post bảng lương có phát sinh thuế TNCN.`,
+        );
       }
     }
 
@@ -282,15 +262,15 @@ export async function postPayrollRun(id: number) {
       adminSalary += diff;
     }
 
-    // 4. Tạo bút toán GL Entry
+    // 4. Tạo bút toán GL Entry — company_id lấy từ branch (không lưu dư thừa trên model)
     const entry = await model.GlEntry.create({
       journal_id: journal.id,
       entry_no: `GL-HRM-PAY-RUN-${row.id}`,
       entry_date: new Date(),
       reference_type: "payroll_run",
       reference_id: row.id,
-      memo: `Hạch toán chi phí lương kỳ ${period.period_code} - Bảng lương ${row.run_no}`,
-      status: "draft",
+      memo: `Hạch toán chi phí lương kỳ ${period.period_code} - Bảng lương ${(row as any).run_no}`,
+      status: "posted",
       branch_id: period.branch_id,
     } as any, { transaction: t });
 

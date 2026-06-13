@@ -13,15 +13,12 @@ import { Uom } from "../../master-data/models/uom.model";
 import { Role } from "../../../core/types/enum";
 import { PurchasePriceList } from "../models/purchasePriceList.model";
 import { PurchasePriceListItem } from "../models/purchasePriceListItem.model";
+import { generatePoNo } from "../utils/poNoGenerator";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function generateRfqNo(): string {
   return `RFQ-${Date.now()}`;
-}
-
-function generatePoNo(): string {
-  return `PO-${Date.now()}`;
 }
 
 /**
@@ -365,16 +362,27 @@ export const rfqService = {
     const rfq = await PurchaseRfq.findOne({
       where: { id, branch_id: user.branch_id },
     });
-    if (!rfq) throw { status: 404, message: "RFQ not found or access denied for this branch" };
+    if (!rfq)
+      throw {
+        status: 404,
+        message: "RFQ not found or access denied for this branch",
+      };
 
     // 2. Kiểm tra người gửi phải là người tạo (created_by)
     if (Number(rfq.created_by) !== Number(user.id)) {
-      throw { status: 403, message: "Only the creator of this RFQ can send it" };
+      throw {
+        status: 403,
+        message: "Only the creator of this RFQ can send it",
+      };
     }
 
     // 3. Kiểm tra Trạng thái phê duyệt (approval_status)
     if (rfq.approval_status !== "approved") {
-      throw { status: 400, message: "Only approved RFQ can be sent (Please submit for approval first)" };
+      throw {
+        status: 400,
+        message:
+          "Only approved RFQ can be sent (Please submit for approval first)",
+      };
     }
 
     if (rfq.status !== "draft") {
@@ -507,7 +515,7 @@ export const rfqService = {
           end_date: rfq.valid_until ?? null, // <-- Bổ sung thiết lập thời hạn kết thúc từ RFQ
           created_by: user.id,
         } as any,
-        { transaction: t }
+        { transaction: t },
       );
 
       const lines = (rfq as any).lines as PurchaseRfqLine[];
@@ -524,7 +532,7 @@ export const rfqService = {
             lead_time_days: line.lead_time_days ?? null,
             start_date: new Date(),
           } as any,
-          { transaction: t }
+          { transaction: t },
         );
       }
 

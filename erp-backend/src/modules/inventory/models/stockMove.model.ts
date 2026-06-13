@@ -10,7 +10,13 @@ export interface StockMoveAttrs {
   type: "receipt" | "issue" | "transfer" | "adjustment" | "scrap";
   warehouse_from_id?: number | null;
   warehouse_to_id?: number | null;
-  reference_type?: "purchase_order" | "sale_order" | "transfer" | "adjustment";
+  reference_type?:
+    | "purchase_order"
+    | "sale_order"
+    | "transfer"
+    | "adjustment"
+    | "purchase_return"
+    | "sales_return";
   reference_id?: number | null;
   status: "draft" | "waiting_approval" | "posted" | "cancelled";
   note?: string;
@@ -38,7 +44,9 @@ export class StockMove
     | "purchase_order"
     | "sale_order"
     | "transfer"
-    | "adjustment";
+    | "adjustment"
+    | "purchase_return"
+    | "sales_return";
   public reference_id?: number | null;
   public status!: "draft" | "waiting_approval" | "posted" | "cancelled";
   public note?: string;
@@ -76,6 +84,8 @@ StockMove.init(
         "sale_order",
         "transfer",
         "adjustment",
+        "purchase_return",
+        "sales_return",
       ),
       allowNull: false,
     },

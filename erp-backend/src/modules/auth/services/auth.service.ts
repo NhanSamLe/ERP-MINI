@@ -22,26 +22,36 @@ async function loadUserPermissions(roleId: number): Promise<string[]> {
     .map((rp: any) => rp.permission?.code)
     .filter(Boolean);
 }
-export async function createUser(data: {
-  branch_id: number;
-  username: string;
-  password: string;
-  full_name?: string;
-  email?: string;
-  phone?: string;
-  role_id: number;
-}) {
-  const [role, checkUser, checkPhone, checkEmail] = await Promise.all([
+export async function createUser(
+  data: {
+    branch_id: number;
+    username: string;
+    password: string;
+    full_name?: string;
+    email?: string;
+    phone?: string;
+    role_id: number;
+  },
+  requestingUser?: { company_id?: number },
+) {
+  const [role, checkUser, checkPhone, checkEmail, branch] = await Promise.all([
     model.Role.findOne({ where: { id: data.role_id } }),
     model.User.findOne({ where: { username: data.username } }),
-    model.User.findOne({ where: { phone: data.phone } }),
-    model.User.findOne({ where: { email: data.email } }),
+    data.phone ? model.User.findOne({ where: { phone: data.phone } }) : Promise.resolve(null),
+    data.email ? model.User.findOne({ where: { email: data.email } }) : Promise.resolve(null),
+    model.Branch.findByPk(data.branch_id, { attributes: ["id", "company_id"] }),
   ]);
 
   if (!role) throw new Error("Invalid role ID provided");
   if (checkUser) throw new Error("Username already exists");
   if (checkEmail) throw new Error("Email already exists");
   if (checkPhone) throw new Error("Phone number already exists");
+
+  // Bảo vệ multi-tenant: branch phải thuộc cùng company với người tạo
+  if (!branch) throw new Error("Branch not found");
+  if (requestingUser?.company_id && (branch as any).company_id !== requestingUser.company_id) {
+    throw new Error("Cannot create user for a branch belonging to a different company");
+  }
 
   const hash = await hashPassword(data.password);
   const resetToken = crypto.randomBytes(32).toString("hex");
@@ -91,23 +101,28 @@ export async function createUser(data: {
 });
   return user;
 }
-export async function getAllUsers() {
-  const users = await model.User.findAll({include: [
+export async function getAllUsers(companyId?: number) {
+  if (!companyId) return [];
+
+  const users = await model.User.findAll({
+    attributes: { exclude: ["password_hash", "reset_token", "reset_expires_at"] },
+    include: [
       {
         model: model.Role,
         as: "role",
         required: true,
-        where: {
-          name: { [Op.ne]: "ADMIN" }
-        },
-        attributes: ["id","code","name"], 
+        attributes: ["id", "code", "name"],
       },
       {
         model: model.Branch,
         as: "branch",
-        attributes: ["id","code","name","address"],
-      }
-    ]});
+        required: true,
+        where: { company_id: companyId },
+        attributes: ["id", "code", "name", "address"],
+      },
+    ],
+    order: [["id", "DESC"]],
+  });
   return users;
 }
 export async function getAllRoles(){
@@ -211,8 +226,11 @@ export async function login(username: string, password: string) {
     throw new Error("Account is not activated. Please set your password.");
   }
 
-  // Load permissions từ DB cho role hiện tại
-  const permissions = user.role_id ? await loadUserPermissions(user.role_id) : [];
+  // Load permissions và company_id (từ branch) cho multi-tenant isolation
+  const [permissions, branch] = await Promise.all([
+    user.role_id ? loadUserPermissions(user.role_id) : Promise.resolve([]),
+    user.branch_id ? model.Branch.findByPk(user.branch_id, { attributes: ["id", "company_id"] }) : Promise.resolve(null),
+  ]);
 
   const payload: JwtPayload = {
     id: user.id,
@@ -222,10 +240,16 @@ export async function login(username: string, password: string) {
     ...(user.full_name ? { fullName: user.full_name } : {}),
     ...(user.email ? { email: user.email } : {}),
     ...(user.branch_id ? { branch_id: user.branch_id } : {}),
+    ...((branch as any)?.company_id ? { company_id: (branch as any).company_id } : {}),
   };
   const token = generateAccessToken(payload);
   const refreshToken = generateRefreshToken(payload);
-  return { token, refreshToken };
+
+  const isSetupDone = (branch as any)?.company_id
+    ? await model.Company.findByPk((branch as any).company_id, { attributes: ['is_setup_done'] }).then(c => c?.is_setup_done ?? false)
+    : true;
+
+  return { token, refreshToken, is_setup_done: isSetupDone };
 }
 // Tạo và gửi token để reset
 export async function requestPasswordReset(username: string) {

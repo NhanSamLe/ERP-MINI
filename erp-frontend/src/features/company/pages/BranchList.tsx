@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import {
@@ -12,6 +12,8 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  Loader2,
+  Inbox,
 } from "lucide-react";
 import {
   fetchBranches,
@@ -20,9 +22,11 @@ import {
   deleteBranch,
   Branch,
 } from "../branch.service";
+import { ActionConfirmModal } from "@/components/common/ActionConfirmModal";
 
-// mock role (tùy bạn tích hợp)
 const useAuth = () => ({ user: { role: "ADMIN" as "ADMIN" | "BRANCH_MANAGER" } });
+
+const PAGE_SIZE = 10;
 
 export default function BranchList() {
   const nav = useNavigate();
@@ -32,16 +36,17 @@ export default function BranchList() {
   const [items, setItems] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-
-  // ====== phân trang ======
   const [page, setPage] = useState(1);
-  const pageSize = 10; // 👉 1 page = 10 branches, muốn đổi thì chỉnh số này
+  const [deleteTarget, setDeleteTarget] = useState<Branch | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = async () => {
     setLoading(true);
     try {
       const data = await fetchBranches();
       setItems(data);
+    } catch {
+      toast.error("Không thể tải danh sách chi nhánh.");
     } finally {
       setLoading(false);
     }
@@ -51,233 +56,258 @@ export default function BranchList() {
     load();
   }, []);
 
-  const toggleStatus = async (b: Branch) => {
-    if (!b.id) return;
-    if (b.status === "inactive") await activateBranch(b.id);
-    else await deactivateBranch(b.id);
-    await load();
-  };
-
-  const onDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this branch?")) return;
-    await deleteBranch(id);
-    await load();
-  };
-
-  // Lọc danh sách theo ô search
-  const filtered = items.filter((b) => {
-    const term = search.toLowerCase();
-    return (
-      b.name?.toLowerCase().includes(term) ||
-      b.code?.toLowerCase().includes(term) ||
-      b.address?.toLowerCase().includes(term)
-    );
-  });
-
-  // reset về page 1 khi filter thay đổi
   useEffect(() => {
     setPage(1);
   }, [search]);
 
-  // ====== tính toán phân trang ======
-  const totalItems = filtered.length;
-  const totalPages = totalItems ? Math.ceil(totalItems / pageSize) : 1;
-  const currentPage = Math.min(page, totalPages);
-  const startIndex = (currentPage - 1) * pageSize;
-  const pageItems = filtered.slice(startIndex, startIndex + pageSize);
-
-  const goToPage = (p: number) => {
-    if (p < 1 || p > totalPages) return;
-    setPage(p);
+  const toggleStatus = async (branch: Branch) => {
+    if (!branch.id) return;
+    try {
+      if (branch.status === "inactive") {
+        await activateBranch(branch.id);
+        toast.success(`Đã kích hoạt chi nhánh "${branch.name}".`);
+      } else {
+        await deactivateBranch(branch.id);
+        toast.success(`Đã vô hiệu hóa chi nhánh "${branch.name}".`);
+      }
+      await load();
+    } catch {
+      toast.error("Cập nhật trạng thái chi nhánh thất bại.");
+    }
   };
 
+  const confirmDelete = async () => {
+    if (!deleteTarget?.id) return;
+    setDeleting(true);
+    try {
+      await deleteBranch(deleteTarget.id);
+      toast.success(`Đã xóa chi nhánh "${deleteTarget.name}".`);
+      setDeleteTarget(null);
+      await load();
+    } catch {
+      toast.error("Xóa chi nhánh thất bại.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return items;
+    return items.filter((branch) =>
+      [
+        branch.name,
+        branch.code,
+        branch.address,
+        branch.province,
+        branch.district,
+        branch.ward,
+        branch.tax_code,
+        branch.bank_account,
+        branch.bank_name,
+      ].some((value) => value?.toLowerCase().includes(term))
+    );
+  }, [items, search]);
+
+  const totalItems = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const startIndex = (currentPage - 1) * PAGE_SIZE;
+  const pageItems = filtered.slice(startIndex, startIndex + PAGE_SIZE);
+
+  const goToPage = (nextPage: number) => {
+    if (nextPage < 1 || nextPage > totalPages) return;
+    setPage(nextPage);
+  };
+
+  const statusLabel = (status?: string) => (status === "inactive" ? "Ngừng hoạt động" : "Hoạt động");
+
   return (
-    <div className="max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <Building2 className="w-7 h-7 text-orange-500" />
-          <div>
-            <h1 className="text-2xl font-bold">Branch Management</h1>
-            <p className="text-gray-500 text-sm">Company & branch management</p>
+    <div className="page-container">
+      <div className="erp-card overflow-hidden">
+        <div className="flex flex-col gap-3 px-5 py-4 border-b border-gray-200 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-2.5">
+            <span className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
+              <Building2 className="w-4 h-4 text-orange-500" />
+            </span>
+            <div>
+              <h1 className="text-base font-semibold text-gray-900">Chi nhánh</h1>
+              <p className="text-xs text-gray-400 mt-0.5">Quản lý chi nhánh, địa chỉ, mã số thuế và thông tin ngân hàng</p>
+            </div>
+            <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-600">
+              {filtered.length}
+            </span>
+          </div>
+
+          {isAdmin && (
+            <button
+              onClick={() => nav("/company/branches/create")}
+              className="inline-flex items-center gap-1.5 h-8 px-3 text-sm font-medium text-white bg-orange-500 rounded-md hover:bg-orange-600 transition-colors shadow-sm"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Thêm chi nhánh
+            </button>
+          )}
+        </div>
+
+        <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
+          <div className="relative max-w-sm">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Tìm mã, tên, địa chỉ, ngân hàng..."
+              className="w-full h-8 pl-8 pr-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 placeholder:text-gray-400"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
           </div>
         </div>
-        {isAdmin && (
-          <button
-            onClick={() => nav("/company/branches/create")}
-            className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg"
-          >
-            <Plus className="w-4 h-4" /> New Branch
-          </button>
-        )}
-      </div>
 
-      {/* Search Bar */}
-      <div className="mb-5 relative">
-        <Search className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
-        <input
-          type="text"
-          placeholder="Search..."
-          className="w-full border rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-orange-400"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
-
-      {/* Table */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-gray-600">
-            <tr>
-              <th className="py-3 px-4 text-left">Code</th>
-              <th className="py-3 px-4 text-left">Name</th>
-              <th className="py-3 px-4 text-left">Address</th>
-              <th className="py-3 px-4 text-left">Province</th>
-              <th className="py-3 px-4 text-left">District</th>
-              <th className="py-3 px-4 text-left">Ward</th>
-              <th className="py-3 px-4 text-left">Tax Code</th>
-              <th className="py-3 px-4 text-left">Bank Acc.</th>
-              <th className="py-3 px-4 text-left">Bank Name</th>
-              <th className="py-3 px-4 text-left">Status</th>
-              <th className="py-3 px-4 text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td className="py-6 px-4 text-center" colSpan={11}>
-                  Loading...
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[76rem] text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 bg-gray-50/80">
+                {["Mã", "Tên chi nhánh", "Địa chỉ", "Tỉnh/TP", "Quận/Huyện", "Phường/Xã", "Mã số thuế", "Tài khoản", "Ngân hàng", "Trạng thái", ""].map((header) => (
+                  <th key={header} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider first:pl-5 last:pr-5">
+                    {header}
+                  </th>
+                ))}
               </tr>
-            ) : totalItems === 0 ? (
-              <tr>
-                <td className="py-6 px-4 text-center" colSpan={11}>
-                  No branches found
-                </td>
-              </tr>
-            ) : (
-              pageItems.map((b) => (
-                <tr key={b.id} className="border-t">
-                  <td className="py-3 px-4">{b.code}</td>
-                  <td className="py-3 px-4">{b.name}</td>
-                  <td className="py-3 px-4">{b.address ?? "-"}</td>
-                  <td className="py-3 px-4">{b.province ?? "-"}</td>
-                  <td className="py-3 px-4">{b.district ?? "-"}</td>
-                  <td className="py-3 px-4">{b.ward ?? "-"}</td>
-                  <td className="py-3 px-4">{b.tax_code ?? "-"}</td>
-                  <td className="py-3 px-4">{b.bank_account ?? "-"}</td>
-                  <td className="py-3 px-4">{b.bank_name ?? "-"}</td>
-                  <td className="py-3 px-4">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs ${
-                        b.status === "inactive"
-                          ? "bg-gray-100 text-gray-600"
-                          : "bg-green-100 text-green-700"
-                      }`}
-                    >
-                      {b.status ?? "active"}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <div className="flex justify-center items-center gap-2">
-                      <Link
-                        to={`/company/branches/${b.id}`}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md border hover:bg-gray-50"
-                        title="View / Edit"
-                      >
-                        {isAdmin ? (
-                          <Pencil className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                        {isAdmin ? "" : "View"}
-                      </Link>
-
-                      {isAdmin && (
-                        <button
-                          onClick={() => toggleStatus(b)}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md border hover:bg-gray-50"
-                          title={
-                            b.status === "inactive" ? "Activate" : "Deactivate"
-                          }
-                        >
-                          {b.status === "inactive" ? (
-                            <>
-                              <CheckCircle className="w-4 h-4 text-green-600" />
-                              Activate
-                            </>
-                          ) : (
-                            <>
-                              <Power className="w-4 h-4 text-gray-600" />
-                              Deactivate
-                            </>
-                          )}
-                        </button>
-                      )}
-
-                      {isAdmin && (
-                        <button
-                          onClick={() => onDelete(Number(b.id))}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md border text-red-600 hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {loading ? (
+                <tr>
+                  <td className="py-14 text-center" colSpan={11}>
+                    <div className="flex items-center justify-center gap-3 text-gray-400">
+                      <Loader2 className="w-5 h-5 animate-spin text-orange-500" />
+                      <span>Đang tải danh sách chi nhánh...</span>
                     </div>
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : totalItems === 0 ? (
+                <tr>
+                  <td className="py-14 text-center" colSpan={11}>
+                    <div className="flex flex-col items-center gap-2 text-gray-400">
+                      <Inbox className="w-8 h-8" />
+                      <p>Không tìm thấy chi nhánh.</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                pageItems.map((branch) => (
+                  <tr key={branch.id} className="hover:bg-orange-50/30 transition-colors">
+                    <td className="px-5 py-3 font-semibold text-orange-600">{branch.code}</td>
+                    <td className="px-4 py-3 font-medium text-gray-900">{branch.name}</td>
+                    <td className="px-4 py-3 text-gray-600">{branch.address || "-"}</td>
+                    <td className="px-4 py-3 text-gray-600">{branch.province || "-"}</td>
+                    <td className="px-4 py-3 text-gray-600">{branch.district || "-"}</td>
+                    <td className="px-4 py-3 text-gray-600">{branch.ward || "-"}</td>
+                    <td className="px-4 py-3 text-gray-600">{branch.tax_code || "-"}</td>
+                    <td className="px-4 py-3 text-gray-600">{branch.bank_account || "-"}</td>
+                    <td className="px-4 py-3 text-gray-600">{branch.bank_name || "-"}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                          branch.status === "inactive"
+                            ? "bg-gray-100 text-gray-700"
+                            : "bg-emerald-50 text-emerald-700"
+                        }`}
+                      >
+                        {statusLabel(branch.status)}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        <Link
+                          to={`/company/branches/${branch.id}`}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                          title={isAdmin ? "Sửa chi nhánh" : "Xem chi nhánh"}
+                        >
+                          {isAdmin ? <Pencil className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </Link>
 
-        {/* Pagination */}
-        {totalItems > 0 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t bg-gray-50 text-xs text-gray-600">
-            <div>
-              Showing{" "}
-              <span className="font-medium">
-                {startIndex + 1} - {Math.min(startIndex + pageSize, totalItems)}
+                        {isAdmin && (
+                          <button
+                            onClick={() => toggleStatus(branch)}
+                            className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
+                              branch.status === "inactive"
+                                ? "text-emerald-600 hover:bg-emerald-50"
+                                : "text-gray-500 hover:bg-gray-100"
+                            }`}
+                            title={branch.status === "inactive" ? "Kích hoạt" : "Vô hiệu hóa"}
+                          >
+                            {branch.status === "inactive" ? <CheckCircle className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                          </button>
+                        )}
+
+                        {isAdmin && (
+                          <button
+                            onClick={() => setDeleteTarget(branch)}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-red-600 hover:bg-red-50 transition-colors"
+                            title="Xóa chi nhánh"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {!loading && totalItems > 0 && (
+          <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50/50">
+            <p className="text-xs text-gray-500">
+              Hiển thị{" "}
+              <span className="font-semibold text-gray-700">
+                {startIndex + 1}-{Math.min(startIndex + PAGE_SIZE, totalItems)}
               </span>{" "}
-              of <span className="font-medium">{totalItems}</span> branches
-            </div>
+              / <span className="font-semibold text-gray-700">{totalItems}</span>
+            </p>
 
             <div className="flex items-center gap-1">
               <button
                 onClick={() => goToPage(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="flex items-center gap-1 px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-white"
+                className="h-7 px-3 text-xs font-medium border border-gray-300 rounded-md text-gray-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                <ChevronLeft className="w-3 h-3" />
-                Prev
+                <ChevronLeft className="inline w-3 h-3 mr-1" />
+                Trước
               </button>
-
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pNum) => (
-                <button
-                  key={pNum}
-                  onClick={() => goToPage(pNum)}
-                  className={`w-7 h-7 rounded text-xs border ${
-                    pNum === currentPage
-                      ? "bg-orange-500 text-white border-orange-500"
-                      : "bg-white text-gray-700 hover:bg-gray-100"
-                  }`}
-                >
-                  {pNum}
-                </button>
-              ))}
-
+              <span className="h-7 px-3 text-xs font-semibold flex items-center bg-orange-500 text-white rounded-md">
+                {currentPage} / {totalPages}
+              </span>
               <button
                 onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="flex items-center gap-1 px-2 py-1 rounded border text-xs disabled:opacity-40 hover:bg-white"
+                className="h-7 px-3 text-xs font-medium border border-gray-300 rounded-md text-gray-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                Next
-                <ChevronRight className="w-3 h-3" />
+                Sau
+                <ChevronRight className="inline w-3 h-3 ml-1" />
               </button>
             </div>
           </div>
         )}
       </div>
+
+      <ActionConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        title="Xóa chi nhánh"
+        description={
+          <span>
+            Bạn có chắc muốn xóa chi nhánh <strong>{deleteTarget?.name}</strong>? Hành động này không thể hoàn tác.
+          </span>
+        }
+        confirmText="Xóa"
+        cancelText="Hủy"
+        variant="danger"
+        loading={deleting}
+      />
     </div>
   );
 }

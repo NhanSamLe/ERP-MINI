@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  Box,
   Button,
   Card,
   DatePicker,
@@ -11,10 +10,9 @@ import {
   Row,
   Col,
   Select,
-  Space,
 } from "antd";
 import { SearchOutlined, ClearOutlined } from "@ant-design/icons";
-import { SearchQuery } from "../store/purchaseOrder.slice";
+import { SearchQuery } from "../store/purchaseOrder.types";
 
 interface AdvancedFilterPanelProps {
   onSearch: (filters: SearchQuery) => void;

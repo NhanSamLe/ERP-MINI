@@ -52,10 +52,10 @@ export function StandardFormLayout({
     <div className="min-h-screen bg-gray-50/60">
       {/* Sticky page header bar */}
       <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm border-t-2 border-t-orange-500">
-        <div className="max-w-screen-2xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
+        <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 min-h-14 py-2 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           {/* Left: title */}
-          <div className="min-w-0 flex items-center gap-2">
-            <h1 className="text-base font-semibold text-gray-900 truncate">
+          <div className="min-w-0 flex flex-wrap items-center gap-2">
+            <h1 className="text-base font-semibold text-gray-900 break-words">
               {title}
             </h1>
             {statusBadge}
@@ -63,14 +63,14 @@ export function StandardFormLayout({
 
           {/* Right: action buttons */}
           {actions.length > 0 && (
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
               {actions.map((action, idx) => (
                 <button
                   key={idx}
                   onClick={action.onClick}
                   disabled={action.isLoading || action.disabled}
                   className={[
-                    "inline-flex items-center gap-1.5 h-8 px-4 rounded-md text-sm font-medium",
+                    "inline-flex min-w-0 items-center justify-center gap-1.5 min-h-8 px-3 sm:px-4 rounded-md text-sm font-medium",
                     "transition-colors duration-150 select-none",
                     "focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-1",
                     "disabled:opacity-50 disabled:cursor-not-allowed",
@@ -84,7 +84,9 @@ export function StandardFormLayout({
                       <span className="w-3.5 h-3.5">{action.icon}</span>
                     )
                   )}
-                  {action.isLoading ? "Processing..." : action.label}
+                  <span className="whitespace-normal text-center leading-tight">
+                    {action.isLoading ? "Processing..." : action.label}
+                  </span>
                 </button>
               ))}
             </div>
@@ -93,7 +95,7 @@ export function StandardFormLayout({
       </div>
 
       {/* Page content */}
-      <div className="max-w-screen-2xl mx-auto px-6 py-5">
+      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-4 sm:py-5">
         <div
           className={`grid gap-5 items-start ${sidebarContent ? "grid-cols-1 lg:grid-cols-[1fr_280px]" : "grid-cols-1"}`}
         >

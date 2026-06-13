@@ -107,7 +107,7 @@ export default function InventoryDashboard() {
       <div className="min-h-screen flex items-center justify-center bg-slate-50/50">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-sm font-medium text-slate-500">Loading dashboard...</p>
+          <p className="text-sm font-medium text-slate-500">Đang tải bảng điều khiển kho...</p>
         </div>
       </div>
     );
@@ -115,8 +115,8 @@ export default function InventoryDashboard() {
 
   const chartData = topProducts.map((p) => ({
     name:
-      p.product?.name?.length > 14
-        ? p.product.name.slice(0, 14) + "…"
+      (p.product?.name ?? "").length > 14
+        ? (p.product?.name ?? "").slice(0, 14) + "…"
         : (p.product?.name ?? ""),
     value: Number(p.total_value ?? 0),
   }));
@@ -125,24 +125,24 @@ export default function InventoryDashboard() {
     <div className="min-h-screen bg-slate-50/40 p-6 md:p-8 space-y-8">
       <div>
         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-          Inventory Dashboard
+          Bảng điều khiển kho
         </h1>
         <p className="text-sm font-medium text-slate-500 mt-1.5">
-          Real-time overview of your warehouse operations & valuation
+          Tổng quan thời gian thực về hoạt động & định giá kho hàng
         </p>
       </div>
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <StatCard
-          label="Total Stock Value"
+          label="Tổng giá trị tồn kho"
           value={formatMoney(stats?.total_stock_value ?? 0)}
           icon={<Package className="w-5 h-5" />}
           gradientClass="from-indigo-500 to-purple-600"
           iconBgClass="bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-indigo-100"
         />
         <StatCard
-          label="Low Stock Products"
+          label="Sản phẩm dưới mức tối thiểu"
           value={stats?.low_stock_count ?? 0}
           icon={<AlertTriangle className="w-5 h-5" />}
           gradientClass="from-amber-500 to-orange-600"
@@ -150,7 +150,7 @@ export default function InventoryDashboard() {
           onClick={() => navigate("/inventory/stock")}
         />
         <StatCard
-          label="Expiring Lots (30d)"
+          label="Lô hàng sắp hết hạn (30 ngày)"
           value={stats?.expiring_lots_count ?? 0}
           icon={<Clock className="w-5 h-5" />}
           gradientClass="from-rose-500 to-red-600"
@@ -158,7 +158,7 @@ export default function InventoryDashboard() {
           onClick={() => navigate("/inventory/lots")}
         />
         <StatCard
-          label="Pending Approvals"
+          label="Yêu cầu chờ duyệt"
           value={stats?.pending_moves_count ?? 0}
           icon={<FileCheck className="w-5 h-5" />}
           gradientClass="from-sky-500 to-blue-600"
@@ -174,17 +174,17 @@ export default function InventoryDashboard() {
           <CardHeader className="pb-4 border-b border-gray-50 bg-gray-50/20">
             <div>
               <CardTitle className="text-base font-semibold text-gray-800">
-                Top 10 Products by Stock Value
+                Top 10 sản phẩm theo giá trị tồn kho
               </CardTitle>
               <CardDescription className="text-xs text-gray-400 mt-0.5">
-                Products with the highest inventory asset value
+                Các sản phẩm có giá trị tài sản tồn kho cao nhất
               </CardDescription>
             </div>
           </CardHeader>
           <CardContent className="p-6 flex-1 flex flex-col justify-center">
             {chartData.length === 0 ? (
               <div className="h-48 flex items-center justify-center text-gray-400 italic text-sm">
-                No data available
+                Không có dữ liệu
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={260}>
@@ -222,7 +222,7 @@ export default function InventoryDashboard() {
                       border: "1px solid #e2e8f0", 
                       boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)"
                     }}
-                    formatter={(v: number) => [formatMoney(v), "Stock Value"]} 
+                    formatter={(v: number) => [formatMoney(v), "Giá trị tồn kho"]} 
                   />
                   <Bar dataKey="value" fill="url(#chartBarGradient)" radius={[6, 6, 0, 0]} barSize={24} />
                 </BarChart>
@@ -237,17 +237,17 @@ export default function InventoryDashboard() {
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-rose-500 animate-pulse" />
               <CardTitle className="text-base font-semibold text-gray-800">
-                Expiring Lots
+                Lô hàng sắp hết hạn
               </CardTitle>
             </div>
             <CardDescription className="text-xs text-gray-400 mt-0.5">
-              Inventory batches expiring within 30 days
+              Các lô hàng tồn kho sẽ hết hạn trong vòng 30 ngày
             </CardDescription>
           </CardHeader>
           <CardContent className="p-5 flex-1">
             {expiring.length === 0 ? (
               <p className="text-sm text-gray-400 italic">
-                No lots expiring soon
+                Không có lô hàng nào sắp hết hạn
               </p>
             ) : (
               <div className="space-y-3 max-h-[260px] overflow-y-auto pr-1">
@@ -265,10 +265,10 @@ export default function InventoryDashboard() {
                         </p>
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] px-1.5 py-0.5 font-semibold font-mono rounded bg-slate-200/60 text-slate-600">
-                            Lot: {lot.lot_no}
+                            Lô: {lot.lot_no}
                           </span>
                           <span className="text-xs text-gray-400 font-mono">
-                            Exp: {new Date(lot.expiry_date).toLocaleDateString()}
+                            HSD: {new Date(lot.expiry_date).toLocaleDateString()}
                           </span>
                         </div>
                       </div>
@@ -279,7 +279,7 @@ export default function InventoryDashboard() {
                             : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50"
                         }`}
                       >
-                        {days}d left
+                        Còn {days} ngày
                       </Badge>
                     </div>
                   );
@@ -297,15 +297,15 @@ export default function InventoryDashboard() {
             <AlertTriangle className="w-5 h-5 text-amber-500" />
             <div>
               <CardTitle className="text-base font-semibold text-gray-800">
-                Low Stock Alert
+                Cảnh báo tồn kho thấp
               </CardTitle>
               <CardDescription className="text-xs text-gray-400 mt-0.5">
-                Products below their defined minimum safety stock level
+                Các sản phẩm dưới mức tồn kho an toàn tối thiểu
               </CardDescription>
             </div>
           </div>
           <Badge variant="outline" className="bg-amber-50/50 text-amber-700 border-amber-200 font-bold px-3 py-1 text-xs">
-            {lowStock.length} items flagged
+            {lowStock.length} mặt hàng cảnh báo
           </Badge>
         </CardHeader>
         <CardContent className="p-0">
@@ -313,12 +313,12 @@ export default function InventoryDashboard() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50/80 text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-gray-100">
                 <tr>
-                  <th className="px-6 py-3 text-left">Product</th>
+                  <th className="px-6 py-3 text-left">Sản phẩm</th>
                   <th className="px-6 py-3 text-left">SKU</th>
-                  <th className="px-6 py-3 text-left">Warehouse</th>
-                  <th className="px-6 py-3 text-right">Current Qty</th>
-                  <th className="px-6 py-3 text-right">Min Qty</th>
-                  <th className="px-6 py-3 text-right">Shortage</th>
+                  <th className="px-6 py-3 text-left">Kho hàng</th>
+                  <th className="px-6 py-3 text-right">SL hiện tại</th>
+                  <th className="px-6 py-3 text-right">SL tối thiểu</th>
+                  <th className="px-6 py-3 text-right">SL thiếu</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -328,7 +328,7 @@ export default function InventoryDashboard() {
                       colSpan={6}
                       className="px-6 py-10 text-center text-gray-400 italic text-sm"
                     >
-                      All products are sufficiently stocked
+                      Tất cả sản phẩm đều đủ số lượng tồn kho
                     </td>
                   </tr>
                 ) : (

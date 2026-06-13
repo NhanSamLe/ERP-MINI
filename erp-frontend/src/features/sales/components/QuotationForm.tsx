@@ -15,6 +15,7 @@ import { StandardFormLayout, FormSection } from "@/components/layout";
 import { SearchSelectionModal } from "@/components/common/SearchSelectionModal";
 import { ActionConfirmModal } from "@/components/common";
 import QuantityControl from "./QuantityControl";
+import { NumberField } from "@/components/ui/NumberField";
 import { formatVND } from "@/utils/currency.helper";
 import { toDateInputValue } from "@/utils/time.helper";
 import { useSaleOrderCalculation } from "../hook/useSaleOrderCalculation";
@@ -59,7 +60,6 @@ export default function QuotationForm({
   const [discardOpen, setDiscardOpen]     = useState(false);
   const [uoms, setUoms]                   = useState<Uom[]>([]);
   const [uomConversions, setUomConversions] = useState<UomConversion[]>([]);
-  const [focusedPriceIdx, setFocusedPriceIdx] = useState<number | null>(null);
 
   // ── modals ─────────────────────────────────────────
   const [customerModal, setCustomerModal]   = useState(false);
@@ -185,9 +185,6 @@ export default function QuotationForm({
     });
   };
 
-  const parsePrice = (str: string) =>
-    Number(str.replace(/\./g, "").replace(/,/g, "").replace(/[^\d]/g, "")) || 0;
-
   const handleUomChange = (lineIdx: number, newUomId: number | null) => {
     const line = lines[lineIdx];
     const product = products.find((p) => p.id === line.product_id);
@@ -196,7 +193,7 @@ export default function QuotationForm({
       const updated = { ...next[lineIdx], uom_id: newUomId };
       if (product && newUomId && product.uom_id && uomConversions.length > 0) {
         const factor = previewQtyInStockUom(1, newUomId, product.uom_id, uomConversions, product.id);
-        updated.unit_price = Math.round(Number(product.sale_price ?? 0) * factor / Number(exchangeRate || 1));
+        updated.unit_price = Number((Number(product.sale_price ?? 0) * factor / Number(exchangeRate || 1)).toFixed(2));
       }
       next[lineIdx] = updated;
       return next;
@@ -204,10 +201,13 @@ export default function QuotationForm({
   };
 
   // ── totals ─────────────────────────────────────────
-  const lineSubtotal = lines.reduce((acc, l) => acc + calcLine(l).lineTotal, 0);
-  const lineTax      = lines.reduce((acc, l) => acc + calcLine(l).taxAmount, 0);
-  const discountAmt  = lineSubtotal * (discountPercent / 100);
-  const grandTotal   = lineSubtotal + lineTax - discountAmt;
+  // Chiết khấu cấp đơn giảm trừ doanh thu chịu thuế TRƯỚC khi tính VAT (chuẩn
+  // thuế GTGT VN). Áp cùng hệ số lên subtotal và tax để khớp backend.
+  const lineSubtotal  = lines.reduce((acc, l) => acc + calcLine(l).lineTotal, 0);
+  const lineTax       = lines.reduce((acc, l) => acc + calcLine(l).taxAmount, 0);
+  const discountFactor = discountPercent > 0 ? 1 - discountPercent / 100 : 1;
+  const discountAmt   = lineSubtotal * (discountPercent / 100);
+  const grandTotal    = lineSubtotal * discountFactor + lineTax * discountFactor;
 
   // ── submit ─────────────────────────────────────────
   const handleSubmit = async () => {
@@ -261,16 +261,16 @@ export default function QuotationForm({
                   <span className="text-gray-500">Tạm tính</span>
                   <span className="font-semibold text-gray-800">{formatDocMoney(lineSubtotal)}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Thuế VAT</span>
-                  <span className="font-semibold text-gray-800">{formatDocMoney(lineTax)}</span>
-                </div>
                 {discountPercent > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Giảm giá ({discountPercent}%)</span>
                     <span className="font-semibold text-emerald-600">-{formatDocMoney(discountAmt)}</span>
                   </div>
                 )}
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Thuế VAT</span>
+                  <span className="font-semibold text-gray-800">{formatDocMoney(lineTax * discountFactor)}</span>
+                </div>
                 <div className="pt-2.5 border-t border-gray-200">
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-semibold text-gray-900">Tổng cộng</span>
@@ -404,25 +404,12 @@ export default function QuotationForm({
               <label className="block text-sm font-medium text-gray-700">
                 Chiết khấu tổng (%)
               </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={discountPercent === 0 ? "" : String(discountPercent)}
-                  onChange={(e) => {
-                    const raw = e.target.value.replace(/[^0-9.]/g, "");
-                    const num = parseFloat(raw);
-                    setDiscountPercent(isNaN(num) ? 0 : Math.min(100, Math.max(0, num)));
-                  }}
-                  onBlur={(e) => {
-                    const num = parseFloat(e.target.value);
-                    setDiscountPercent(isNaN(num) ? 0 : Math.min(100, Math.max(0, num)));
-                  }}
-                  placeholder="0"
-                  className="w-full h-9 px-3 pr-8 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
-              </div>
+              <NumberField
+                variant="percent"
+                value={discountPercent}
+                onChange={(v) => setDiscountPercent(v ?? 0)}
+                placeholder="0"
+              />
             </div>
 
             <div className="space-y-1.5">
@@ -604,19 +591,13 @@ export default function QuotationForm({
 
                         {/* Unit Price */}
                         <td className="px-4 py-3">
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            value={
-                              focusedPriceIdx === i
-                                ? String(line.unit_price)
-                                : Number(line.unit_price).toLocaleString("vi-VN")
-                            }
-                            onFocus={() => setFocusedPriceIdx(i)}
-                            onBlur={() => setFocusedPriceIdx(null)}
-                            onChange={(e) => updateLine(i, "unit_price", parsePrice(e.target.value))}
-                            className="w-32 h-8 px-2 text-right text-sm font-medium border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                          />
+                          <div className="w-32">
+                            <NumberField
+                              value={line.unit_price}
+                              onChange={(v) => updateLine(i, "unit_price", v ?? 0)}
+                              className="h-8"
+                            />
+                          </div>
                           {product?.sale_price && product.sale_price !== line.unit_price && (
                             <p className="text-[10px] text-gray-400 text-right mt-0.5">
                               Niêm yết: {Number(product.sale_price).toLocaleString("vi-VN")} ₫
@@ -626,18 +607,13 @@ export default function QuotationForm({
 
                         {/* Discount % */}
                         <td className="px-4 py-3">
-                          <div className="relative w-20">
-                            <input
-                              type="number" min={0} max={100} step={0.5}
+                          <div className="w-20">
+                            <NumberField
+                              variant="percent"
                               value={line.discount_percent ?? 0}
-                              onChange={(e) => updateLine(i, "discount_percent", parseFloat(e.target.value) || 0)}
-                              onBlur={(e) => {
-                                const v = Math.min(100, Math.max(0, parseFloat(e.target.value) || 0));
-                                updateLine(i, "discount_percent", parseFloat(v.toFixed(2)));
-                              }}
-                              className="w-full h-8 pl-2 pr-5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              onChange={(v) => updateLine(i, "discount_percent", v ?? 0)}
+                              className="h-8"
                             />
-                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
                           </div>
                         </td>
 

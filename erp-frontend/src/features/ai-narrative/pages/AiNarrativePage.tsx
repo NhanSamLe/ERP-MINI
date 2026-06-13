@@ -123,7 +123,7 @@ export default function AiNarrativePage() {
   return (
     <div className="p-6 space-y-6">
       <PageHeader
-        title="AI Financial Narrative"
+        title="Báo cáo Phân tích AI"
         description="Tự động tạo nhận xét tài chính bằng AI · Cache 7 ngày"
       />
 
@@ -430,7 +430,7 @@ export default function AiNarrativePage() {
                 color: "orange",
               },
               {
-                label: "Avg Response",
+                label: "Phản hồi Trung bình",
                 value: cacheStats
                   ? formatMs(cacheStats.averageResponseTime)
                   : "—",

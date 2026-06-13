@@ -16,7 +16,8 @@ export const getPayrollRuns = async (req: Request, res: Response) => {
       filter.status = status as any;
     }
 
-    const data = await payrollRunService.getAllPayrollRuns(filter);
+    const user = (req as any).user;
+    const data = await payrollRunService.getAllPayrollRuns(filter, user?.branch_id);
     return res.json(data);
   } catch (err: any) {
     return res.status(400).json({ message: err.message });

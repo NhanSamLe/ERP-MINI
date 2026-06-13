@@ -74,7 +74,7 @@ Product.init(
   {
     id: { type: DataTypes.BIGINT, autoIncrement: true, primaryKey: true },
     category_id: { type: DataTypes.BIGINT },
-    sku: { type: DataTypes.STRING(50), allowNull: false, unique: true },
+    sku: { type: DataTypes.STRING(50), allowNull: false },
     name: { type: DataTypes.STRING(255), allowNull: false },
     barcode: { type: DataTypes.STRING(100) },
     uom_id: { type: DataTypes.BIGINT, allowNull: true },
@@ -117,6 +117,9 @@ Product.init(
     timestamps: true,
     createdAt: "created_at",
     updatedAt: "updated_at",
+    indexes: [
+      { unique: true, fields: ["sku"] },
+    ],
   },
 );
 

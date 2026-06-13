@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useLocation, useNavigate, Link } from "react-router-dom";
 import { Product, ProductSupplierInfo } from "../store/product.types";
 import { productApi } from "../api/product.api";
@@ -18,9 +18,9 @@ import { useSelector } from "react-redux";
 import { RootState } from "../../../store/store";
 
 const PRODUCT_TYPE_LABELS: Record<string, string> = {
-  storable: "Storable",
-  consumable: "Consumable",
-  service: "Service",
+  storable: "Lưu kho",
+  consumable: "Tiêu dùng",
+  service: "Dịch vụ",
 };
 const PRODUCT_TYPE_COLORS: Record<string, string> = {
   storable: "bg-blue-100 text-blue-700",
@@ -28,8 +28,8 @@ const PRODUCT_TYPE_COLORS: Record<string, string> = {
   service: "bg-teal-100 text-teal-700",
 };
 const SOURCE_TYPE_LABELS: Record<string, string> = {
-  purchased: "Purchased",
-  manufactured: "Manufactured",
+  purchased: "Mua ngoài",
+  manufactured: "Tự sản xuất",
 };
 
 function InfoRow({ label, value }: { label: string; value?: React.ReactNode }) {
@@ -155,7 +155,7 @@ export default function ProductDetailPage() {
           <span
             className={`px-2.5 py-1 rounded-full text-xs font-medium ${product.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}
           >
-            {product.status === "active" ? "Active" : "Inactive"}
+            {product.status === "active" ? "Đang hoạt động" : "Ngừng hoạt động"}
           </span>
           {product.product_type && (
             <span
@@ -169,13 +169,13 @@ export default function ProductDetailPage() {
             state={{ product }}
             className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
           >
-            <Pencil className="w-4 h-4" /> Edit
+            <Pencil className="w-4 h-4" /> Sửa
           </Link>
           <button
             onClick={() => navigate("/inventory/products")}
             className="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition"
           >
-            <ArrowLeft className="w-4 h-4" /> Back
+            <ArrowLeft className="w-4 h-4" /> Quay lại
           </button>
         </div>
       </div>
@@ -186,21 +186,21 @@ export default function ProductDetailPage() {
           {/* General Info */}
           <Section
             icon={<Tag className="w-4 h-4" />}
-            title="General Information"
+            title="Thông tin chung"
           >
             <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
-              <InfoRow label="SKU" value={product.sku} />
-              <InfoRow label="Barcode" value={product.barcode} />
-              <InfoRow label="Internal Ref" value={product.internal_ref} />
+              <InfoRow label="Mã SKU" value={product.sku} />
+              <InfoRow label="Mã vạch (Barcode)" value={product.barcode} />
+              <InfoRow label="Mã tham chiếu nội bộ" value={product.internal_ref} />
               <InfoRow
-                label="Category"
+                label="Danh mục"
                 value={
                   categories.find((c) => c.id === product.category_id)?.name ??
                   (product.category_id ? `#${product.category_id}` : undefined)
                 }
               />
               <InfoRow
-                label="Product Type"
+                label="Loại sản phẩm"
                 value={
                   product.product_type ? (
                     <span
@@ -212,34 +212,34 @@ export default function ProductDetailPage() {
                 }
               />
               <InfoRow
-                label="Source Type"
+                label="Nguồn cung"
                 value={
                   product.source_type
                     ? SOURCE_TYPE_LABELS[product.source_type]
                     : undefined
                 }
               />
-              <InfoRow label="UOM" value={product.uom?.name} />
-              <InfoRow label="Purchase UOM" value={product.purchaseUom?.name} />
+              <InfoRow label="Đơn vị tính" value={product.uom?.name} />
+              <InfoRow label="Đơn vị mua" value={product.purchaseUom?.name} />
               <InfoRow
-                label="Min Stock Qty"
+                label="Tồn kho tối thiểu"
                 value={
                   product.min_stock_qty != null
                     ? String(Number(product.min_stock_qty))
                     : undefined
                 }
               />
-              <InfoRow label="Origin" value={product.origin} />
+              <InfoRow label="Xuất xứ" value={product.origin} />
               <InfoRow
-                label="Warranty"
+                label="Bảo hành"
                 value={
                   product.warranty_months != null
-                    ? `${product.warranty_months} months`
+                    ? `${product.warranty_months} tháng`
                     : undefined
                 }
               />
               <InfoRow
-                label="Tax Rate"
+                label="Thuế suất"
                 value={
                   product.taxRate
                     ? `${product.taxRate.name} (${product.taxRate.rate}%)`
@@ -251,7 +251,7 @@ export default function ProductDetailPage() {
             {product.description && (
               <div className="mt-5 pt-5 border-t">
                 <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">
-                  Description
+                  Mô tả
                 </p>
                 <p className="text-sm text-gray-700 leading-relaxed">
                   {product.description}
@@ -261,11 +261,11 @@ export default function ProductDetailPage() {
           </Section>
 
           {/* Pricing */}
-          <Section icon={<span className="text-base">💰</span>} title="Pricing">
+          <Section icon={<span className="text-base">💰</span>} title="Giá cả">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
               <div className="flex flex-col gap-0.5">
                 <span className="text-xs text-gray-400 uppercase tracking-wide">
-                  Cost Price
+                  Giá mua
                 </span>
                 <span className="text-lg font-semibold text-gray-800">
                   {product.cost_price != null
@@ -275,7 +275,7 @@ export default function ProductDetailPage() {
               </div>
               <div className="flex flex-col gap-0.5">
                 <span className="text-xs text-gray-400 uppercase tracking-wide">
-                  Sale Price
+                  Giá bán
                 </span>
                 <span className="text-lg font-semibold text-orange-500">
                   {product.sale_price != null
@@ -288,7 +288,7 @@ export default function ProductDetailPage() {
                 product.cost_price > 0 && (
                   <div className="flex flex-col gap-0.5">
                     <span className="text-xs text-gray-400 uppercase tracking-wide">
-                      Margin
+                      Biên lợi nhuận
                     </span>
                     <span className="text-lg font-semibold text-green-600">
                       {(
@@ -304,21 +304,21 @@ export default function ProductDetailPage() {
           </Section>
 
           {/* Attributes */}
-          <Section icon={<Ruler className="w-4 h-4" />} title="Attributes">
+          <Section icon={<Ruler className="w-4 h-4" />} title="Thuộc tính">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
               <InfoRow
-                label="Weight"
+                label="Trọng lượng"
                 value={
                   product.weight != null ? `${product.weight} kg` : undefined
                 }
               />
               <InfoRow
-                label="Volume"
+                label="Thể tích"
                 value={
                   product.volume != null ? `${product.volume} m³` : undefined
                 }
               />
-              <InfoRow label="Notes" value={product.notes} />
+              <InfoRow label="Ghi chú" value={product.notes} />
             </div>
           </Section>
 
@@ -326,17 +326,17 @@ export default function ProductDetailPage() {
           {supplierInfo.length > 0 && (
             <Section
               icon={<Truck className="w-4 h-4" />}
-              title={`Suppliers (${supplierInfo.length})`}
+              title={`Nhà cung cấp (${supplierInfo.length})`}
             >
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-xs text-gray-400 uppercase border-b">
-                      <th className="pb-2 font-medium">Supplier</th>
-                      <th className="pb-2 font-medium">Code</th>
-                      <th className="pb-2 font-medium">Price</th>
+                      <th className="pb-2 font-medium">Nhà cung cấp</th>
+                      <th className="pb-2 font-medium">Mã SP NCC</th>
+                      <th className="pb-2 font-medium">Giá mua</th>
                       <th className="pb-2 font-medium">MOQ</th>
-                      <th className="pb-2 font-medium">Lead Time</th>
+                      <th className="pb-2 font-medium">Thời gian giao</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
@@ -368,7 +368,7 @@ export default function ProductDetailPage() {
                         </td>
                         <td className="py-2.5 text-gray-500">
                           {s.lead_time_days != null
-                            ? `${s.lead_time_days} days`
+                            ? `${s.lead_time_days} ngày`
                             : "—"}
                         </td>
                       </tr>
@@ -385,7 +385,7 @@ export default function ProductDetailPage() {
           <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
             <div className="flex items-center gap-2 px-6 py-4 border-b bg-gray-50">
               <span className="text-orange-500">🖼️</span>
-              <h3 className="font-semibold text-gray-700 text-sm">Images</h3>
+              <h3 className="font-semibold text-gray-700 text-sm">Hình ảnh</h3>
             </div>
             <div className="p-4 space-y-3">
               {/* Main image */}
@@ -399,7 +399,7 @@ export default function ProductDetailPage() {
                 ) : (
                   <div className="flex flex-col items-center gap-2 text-gray-300">
                     <ImageOff className="w-10 h-10" />
-                    <span className="text-xs">No image</span>
+                    <span className="text-xs">Không có hình ảnh</span>
                   </div>
                 )}
               </div>
@@ -427,30 +427,30 @@ export default function ProductDetailPage() {
 
           {/* Quick stats */}
           <div className="bg-white rounded-xl border shadow-sm p-4 space-y-3">
-            <h3 className="font-semibold text-gray-700 text-sm">Quick Info</h3>
+            <h3 className="font-semibold text-gray-700 text-sm">Thông tin nhanh</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-400">Created</span>
+                <span className="text-gray-400">Ngày tạo</span>
                 <span className="text-gray-700">
                   {new Date(product.created_at).toLocaleDateString("vi-VN")}
                 </span>
               </div>
               {product.updated_at && (
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Updated</span>
+                  <span className="text-gray-400">Ngày cập nhật</span>
                   <span className="text-gray-700">
                     {new Date(product.updated_at).toLocaleDateString("vi-VN")}
                   </span>
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-gray-400">Suppliers</span>
+                <span className="text-gray-400">Nhà cung cấp</span>
                 <span className="text-gray-700">{supplierInfo.length}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">Gallery</span>
+                <span className="text-gray-400">Bộ sưu tập</span>
                 <span className="text-gray-700">
-                  {product.images?.length ?? 0} images
+                  {product.images?.length ?? 0} ảnh
                 </span>
               </div>
             </div>

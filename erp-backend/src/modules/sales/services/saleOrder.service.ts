@@ -22,6 +22,122 @@ async function withBranchContext(user: any) {
   return { ...user, branch_id: branchId };
 }
 
+function canAutoApproveSaleOrder(user: any) {
+  return [Role.SALESMANAGER, Role.ADMIN].includes(user?.role);
+}
+
+async function assertCreditLimit(order: any, transaction: any) {
+  const partner = await Partner.findByPk(order.customer_id, { transaction });
+  if (!partner || !partner.credit_limit || Number(partner.credit_limit) <= 0) return;
+
+  const confirmedOrders = await SaleOrder.findAll({
+    where: { customer_id: partner.id, status: { [Op.in]: ["confirmed"] } },
+    transaction,
+  });
+  const totalDebt = confirmedOrders.reduce(
+    (sum, item) => sum + Number(item.total_after_tax || 0) * Number(item.exchange_rate || 1),
+    0
+  );
+  const currentDebt = totalDebt + Number(order.total_after_tax || 0) * Number(order.exchange_rate || 1);
+  if (currentDebt > Number(partner.credit_limit)) {
+    throw new Error(
+      `Don hang vuot qua han muc cong no toi da cua khach hang. (Muc no du kien: ${currentDebt} > Han muc: ${partner.credit_limit})`
+    );
+  }
+}
+
+async function createDraftIssueMove(order: any, approver: any, transaction: any) {
+  const now = new Date();
+  const prefixStr = `SM-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+
+  const latestSm = await StockMove.findOne({
+    where: { move_no: { [Op.like]: `${prefixStr}%` } },
+    order: [["id", "DESC"]],
+    transaction,
+  });
+  const seqSm = latestSm?.move_no ? Number(latestSm.move_no.slice(-4)) + 1 : 1;
+  const moveNo = `${prefixStr}-${String(seqSm).padStart(4, "0")}`;
+
+  const newMove = await StockMove.create(
+    {
+      move_no: moveNo,
+      move_date: new Date(),
+      type: "issue",
+      reference_type: "sale_order",
+      reference_id: order.id,
+      branch_id: order.branch_id ?? null,
+      warehouse_from_id: null,
+      status: "draft",
+      created_by: approver.id,
+      note: `Tu dong tao lenh xuat kho cho Sale Order: ${order.order_no}`,
+    },
+    { transaction }
+  );
+
+  if (order.lines?.length) {
+    const moveLines = order.lines.map((line: any) => ({
+      move_id: newMove.id,
+      product_id: line.product_id,
+      quantity: line.quantity,
+    }));
+    await StockMoveLine.bulkCreate(moveLines, { transaction });
+  }
+}
+
+async function syncOpportunityFromApprovedOrder(order: any, transaction: any) {
+  if (!order.quotation_id) return;
+
+  const q = await Quotation.findByPk(order.quotation_id, { transaction });
+  if (!q?.opportunity_id) return;
+
+  const opp = await Opportunity.findByPk(q.opportunity_id, { transaction });
+  if (opp && opp.stage !== "won") {
+    await opp.update(
+      {
+        stage: "won",
+        expected_value: order.total_after_tax || 0,
+        currency_id: order.currency_id ?? null,
+        exchange_rate: Number(order.exchange_rate || 1),
+      },
+      { transaction }
+    );
+  }
+}
+
+async function finalizeSaleOrderApproval(order: any, approver: any, transaction: any, app?: any) {
+  await assertCreditLimit(order, transaction);
+
+  await order.update(
+    {
+      approval_status: "approved",
+      approved_at: new Date(),
+      approved_by: approver.id,
+      status: "confirmed",
+      delivery_status: "pending",
+    },
+    { transaction }
+  );
+
+  await createDraftIssueMove(order, approver, transaction);
+  await syncOpportunityFromApprovedOrder(order, transaction);
+
+  if (app && order.created_by) {
+    const io = app.get("io");
+    setImmediate(async () => {
+      await notificationService.createNotification({
+        type: "APPROVE",
+        referenceType: "SALE_ORDER",
+        referenceId: order.id!,
+        referenceNo: order.order_no!,
+        branchId: order.branch_id!,
+        submitterId: order.created_by,
+        approverName: approver.fullName || approver.username,
+        io,
+      });
+    });
+  }
+}
+
 export const saleOrderService = {
   /** -----------------------------------------------------
    * HELPER: Tính thuế từng dòng
@@ -64,26 +180,34 @@ export const saleOrderService = {
   /** -----------------------------------------------------
    * HELPER: Tổng tiền toàn bộ Order
    * ---------------------------------------------------- */
-  async calcTotals(lines: any[], globalDiscountPercent = 0, globalDiscountAmount = 0) {
+  async calcTotals(
+    lines: any[],
+    orderDiscount?: { discount_percent?: number; discount_amount?: number },
+  ) {
+    // line_total và line_tax đã bao gồm discount từng line (áp dụng trong calcLineTax)
     let total_before_tax = 0;
     let total_tax = 0;
-    let total_after_tax = 0;
 
     for (const line of lines) {
       total_before_tax += Number(line.line_total || 0);
       total_tax += Number(line.line_tax || 0);
     }
 
-    if (globalDiscountPercent > 0) {
-      total_before_tax -= (total_before_tax * globalDiscountPercent) / 100;
-    } else if (globalDiscountAmount > 0) {
-      total_before_tax -= globalDiscountAmount;
+    // Chiết khấu cấp đơn (order-level discount): giảm trừ doanh thu chịu thuế
+    // TRƯỚC khi tính VAT (chuẩn thuế GTGT VN). Áp cùng hệ số lên base và tax để
+    // thuế giảm theo tỉ lệ — nhất quán với quotation.service.
+    const discPercent = Number(orderDiscount?.discount_percent || 0);
+    const discAmount = Number(orderDiscount?.discount_amount || 0);
+    let discountFactor = 1;
+    if (discPercent > 0) {
+      discountFactor = 1 - discPercent / 100;
+    } else if (discAmount > 0 && total_before_tax > 0) {
+      discountFactor = Math.max(0, 1 - discAmount / total_before_tax);
     }
+    total_before_tax = total_before_tax * discountFactor;
+    total_tax = total_tax * discountFactor;
 
-    if (total_before_tax < 0) total_before_tax = 0;
-
-    total_after_tax = total_before_tax + total_tax;
-
+    const total_after_tax = total_before_tax + total_tax;
     return { total_before_tax, total_tax, total_after_tax };
   },
 
@@ -251,7 +375,7 @@ export const saleOrderService = {
   /** -----------------------------------------------------
    * CREATE — Sales (Atomic Transaction)
    * ---------------------------------------------------- */
-  async create(data: any, user: any) {
+  async create(data: any, user: any, app?: any) {
     return await sequelize.transaction(async (t) => {
       const quotation = data.quotation_id
         ? await Quotation.findByPk(data.quotation_id, { transaction: t })
@@ -311,7 +435,10 @@ export const saleOrderService = {
         createdLines.push(createdLine);
       }
 
-      const totals = await this.calcTotals(createdLines, order.discount_percent, order.discount_amount);
+      const totals = await this.calcTotals(createdLines, {
+        discount_percent: data.discount_percent || quotation?.discount_percent || 0,
+        discount_amount: data.discount_amount || quotation?.discount_amount || 0,
+      });
 
       await order.update(
         {
@@ -321,6 +448,11 @@ export const saleOrderService = {
         },
         { transaction: t }
       );
+
+      if (canAutoApproveSaleOrder(user)) {
+        (order as any).lines = createdLines;
+        await finalizeSaleOrderApproval(order, user, t, app);
+      }
 
       return order;
     });
@@ -430,7 +562,10 @@ export const saleOrderService = {
       // ============================
       // Recalculate totals
       // ============================
-      const totals = await this.calcTotals(updatedLines, order.discount_percent, order.discount_amount);
+      const totals = await this.calcTotals(updatedLines, {
+        discount_percent: data.discount_percent,
+        discount_amount: data.discount_amount,
+      });
 
       await order.update(
         {
@@ -449,7 +584,7 @@ export const saleOrderService = {
    * SUBMIT — Sales (Atomic Transaction)
    * ---------------------------------------------------- */
   async submit(id: number, user: any, app?: any) {
-    return await sequelize.transaction(async (t) => {
+    await sequelize.transaction(async (t) => {
       const order = await SaleOrder.findByPk(id, { transaction: t });
 
       if (!order) throw new Error("Order not found");
@@ -481,16 +616,18 @@ export const saleOrderService = {
           });
         });
       }
-
-      return order;
     });
+
+    // Trả về bản đầy đủ quan hệ (customer/lines/product/uom...) sau khi commit, để
+    // trang chi tiết không bị trống sau khi submit.
+    return await this.getById(id, user);
   },
 
   /** -----------------------------------------------------
    * APPROVE — Sale Manager (Atomic Transaction)
    * ---------------------------------------------------- */
   async approve(id: number, manager: any, app?: any) {
-    return await sequelize.transaction(async (t) => {
+    await sequelize.transaction(async (t) => {
       const order = (await SaleOrder.findByPk(id, {
         include: [{ model: SaleOrderLine, as: "lines" }],
         transaction: t,
@@ -554,7 +691,8 @@ export const saleOrderService = {
           reference_type: "sale_order",
           reference_id: order.id,
           branch_id: order.branch_id,
-          status: "waiting_approval",
+          warehouse_from_id: null, // warehouse manager sẽ chỉ định kho khi xử lý
+          status: "draft",
           created_by: manager.id,
           note: `Tự động tạo lệnh xuất kho cho Sale Order: ${order.order_no}`,
         },
@@ -606,15 +744,17 @@ export const saleOrderService = {
         });
       }
 
-      return order;
     });
+
+    // Trả về bản đầy đủ quan hệ sau khi commit để trang chi tiết không bị trống.
+    return await this.getById(id, manager);
   },
 
   /** -----------------------------------------------------
    * REJECT — Sale Manager (Atomic Transaction)
    * ---------------------------------------------------- */
   async reject(id: number, manager: any, reason: string, app?: any) {
-    return await sequelize.transaction(async (t) => {
+    await sequelize.transaction(async (t) => {
       const order = await SaleOrder.findByPk(id, { transaction: t });
 
       if (!order) throw new Error("Order not found");
@@ -631,6 +771,21 @@ export const saleOrderService = {
         },
         { transaction: t }
       );
+
+      // Xóa stock move draft được tạo tự động khi approve (nếu có)
+      // Chỉ xóa những move ở trạng thái draft, tránh xóa nhầm move đã xử lý
+      const draftMoves = await StockMove.findAll({
+        where: {
+          reference_type: "sale_order",
+          reference_id: order.id,
+          status: "draft",
+        },
+        transaction: t,
+      });
+      for (const move of draftMoves) {
+        await StockMoveLine.destroy({ where: { move_id: move.id }, transaction: t });
+        await move.destroy({ transaction: t });
+      }
 
       // Gửi thông báo
       if (app && order.created_by) {
@@ -650,7 +805,9 @@ export const saleOrderService = {
         });
       }
 
-      return order;
     });
+
+    // Trả về bản đầy đủ quan hệ sau khi commit để trang chi tiết không bị trống.
+    return await this.getById(id, manager);
   },
 };

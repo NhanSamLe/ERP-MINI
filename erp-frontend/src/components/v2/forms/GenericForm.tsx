@@ -4,7 +4,6 @@
  * @author Senior Frontend Team
  */
 
-import React from 'react';
 import { GenericFormProps, FormFieldConfig, FormSection } from './types';
 import { useForm } from './useForm';
 import { FormField } from './FormField';

@@ -13,12 +13,12 @@ export default function LocalFloatingChatButton() {
       {/* Floating button for Local RAG */}
       <button
         onClick={() => dispatch(togglePanel())}
-        className={`fixed bottom-6 right-24 w-14 h-14 rounded-2xl text-white shadow-lg z-50 flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 ${
+        className={`relative w-14 h-14 rounded-2xl text-white shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 ${
           isOpen
             ? "bg-slate-700 shadow-slate-300/50 rotate-0"
             : "bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-200/60 hover:shadow-emerald-300/70"
         }`}
-        title="Trợ lý Local RAG (Ollama)"
+        title="Trợ lý AI Nội bộ (Ollama)"
       >
         {/* Ping animation when closed */}
         {!isOpen && (

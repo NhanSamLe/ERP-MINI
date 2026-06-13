@@ -11,10 +11,18 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+/**
+ * Tên thương hiệu hiển thị trên email. Có thể override qua biến môi trường.
+ */
+const BRAND_NAME = process.env.MAIL_BRAND_NAME || "ERP Mini";
+const SUPPORT_EMAIL = process.env.MAIL_SUPPORT_EMAIL || env.mail.user;
+const BRAND_PRIMARY = "#f97316"; // orange-500
+const BRAND_PRIMARY_DARK = "#ea580c"; // orange-600
+
 export async function sendEmail(to: string, subject: string, text: string, html?: string) {
   try {
     const info = await transporter.sendMail({
-      from: `"ERP System" <${env.mail.user}>`,
+      from: `"${BRAND_NAME}" <${env.mail.user}>`,
       to,
       subject,
       text,
@@ -27,23 +35,136 @@ export async function sendEmail(to: string, subject: string, text: string, html?
     throw new Error(`Unable to send email: ${err.message || err}`);
   }
 }
-export function resetPasswordTemplate(username: string, resetLink: string) {
-  return {
-    subject: "Password Reset",
-    text: `Xin chào ${username}, hãy nhấn vào link sau để đặt lại mật khẩu: ${resetLink}`,
-    html: `
-      <div style="font-family:sans-serif;line-height:1.5;">
-        <h2 style="color:#f97316;">Password Reset</h2>
-        <p>Chào ${username},</p>
-        <p>Nhấn nút bên dưới để đặt lại mật khẩu (hết hạn sau 10 phút):</p>
-        <a href="${resetLink}" 
-           style="display:inline-block;margin-top:10px;padding:10px 16px;
-                  background:#f97316;color:#fff;text-decoration:none;
-                  border-radius:6px;font-weight:bold;">
-           Reset Password
+
+/**
+ * Khung layout email dùng chung cho toàn hệ thống.
+ * Bố cục theo chuẩn email doanh nghiệp: header thương hiệu, thân nội dung
+ * trong card, footer pháp lý. Style được viết inline để tương thích tối đa
+ * với các email client (Gmail, Outlook, Apple Mail...).
+ */
+interface BaseLayoutOptions {
+  title: string;
+  preheader?: string;
+  bodyHtml: string;
+}
+
+function baseEmailLayout({ title, preheader, bodyHtml }: BaseLayoutOptions): string {
+  const year = new Date().getFullYear();
+  return `
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>${title}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f3f4f6;-webkit-text-size-adjust:100%;">
+  ${
+    preheader
+      ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;font-size:1px;line-height:1px;">${preheader}</div>`
+      : ""
+  }
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3f4f6;padding:24px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid #e5e7eb;">
+          <!-- Header -->
+          <tr>
+            <td style="background:linear-gradient(135deg,${BRAND_PRIMARY} 0%,${BRAND_PRIMARY_DARK} 100%);padding:28px 32px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="font-family:Arial,Helvetica,sans-serif;color:#ffffff;font-size:22px;font-weight:bold;letter-spacing:0.3px;">
+                    ${BRAND_NAME}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Body -->
+          <tr>
+            <td style="padding:32px;font-family:Arial,Helvetica,sans-serif;color:#1f2937;font-size:15px;line-height:1.65;">
+              ${bodyHtml}
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 32px;background-color:#f9fafb;border-top:1px solid #e5e7eb;font-family:Arial,Helvetica,sans-serif;">
+              <p style="margin:0 0 8px;font-size:13px;color:#6b7280;line-height:1.6;">
+                Cần hỗ trợ? Liên hệ chúng tôi qua
+                <a href="mailto:${SUPPORT_EMAIL}" style="color:${BRAND_PRIMARY_DARK};text-decoration:none;">${SUPPORT_EMAIL}</a>.
+              </p>
+              <p style="margin:0 0 4px;font-size:12px;color:#9ca3af;line-height:1.6;">
+                Email này được gửi tự động từ hệ thống ${BRAND_NAME}. Vui lòng không phản hồi trực tiếp email này.
+              </p>
+              <p style="margin:0;font-size:12px;color:#9ca3af;">
+                © ${year} ${BRAND_NAME}. Bảo lưu mọi quyền.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`.trim();
+}
+
+/**
+ * Nút hành động (CTA) dùng chung — bullet-proof button cho Outlook.
+ */
+function ctaButton(href: string, label: string): string {
+  return `
+  <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0;">
+    <tr>
+      <td align="center" style="border-radius:8px;background-color:${BRAND_PRIMARY};">
+        <a href="${href}"
+           style="display:inline-block;padding:13px 28px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:8px;">
+          ${label}
         </a>
-      </div>
-    `,
+      </td>
+    </tr>
+  </table>`;
+}
+
+export function resetPasswordTemplate(username: string, resetLink: string) {
+  const bodyHtml = `
+    <h1 style="margin:0 0 16px;font-size:20px;font-weight:bold;color:#111827;">Đặt lại mật khẩu</h1>
+    <p style="margin:0 0 12px;">Xin chào <strong>${username}</strong>,</p>
+    <p style="margin:0 0 12px;">
+      Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn. Nhấn vào nút bên dưới để tạo mật khẩu mới.
+    </p>
+    ${ctaButton(resetLink, "Đặt lại mật khẩu")}
+    <p style="margin:0 0 12px;font-size:14px;color:#6b7280;">
+      ⏳ Vì lý do bảo mật, liên kết này sẽ <strong>hết hạn sau 10 phút</strong>.
+    </p>
+    <p style="margin:0 0 16px;font-size:14px;color:#6b7280;">
+      Nếu bạn không gửi yêu cầu này, vui lòng bỏ qua email — mật khẩu của bạn sẽ không thay đổi.
+    </p>
+    <div style="margin-top:20px;padding:14px 16px;background-color:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;">
+      <p style="margin:0 0 6px;font-size:13px;color:#6b7280;">Nếu nút không hoạt động, sao chép liên kết sau vào trình duyệt:</p>
+      <p style="margin:0;font-size:13px;word-break:break-all;"><a href="${resetLink}" style="color:${BRAND_PRIMARY_DARK};text-decoration:none;">${resetLink}</a></p>
+    </div>`;
+
+  return {
+    subject: `${BRAND_NAME} — Yêu cầu đặt lại mật khẩu`,
+    text: [
+      `Xin chào ${username},`,
+      ``,
+      `Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.`,
+      `Truy cập liên kết sau để tạo mật khẩu mới (hết hạn sau 10 phút):`,
+      `${resetLink}`,
+      ``,
+      `Nếu bạn không gửi yêu cầu này, vui lòng bỏ qua email này.`,
+      ``,
+      `Trân trọng,`,
+      `${BRAND_NAME}`,
+    ].join("\n"),
+    html: baseEmailLayout({
+      title: "Đặt lại mật khẩu",
+      preheader: "Yêu cầu đặt lại mật khẩu của bạn — liên kết hết hạn sau 10 phút.",
+      bodyHtml,
+    }),
   };
 }
 
@@ -101,74 +222,66 @@ export function newEmployeeAccountTemplate(
   fullName: string | undefined,
   resetLink: string
 ) {
+  const displayName = fullName || username;
+  const bodyHtml = `
+    <h1 style="margin:0 0 16px;font-size:20px;font-weight:bold;color:#111827;">
+      Chào mừng bạn đến với ${BRAND_NAME}
+    </h1>
+    <p style="margin:0 0 12px;">Xin chào <strong>${displayName}</strong>,</p>
+    <p style="margin:0 0 12px;">
+      Tài khoản truy cập hệ thống <strong>${BRAND_NAME}</strong> đã được tạo cho bạn.
+      Vui lòng hoàn tất bước thiết lập mật khẩu bên dưới để kích hoạt và bắt đầu sử dụng.
+    </p>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+      <tr>
+        <td style="padding:14px 16px;background-color:#f9fafb;font-size:13px;color:#6b7280;width:140px;">Tên đăng nhập</td>
+        <td style="padding:14px 16px;background-color:#ffffff;font-size:14px;color:#111827;font-weight:bold;">${username}</td>
+      </tr>
+    </table>
+
+    <p style="margin:0 0 4px;">
+      Nhấn nút bên dưới để <strong>thiết lập mật khẩu và kích hoạt tài khoản</strong>:
+    </p>
+    ${ctaButton(resetLink, "Thiết lập mật khẩu")}
+
+    <p style="margin:0 0 12px;font-size:14px;color:#6b7280;">
+      ⏳ Liên kết kích hoạt có hiệu lực trong <strong>24 giờ</strong>. Sau khi đặt mật khẩu thành công, tài khoản sẽ được kích hoạt ngay.
+    </p>
+    <p style="margin:0 0 16px;font-size:14px;color:#6b7280;">
+      Nếu bạn không thực hiện yêu cầu này, vui lòng liên hệ bộ phận <strong>IT / Nhân sự</strong> của công ty.
+    </p>
+
+    <div style="margin-top:20px;padding:14px 16px;background-color:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;">
+      <p style="margin:0 0 6px;font-size:13px;color:#6b7280;">Nếu nút không hoạt động, sao chép liên kết sau vào trình duyệt:</p>
+      <p style="margin:0;font-size:13px;word-break:break-all;"><a href="${resetLink}" style="color:${BRAND_PRIMARY_DARK};text-decoration:none;">${resetLink}</a></p>
+    </div>`;
+
   return {
-    subject: "Thông báo cấp tài khoản ERP",
-    text: `
-Xin chào ${fullName || username},
-
-Bạn đã được cấp tài khoản truy cập hệ thống ERP của công ty.
-
-Tên đăng nhập: ${username}
-
-Vui lòng truy cập đường dẫn bên dưới để thiết lập mật khẩu và kích hoạt tài khoản:
-${resetLink}
-
-Lưu ý:
-- Đường dẫn này chỉ có hiệu lực trong 24 giờ
-- Sau khi đặt mật khẩu thành công, tài khoản sẽ được kích hoạt
-
-Nếu bạn không thực hiện yêu cầu này, vui lòng liên hệ bộ phận IT / Nhân sự.
-
-Trân trọng,
-ERP System
-    `.trim(),
-
-    html: `
-<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111;">
-  <h2 style="color: #f97316;">🎉 Chào mừng bạn đến với hệ thống ERP</h2>
-
-  <p>Xin chào <strong>${fullName || username}</strong>,</p>
-
-  <p>
-    Bạn đã được cấp tài khoản truy cập <strong>hệ thống ERP của công ty</strong>.
-  </p>
-
-  <div style="background:#f9fafb;padding:12px;border-radius:8px;margin:16px 0;">
-    <p><strong>Tên đăng nhập:</strong> ${username}</p>
-  </div>
-
-  <p>
-    Vui lòng nhấn nút bên dưới để <strong>thiết lập mật khẩu và kích hoạt tài khoản</strong>:
-  </p>
-
-  <a href="${resetLink}"
-     style="
-       display:inline-block;
-       margin-top:12px;
-       padding:12px 20px;
-       background:#f97316;
-       color:#ffffff;
-       text-decoration:none;
-       border-radius:6px;
-       font-weight:bold;
-     ">
-    Thiết lập mật khẩu
-  </a>
-
-  <p style="margin-top:16px;font-size:14px;color:#555;">
-    ⏳ Lưu ý: Đường dẫn này sẽ hết hạn sau <strong>24 giờ</strong>.
-  </p>
-
-  <p style="margin-top:20px;">
-    Nếu bạn không thực hiện yêu cầu này, vui lòng liên hệ <strong>bộ phận IT / Nhân sự</strong>.
-  </p>
-
-  <hr style="margin:24px 0;border:none;border-top:1px solid #e5e7eb;"/>
-
-  <p style="font-size:13px;color:#777;">
-    Email này được gửi tự động từ hệ thống ERP. Vui lòng không phản hồi email này.
-  </p>
-</div>
-    `,
+    subject: `${BRAND_NAME} — Kích hoạt tài khoản của bạn`,
+    text: [
+      `Xin chào ${displayName},`,
+      ``,
+      `Tài khoản truy cập hệ thống ${BRAND_NAME} đã được tạo cho bạn.`,
+      ``,
+      `Tên đăng nhập: ${username}`,
+      ``,
+      `Vui lòng truy cập đường dẫn bên dưới để thiết lập mật khẩu và kích hoạt tài khoản:`,
+      `${resetLink}`,
+      ``,
+      `Lưu ý:`,
+      `- Đường dẫn này chỉ có hiệu lực trong 24 giờ.`,
+      `- Sau khi đặt mật khẩu thành công, tài khoản sẽ được kích hoạt.`,
+      ``,
+      `Nếu bạn không thực hiện yêu cầu này, vui lòng liên hệ bộ phận IT / Nhân sự.`,
+      ``,
+      `Trân trọng,`,
+      `${BRAND_NAME}`,
+    ].join("\n"),
+    html: baseEmailLayout({
+      title: "Kích hoạt tài khoản",
+      preheader: `Tài khoản ${BRAND_NAME} của bạn đã sẵn sàng — thiết lập mật khẩu để bắt đầu.`,
+      bodyHtml,
+    }),
   };
 }

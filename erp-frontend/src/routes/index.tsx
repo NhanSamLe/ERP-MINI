@@ -19,6 +19,10 @@ import UnauthorizedPage from "../pages/UnauthorizedPage";
 import KioskPage from "../features/hrm/page/KioskPage";
 import PublicBlogListPage from "../features/blog/page/PublicBlogListPage";
 import PublicBlogDetailPage from "../features/blog/page/PublicBlogDetailPage";
+import LandingPage from "../features/landing/pages/LandingPage";
+import RegisterPage from "../features/landing/pages/RegisterPage";
+import OnboardingPage from "../features/onboarding/pages/OnboardingPage";
+import ProtectedRoute from "../components/ProtectedRoute";
 
 // const routes = [
 //   ...authRoutes,
@@ -51,7 +55,23 @@ const routes = [
   ...authRoutes,
   {
     path: "/",
+    element: <LandingPage />,
+  },
+  {
+    path: "/home",
     element: <MainPage />,
+  },
+  {
+    path: "/register",
+    element: <RegisterPage />,
+  },
+  {
+    path: "/onboarding",
+    element: (
+      <ProtectedRoute>
+        <OnboardingPage />
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/public/blog",

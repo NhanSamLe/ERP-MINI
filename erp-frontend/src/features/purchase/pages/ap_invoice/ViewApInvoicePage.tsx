@@ -48,6 +48,7 @@ import {
   MatchingStatus,
 } from "../../constants/purchaseStatus.enum";
 import { AuditLogCard } from "../../components/Common";
+import { StatusBadge } from "../../components/Common/StatusBadge";
 
 export default function ViewApInvoicePage() {
   const { id } = useParams();
@@ -93,7 +94,7 @@ export default function ViewApInvoicePage() {
     return (
       <div className="flex flex-col items-center justify-center py-32">
         <Loader2 className="w-12 h-12 animate-spin text-orange-500 mb-4" />
-        <p className="text-gray-500 font-medium">Loading invoice...</p>
+        <p className="text-gray-500 font-medium">Đang tải hóa đơn...</p>
       </div>
     );
   }
@@ -104,9 +105,11 @@ export default function ViewApInvoicePage() {
         <div className="w-20 h-20 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
           <FileText className="w-10 h-10 text-gray-400" />
         </div>
-        <p className="text-gray-700 font-semibold text-lg">Invoice not found</p>
+        <p className="text-gray-700 font-semibold text-lg">
+          Không tìm thấy hóa đơn
+        </p>
         <p className="text-gray-500 text-sm mt-1">
-          The requested invoice could not be loaded
+          Không thể tải hóa đơn được yêu cầu
         </p>
       </div>
     );
@@ -166,7 +169,7 @@ export default function ViewApInvoicePage() {
     try {
       setSubmitting(true);
       await dispatch(submitApInvoiceThunk(invoice.id)).unwrap();
-      toast.success("Invoice submitted for approval successfully");
+      toast.success("Gửi duyệt hóa đơn thành công");
       setOpenSubmitModal(false);
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -181,7 +184,7 @@ export default function ViewApInvoicePage() {
     try {
       setSubmitting(true);
       await dispatch(approveApInvoiceThunk(invoice.id)).unwrap();
-      toast.success("Invoice approved successfully");
+      toast.success("Phê duyệt hóa đơn thành công");
       setOpenApproveModal(false);
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -193,7 +196,7 @@ export default function ViewApInvoicePage() {
     if (!invoice?.id) return;
 
     if (!rejectReason.trim()) {
-      toast.warning("Please enter reject reason");
+      toast.warning("Vui lòng nhập lý do từ chối");
       return;
     }
 
@@ -206,7 +209,7 @@ export default function ViewApInvoicePage() {
         }),
       ).unwrap();
 
-      toast.success("Invoice rejected successfully");
+      toast.success("Từ chối hóa đơn thành công");
       setOpenRejectModal(false);
       setRejectReason("");
     } catch (error) {
@@ -227,18 +230,19 @@ export default function ViewApInvoicePage() {
             </div>
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Invoice {invoice.invoice_no}
+                Hóa đơn {invoice.invoice_no}
               </h1>
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Calendar className="w-4 h-4" />
                 <span>
-                  Created:{" "}
-                  {new Date(invoice.invoice_date).toLocaleDateString("en-US")}
+                  Ngày tạo:{" "}
+                  {new Date(invoice.invoice_date).toLocaleDateString("vi-VN")}
                 </span>
                 <span className="text-gray-400">•</span>
                 <Clock className="w-4 h-4" />
                 <span>
-                  Due: {new Date(invoice.due_date).toLocaleDateString("en-US")}
+                  Hạn thanh toán:{" "}
+                  {new Date(invoice.due_date).toLocaleDateString("vi-VN")}
                 </span>
               </div>
             </div>
@@ -252,7 +256,7 @@ export default function ViewApInvoicePage() {
                 onClick={() => setOpenSubmitModal(true)}
               >
                 <Send className="w-4 h-4" />
-                Submit for approval
+                Gửi phê duyệt
               </button>
             )}
             {/* CHACC ACTIONS */}
@@ -265,7 +269,7 @@ export default function ViewApInvoicePage() {
                   className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 text-white font-semibold text-sm shadow-md hover:bg-emerald-600 transition disabled:opacity-60"
                 >
                   <CheckCircle className="w-4 h-4" />
-                  Approve
+                  Duyệt
                 </button>
 
                 {/* REJECT */}
@@ -274,7 +278,7 @@ export default function ViewApInvoicePage() {
                   onClick={() => setOpenRejectModal(true)}
                   className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500 text-white font-semibold text-sm shadow-md hover:bg-red-600 transition disabled:opacity-60"
                 >
-                  Cancel
+                  Từ chối
                 </button>
               </>
             )}
@@ -285,7 +289,7 @@ export default function ViewApInvoicePage() {
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500 text-white font-semibold text-sm shadow-md hover:bg-orange-600 transition"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back to Invoices
+              Quay lại danh sách
             </button>
 
             {/* STATUS */}
@@ -295,7 +299,7 @@ export default function ViewApInvoicePage() {
               )}`}
             >
               <div className="w-2 h-2 rounded-full bg-current"></div>
-              {invoice.status.toUpperCase()}
+              <StatusBadge status={invoice.status} />
             </div>
 
             <div
@@ -304,7 +308,10 @@ export default function ViewApInvoicePage() {
               )}`}
             >
               <CheckCircle className="w-4 h-4" />
-              {invoice.approval_status.toUpperCase()}
+              <StatusBadge
+                status={invoice.approval_status}
+                variant="approval"
+              />
             </div>
           </div>
         </div>
@@ -319,56 +326,56 @@ export default function ViewApInvoicePage() {
               <FileText className="w-5 h-5 text-blue-600" />
             </div>
             <h2 className="text-lg font-bold text-gray-900">
-              Invoice Information
+              Thông tin hóa đơn
             </h2>
           </div>
 
           <div className="space-y-4">
             <InfoRow
               icon={<Calendar className="w-4 h-4" />}
-              label="Invoice Date"
-              value={new Date(invoice.invoice_date).toLocaleDateString("en-US")}
+              label="Ngày hóa đơn"
+              value={new Date(invoice.invoice_date).toLocaleDateString("vi-VN")}
             />
             <InfoRow
               icon={<Clock className="w-4 h-4" />}
-              label="Due Date"
-              value={new Date(invoice.due_date).toLocaleDateString("en-US")}
+              label="Ngày đến hạn"
+              value={new Date(invoice.due_date).toLocaleDateString("vi-VN")}
             />
             {(invoice as any).invoice_series && (
               <InfoRow
                 icon={<FileText className="w-4 h-4" />}
-                label="Invoice Series"
+                label="Ký hiệu hóa đơn"
                 value={(invoice as any).invoice_series}
               />
             )}
             {(invoice as any).invoice_template && (
               <InfoRow
                 icon={<FileText className="w-4 h-4" />}
-                label="Invoice Template"
+                label="Mẫu số hóa đơn"
                 value={(invoice as any).invoice_template}
               />
             )}
             {(invoice as any).tax_code && (
               <InfoRow
                 icon={<TrendingUp className="w-4 h-4" />}
-                label="Tax Code"
+                label="Mã số thuế"
                 value={(invoice as any).tax_code}
               />
             )}
             <InfoRow
               icon={<Building2 className="w-4 h-4" />}
-              label="Branch"
+              label="Chi nhánh"
               value={invoice.branch?.name}
             />
             <InfoRow
               icon={<User className="w-4 h-4" />}
-              label="Created By"
+              label="Người tạo"
               value={invoice.creator?.full_name}
             />
             {invoice.approver && (
               <InfoRow
                 icon={<CheckCircle className="w-4 h-4" />}
-                label="Approved By"
+                label="Người duyệt"
                 value={invoice.approver.full_name}
               />
             )}
@@ -382,7 +389,7 @@ export default function ViewApInvoicePage() {
 
                     <div>
                       <p className="text-sm font-bold text-red-700 mb-1">
-                        Rejection Reason
+                        Lý do từ chối
                       </p>
                       <p className="text-sm text-red-800 whitespace-pre-line">
                         {invoice.reject_reason}
@@ -401,44 +408,34 @@ export default function ViewApInvoicePage() {
               <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
                 <ShoppingCart className="w-5 h-5 text-purple-600" />
               </div>
-              <h2 className="text-lg font-bold text-gray-900">
-                Purchase Order
-              </h2>
+              <h2 className="text-lg font-bold text-gray-900">Đơn mua hàng</h2>
             </div>
 
             <div className="space-y-4">
               <InfoRow
                 icon={<FileText className="w-4 h-4" />}
-                label="PO Number"
+                label="Số đơn mua hàng"
                 value={po.po_no}
                 highlight
               />
               <InfoRow
                 icon={<Calendar className="w-4 h-4" />}
-                label="Order Date"
+                label="Ngày đặt hàng"
                 value={
                   po?.order_date
-                    ? new Date(po.order_date).toLocaleDateString("en-US")
+                    ? new Date(po.order_date).toLocaleDateString("vi-VN")
                     : "-"
                 }
               />
               <InfoRow
                 icon={<CheckCircle className="w-4 h-4" />}
-                label="Status"
-                value={
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-bold ${getPoStatusBadge(
-                      po.status,
-                    )}`}
-                  >
-                    {po.status.toUpperCase()}
-                  </span>
-                }
+                label="Trạng thái"
+                value={<StatusBadge status={po.status} />}
               />
               {po.description && (
                 <div className="pt-2 border-t border-gray-100">
                   <p className="text-xs font-semibold text-gray-500 uppercase mb-2">
-                    Description
+                    Mô tả
                   </p>
                   <p className="text-sm text-gray-700">{po.description}</p>
                 </div>
@@ -450,14 +447,14 @@ export default function ViewApInvoicePage() {
       {/* ================= USER INFO ================= */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* CREATOR */}
-        <UserCard title="Created By" user={invoice.creator} color="orange" />
+        <UserCard title="Người tạo" user={invoice.creator} color="orange" />
 
         {/* APPROVER */}
         <UserCard
-          title="Approved By"
+          title="Người duyệt"
           user={invoice.approver}
           color="green"
-          emptyText="Waiting for approval"
+          emptyText="Đang chờ duyệt"
         />
       </div>
 
@@ -469,7 +466,7 @@ export default function ViewApInvoicePage() {
               <Building2 className="w-5 h-5 text-white" />
             </div>
             <h2 className="text-lg font-bold text-gray-900">
-              Supplier Information
+              Thông tin nhà cung cấp
             </h2>
           </div>
 
@@ -478,7 +475,7 @@ export default function ViewApInvoicePage() {
               <div className="flex items-center gap-2 mb-2">
                 <Building2 className="w-4 h-4 text-blue-600" />
                 <span className="text-xs font-semibold text-blue-700 uppercase">
-                  Company
+                  Công ty
                 </span>
               </div>
               <p className="font-bold text-gray-900">{po.supplier.name}</p>
@@ -500,7 +497,7 @@ export default function ViewApInvoicePage() {
               <div className="flex items-center gap-2 mb-2">
                 <Phone className="w-4 h-4 text-blue-600" />
                 <span className="text-xs font-semibold text-blue-700 uppercase">
-                  Phone
+                  Số điện thoại
                 </span>
               </div>
               <p className="font-medium text-gray-900 text-sm">
@@ -521,10 +518,10 @@ export default function ViewApInvoicePage() {
               </div>
               <div>
                 <h2 className="text-lg font-bold text-gray-900">
-                  Invoice Items
+                  Chi tiết hóa đơn
                 </h2>
                 <p className="text-sm text-gray-500">
-                  {invoice.lines.length} items
+                  {invoice.lines.length} mặt hàng
                 </p>
               </div>
             </div>
@@ -535,22 +532,22 @@ export default function ViewApInvoicePage() {
               <thead className="bg-orange-50/60 border-b-2 border-orange-100">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                    Product
+                    Sản phẩm
                   </th>
                   <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">
-                    Qty / UOM
+                    Số lượng / ĐVT
                   </th>
                   <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">
-                    Unit Price
+                    Đơn giá
                   </th>
                   <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">
-                    Tax
+                    Thuế
                   </th>
                   <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">
-                    Total (incl. tax)
+                    Tổng cộng (gồm thuế)
                   </th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
-                    Match
+                    Đối chiếu
                   </th>
                 </tr>
               </thead>
@@ -592,7 +589,10 @@ export default function ViewApInvoicePage() {
                     {/* QUANTITY + UOM */}
                     <td className="px-6 py-4 text-right">
                       <span className="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 text-sm font-semibold text-gray-700">
-                        {line.quantity} {(line as any).uom?.name || (line as any).product?.uom?.name || ""}
+                        {line.quantity}{" "}
+                        {(line as any).uom?.name ||
+                          (line as any).product?.uom?.name ||
+                          ""}
                       </span>
                     </td>
 
@@ -640,10 +640,10 @@ export default function ViewApInvoicePage() {
                             <AlertTriangle className="w-3 h-3" />
                           )}
                           {line.matching_result === "matched"
-                            ? "Matched"
+                            ? "Khớp"
                             : line.matching_result === "price_mismatch"
-                              ? "Price ≠"
-                              : "Qty ≠"}
+                              ? "Lệch giá"
+                              : "Lệch SL"}
                         </span>
                       ) : (
                         <span className="text-xs text-gray-400">—</span>
@@ -663,22 +663,24 @@ export default function ViewApInvoicePage() {
           <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
             <TrendingUp className="w-5 h-5 text-green-600" />
           </div>
-          <h2 className="text-lg font-bold text-gray-900">Payment Summary</h2>
+          <h2 className="text-lg font-bold text-gray-900">
+            Tổng quan thanh toán
+          </h2>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <AmountCard
-            label="Subtotal"
+            label="Cộng tiền hàng"
             value={invoice.total_before_tax}
             color="slate"
           />
           <AmountCard
-            label="Tax (10%)"
+            label="Thuế suất (10%)"
             value={invoice.total_tax}
             color="blue"
           />
           <AmountCard
-            label="Total Amount"
+            label="Tổng tiền thanh toán"
             value={invoice.total_after_tax}
             color="orange"
             highlight
@@ -690,7 +692,7 @@ export default function ViewApInvoicePage() {
           <div className="mt-6 pt-5 border-t border-gray-200">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-semibold text-gray-700">
-                Payment Progress
+                Tiến độ thanh toán
               </span>
               <span className="text-xs text-gray-500">
                 {Number((invoice as any).paid_amount ?? 0).toLocaleString(
@@ -710,14 +712,14 @@ export default function ViewApInvoicePage() {
             </div>
             <div className="flex justify-between mt-2 text-xs">
               <span className="text-emerald-600 font-medium">
-                Paid:{" "}
+                Đã thanh toán:{" "}
                 {Number((invoice as any).paid_amount ?? 0).toLocaleString(
                   "vi-VN",
                 )}{" "}
                 VND
               </span>
               <span className="text-red-500 font-medium">
-                Remaining:{" "}
+                Còn lại:{" "}
                 {Math.max(
                   0,
                   Number(invoice.total_after_tax ?? 0) -
@@ -728,7 +730,7 @@ export default function ViewApInvoicePage() {
             </div>
             {(invoice as any).last_payment_date && (
               <p className="text-xs text-gray-400 mt-1">
-                Last payment:{" "}
+                Thanh toán gần nhất:{" "}
                 {new Date(
                   (invoice as any).last_payment_date,
                 ).toLocaleDateString("vi-VN")}
@@ -738,13 +740,13 @@ export default function ViewApInvoicePage() {
               <p
                 className={`text-xs mt-1 font-medium ${new Date((invoice as any).due_date) < new Date() && invoice.status !== "paid" ? "text-red-500" : "text-gray-400"}`}
               >
-                Due:{" "}
+                Hạn thanh toán:{" "}
                 {new Date((invoice as any).due_date).toLocaleDateString(
                   "vi-VN",
                 )}
                 {new Date((invoice as any).due_date) < new Date() &&
                   invoice.status !== "paid" &&
-                  " ⚠️ Overdue"}
+                  " ⚠️ Quá hạn"}
               </p>
             )}
           </div>
@@ -762,13 +764,13 @@ export default function ViewApInvoicePage() {
                   <ScanLine className="w-5 h-5 text-white" />
                 </div>
                 <h2 className="text-lg font-bold text-gray-900">
-                  OCR Information
+                  Thông tin OCR
                 </h2>
               </div>
               <div className="space-y-3">
                 <div className="flex items-center justify-between py-2 px-3 bg-white rounded-lg">
                   <span className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                    <PenLine className="w-4 h-4" /> Source
+                    <PenLine className="w-4 h-4" /> Nguồn
                   </span>
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
                     <ScanLine className="w-3 h-3" /> OCR
@@ -777,7 +779,7 @@ export default function ViewApInvoicePage() {
                 {invoice.ocr_confidence != null && (
                   <div className="flex items-center justify-between py-2 px-3 bg-white rounded-lg">
                     <span className="text-sm font-medium text-gray-600">
-                      OCR Confidence
+                      Độ tin cậy OCR
                     </span>
                     <span
                       className={`px-2.5 py-1 rounded-full text-xs font-bold ${
@@ -795,7 +797,7 @@ export default function ViewApInvoicePage() {
                 {invoice.invoice_document_id && (
                   <div className="flex items-center justify-between py-2 px-3 bg-white rounded-lg">
                     <span className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                      <Link2 className="w-4 h-4" /> Source Document
+                      <Link2 className="w-4 h-4" /> Tài liệu nguồn
                     </span>
                     <a
                       href={`/purchase/document-intelligence/history`}
@@ -839,7 +841,7 @@ export default function ViewApInvoicePage() {
                   )}
                 </div>
                 <h2 className="text-lg font-bold text-gray-900">
-                  3-Way Matching
+                  Đối chiếu 3 bên
                 </h2>
               </div>
 
@@ -848,8 +850,8 @@ export default function ViewApInvoicePage() {
               ) : (
                 <p className="text-sm text-gray-500 italic">
                   {invoice.matching_status === MatchingStatus.PENDING
-                    ? "3-way matching not performed (no PO or pending)"
-                    : "No details available"}
+                    ? "Chưa thực hiện đối chiếu 3 bên (không có đơn mua hàng hoặc đang chờ)"
+                    : "Không có thông tin chi tiết"}
                 </p>
               )}
             </div>
@@ -859,7 +861,7 @@ export default function ViewApInvoicePage() {
 
       {/* ================= AUDIT TRAIL ================= */}
       <AuditLogCard
-        title="Audit Trail"
+        title="Lịch sử hoạt động"
         logs={auditLogs}
         loading={loadingAuditLogs}
         variant="invoice"
@@ -873,14 +875,14 @@ export default function ViewApInvoicePage() {
                 <Send className="w-6 h-6 text-orange-600" />
               </div>
               <h3 className="text-lg font-bold text-gray-900">
-                Submit for approval?
+                Gửi phê duyệt?
               </h3>
             </div>
 
             {/* CONTENT */}
             <p className="text-sm text-gray-600 mb-6">
-              Once submitted, this invoice will be sent for approval and you
-              will not be able to edit it anymore.
+              Sau khi gửi, hóa đơn này sẽ được gửi đi phê duyệt và bạn sẽ không
+              thể chỉnh sửa được nữa.
             </p>
 
             {/* ACTIONS */}
@@ -889,7 +891,7 @@ export default function ViewApInvoicePage() {
                 onClick={() => setOpenSubmitModal(false)}
                 className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition"
               >
-                Cancel
+                Hủy
               </button>
               <button
                 disabled={submitting}
@@ -901,7 +903,7 @@ export default function ViewApInvoicePage() {
         : "bg-orange-500 hover:bg-orange-600 text-white"
     }`}
               >
-                {submitting ? "Submitting..." : "Confirm Submit"}
+                {submitting ? "Đang gửi..." : "Xác nhận gửi"}
               </button>
             </div>
           </div>
@@ -917,13 +919,14 @@ export default function ViewApInvoicePage() {
                 <CheckCircle className="w-6 h-6 text-emerald-600" />
               </div>
               <h3 className="text-lg font-bold text-gray-900">
-                Approve this invoice?
+                Phê duyệt hóa đơn này?
               </h3>
             </div>
 
             {/* CONTENT */}
             <p className="text-sm text-gray-600 mb-6">
-              This action will approve the invoice and allow further processing.
+              Hành động này sẽ phê duyệt hóa đơn và cho phép các bước xử lý tiếp
+              theo.
             </p>
 
             {/* ACTIONS */}
@@ -932,7 +935,7 @@ export default function ViewApInvoicePage() {
                 onClick={() => setOpenApproveModal(false)}
                 className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50"
               >
-                Cancel
+                Hủy
               </button>
 
               <button
@@ -948,7 +951,7 @@ export default function ViewApInvoicePage() {
                 : "bg-emerald-500 hover:bg-emerald-600 text-white"
             }`}
               >
-                Confirm Approve
+                Xác nhận duyệt
               </button>
             </div>
           </div>
@@ -964,13 +967,13 @@ export default function ViewApInvoicePage() {
                 <Clock className="w-6 h-6 text-red-600" />
               </div>
               <h3 className="text-lg font-bold text-gray-900">
-                Reject this invoice?
+                Từ chối hóa đơn này?
               </h3>
             </div>
 
             {/* CONTENT */}
             <p className="text-sm text-gray-600 mb-3">
-              Please provide a reason for rejecting this invoice.
+              Vui lòng cung cấp lý do từ chối hóa đơn này.
             </p>
 
             {/* REASON INPUT */}
@@ -978,7 +981,7 @@ export default function ViewApInvoicePage() {
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
               rows={4}
-              placeholder="Enter reject reason..."
+              placeholder="Nhập lý do từ chối..."
               className="w-full rounded-xl border border-gray-300 p-3 text-sm
         focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-red-400
         resize-none"
@@ -993,7 +996,7 @@ export default function ViewApInvoicePage() {
                 }}
                 className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition"
               >
-                Cancel
+                Hủy
               </button>
 
               <button
@@ -1006,7 +1009,7 @@ export default function ViewApInvoicePage() {
                 : "bg-red-500 hover:bg-red-600 text-white"
             }`}
               >
-                {submitting ? "Rejecting..." : "Confirm Reject"}
+                {submitting ? "Đang từ chối..." : "Xác nhận từ chối"}
               </button>
             </div>
           </div>

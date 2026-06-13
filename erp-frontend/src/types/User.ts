@@ -19,6 +19,7 @@ export interface User {
   phone?: string;
   avatar_url?: string;
   branch: Branch;
+  branch_id?: number;
   role: Role;
   is_active: boolean;
 }

@@ -106,13 +106,11 @@ export default function MainPage() {
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-blue-900 rounded-lg flex items-center justify-center">
-                <div className="w-6 h-6 border-2 border-orange-400 rounded-full"></div>
-              </div>
-              <div>
-                <span className="text-sm text-orange-400 font-medium">ERP</span>
-                <div className="text-xl font-bold text-blue-900">System</div>
-              </div>
+              <img src="/assets/logo.png" alt="" className="h-9 w-9 object-contain" />
+              <span className="text-xl font-bold tracking-tight">
+                <span className="text-gray-900">ERP</span>
+                <span className="text-orange-500"> Mini</span>
+              </span>
             </div>
 
             {/* Desktop Menu */}
@@ -159,7 +157,7 @@ export default function MainPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-blue-50 via-white to-orange-50">
+      <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-orange-50 via-white to-orange-50">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
@@ -174,7 +172,7 @@ export default function MainPage() {
               </h1>
               <p className="text-xl text-gray-600 mb-8">
                 Tối ưu hóa mọi quy trình kinh doanh từ kế toán, nhân sự đến quản lý kho hàng. 
-                Tăng năng suất lên đến 300% với ERP System.
+                Tăng năng suất lên đến 300% với ERP Mini.
               </p>
               <div className="flex flex-wrap gap-4">
                 <a 
@@ -191,7 +189,7 @@ export default function MainPage() {
             </div>
             
             <div className="relative">
-              <div className="bg-gradient-to-br from-blue-900 to-blue-700 rounded-2xl p-8 shadow-2xl">
+              <div className="bg-gradient-to-br from-gray-900 to-orange-700 rounded-2xl p-8 shadow-2xl">
                 <div className="bg-white rounded-lg p-6 mb-4">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-bold text-gray-900">Doanh thu tháng này</h3>
@@ -221,7 +219,7 @@ export default function MainPage() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-16 bg-blue-900">
+      <section className="py-16 bg-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {stats.map((stat, index) => (
@@ -319,13 +317,13 @@ export default function MainPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-blue-900 to-blue-700">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-orange-500 to-orange-600">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl font-bold text-white mb-6">
             Sẵn sàng chuyển đổi số doanh nghiệp?
           </h2>
-          <p className="text-xl text-blue-100 mb-8">
-            Tham gia cùng hàng nghìn doanh nghiệp đã tin tưởng ERP System
+          <p className="text-xl text-orange-100 mb-8">
+            Tham gia cùng hàng nghìn doanh nghiệp đã tin tưởng ERP Mini
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
             <a 
@@ -348,13 +346,14 @@ export default function MainPage() {
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-blue-900 rounded-lg flex items-center justify-center">
-                  <div className="w-5 h-5 border-2 border-orange-400 rounded-full"></div>
-                </div>
-                <div className="text-white font-bold">ERP System</div>
+                <img src="/assets/logo.png" alt="" className="h-8 w-8 object-contain opacity-90" />
+                <span className="text-xl font-bold">
+                  <span className="text-white">ERP</span>
+                  <span className="text-orange-400"> Mini</span>
+                </span>
               </div>
               <p className="text-sm">
-                Giải pháp quản lý doanh nghiệp toàn diện và hiện đại
+                Giải pháp quản lý doanh nghiệp toàn diện cho doanh nghiệp Việt Nam.
               </p>
             </div>
             <div>
@@ -383,7 +382,7 @@ export default function MainPage() {
             </div>
           </div>
           <div className="border-t border-gray-800 pt-8 text-center text-sm">
-            <p>© 2025 ERP System. All rights reserved.</p>
+            <p>© 2025 ERP Mini. All rights reserved.</p>
           </div>
         </div>
       </footer>

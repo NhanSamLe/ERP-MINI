@@ -24,8 +24,10 @@ import { Transaction } from "sequelize";
 import { GlJournal } from "../../finance/models/glJournal.model";
 import { GlEntry } from "../../finance/models/glEntry.model";
 import { GlEntryLine } from "../../finance/models/glEntryLine.model";
-import { GlAccount } from "../../finance/models/glAccount.model";
 import { notificationService } from "../../../core/services/notification.service";
+import { assertPostingPeriodOpen } from "../../finance/services/fiscalGuard.service";
+import { requireGlAccounts } from "../../finance/services/glAccount.helper";
+import { getCompanyIdFromBranch } from "../../finance/services/companyScope.service";
 export const arInvoiceService = {
   /** tính thuế từng dòng */
   async calcLineTax(line: any) {
@@ -63,11 +65,13 @@ export const arInvoiceService = {
 
   /** GET ALL — lọc theo branch và quyền */
   async getAll(user: any) {
-    const where: any = { branch_id: user.branch_id };
-
-    if (user.role === "ACCOUNT") {
-      where.created_by = user.id;
+    // Chỉ các role được phép xem danh sách hóa đơn
+    const viewableRoles = ["ACCOUNT", "CHACC", "BRMN", "SALESMANAGER", "SALES_MANAGER"];
+    if (!viewableRoles.includes(user.role)) {
+      throw new Error("Permission denied");
     }
+
+    const where: any = { branch_id: user.branch_id };
 
     return ArInvoice.findAll({
       where,
@@ -154,13 +158,11 @@ export const arInvoiceService = {
 
     if (!inv) throw new Error("Invoice not found");
     if (inv.branch_id !== user.branch_id) throw new Error("Cross-branch denied");
-    if (user.role !== "ACCOUNT" && user.role !== "CHACC") {
-      throw new Error("Permission denied");
-    }
 
-    // 3) ACCOUNT → chỉ xem hóa đơn của mình
-    if (user.role === "ACCOUNT" && inv.created_by !== user.id) {
-      throw new Error("You can only view your own invoices");
+    // Các role được phép xem: kế toán, kế toán trưởng, quản lý chi nhánh, quản lý bán hàng
+    const viewableRoles = ["ACCOUNT", "CHACC", "BRMN", "SALESMANAGER", "SALES_MANAGER"];
+    if (!viewableRoles.includes(user.role)) {
+      throw new Error("Permission denied");
     }
 
     return inv;
@@ -186,6 +188,14 @@ export const arInvoiceService = {
     if (order.approval_status !== "approved")
       throw new Error("Sale order must be approved before invoicing");
 
+    // Không cho tạo hóa đơn nếu đơn hàng đã bị cancel
+    if (order.status === "cancelled")
+      throw new Error("Cannot create invoice for a cancelled sale order");
+
+    // Không cho tạo hóa đơn nếu đơn hàng chưa được confirm (chưa qua approve workflow)
+    if (!["confirmed", "shipped", "completed"].includes(order.status))
+      throw new Error("Sale order must be confirmed before invoicing");
+
     // 2. Kiểm tra invoice trùng (nhưng cho phép tạo lại nếu invoice trước bị reject)
     const existing = await ArInvoice.findOne({
       where: { order_id: orderId },
@@ -201,6 +211,8 @@ export const arInvoiceService = {
     }
 
     // 3. Generate invoice_no tự động
+    const t = await sequelize.transaction();
+    try {
     const invoice_no = await generateInvoiceNo();
     let approval = ApprovalStatus.DRAFT
     let status = ArInvoiceStatus.DRAFT
@@ -212,7 +224,7 @@ export const arInvoiceService = {
     let dueDate = new Date();
     const termId = (order as any).payment_term_id;
     if (termId) {
-      const term = await PaymentTerm.findByPk(termId);
+      const term = await PaymentTerm.findByPk(termId, { transaction: t });
       if (term && term.days) {
         dueDate.setDate(dueDate.getDate() + Number(term.days));
       }
@@ -233,7 +245,7 @@ export const arInvoiceService = {
       payment_term_id: termId || null,
       currency_id: (order as any).currency_id || null,
       exchange_rate: (order as any).exchange_rate || 1,
-    });
+    }, { transaction: t });
 
     // 5. Copy lines từ Sale Order sang Invoice Line
     const createdLines = [];
@@ -250,7 +262,7 @@ export const arInvoiceService = {
         line_total: line.line_total,
         line_tax: line.line_tax,
         line_total_after_tax: line.line_total_after_tax,
-      });
+      }, { transaction: t });
 
       createdLines.push(newLine);
     }
@@ -270,13 +282,23 @@ export const arInvoiceService = {
       total_before_tax: totals.total_before_tax,
       total_tax: totals.total_tax,
       total_after_tax: totals.total_after_tax,
-    });
+    }, { transaction: t });
 
     await order.update({
       invoice_status: "invoiced"
-    });
+    }, { transaction: t });
 
-    return this.getById(invoice.id, user);
+    if (invoice.status === "posted" && invoice.approval_status === "approved") {
+      await this.postArInvoiceToGL(invoice, t);
+    }
+
+    const invoiceId = invoice.id;
+    await t.commit();
+    return this.getById(invoiceId, user);
+    } catch (err) {
+      await t.rollback();
+      throw err;
+    }
   },
 
   /** SUBMIT — Accountant */
@@ -334,7 +356,6 @@ export const arInvoiceService = {
         { transaction: t }
       );
 
-      // ⭐ Sinh GL Entry + GL Entry Lines cho hóa đơn này
       await this.postArInvoiceToGL(invoice, t);
 
       // Gửi thông báo (sau khi commit transaction)
@@ -413,14 +434,20 @@ export const arInvoiceService = {
     if (invoice.approval_status !== "draft" || invoice.status !== "draft")
       throw new Error("Only draft invoices can be updated");
 
+    const t = await sequelize.transaction();
+    try {
+
     // Cập nhật thông tin chung
     await invoice.update({
       invoice_date: data.invoice_date,
-    });
+    }, { transaction: t });
 
     // Xóa dòng bị xoá
     if (data.deletedLineIds?.length) {
-      await ArInvoiceLine.destroy({ where: { id: data.deletedLineIds } });
+      await ArInvoiceLine.destroy({
+        where: { id: data.deletedLineIds, invoice_id: invoice.id },
+        transaction: t,
+      });
     }
 
     const updatedLines = [];
@@ -434,7 +461,7 @@ export const arInvoiceService = {
       let line_tax = 0;
       let line_total_after_tax = line_total;
       if (line.tax_rate_id) {
-        const tax = await TaxRate.findByPk(line.tax_rate_id);
+        const tax = await TaxRate.findByPk(line.tax_rate_id, { transaction: t });
         const rate = tax ? Number(tax.rate) : 0;
         line_tax = (line_total * rate) / 100;
         line_total_after_tax = line_total + line_tax;
@@ -453,10 +480,13 @@ export const arInvoiceService = {
             line_tax,
             line_total_after_tax,
           },
-          { where: { id: line.id } }
+          { where: { id: line.id, invoice_id: invoice.id }, transaction: t }
         );
 
-        const updated = await ArInvoiceLine.findByPk(line.id);
+        const updated = await ArInvoiceLine.findOne({
+          where: { id: line.id, invoice_id: invoice.id },
+          transaction: t,
+        });
         if (updated) updatedLines.push(updated);
       } else {
         // CREATE new line
@@ -470,14 +500,19 @@ export const arInvoiceService = {
           line_total,
           line_tax,
           line_total_after_tax,
-        });
+        }, { transaction: t });
 
         updatedLines.push(newLine);
       }
     }
 
     // Tính lại tổng tiền
-    const totals = updatedLines.reduce(
+    const currentLines = await ArInvoiceLine.findAll({
+      where: { invoice_id: invoice.id },
+      transaction: t,
+    });
+
+    const totals = currentLines.reduce(
       (acc, line) => {
         acc.total_before_tax += Number(line.line_total);
         acc.total_tax += Number(line.line_tax);
@@ -491,9 +526,14 @@ export const arInvoiceService = {
       total_before_tax: totals.total_before_tax,
       total_tax: totals.total_tax,
       total_after_tax: totals.total_after_tax,
-    });
+    }, { transaction: t });
 
+    await t.commit();
     return this.getById(id, user);
+    } catch (err) {
+      await t.rollback();
+      throw err;
+    }
   },
   async getApprovedOrdersWithoutInvoice(user: any) {
     // 1) Lấy tất cả order đã approved trong chi nhánh
@@ -561,92 +601,65 @@ export const arInvoiceService = {
     return result;
   },
   async postArInvoiceToGL(invoice: ArInvoice, t: Transaction) {
-    // Không post nếu chưa approved / chưa ở trạng thái posted
     if (invoice.status !== "posted" || invoice.approval_status !== "approved") {
       throw new Error("Invoice must be approved & posted before GL posting");
     }
 
     // Tránh post trùng
     const existed = await GlEntry.findOne({
-      where: {
-        reference_type: "AR_INVOICE",
-        reference_id: invoice.id,
-      },
+      where: { reference_type: "AR_INVOICE", reference_id: invoice.id },
       transaction: t,
     });
+    if (existed) return existed;
 
-    if (existed) {
-      return existed;
-    }
-
-    // Lấy journal SALES
+    // Lấy journal SALES — phải thuộc cùng company
     const salesJournal = await GlJournal.findOne({
       where: { code: "SALES" },
       transaction: t,
     });
+    if (!salesJournal) throw new Error("GL Journal 'SALES' not found — vui lòng thiết lập Nhật ký Bán hàng");
 
-    if (!salesJournal) {
-      throw new Error("GL Journal 'SALES' not found");
-    }
+    const companyId = await getCompanyIdFromBranch(invoice.branch_id, t);
 
-    // Lấy các tài khoản 131, 511, 3331
-    const [arAcc, revenueAcc, vatAcc] = await Promise.all([
-      GlAccount.findOne({ where: { code: "131" }, transaction: t }),
-      GlAccount.findOne({ where: { code: "511" }, transaction: t }),
-      GlAccount.findOne({ where: { code: "3331" }, transaction: t }),
-    ]);
-
-    if (!arAcc || !revenueAcc || !vatAcc) {
-      throw new Error("Missing GL Accounts 131 / 511 / 3331");
-    }
+    // Lay tai khoan theo company cua branch
+    const accounts = await requireGlAccounts(companyId, ["131", "511", "3331"], t);
+    const arAcc = accounts["131"];
+    const revenueAcc = accounts["511"];
+    const vatAcc = accounts["3331"];
 
     const rate = Number(invoice.exchange_rate || 1);
     const totalBeforeTax = Number(invoice.total_before_tax || 0) * rate;
     const totalTax = Number(invoice.total_tax || 0) * rate;
     const totalAfterTax = Number(invoice.total_after_tax || 0) * rate;
 
-    // MISA / ERP Standards: Partner ID must be attached to Account 131 for aging reports!
     const partnerId = invoice.customer_id;
+    const entryDate = invoice.invoice_date || new Date();
 
-    // Tạo GL Entry
+    // Kiểm tra kỳ kế toán đúng company
+    await assertPostingPeriodOpen(entryDate, companyId, t);
+
     const entry = await GlEntry.create(
       {
         journal_id: salesJournal.id,
-        entry_no: `AR-${invoice.invoice_no}`, // TODO: sau này bạn có thể đổi sang generator chuẩn hơn
-        entry_date: invoice.invoice_date || new Date(),
+        entry_no: `AR-${invoice.invoice_no}`,
+        entry_date: entryDate,
         reference_type: "AR_INVOICE",
         reference_id: invoice.id,
         memo: `AR Invoice ${invoice.invoice_no}`,
         status: "posted",
-      },
+        branch_id: invoice.branch_id ?? null,
+      } as any,
       { transaction: t }
     );
 
-    // Tạo các dòng Nợ/Có
     const lines: Partial<GlEntryLine>[] = [
-      {
-        entry_id: entry.id,
-        account_id: arAcc.id,
-        partner_id: partnerId as any,
-        debit: totalAfterTax,
-        credit: 0,
-      },
-      {
-        entry_id: entry.id,
-        account_id: revenueAcc.id,
-        debit: 0,
-        credit: totalBeforeTax,
-      },
-      {
-        entry_id: entry.id,
-        account_id: vatAcc.id,
-        debit: 0,
-        credit: totalTax,
-      },
+      { entry_id: entry.id, account_id: arAcc!.id, partner_id: partnerId as any, debit: totalAfterTax, credit: 0 },
+      { entry_id: entry.id, account_id: revenueAcc!.id, debit: 0, credit: totalBeforeTax },
+      { entry_id: entry.id, account_id: vatAcc!.id, debit: 0, credit: totalTax },
     ];
 
     await GlEntryLine.bulkCreate(lines as any, { transaction: t });
-
     return entry;
   },
 };
+

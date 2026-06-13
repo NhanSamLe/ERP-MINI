@@ -33,6 +33,7 @@ import apInvoiceRoutes from "../modules/purchase/routes/apInvoice.routes";
 import apPaymentRoutes from "../modules/purchase/routes/apPayment.route";
 import rfqRoutes from "../modules/purchase/routes/rfq.routes";
 import purchasePriceListRoutes from "../modules/purchase/routes/purchasePriceList.routes";
+import purchaseOrderAuditRoutes from "../modules/purchase/routes/purchaseOrderAudit.routes";
 import {
   praRouter,
   purchaseReturnRouter,
@@ -49,7 +50,10 @@ import documentRoutes, {
 } from "../modules/document-intelligence/routes";
 import { narrativeRoutes } from "../modules/ai-narrative/routes";
 import aiRoutes from "../modules/ai/ai.routes";
+import agentAdminRoutes from "../modules/ai-agent/routes";
 import blogRoutes from "../modules/blog/routes/blog.route";
+import publicRoutes from "../modules/public/routes";
+import setupRoutes from "../modules/public/setupRoutes";
 const router = express.Router();
 
 router.use("/auth", authRoutes);
@@ -60,6 +64,7 @@ router.use("/branch", branchRoutes);
 router.use("/partners", partnerRoutes);
 router.use("/master-data", masterDataRoutes);
 router.use("/purchase-order", purchaseOrderRoutes);
+router.use("/purchase-order", purchaseOrderAuditRoutes);
 router.use("/hrm/departments", departmentRoutes);
 router.use("/hrm/positions", positionRoutes);
 router.use("/warehouse", warehouseRoutes);
@@ -106,6 +111,9 @@ router.use("/document-intelligence", documentRoutes);
 router.use("/matching", matchingRouter);
 router.use("/ai-narrative", narrativeRoutes);
 router.use("/ai", aiRoutes);
+router.use("/ai-agent", agentAdminRoutes);
 router.use("/blog", blogRoutes);
+router.use("/public", publicRoutes);
+router.use("/setup", setupRoutes);
 
 export default router;

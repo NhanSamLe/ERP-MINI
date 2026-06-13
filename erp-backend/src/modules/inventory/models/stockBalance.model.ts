@@ -10,6 +10,8 @@ export interface StockBalanceAttrs {
   quantity: number;
   unit_cost?: number | null;
   total_value?: number | null;
+  created_at?: Date;
+  updated_at?: Date;
 }
 
 type StockBalanceCreation = Optional<
@@ -29,6 +31,8 @@ export class StockBalance
   public quantity!: number;
   public unit_cost?: number | null;
   public total_value?: number | null;
+  public created_at?: Date;
+  public updated_at?: Date;
 }
 
 StockBalance.init(

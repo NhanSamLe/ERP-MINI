@@ -13,7 +13,6 @@ import { useDispatch } from "react-redux";
 import { AppDispatch } from "../../../../../store/store";
 import { Product } from "@/features/products/store/product.types";
 import {
-  fetchProductByIdThunk,
   searchProductsThunk,
 } from "@/features/products/store/product.thunks";
 import { toast } from "react-toastify";
@@ -197,32 +196,32 @@ export default function EditTransferModal({
 
   const handleSubmit = () => {
     if (!form.warehouseFrom) {
-      toast.error("Please select a WarehouseFrom");
+      toast.error("Vui lòng chọn Kho xuất");
       return;
     }
 
     if (!form.warehouseTo) {
-      toast.error("Please select a WarehouseTo");
+      toast.error("Vui lòng chọn Kho nhập");
       return;
     }
 
     if (!form.move_date) {
-      toast.error("Please select a Move Date");
+      toast.error("Vui lòng chọn Ngày chuyển");
       return;
     }
 
     if (lineItems.length === 0) {
-      toast.error("Please add at least one product");
+      toast.error("Vui lòng thêm ít nhất một sản phẩm");
       return;
     }
 
     for (const p of lineItems) {
       if (!p.quantity || p.quantity <= 0) {
-        toast.error(`Invalid quantity for product: ${p.name}`);
+        toast.error(`Số lượng không hợp lệ cho sản phẩm: ${p.name}`);
         return;
       }
       if (!p.lot_id) {
-        toast.error(`Please select lot for product: ${p.name}`);
+        toast.error(`Vui lòng chọn số lô cho sản phẩm: ${p.name}`);
         return;
       }
     }
@@ -243,9 +242,9 @@ export default function EditTransferModal({
             <ArrowRightLeft className="w-5 h-5" />
           </div>
           <div>
-            <DialogTitle className="text-lg font-bold text-slate-900">Edit Stock Transfer</DialogTitle>
+            <DialogTitle className="text-lg font-bold text-slate-900">Sửa phiếu chuyển kho</DialogTitle>
             <DialogDescription className="text-xs text-slate-400 mt-0.5">
-              Modify internal warehouse stock movements and lines configuration
+              Chỉnh sửa phiếu di chuyển kho nội bộ và cấu hình các mặt hàng
             </DialogDescription>
           </div>
         </DialogHeader>
@@ -255,7 +254,7 @@ export default function EditTransferModal({
           <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
             {/* Warehouse From */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">From Warehouse *</label>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Kho xuất *</label>
               <Select
                 value={form.warehouseFrom}
                 onValueChange={(v) =>
@@ -264,7 +263,7 @@ export default function EditTransferModal({
                 defaultLabel={selectedWarehouseFromName}
               >
                 <SelectTrigger className="w-full h-10 bg-white border-slate-200 focus:ring-blue-500 focus:border-blue-500 rounded-lg">
-                  <SelectValue placeholder="Select origin" />
+                  <SelectValue placeholder="Chọn kho nguồn" />
                 </SelectTrigger>
                 <SelectContent>
                   {warehouses
@@ -280,7 +279,7 @@ export default function EditTransferModal({
 
             {/* Warehouse To */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">To Warehouse *</label>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Kho nhập *</label>
               <Select
                 value={form.warehouseTo}
                 onValueChange={(v) =>
@@ -289,7 +288,7 @@ export default function EditTransferModal({
                 defaultLabel={selectedWarehouseToName}
               >
                 <SelectTrigger className="w-full h-10 bg-white border-slate-200 focus:ring-blue-500 focus:border-blue-500 rounded-lg">
-                  <SelectValue placeholder="Select destination" />
+                  <SelectValue placeholder="Chọn kho đích" />
                 </SelectTrigger>
                 <SelectContent>
                   {warehouses
@@ -306,7 +305,7 @@ export default function EditTransferModal({
             {/* Move Date */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-slate-400" /> Move Date *
+                <Calendar className="w-3.5 h-3.5 text-slate-400" /> Ngày chuyển *
               </label>
               <Input
                 type="date"
@@ -320,7 +319,7 @@ export default function EditTransferModal({
             {/* Move Number */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                <Clipboard className="w-3.5 h-3.5 text-slate-400" /> Move Number
+                <Clipboard className="w-3.5 h-3.5 text-slate-400" /> Số phiếu
               </label>
               <Input 
                 value={form.move_no} 
@@ -333,13 +332,13 @@ export default function EditTransferModal({
           {/* Product Search Input */}
           <div className="flex flex-col gap-1.5 relative" ref={dropdownRef}>
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-              <Search className="w-3.5 h-3.5 text-slate-400" /> Search & Add Product
+              <Search className="w-3.5 h-3.5 text-slate-400" /> Tìm kiếm & Thêm sản phẩm
             </label>
             <div className="relative">
               <Input
                 value={searchTerm}
                 onChange={(value) => setSearchTerm(value)}
-                placeholder="Type product name or SKU to search and add to transfer..."
+                placeholder="Nhập tên sản phẩm hoặc mã SKU để tìm và thêm vào phiếu chuyển..."
                 className="pl-10 h-10 border-slate-200 focus:ring-blue-400 focus:border-blue-400 rounded-lg placeholder:text-slate-400"
               />
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -349,7 +348,7 @@ export default function EditTransferModal({
             {showDropdown && (
               <div className="absolute w-full mt-1.5 bg-white border border-slate-100 rounded-xl shadow-lg max-h-60 overflow-y-auto z-50 divide-y divide-slate-50">
                 {searchLoading ? (
-                  <div className="p-4 text-center text-sm text-slate-400 font-medium italic">Loading results...</div>
+                  <div className="p-4 text-center text-sm text-slate-400 font-medium italic">Đang tải kết quả...</div>
                 ) : searchResults.length > 0 ? (
                   searchResults.map((p) => (
                     <div
@@ -369,7 +368,7 @@ export default function EditTransferModal({
                     </div>
                   ))
                 ) : (
-                  <div className="p-4 text-center text-sm text-slate-400 font-medium italic">No products found</div>
+                  <div className="p-4 text-center text-sm text-slate-400 font-medium italic">Không tìm thấy sản phẩm</div>
                 )}
               </div>
             )}
@@ -379,19 +378,19 @@ export default function EditTransferModal({
           <Card className="border-slate-100 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">
             <CardHeader className="px-5 py-3.5 bg-slate-50/15 border-b border-slate-100 flex flex-row items-center gap-2">
               <ListCollapse className="w-4.5 h-4.5 text-slate-700" />
-              <CardTitle className="text-sm font-semibold text-slate-800">Transfer Item Lines</CardTitle>
+              <CardTitle className="text-sm font-semibold text-slate-800">Danh sách sản phẩm chuyển kho</CardTitle>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-slate-50/80 text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-slate-100">
                   <tr>
-                    <th className="py-3.5 px-5 text-left">Product</th>
-                    <th className="py-3.5 px-5 text-left">SKU</th>
-                    <th className="py-3.5 px-5 text-left w-24">UOM</th>
-                    <th className="py-3.5 px-5 text-right w-24">Qty</th>
-                    <th className="py-3.5 px-5 text-left w-40">From Location</th>
-                    <th className="py-3.5 px-5 text-left w-40">To Location</th>
-                    <th className="py-3.5 px-5 text-left w-44">Lot</th>
+                    <th className="py-3.5 px-5 text-left">Sản phẩm</th>
+                    <th className="py-3.5 px-5 text-left">Mã SKU</th>
+                    <th className="py-3.5 px-5 text-left w-24">ĐVT</th>
+                    <th className="py-3.5 px-5 text-right w-24">SL</th>
+                    <th className="py-3.5 px-5 text-left w-40">Vị trí xuất</th>
+                    <th className="py-3.5 px-5 text-left w-40">Vị trí nhập</th>
+                    <th className="py-3.5 px-5 text-left w-44">Số lô</th>
                     <th className="py-3.5 px-5 text-center w-14"></th>
                   </tr>
                 </thead>
@@ -408,7 +407,7 @@ export default function EditTransferModal({
                           )}
                           <span className="font-semibold text-slate-800">{p.name}</span>
                         </td>
-                        <td className="py-3 px-5 font-mono text-xs font-bold text-slate-450 uppercase">{p.sku}</td>
+                        <td className="py-3 px-5 font-mono text-xs font-bold text-slate-455 uppercase">{p.sku}</td>
                         <td className="py-3 px-5 text-slate-500 font-medium">{p.uom || "—"}</td>
                         <td className="py-3 px-5 text-right">
                           <input
@@ -438,7 +437,7 @@ export default function EditTransferModal({
                               )
                             }
                             types={["internal", "output"]}
-                            placeholder="— From —"
+                            placeholder="— Từ vị trí —"
                           />
                         </td>
                         <td className="py-3 px-5">
@@ -457,7 +456,7 @@ export default function EditTransferModal({
                               )
                             }
                             types={["internal", "input"]}
-                            placeholder="— To —"
+                            placeholder="— Đến vị trí —"
                           />
                         </td>
                         <td className="py-3 px-5">
@@ -473,7 +472,7 @@ export default function EditTransferModal({
                                 ),
                               )
                             }
-                            placeholder="— Lot —"
+                            placeholder="— Số lô —"
                           />
                         </td>
                         <td className="py-3 px-5 text-center">
@@ -484,7 +483,7 @@ export default function EditTransferModal({
                                 prev.filter((x) => x.product_id !== p.product_id),
                               )
                             }
-                            title="Delete Line"
+                            title="Xóa dòng"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -494,7 +493,7 @@ export default function EditTransferModal({
                   ) : (
                     <tr>
                       <td colSpan={8} className="py-12 text-center text-slate-400 italic">
-                        Use search box above to add transfer products.
+                        Sử dụng ô tìm kiếm ở trên để thêm sản phẩm chuyển kho.
                       </td>
                     </tr>
                   )}
@@ -505,11 +504,11 @@ export default function EditTransferModal({
 
           {/* Notes */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Internal Notes</label>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Ghi chú nội bộ</label>
             <Textarea
               value={form.notes}
               onChange={(value) => setForm((prev) => ({ ...prev, notes: value }))}
-              placeholder="Provide reason or description for internal warehouse transfer..."
+              placeholder="Cung cấp lý sơ hoặc mô tả cho việc chuyển kho nội bộ..."
               className="min-h-[80px] border-slate-200 focus:ring-blue-450 focus:border-blue-450 rounded-lg text-sm placeholder:text-slate-400"
             />
           </div>
@@ -517,13 +516,13 @@ export default function EditTransferModal({
           {/* FOOTER */}
           <DialogFooter className="pt-4 border-t border-slate-100 flex-row justify-end gap-3">
             <Button variant="outline" onClick={onClose}>
-              Cancel
+              Hủy
             </Button>
             <Button
               className="bg-blue-500 hover:bg-blue-600 text-white"
               onClick={handleSubmit}
             >
-              Update Transfer
+              Cập nhật phiếu chuyển
             </Button>
           </DialogFooter>
         </div>

@@ -43,10 +43,11 @@ export default function LocalChatPanel() {
     activeConversationId,
   } = useSelector((state: RootState) => state.localRag);
   const accessToken = useSelector(
-    (state: RootState) => (state as any).auth?.accessToken
+    (state: RootState) => (state as any).auth?.accessToken,
   );
   const [input, setInput] = useState("");
   const [showHistory, setShowHistory] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -59,6 +60,34 @@ export default function LocalChatPanel() {
     }
   }, [isOpen, dispatch]);
 
+  const handleSyncVectorDb = async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    try {
+      const baseUrl =
+        import.meta.env.VITE_API_URL || "http://localhost:8888/api";
+      const response = await fetch(`${baseUrl}/ai/sync`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Sync thất bại với status: ${response.status}`);
+      }
+
+      await response.json();
+      alert("Đồng bộ dữ liệu Vector DB thành công!");
+    } catch (err: any) {
+      console.error("[LocalChatPanel] sync ERROR:", err);
+      alert(`Lỗi đồng bộ: ${err.message}`);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
@@ -69,7 +98,7 @@ export default function LocalChatPanel() {
     try {
       if (!convId) {
         const newConv = await dispatch(
-          createConversationThunk(currentInput.slice(0, 50))
+          createConversationThunk(currentInput.slice(0, 50)),
         ).unwrap();
         convId = newConv.id;
       }
@@ -184,7 +213,7 @@ export default function LocalChatPanel() {
   ];
 
   return (
-    <div className="fixed bottom-[88px] right-24 w-[420px] h-[580px] flex flex-col rounded-2xl overflow-hidden z-50 shadow-2xl shadow-emerald-100/30 border border-white/60 animate-in fade-in slide-in-from-bottom-4 duration-300">
+    <div className="fixed bottom-[88px] left-[272px] w-[420px] h-[580px] flex flex-col rounded-2xl overflow-hidden z-50 shadow-2xl shadow-emerald-100/30 border border-white/60 animate-in fade-in slide-in-from-bottom-4 duration-300">
       {/* Glassmorphism background */}
       <div className="absolute inset-0 bg-white/95 backdrop-blur-xl pointer-events-none" />
 
@@ -195,20 +224,27 @@ export default function LocalChatPanel() {
           <div className="absolute inset-0 opacity-10 pointer-events-none bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj48ZmlsdGVyIGlkPSJhIiB4PSIwIiB5PSIwIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iLjc1IiBzdGl0Y2hUaWxlcz0ic3RpdGNoIi8+PGZlQ29sb3JNYXRyaXggdHlwZT0ic2F0dXJhdGUiIHZhbHVlcz0iMCIvPjwvZmlsdGVyPjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIiBmaWx0ZXI9InVybCgjYSkiIG9wYWNpdHk9IjAuMDUiLz48L3N2Zz4=')]" />
 
           <div className="relative flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center ring-1 ring-white/30">
-              <RefreshCw className="w-3.5 h-3.5 text-white animate-spin-slow" />
-            </div>
+            <button
+              onClick={handleSyncVectorDb}
+              disabled={isSyncing}
+              className="w-7 h-7 rounded-lg bg-white/20 hover:bg-white/30 backdrop-blur-sm flex items-center justify-center ring-1 ring-white/30 transition-all cursor-pointer active:scale-95 disabled:opacity-40"
+              title="Đồng bộ CSDL Vector (Sync RAG)"
+            >
+              <RefreshCw
+                className={`w-3.5 h-3.5 text-white ${isSyncing ? "animate-spin" : "animate-spin-slow"}`}
+              />
+            </button>
             <div>
               <div className="flex items-center gap-1">
                 <span className="font-semibold text-white text-xs tracking-tight">
-                  Local RAG
+                  AI Nội bộ
                 </span>
                 <Sparkles className="w-2.5 h-2.5 text-amber-300" />
               </div>
               <div className="flex items-center gap-0.5 mt-0.5">
                 <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
                 <span className="text-[8px] text-white/70 font-medium">
-                  Vector DB
+                  CSDL Vector
                 </span>
               </div>
             </div>
@@ -331,7 +367,8 @@ export default function LocalChatPanel() {
                     Trợ lý Tri thức Cục bộ (RAG)
                   </p>
                   <p className="text-[11px] text-slate-400 mt-1 leading-relaxed max-w-[280px] mx-auto">
-                    Tôi có thể truy xuất dữ liệu ERP ngoại tuyến thời gian thực từ Qdrant Vector DB thông qua mô hình Ollama.
+                    Tôi có thể truy xuất dữ liệu ERP ngoại tuyến thời gian thực
+                    từ Qdrant Vector DB thông qua mô hình Ollama.
                   </p>
                 </div>
                 <div className="bg-slate-100/80 rounded-xl px-3 py-2 border border-slate-200/40">
@@ -433,7 +470,7 @@ export default function LocalChatPanel() {
                                     {src.content_text}
                                   </p>
                                 </div>
-                              )
+                              ),
                             )}
                           </div>
                         </details>

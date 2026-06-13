@@ -4,20 +4,19 @@ export const currencyFormConfig: FormConfig = {
   fields: [
     {
       name: 'code',
-      label: 'Currency Code',
+      label: 'Mã tiền tệ',
       type: 'text',
-      placeholder: 'e.g., USD, EUR, VND',
       required: true,
+      placeholder: 'VD: USD, EUR, VND',
       validation: (value) => {
-        if (!value) return 'Currency Code is required';
-        if (value.length !== 3) return 'Currency Code must be exactly 3 characters';
-        if (!/^[A-Z]+$/.test(value)) return 'Currency Code must contain only uppercase letters';
+        if (!value) return 'Vui lòng nhập mã tiền tệ';
+        if (String(value).length !== 3) return 'Mã tiền tệ phải có đúng 3 ký tự';
+        if (!/^[A-Z]+$/.test(String(value))) return 'Mã tiền tệ chỉ được dùng chữ cái in hoa';
         return undefined;
       },
-      helpText: 'ISO 4217 currency code (3 uppercase letters)',
     },
   ],
-  submitLabel: 'Add Currency',
-  cancelLabel: 'Cancel',
+  submitLabel: 'Thêm tiền tệ',
+  cancelLabel: 'Hủy',
   showCancel: true,
 };

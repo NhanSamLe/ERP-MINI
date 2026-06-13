@@ -11,19 +11,19 @@ router.get("/available-orders",authMiddleware([]), ArInvoiceController.getAvaila
 router.get("/:id", authMiddleware([]), ArInvoiceController.getOne);
 
 // Create invoice
-router.post("/", authMiddleware([]), ArInvoiceController.create);
+router.post("/", authMiddleware(["ACCOUNT", "CHACC"]), ArInvoiceController.create);
 
 // Update invoice (draft only)
-router.put("/:id", authMiddleware([]), ArInvoiceController.update);
+router.put("/:id", authMiddleware(["ACCOUNT", "CHACC"]), ArInvoiceController.update);
 
 // Submit to chief accountant
-router.post("/:id/submit", authMiddleware([]), ArInvoiceController.submit);
+router.post("/:id/submit", authMiddleware(["ACCOUNT", "CHACC"]), ArInvoiceController.submit);
 
 // Approve invoice
 router.post("/:id/approve", authMiddleware(["CHACC"]), ArInvoiceController.approve);
 
 // Reject invoice
-router.post("/:id/reject", authMiddleware([]), ArInvoiceController.reject);
+router.post("/:id/reject", authMiddleware(["CHACC"]), ArInvoiceController.reject);
 
 
 

@@ -1,50 +1,33 @@
-/**
- * UOM Form Configuration
- * @description Configuration for UOM create/edit form
- * @author Senior Frontend Team
- */
-
 import { FormConfig } from '@/components/v2/forms';
-import { CreateUomDto, UpdateUomDto } from '../dto/uom.dto';
 
-/**
- * UOM Form Configuration
- */
-export const uomFormConfig: FormConfig<CreateUomDto | UpdateUomDto> = {
+export const uomFormConfig: FormConfig = {
   fields: [
     {
       name: 'code',
-      label: 'UOM Code',
+      label: 'Mã đơn vị',
       type: 'text',
-      placeholder: 'e.g., PCS, KG, M',
       required: true,
+      placeholder: 'VD: KG, PCS, BOX',
       validation: (value) => {
-        if (!value) return 'UOM Code is required';
-        if (value.length < 2) return 'UOM Code must be at least 2 characters';
-        if (value.length > 10) return 'UOM Code must not exceed 10 characters';
-        if (!/^[A-Z0-9]+$/.test(value)) return 'UOM Code must contain only uppercase letters and numbers';
+        if (!value) return 'Vui lòng nhập mã đơn vị';
+        if (String(value).length > 20) return 'Mã đơn vị không được vượt quá 20 ký tự';
         return undefined;
       },
-      helpText: 'Unique code for the unit (uppercase letters and numbers only)',
-      gridColumn: 'span 1',
     },
     {
       name: 'name',
-      label: 'UOM Name',
+      label: 'Tên đơn vị',
       type: 'text',
-      placeholder: 'e.g., Pieces, Kilogram, Meter',
       required: true,
+      placeholder: 'VD: Kilogram, Cái, Thùng',
       validation: (value) => {
-        if (!value) return 'UOM Name is required';
-        if (value.length < 2) return 'UOM Name must be at least 2 characters';
-        if (value.length > 100) return 'UOM Name must not exceed 100 characters';
+        if (!value) return 'Vui lòng nhập tên đơn vị';
+        if (String(value).length > 100) return 'Tên đơn vị không được vượt quá 100 ký tự';
         return undefined;
       },
-      helpText: 'Full name of the unit of measurement',
-      gridColumn: 'span 1',
     },
   ],
-  submitLabel: 'Save UOM',
-  cancelLabel: 'Cancel',
+  submitLabel: 'Lưu đơn vị',
+  cancelLabel: 'Hủy',
   showCancel: true,
 };

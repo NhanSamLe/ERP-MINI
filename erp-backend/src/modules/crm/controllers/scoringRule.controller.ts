@@ -10,6 +10,15 @@ export const getAll = async (req: Request, res: Response) => {
   }
 };
 
+export const getSignals = async (req: Request, res: Response) => {
+  try {
+    const metadata = await scoringRuleService.getScoringSignals();
+    res.json({ message: "Lấy danh sách tín hiệu chấm điểm thành công", data: metadata });
+  } catch (err: any) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
 export const create = async (req: Request, res: Response) => {
   try {
     const rule = await scoringRuleService.createRule(req.body);
@@ -47,6 +56,17 @@ export const recalculateLead = async (req: Request, res: Response) => {
     const leadId = Number(req.params.leadId);
     const result = await scoringRuleService.calculateLeadScore(leadId);
     res.json({ message: "Đã tính lại điểm cho Lead", data: result });
+  } catch (err: any) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+export const previewRule = async (req: Request, res: Response) => {
+  try {
+    const leadId = Number(req.body.lead_id);
+    if (!leadId) throw new Error("Vui lòng chọn khách hàng tiềm năng để kiểm thử quy tắc");
+    const result = await scoringRuleService.previewScoringRule(leadId, req.body.rule || req.body);
+    res.json({ message: "Kiểm thử quy tắc chấm điểm thành công", data: result });
   } catch (err: any) {
     res.status(400).json({ message: err.message });
   }

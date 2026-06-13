@@ -39,7 +39,7 @@ interface DistrictWithWards {
 }
 
 interface BankItem {
-  id: string;
+  id: string | number;
   name: string;
   shortName: string;
 }
@@ -178,7 +178,7 @@ const PartnerForm: FC = () => {
 
   const handleBankChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const bankId = e.target.value;
-    const bank = banks.find((b) => b.id === bankId);
+    const bank = banks.find((b) => String(b.id) === bankId);
     setForm((prev) => ({
       ...prev,
       bank_name: bank ? bank.name : "",
@@ -544,7 +544,7 @@ const PartnerForm: FC = () => {
                 >
                   <option value="">Select bank</option>
                   {banks.map((b) => (
-                    <option key={b.id} value={b.id}>
+                    <option key={b.id} value={String(b.id)}>
                       {b.shortName || b.name}
                     </option>
                   ))}

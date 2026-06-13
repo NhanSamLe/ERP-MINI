@@ -1,3 +1,4 @@
+import { Op } from "sequelize";
 import { sequelize } from "../../../config/db";
 import { PurchaseReturnAuthorization } from "../models/purchaseReturnAuthorization.model";
 import { PurchaseReturn } from "../models/purchaseReturn.model";
@@ -8,8 +9,9 @@ import { VendorRefund } from "../models/vendorRefund.model";
 import { GlEntry } from "../../finance/models/glEntry.model";
 import { GlEntryLine } from "../../finance/models/glEntryLine.model";
 import { GlJournal } from "../../finance/models/glJournal.model";
-import { GlAccount } from "../../finance/models/glAccount.model";
-import { Partner } from "../../../models";
+import { requireGlAccounts } from "../../finance/services/glAccount.helper";
+import { getCompanyIdFromBranch } from "../../finance/services/companyScope.service";
+import { Partner, StockMove, Warehouse } from "../../../models";
 import { User } from "../../auth/models/user.model";
 import { Branch } from "../../company/models/branch.model";
 import { Product } from "../../product/models/product.model";
@@ -17,8 +19,19 @@ import { UomConversion } from "../../master-data/models/uomConversion.model";
 import { Uom } from "../../master-data/models/uom.model";
 import { purchaseNotificationService } from "./purchaseNotification.service";
 
-function generateNo(prefix: string): string {
-  return `${prefix}-${Date.now()}`;
+/** Generator số chứng từ chuẩn: PREFIX-YYYYMMDD-XXXX, retry loop tránh race condition */
+async function generateNo(prefix: string, model: any, field: string): Promise<string> {
+  const today = new Date();
+  const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, "0")}${String(today.getDate()).padStart(2, "0")}`;
+  const base = `${prefix}-${dateStr}`;
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const count = await model.count({ where: { [field]: { [Op.like]: `${base}%` } } });
+    const candidate = `${base}-${String(count + 1).padStart(4, "0")}`;
+    const exists = await model.findOne({ where: { [field]: candidate } });
+    if (!exists) return candidate;
+  }
+  return `${base}-${Date.now()}`;
 }
 
 const PRA_INCLUDE = [
@@ -44,6 +57,8 @@ const RETURN_INCLUDE = [
       { model: Uom, as: "uom", attributes: ["id", "name"] },
     ],
   },
+  { model: StockMove, as: "stockMove" },
+  { model: Warehouse, as: "warehouse" },
 ];
 
 // ─── PRA Service ──────────────────────────────────────────────────────────────
@@ -84,7 +99,7 @@ export const praService = {
 
     const pra = await PurchaseReturnAuthorization.create({
       branch_id: user.branch_id,
-      pra_no: generateNo("PRA"),
+      pra_no: await generateNo("PRA", PurchaseReturnAuthorization, "pra_no"),
       purchase_order_id: payload.purchase_order_id,
       ap_invoice_id: payload.ap_invoice_id ?? null,
       supplier_id: payload.supplier_id,
@@ -310,7 +325,7 @@ export const purchaseReturnService = {
       const ret = await PurchaseReturn.create(
         {
           branch_id: user.branch_id,
-          return_no: generateNo("RET"),
+          return_no: await generateNo("RET", PurchaseReturn, "return_no"),
           pra_id: payload.pra_id ?? null,
           purchase_order_id: payload.purchase_order_id ?? null,
           supplier_id: payload.supplier_id,
@@ -553,6 +568,14 @@ export const purchaseReturnService = {
       if (ret.status !== "confirmed")
         throw { status: 400, message: "Only confirmed return can be completed" };
 
+      if (ret.stock_move_id) {
+        const { StockMove } = await import("../../inventory/models/stockMove.model");
+        const move = await StockMove.findByPk(ret.stock_move_id, { transaction: t });
+        if (!move || move.status !== "posted") {
+          throw { status: 400, message: "Warehouse manager has not approved the stock issue yet" };
+        }
+      }
+
       await ret.update({ status: "completed" }, { transaction: t });
 
       if (ret.pra_id) {
@@ -616,6 +639,30 @@ export const apDebitNoteService = {
       };
     }
 
+    const lines = (ret as any).lines as PurchaseReturnLine[];
+
+    // Tính số lượng thực tế để đưa vào Debit Note:
+    // Ưu tiên quantity_confirmed, fallback về quantity_returned
+    const effectiveLines = lines.map((line) => {
+      const qtyConfirmed = Number(line.quantity_confirmed ?? 0);
+      const qtyReturned = Number(line.quantity_returned ?? 0);
+      const effectiveQty = qtyConfirmed > 0 ? qtyConfirmed : qtyReturned;
+      return { line, effectiveQty };
+    });
+
+    const totalCheck = effectiveLines.reduce(
+      (sum, { effectiveQty }) => sum + effectiveQty,
+      0,
+    );
+
+    if (totalCheck <= 0) {
+      throw {
+        status: 400,
+        message:
+          "Không có dòng hàng nào có số lượng hợp lệ. Không thể tạo Thẻ nợ có giá trị 0.",
+      };
+    }
+
     // Get original AP Invoice from PRA
     let originalApInvoiceId: number | null = null;
     if (ret.pra_id) {
@@ -627,7 +674,7 @@ export const apDebitNoteService = {
       const dn = await ApDebitNote.create(
         {
           branch_id: ret.branch_id,
-          debit_note_no: generateNo("DN"),
+          debit_note_no: await generateNo("DN", ApDebitNote, "debit_note_no"),
           purchase_return_id: ret.id,
           original_ap_invoice_id: originalApInvoiceId,
           supplier_id: ret.supplier_id,
@@ -642,14 +689,12 @@ export const apDebitNoteService = {
         { transaction: t },
       );
 
-      const lines = (ret as any).lines as PurchaseReturnLine[];
       let totalBeforeTax = 0;
 
-      for (const line of lines) {
-        const qty = Number(line.quantity_confirmed);
-        if (qty <= 0) continue;
+      for (const { line, effectiveQty } of effectiveLines) {
+        if (effectiveQty <= 0) continue;
 
-        const lineTotal = qty * Number(line.unit_price);
+        const lineTotal = effectiveQty * Number(line.unit_price);
         totalBeforeTax += lineTotal;
 
         await ApDebitNoteLine.create(
@@ -657,7 +702,7 @@ export const apDebitNoteService = {
             debit_note_id: dn.id,
             product_id: line.product_id,
             return_line_id: line.id,
-            quantity: qty,
+            quantity: effectiveQty,
             unit_price: line.unit_price,
             line_total: lineTotal,
             line_tax: 0,
@@ -665,6 +710,13 @@ export const apDebitNoteService = {
           },
           { transaction: t },
         );
+      }
+
+      if (totalBeforeTax <= 0) {
+        throw {
+          status: 400,
+          message: "Tổng giá trị Thẻ nợ bằng 0. Vui lòng kiểm tra đơn giá các dòng hàng.",
+        };
       }
 
       await dn.update(
@@ -679,19 +731,17 @@ export const apDebitNoteService = {
   },
 
   async post(id: number, user: any) {
+
     const dn = await ApDebitNote.findOne({
       where: { id, branch_id: user.branch_id },
     });
     if (!dn) throw { status: 404, message: "AP Debit Note not found" };
+    const companyId = await getCompanyIdFromBranch(dn.branch_id);
     if (dn.status !== "draft")
       throw { status: 400, message: "Only draft Debit Note can be posted" };
 
     await sequelize.transaction(async (t) => {
-      // Create GL Entry: Nợ AP (331) / Có Hàng trả NCC (156)
-      const journal = await GlJournal.findOne({
-        where: { code: "PURCHASE" },
-        transaction: t,
-      });
+      const journal = await GlJournal.findOne({ where: { code: "PURCHASE" }, transaction: t });
       if (!journal) throw new Error("PURCHASE journal not found");
 
       const entry = await GlEntry.create(
@@ -704,17 +754,14 @@ export const apDebitNoteService = {
           memo: `AP Debit Note ${dn.debit_note_no}`,
           status: "posted",
           branch_id: dn.branch_id,
-        },
+        } as any,
         { transaction: t },
       );
 
-      const [apAcc, invAcc] = await Promise.all([
-        GlAccount.findOne({ where: { code: "331" }, transaction: t }),
-        GlAccount.findOne({ where: { code: "156" }, transaction: t }),
-      ]);
-      if (!apAcc || !invAcc) {
-        throw new Error("Missing GL Accounts 331 / 156");
-      }
+      // Lấy tài khoản theo company_id
+      const accounts = await requireGlAccounts(companyId, ["331", "156"], t);
+      const apAcc = accounts["331"]!;
+      const invAcc = accounts["156"]!;
 
       const amount = Number(dn.total_after_tax);
       await GlEntryLine.bulkCreate(
@@ -742,23 +789,8 @@ export const apDebitNoteService = {
         { transaction: t },
       );
 
-      // Reduce paid_amount on original invoice if linked
-      if (dn.original_ap_invoice_id) {
-        await sequelize.query(
-          `UPDATE ap_invoices
-           SET paid_amount = GREATEST(0, paid_amount + ?),
-               status = CASE
-                 WHEN GREATEST(0, paid_amount + ?) >= total_after_tax THEN 'paid'
-                 WHEN GREATEST(0, paid_amount + ?) > 0 THEN 'partially_paid'
-                 ELSE 'posted'
-               END
-           WHERE id = ?`,
-          {
-            replacements: [amount, amount, amount, dn.original_ap_invoice_id],
-            transaction: t,
-          },
-        );
-      }
+      // AP debit notes reduce liability through GL and are included in AP open-amount queries.
+      // Do not mutate paid_amount here; it is sourced from payment allocations only.
     });
 
     // Trigger 7 — thông báo kế toán + buyer sau khi post debit note
@@ -837,7 +869,7 @@ export const vendorRefundService = {
 
     const refund = await VendorRefund.create({
       branch_id: user.branch_id,
-      refund_no: generateNo("VR"),
+      refund_no: await generateNo("VR", VendorRefund, "refund_no"),
       debit_note_id: payload.debit_note_id ?? null,
       supplier_id: payload.supplier_id,
       refund_date: payload.refund_date,
@@ -857,19 +889,18 @@ export const vendorRefundService = {
   },
 
   async post(id: number, user: any) {
+
     const refund = await VendorRefund.findOne({
       where: { id, branch_id: user.branch_id },
     });
     if (!refund) throw { status: 404, message: "Vendor Refund not found" };
+    const companyId = await getCompanyIdFromBranch(refund.branch_id);
     if (refund.status !== "draft")
       throw { status: 400, message: "Only draft refund can be posted" };
 
     await sequelize.transaction(async (t) => {
       const methodCode = refund.method === "cash" ? "CASH" : "BANK";
-      const journal = await GlJournal.findOne({
-        where: { code: methodCode },
-        transaction: t,
-      });
+      const journal = await GlJournal.findOne({ where: { code: methodCode }, transaction: t });
       if (!journal) throw new Error(`${methodCode} journal not found`);
 
       const entry = await GlEntry.create(
@@ -882,39 +913,21 @@ export const vendorRefundService = {
           memo: `Vendor Refund ${refund.refund_no}`,
           status: "posted",
           branch_id: refund.branch_id,
-        },
+        } as any,
         { transaction: t },
       );
 
-      const amount = Number(refund.amount);
+      const amount = Number(refund.amount) * Number(refund.exchange_rate || 1);
       const cashAccCode = refund.method === "cash" ? "111" : "112";
-      const apAccCode = "331";
 
-      const [cashAcc, apAcc] = await Promise.all([
-        GlAccount.findOne({ where: { code: cashAccCode }, transaction: t }),
-        GlAccount.findOne({ where: { code: apAccCode }, transaction: t }),
-      ]);
-
-      if (!cashAcc || !apAcc) {
-        throw new Error(`Missing GL Accounts ${cashAccCode} / ${apAccCode}`);
-      }
+      const accounts = await requireGlAccounts(companyId, [cashAccCode, "331"], t);
+      const cashAcc = accounts[cashAccCode]!;
+      const apAcc = accounts["331"]!;
 
       await GlEntryLine.bulkCreate(
         [
-          {
-            entry_id: entry.id,
-            account_id: cashAcc.id,
-            partner_id: refund.supplier_id,
-            debit: amount,
-            credit: 0,
-          },
-          {
-            entry_id: entry.id,
-            account_id: apAcc.id,
-            partner_id: refund.supplier_id,
-            debit: 0,
-            credit: amount,
-          }, // 331 AP
+          { entry_id: entry.id, account_id: cashAcc.id, partner_id: refund.supplier_id, debit: amount, credit: 0 },
+          { entry_id: entry.id, account_id: apAcc.id, partner_id: refund.supplier_id, debit: 0, credit: amount },
         ],
         { transaction: t },
       );

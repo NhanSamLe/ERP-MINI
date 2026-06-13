@@ -390,7 +390,11 @@ export default function PipelinePage() {
                 }
                 config={pipelineFormConfig}
                 mode={editPipeline ? "edit" : "create"}
-                onSubmit={editPipeline ? handleUpdatePipeline : handleCreatePipeline}
+                onSubmit={(values) =>
+                  editPipeline
+                    ? handleUpdatePipeline(values as UpdatePipelineDto)
+                    : handleCreatePipeline(values as CreatePipelineDto)
+                }
                 onCancel={() => { setShowPipelineModal(false); setEditPipeline(null); }}
               />
             </div>

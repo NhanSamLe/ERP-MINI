@@ -5,21 +5,31 @@ export interface UomAttrs {
   id: number;
   code: string;
   name: string;
+  company_id: number | null; // NULL = system-wide, số = riêng công ty
 }
 
-type UomCreation = Optional<UomAttrs, "id">;
+type UomCreation = Optional<UomAttrs, "id" | "company_id">;
 
 export class Uom extends Model<UomAttrs, UomCreation> implements UomAttrs {
   public id!: number;
   public code!: string;
   public name!: string;
+  public company_id!: number | null;
 }
 
 Uom.init(
   {
     id: { type: DataTypes.BIGINT, autoIncrement: true, primaryKey: true },
-    code: { type: DataTypes.STRING(20), allowNull: false, unique: true },
+    code: { type: DataTypes.STRING(20), allowNull: false },
     name: { type: DataTypes.STRING(50), allowNull: false },
+    company_id: { type: DataTypes.BIGINT, allowNull: true, defaultValue: null },
   },
-  { sequelize, tableName: "uoms", timestamps: true, createdAt: "created_at", updatedAt: "updated_at" }
+  {
+    sequelize,
+    tableName: "uoms",
+    timestamps: true,
+    createdAt: "created_at",
+    updatedAt: "updated_at",
+    indexes: [{ unique: true, fields: ["code", "company_id"] }],
+  }
 );
