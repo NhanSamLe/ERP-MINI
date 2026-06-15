@@ -2,7 +2,7 @@
 
 import { PurchaseOrder } from "../purchaseOrder.types";
 
-export type ApInvoiceStatus = "draft" | "posted" | "paid" | "cancelled";
+export type ApInvoiceStatus = "draft" | "posted" | "paid" | "cancelled" | "partially_paid";
 
 export type ApInvoiceApprovalStatus =
   | "draft"

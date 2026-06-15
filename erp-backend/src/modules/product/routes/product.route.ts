@@ -18,6 +18,7 @@ router.get(
     Role.PURCHASEMANAGER,
     Role.WHSTAFF,
     Role.WHMANAGER,
+    Role.ACCOUNT,
   ]),
   productController.getAllProductOnActive,
 );
@@ -32,6 +33,7 @@ router.get(
     Role.WHSTAFF,
     Role.PURCHASEMANAGER,
     Role.WHMANAGER,
+    Role.ACCOUNT,
   ]),
   productController.getAllProductAllStatus,
 );
@@ -45,6 +47,7 @@ router.get(
     Role.WHSTAFF,
     Role.SALES,
     Role.SALESMANAGER,
+    Role.ACCOUNT,
   ]),
   productController.searchProducts,
 );

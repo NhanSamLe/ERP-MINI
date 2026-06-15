@@ -162,9 +162,11 @@ export class ThreeWayMatcherService {
 
     for (const invLine of invoiceLines) {
       const messages: string[] = [];
-      const productId = invLine.product_id;
+      const poLine = invLine.po_line_id
+        ? poLines.find((l) => l.id === Number(invLine.po_line_id))
+        : (invLine.product_id ? poLineByProduct[invLine.product_id] : undefined);
+      const productId = invLine.product_id ?? poLine?.product_id;
       const invoiceQty = Number(invLine.quantity ?? 0);
-      const poLine = productId ? poLineByProduct[productId] : undefined;
 
       const received = productId ? (totalReceived[productId] ?? 0) : 0;
       const prevInvoiced = productId ? (previouslyInvoiced[productId] ?? 0) : 0;

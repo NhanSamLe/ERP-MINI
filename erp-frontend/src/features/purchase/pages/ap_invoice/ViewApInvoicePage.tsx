@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
@@ -7,6 +7,7 @@ import {
   rejectApInvoiceThunk,
   submitApInvoiceThunk,
   getApInvoiceAuditLogsThunk,
+  overrideApInvoiceMismatchThunk,
 } from "../../store/apInvoice/apInvoice.thunks";
 import {
   Loader2,
@@ -62,6 +63,8 @@ export default function ViewApInvoicePage() {
   const [openApproveModal, setOpenApproveModal] = useState(false);
   const [openRejectModal, setOpenRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const [openOverrideModal, setOpenOverrideModal] = useState(false);
+  const [overrideReason, setOverrideReason] = useState("");
 
   // ✅ Audit log state
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
@@ -82,6 +85,37 @@ export default function ViewApInvoicePage() {
     }
   };
 
+  const invoice = selected;
+  const po = invoice?.order;
+
+  const invoiceTotalsBreakdown = useMemo(() => {
+    let totalGross = 0;
+    let totalLineDiscount = 0;
+    let totalHeaderDiscount = 0;
+
+    if (invoice && invoice.lines) {
+      for (const line of invoice.lines) {
+        const matchingPoLine = po?.lines?.find((pol) => pol.id === line.po_line_id);
+        const gross = Number(line.quantity ?? 0) * Number(line.unit_price ?? 0);
+        const discountPercent = Number(matchingPoLine?.discount_percent ?? 0);
+        const lineDiscount = gross * (discountPercent / 100);
+        const lineTotalBeforeHeader = gross - lineDiscount;
+        const netLineTotal = Number(line.line_total ?? 0);
+        const headerDiscount = Math.max(0, lineTotalBeforeHeader - netLineTotal);
+
+        totalGross += gross;
+        totalLineDiscount += lineDiscount;
+        totalHeaderDiscount += headerDiscount;
+      }
+    }
+
+    return {
+      totalGross,
+      totalLineDiscount,
+      totalHeaderDiscount,
+    };
+  }, [invoice?.lines, po]);
+
   useEffect(() => {
     if (id) dispatch(getApInvoiceByIdThunk(Number(id)));
   }, [id, dispatch]);
@@ -90,6 +124,7 @@ export default function ViewApInvoicePage() {
     refreshAuditLogs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-32">
@@ -99,7 +134,7 @@ export default function ViewApInvoicePage() {
     );
   }
 
-  if (!selected) {
+  if (!invoice) {
     return (
       <div className="flex flex-col items-center justify-center py-32">
         <div className="w-20 h-20 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
@@ -115,8 +150,6 @@ export default function ViewApInvoicePage() {
     );
   }
 
-  const invoice = selected;
-  const po = invoice.order;
   const canSubmitForApproval =
     user?.role.code === Roles.ACCOUNT &&
     user?.branch.id === invoice.branch_id &&
@@ -135,6 +168,7 @@ export default function ViewApInvoicePage() {
       posted: "bg-blue-50 text-blue-700 border-blue-200",
       paid: "bg-emerald-50 text-emerald-700 border-emerald-200",
       cancelled: "bg-red-50 text-red-700 border-red-200",
+      partially_paid: "bg-orange-50 text-orange-700 border-orange-200",
     };
 
     return colors[status];
@@ -171,6 +205,7 @@ export default function ViewApInvoicePage() {
       await dispatch(submitApInvoiceThunk(invoice.id)).unwrap();
       toast.success("Gửi duyệt hóa đơn thành công");
       setOpenSubmitModal(false);
+      refreshAuditLogs();
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
@@ -186,6 +221,7 @@ export default function ViewApInvoicePage() {
       await dispatch(approveApInvoiceThunk(invoice.id)).unwrap();
       toast.success("Phê duyệt hóa đơn thành công");
       setOpenApproveModal(false);
+      refreshAuditLogs();
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
@@ -212,6 +248,35 @@ export default function ViewApInvoicePage() {
       toast.success("Từ chối hóa đơn thành công");
       setOpenRejectModal(false);
       setRejectReason("");
+      refreshAuditLogs();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleOverrideMismatch = async () => {
+    if (!invoice?.id) return;
+
+    if (!overrideReason.trim()) {
+      toast.warning("Vui lòng nhập lý do ghi đè");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      await dispatch(
+        overrideApInvoiceMismatchThunk({
+          id: invoice.id,
+          reason: overrideReason.trim(),
+        }),
+      ).unwrap();
+
+      toast.success("Ghi đè sai lệch thành công");
+      setOpenOverrideModal(false);
+      setOverrideReason("");
+      refreshAuditLogs();
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
@@ -222,24 +287,54 @@ export default function ViewApInvoicePage() {
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-8 bg-gray-50 -m-6 p-6 min-h-screen">
       {/* ================= HEADER ================= */}
-      <div className="bg-gradient-to-r from-white via-orange-50/30 to-white rounded-2xl border-2 border-orange-100 p-6 shadow-lg">
-        <div className="flex items-start justify-between">
-          <div className="flex items-start gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/30">
-              <FileText className="w-8 h-8 text-white" />
+      <div className="bg-gradient-to-r from-white via-orange-50/10 to-white rounded-2xl border-2 border-orange-100 p-6 shadow-md">
+        {/* Back Link */}
+        <button
+          onClick={() => navigate("/purchase/invoices")}
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-orange-600 font-semibold transition mb-4"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Quay lại danh sách
+        </button>
+
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/20 shrink-0">
+              <FileText className="w-7 h-7 text-white" />
             </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Hóa đơn {invoice.invoice_no}
-              </h1>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Calendar className="w-4 h-4" />
+            <div className="space-y-1">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-2xl font-bold text-gray-900">
+                  Hóa đơn {invoice.invoice_no}
+                </h1>
+                <div
+                  className={`px-2.5 py-0.5 rounded-full border font-semibold text-xs flex items-center gap-1.5 ${getInvoiceStatusBadge(
+                    invoice.status,
+                  )}`}
+                >
+                  <div className="w-1.5 h-1.5 rounded-full bg-current"></div>
+                  <StatusBadge status={invoice.status} />
+                </div>
+                <div
+                  className={`px-2.5 py-0.5 rounded-full border font-semibold text-xs flex items-center gap-1.5 ${getApprovalStatusBadge(
+                    invoice.approval_status,
+                  )}`}
+                >
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  <StatusBadge
+                    status={invoice.approval_status}
+                    variant="approval"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <Calendar className="w-3.5 h-3.5" />
                 <span>
                   Ngày tạo:{" "}
                   {new Date(invoice.invoice_date).toLocaleDateString("vi-VN")}
                 </span>
-                <span className="text-gray-400">•</span>
-                <Clock className="w-4 h-4" />
+                <span className="text-gray-300">•</span>
+                <Clock className="w-3.5 h-3.5" />
                 <span>
                   Hạn thanh toán:{" "}
                   {new Date(invoice.due_date).toLocaleDateString("vi-VN")}
@@ -249,10 +344,10 @@ export default function ViewApInvoicePage() {
           </div>
 
           {/* RIGHT ACTIONS */}
-          <div className="flex gap-3 items-center">
+          <div className="flex gap-2.5 items-center justify-end flex-wrap">
             {canSubmitForApproval && (
               <button
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500 text-white font-semibold text-sm shadow-md hover:bg-orange-600 transition"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500 text-white font-semibold text-sm shadow-sm hover:bg-orange-600 transition"
                 onClick={() => setOpenSubmitModal(true)}
               >
                 <Send className="w-4 h-4" />
@@ -262,11 +357,28 @@ export default function ViewApInvoicePage() {
             {/* CHACC ACTIONS */}
             {canApproveOrReject && (
               <>
+                {/* OVERRIDE MISMATCH */}
+                {invoice.matching_status === "mismatch" && (
+                  <button
+                    disabled={submitting}
+                    onClick={() => setOpenOverrideModal(true)}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-500 text-white font-semibold text-sm shadow-sm hover:bg-purple-600 transition disabled:opacity-60"
+                  >
+                    <AlertTriangle className="w-4 h-4" />
+                    Ghi đè mismatch
+                  </button>
+                )}
+
                 {/* APPROVE */}
                 <button
-                  disabled={submitting}
+                  disabled={submitting || invoice.matching_status === "mismatch"}
                   onClick={() => setOpenApproveModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 text-white font-semibold text-sm shadow-md hover:bg-emerald-600 transition disabled:opacity-60"
+                  title={
+                    invoice.matching_status === "mismatch"
+                      ? "Cần ghi đè mismatch trước khi duyệt"
+                      : undefined
+                  }
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 text-white font-semibold text-sm shadow-sm hover:bg-emerald-600 transition disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <CheckCircle className="w-4 h-4" />
                   Duyệt
@@ -276,43 +388,12 @@ export default function ViewApInvoicePage() {
                 <button
                   disabled={submitting}
                   onClick={() => setOpenRejectModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500 text-white font-semibold text-sm shadow-md hover:bg-red-600 transition disabled:opacity-60"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-500 text-white font-semibold text-sm shadow-sm hover:bg-red-600 transition disabled:opacity-60"
                 >
                   Từ chối
                 </button>
               </>
             )}
-
-            {/* BACK BUTTON */}
-            <button
-              onClick={() => navigate("/purchase/invoices")}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500 text-white font-semibold text-sm shadow-md hover:bg-orange-600 transition"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Quay lại danh sách
-            </button>
-
-            {/* STATUS */}
-            <div
-              className={`px-4 py-2 rounded-xl border-2 font-semibold text-sm flex items-center gap-2   ${getInvoiceStatusBadge(
-                invoice.status,
-              )}`}
-            >
-              <div className="w-2 h-2 rounded-full bg-current"></div>
-              <StatusBadge status={invoice.status} />
-            </div>
-
-            <div
-              className={`px-4 py-2 rounded-xl border-2 font-semibold text-sm flex items-center gap-2  ${getApprovalStatusBadge(
-                invoice.approval_status,
-              )}`}
-            >
-              <CheckCircle className="w-4 h-4" />
-              <StatusBadge
-                status={invoice.approval_status}
-                variant="approval"
-              />
-            </div>
           </div>
         </div>
       </div>
@@ -557,6 +638,9 @@ export default function ViewApInvoicePage() {
                   <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">
                     Đơn giá
                   </th>
+                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                    Chiết khấu
+                  </th>
                   <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">
                     Thuế
                   </th>
@@ -570,104 +654,135 @@ export default function ViewApInvoicePage() {
               </thead>
 
               <tbody className="divide-y divide-gray-100">
-                {invoice.lines?.map((line, idx) => (
-                  <tr
-                    key={line.id}
-                    className="hover:bg-orange-50/50 transition-colors"
-                  >
-                    {/* PRODUCT */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
-                          {line.product?.image_url ? (
-                            <img
-                              src={line.product.image_url}
-                              alt={line.product.name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <Package className="w-6 h-6 text-gray-400" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-semibold text-gray-900">
-                            {line.product?.name ?? "Unknown product"}
-                          </p>
-                          {line.description && (
-                            <p className="text-xs text-gray-400 mt-0.5 max-w-xs truncate">
-                              {line.description}
+                {invoice.lines?.map((line, idx) => {
+                  const matchingPoLine = po?.lines?.find((pol) => pol.id === line.po_line_id);
+                  const grossTotal = Number(line.quantity ?? 0) * Number(line.unit_price ?? 0);
+                  const discountPercent = Number(matchingPoLine?.discount_percent ?? 0);
+                  const lineDiscount = grossTotal * (discountPercent / 100);
+                  const lineTotalBeforeHeader = grossTotal - lineDiscount;
+                  const netLineTotal = Number(line.line_total ?? 0);
+                  const headerDiscountAllocated = Math.max(0, lineTotalBeforeHeader - netLineTotal);
+
+                  return (
+                    <tr
+                      key={line.id}
+                      className="hover:bg-orange-50/50 transition-colors"
+                    >
+                      {/* PRODUCT */}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
+                            {line.product?.image_url ? (
+                              <img
+                                src={line.product.image_url}
+                                alt={line.product.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <Package className="w-6 h-6 text-gray-400" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900">
+                              {line.product?.name ?? "Unknown product"}
                             </p>
-                          )}
-                          <p className="text-xs text-gray-400">#{idx + 1}</p>
+                            {line.description && (
+                              <p className="text-xs text-gray-400 mt-0.5 max-w-xs truncate">
+                                {line.description}
+                              </p>
+                            )}
+                            <p className="text-xs text-gray-400">#{idx + 1}</p>
+                          </div>
                         </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* QUANTITY + UOM */}
-                    <td className="px-6 py-4 text-right">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 text-sm font-semibold text-gray-700">
-                        {line.quantity}{" "}
-                        {(line as any).uom?.name ||
-                          (line as any).product?.uom?.name ||
-                          ""}
-                      </span>
-                    </td>
-
-                    {/* UNIT PRICE */}
-                    <td className="px-6 py-4 text-right">
-                      <span className="text-sm font-medium text-gray-700">
-                        {Number(line.unit_price).toLocaleString("vi-VN")} VND
-                      </span>
-                    </td>
-
-                    {/* TAX */}
-                    <td className="px-6 py-4 text-right">
-                      <span className="text-sm text-blue-600 font-medium">
-                        {line.line_tax
-                          ? `${Number(line.line_tax).toLocaleString("vi-VN")} VND`
-                          : "—"}
-                      </span>
-                    </td>
-
-                    {/* LINE TOTAL AFTER TAX */}
-                    <td className="px-6 py-4 text-right">
-                      <span className="text-base font-bold text-gray-900">
-                        {Number(
-                          line.line_total_after_tax ?? line.line_total,
-                        ).toLocaleString("vi-VN")}{" "}
-                        VND
-                      </span>
-                    </td>
-
-                    {/* MATCHING RESULT */}
-                    <td className="px-6 py-4 text-center">
-                      {line.matching_result ? (
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
-                            line.matching_result === "matched"
-                              ? "bg-green-100 text-green-700"
-                              : line.matching_result === "price_mismatch"
-                                ? "bg-yellow-100 text-yellow-700"
-                                : "bg-red-100 text-red-700"
-                          }`}
-                        >
-                          {line.matching_result === "matched" ? (
-                            <CheckCircle2 className="w-3 h-3" />
-                          ) : (
-                            <AlertTriangle className="w-3 h-3" />
-                          )}
-                          {line.matching_result === "matched"
-                            ? "Khớp"
-                            : line.matching_result === "price_mismatch"
-                              ? "Lệch giá"
-                              : "Lệch SL"}
+                      {/* QUANTITY + UOM */}
+                      <td className="px-6 py-4 text-right">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 text-sm font-semibold text-gray-700">
+                          {line.quantity}{" "}
+                          {(line as any).uom?.name ||
+                            (line as any).product?.uom?.name ||
+                            ""}
                         </span>
-                      ) : (
-                        <span className="text-xs text-gray-400">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+
+                      {/* UNIT PRICE */}
+                      <td className="px-6 py-4 text-right">
+                        <span className="text-sm font-medium text-gray-700">
+                          {Number(line.unit_price).toLocaleString("vi-VN")} VND
+                        </span>
+                      </td>
+
+                      {/* DISCOUNT */}
+                      <td className="px-6 py-4 text-left">
+                        <div className="space-y-1 text-xs">
+                          {discountPercent > 0 && (
+                            <div className="flex items-center gap-1.5 text-red-600 font-medium">
+                              <span className="px-1.5 py-0.5 rounded bg-red-50 text-[10px] font-bold text-red-700">-{discountPercent}%</span>
+                              <span>{Number(lineDiscount).toLocaleString("vi-VN")} VND</span>
+                            </div>
+                          )}
+                          {headerDiscountAllocated > 0 && (
+                            <div className="text-orange-600">
+                              <span className="text-[10px] uppercase font-bold text-orange-500 block">PB CK tổng:</span>
+                              <span>-{Number(headerDiscountAllocated).toLocaleString("vi-VN")} VND</span>
+                            </div>
+                          )}
+                          {discountPercent <= 0 && headerDiscountAllocated <= 0 && (
+                            <span className="text-gray-300">—</span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* TAX */}
+                      <td className="px-6 py-4 text-right">
+                        <span className="text-sm text-blue-600 font-medium">
+                          {line.line_tax
+                            ? `${Number(line.line_tax).toLocaleString("vi-VN")} VND`
+                            : "—"}
+                        </span>
+                      </td>
+
+                      {/* LINE TOTAL AFTER TAX */}
+                      <td className="px-6 py-4 text-right">
+                        <span className="text-base font-bold text-gray-900">
+                          {Number(
+                            line.line_total_after_tax ?? line.line_total,
+                          ).toLocaleString("vi-VN")}{" "}
+                          VND
+                        </span>
+                      </td>
+
+                      {/* MATCHING RESULT */}
+                      <td className="px-6 py-4 text-center">
+                        {line.matching_result ? (
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                              line.matching_result === "matched"
+                                ? "bg-green-100 text-green-700"
+                                : line.matching_result === "price_mismatch"
+                                  ? "bg-yellow-100 text-yellow-700"
+                                  : "bg-red-100 text-red-700"
+                            }`}
+                          >
+                            {line.matching_result === "matched" ? (
+                              <CheckCircle2 className="w-3 h-3" />
+                            ) : (
+                              <AlertTriangle className="w-3 h-3" />
+                            )}
+                            {line.matching_result === "matched"
+                              ? "Khớp"
+                              : line.matching_result === "price_mismatch"
+                                ? "Lệch giá"
+                                : "Lệch SL"}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -685,14 +800,26 @@ export default function ViewApInvoicePage() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <AmountCard
-            label="Cộng tiền hàng"
-            value={invoice.total_before_tax}
+            label="Cộng tiền hàng (gốc)"
+            value={invoiceTotalsBreakdown.totalGross}
             color="slate"
           />
           <AmountCard
-            label="Thuế suất (10%)"
+            label="Tổng chiết khấu"
+            value={invoiceTotalsBreakdown.totalLineDiscount + invoiceTotalsBreakdown.totalHeaderDiscount}
+            color="red"
+          />
+          <AmountCard
+            label="Tiền trước thuế"
+            value={invoice.total_before_tax}
+            color="slate"
+          />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <AmountCard
+            label="Thuế GTGT"
             value={invoice.total_tax}
             color="blue"
           />
@@ -1032,6 +1159,64 @@ export default function ViewApInvoicePage() {
           </div>
         </div>
       )}
+
+      {openOverrideModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 animate-in fade-in zoom-in">
+            {/* HEADER */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-purple-600" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">
+                Ghi đè sai lệch (Mismatch)?
+              </h3>
+            </div>
+
+            {/* CONTENT */}
+            <p className="text-sm text-gray-600 mb-3">
+              Vui lòng cung cấp lý do bạn muốn ghi đè sai lệch đối chiếu của hóa đơn này.
+            </p>
+
+            {/* REASON INPUT */}
+            <textarea
+              value={overrideReason}
+              onChange={(e) => setOverrideReason(e.target.value)}
+              rows={4}
+              placeholder="Nhập lý do ghi đè..."
+              className="w-full rounded-xl border border-gray-300 p-3 text-sm
+        focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400
+        resize-none"
+            />
+
+            {/* ACTIONS */}
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setOpenOverrideModal(false);
+                  setOverrideReason("");
+                }}
+                className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition"
+              >
+                Hủy
+              </button>
+
+              <button
+                disabled={submitting}
+                onClick={handleOverrideMismatch}
+                className={`px-4 py-2 rounded-xl font-semibold shadow-md transition
+            ${
+              submitting
+                ? "bg-purple-300 cursor-not-allowed"
+                : "bg-purple-500 hover:bg-purple-600 text-white"
+            }`}
+              >
+                {submitting ? "Đang ghi đè..." : "Xác nhận ghi đè"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1077,7 +1262,7 @@ function AmountCard({
   highlight,
 }: {
   label: string;
-  value: string;
+  value: string | number;
   color: string;
   highlight?: boolean;
 }) {
@@ -1085,12 +1270,14 @@ function AmountCard({
     slate: "bg-slate-50 border-slate-200",
     blue: "bg-blue-50 border-blue-200",
     orange: "bg-orange-50 border-orange-200",
+    red: "bg-red-50 border-red-200",
   };
 
   const textColors = {
     slate: "text-slate-700",
     blue: "text-blue-700",
     orange: "text-orange-700",
+    red: "text-red-700",
   };
 
   return (

@@ -128,6 +128,19 @@ export const rejectApInvoiceThunk = createAsyncThunk<
   }
 });
 
+/* ================= OVERRIDE MISMATCH ================= */
+export const overrideApInvoiceMismatchThunk = createAsyncThunk<
+  ApInvoice,
+  { id: number; reason: string },
+  { rejectValue: string }
+>("apInvoice/overrideMismatch", async ({ id, reason }, { rejectWithValue }) => {
+  try {
+    return await apInvoiceApi.overrideMismatch(id, reason);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
 /* ================= DELETE ================= */
 export const deleteApInvoiceThunk = createAsyncThunk<
   number,

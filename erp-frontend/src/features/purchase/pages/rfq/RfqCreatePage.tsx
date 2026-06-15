@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import { Plus, Search, Trash2, FileText, Package } from "lucide-react";
 import { AppDispatch, RootState } from "../../../../store/store";
 import { createRfqThunk } from "../../store/rfq";
+import axiosClient from "../../../../api/axiosClient";
 import { loadPartners } from "@/features/partner/store/partner.thunks";
 import { searchProductsThunk } from "../../../products/store/product.thunks";
 import { fetchTaxRatesByIdThunk } from "../../../master-data/store/master-data/tax/tax.thunks";
@@ -28,6 +29,9 @@ interface LineItem {
   uom_id: number | null;
   quantity: number;
   unit_price: number;
+  discount_percent: number;
+  discount_amount: number;
+  discount_type?: "percentage" | "fixed";
   tax_rate_id?: number | null;
   tax_rate: number;
   line_tax: number;
@@ -40,11 +44,29 @@ interface LineItem {
 function calcLine(
   qty: number,
   price: number,
+  discountVal: number,
+  discountType: "percentage" | "fixed",
   taxRate: number,
-): Pick<LineItem, "line_tax" | "line_total" | "line_total_after_tax"> {
-  const line_total = qty * price;
+): Pick<LineItem, "discount_amount" | "discount_percent" | "line_total" | "line_tax" | "line_total_after_tax"> {
+  const gross = qty * price;
+  let discount_amount = 0;
+  let discount_percent = 0;
+  if (discountType === "fixed") {
+    discount_amount = discountVal;
+    discount_percent = gross > 0 ? (discount_amount / gross) * 100 : 0;
+  } else {
+    discount_percent = discountVal;
+    discount_amount = gross * (discount_percent / 100);
+  }
+  const line_total = gross - discount_amount;
   const line_tax = (line_total * taxRate) / 100;
-  return { line_total, line_tax, line_total_after_tax: line_total + line_tax };
+  return {
+    discount_amount,
+    discount_percent,
+    line_total,
+    line_tax,
+    line_total_after_tax: line_total + line_tax,
+  };
 }
 
 export default function RfqCreatePage() {
@@ -65,6 +87,16 @@ export default function RfqCreatePage() {
   const [validUntil, setValidUntil] = useState("");
   const [internalNotes, setInternalNotes] = useState("");
   const [supplierNotes, setSupplierNotes] = useState("");
+  const [paymentTerms, setPaymentTerms] = useState<any[]>([]);
+  const [paymentTermId, setPaymentTermId] = useState("");
+  const [currencies, setCurrencies] = useState<any[]>([]);
+  const [currencyId, setCurrencyId] = useState("");
+  const [exchangeRate, setExchangeRate] = useState("1.0");
+
+  // Header discount
+  const [headerDiscountType, setHeaderDiscountType] = useState<"percentage" | "fixed">("percentage");
+  const [headerDiscountPercent, setHeaderDiscountPercent] = useState(0);
+  const [headerDiscountAmount, setHeaderDiscountAmount] = useState(0);
 
   // Line items
   const [lines, setLines] = useState<LineItem[]>([]);
@@ -82,7 +114,45 @@ export default function RfqCreatePage() {
     dispatch(loadPartners({ type: "supplier" }));
     dispatch(fetchAllUomsThunk());
     dispatch(fetchAllConversionsThunk());
+    axiosClient.get("/master-data/payment-terms")
+      .then((res) => setPaymentTerms(res.data || []))
+      .catch((err) => console.error("Error fetching payment terms:", err));
+    axiosClient.get("/master-data/currencies")
+      .then((res) => {
+        const list = res.data?.currencies || [];
+        setCurrencies(list);
+        const vnd = list.find((c: any) => c.code === "VND");
+        if (vnd) {
+          setCurrencyId(String(vnd.id));
+          setExchangeRate("1.0");
+        }
+      })
+      .catch((err) => console.error("Error fetching currencies:", err));
   }, [dispatch]);
+
+  const handleCurrencyChange = async (val: string) => {
+    setCurrencyId(val);
+    const curr = currencies.find((c) => String(c.id) === val);
+    if (!curr || curr.code === "VND") {
+      setExchangeRate("1.0");
+      return;
+    }
+    try {
+      const res = await axiosClient.get("/master-data/currencies/rates");
+      const rates = res.data?.rates || [];
+      const rateObj = rates.find((r: any) => String(r.quote_currency_id) === val);
+      if (rateObj) {
+        const valueNum = Number(rateObj.rate);
+        const rateToVnd = valueNum > 0 ? (1 / valueNum).toFixed(2) : "1.0";
+        setExchangeRate(rateToVnd);
+      } else {
+        setExchangeRate("1.0");
+      }
+    } catch (e) {
+      console.error("Failed to load exchange rate", e);
+      setExchangeRate("1.0");
+    }
+  };
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -138,7 +208,7 @@ export default function RfqCreatePage() {
       conversions,
       Number(product.id),
     );
-    const calc = calcLine(1, price, taxRate);
+    const calc = calcLine(1, price, 0, "percentage", taxRate);
     setLines((prev) => [
       ...prev,
       {
@@ -149,6 +219,9 @@ export default function RfqCreatePage() {
         uom_id: purchaseUomId,
         quantity: 1,
         unit_price: price,
+        discount_percent: 0,
+        discount_amount: 0,
+        discount_type: "percentage",
         tax_rate_id: product.tax_rate_id ?? null,
         tax_rate: taxRate,
         ...calc,
@@ -169,9 +242,13 @@ export default function RfqCreatePage() {
       prev.map((l) => {
         if (l.tempId !== tempId) return l;
         const updated = { ...l, [field]: value };
+        const discountType = updated.discount_type || "percentage";
+        const discountVal = discountType === "fixed" ? Number(updated.discount_amount || 0) : Number(updated.discount_percent || 0);
         const calc = calcLine(
           Number(updated.quantity),
           Number(updated.unit_price),
+          discountVal,
+          discountType,
           updated.tax_rate,
         );
         return { ...updated, ...calc };
@@ -182,9 +259,30 @@ export default function RfqCreatePage() {
   const removeLine = (tempId: number) =>
     setLines((prev) => prev.filter((l) => l.tempId !== tempId));
 
-  // Totals
-  const totalBeforeTax = lines.reduce((s, l) => s + l.line_total, 0);
-  const totalTax = lines.reduce((s, l) => s + l.line_tax, 0);
+  // Totals calculations with pro-rata distribution of header discount
+  const sumLineTotalBeforeHeaderDiscount = lines.reduce((s, l) => s + l.line_total, 0);
+  const evaluatedHeaderDiscountAmount = headerDiscountType === "fixed"
+    ? headerDiscountAmount
+    : sumLineTotalBeforeHeaderDiscount * (headerDiscountPercent / 100);
+
+  const processedLines = lines.map((l) => {
+    const weight = sumLineTotalBeforeHeaderDiscount > 0 ? (l.line_total / sumLineTotalBeforeHeaderDiscount) : 0;
+    const distributedDiscount = evaluatedHeaderDiscountAmount * weight;
+    const netLineTotal = l.line_total - distributedDiscount;
+    const netLineTax = l.line_total > 0 ? l.line_tax * (netLineTotal / l.line_total) : 0;
+    const netLineTotalAfterTax = netLineTotal + netLineTax;
+    return {
+      ...l,
+      net_line_total: netLineTotal,
+      net_line_tax: netLineTax,
+      net_line_total_after_tax: netLineTotalAfterTax,
+    };
+  });
+
+  const totalGross = lines.reduce((s, l) => s + l.quantity * l.unit_price, 0);
+  const totalDiscount = lines.reduce((s, l) => s + l.discount_amount, 0);
+  const totalBeforeTax = sumLineTotalBeforeHeaderDiscount - evaluatedHeaderDiscountAmount;
+  const totalTax = processedLines.reduce((s, l) => s + l.net_line_tax, 0);
   const totalAfterTax = totalBeforeTax + totalTax;
 
   const handleSubmit = async () => {
@@ -212,20 +310,29 @@ export default function RfqCreatePage() {
       const rfq = await dispatch(
         createRfqThunk({
           supplier_id: supplierId || null,
+          currency_id: currencyId ? Number(currencyId) : null,
+          exchange_rate: Number(exchangeRate || 1.0),
+          payment_term_id: paymentTermId ? Number(paymentTermId) : null,
           rfq_date: rfqDate,
           valid_until: validUntil || null,
           internal_notes: internalNotes || null,
           supplier_notes: supplierNotes || null,
-          lines: lines.map((l) => ({
+          discount_type: headerDiscountType,
+          discount_percent: headerDiscountPercent,
+          discount_amount: headerDiscountAmount,
+          lines: processedLines.map((l) => ({
             product_id: l.product_id,
             description: l.description || null,
             quantity: l.quantity,
             uom_id: l.uom_id ?? null,
             unit_price: l.unit_price,
+            discount_percent: l.discount_percent,
+            discount_amount: l.discount_amount,
+            discount_type: l.discount_type || "percentage",
             tax_rate_id: l.tax_rate_id ?? null,
-            line_total: l.line_total,
-            line_tax: l.line_tax,
-            line_total_after_tax: l.line_total_after_tax,
+            line_total: l.net_line_total,
+            line_tax: l.net_line_tax,
+            line_total_after_tax: l.net_line_total_after_tax,
             lead_time_days: l.lead_time_days ?? null,
           })),
         } as any),
@@ -318,6 +425,102 @@ export default function RfqCreatePage() {
             </label>
             <div className="h-9 px-3 flex items-center text-sm bg-gray-50 border border-gray-200 rounded-md text-gray-600">
               {user?.branch?.name ?? "—"}
+            </div>
+          </div>
+
+          {/* Payment Term */}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Điều khoản thanh toán
+            </label>
+            <select
+              value={paymentTermId}
+              onChange={(e) => setPaymentTermId(e.target.value)}
+              className="w-full h-9 px-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+            >
+              <option value="">— Chọn điều khoản —</option>
+              {paymentTerms.map((t) => (
+                <option key={t.id} value={String(t.id)}>
+                  {`${t.name} (${t.days} ngày)`}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Currency */}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Tiền tệ
+            </label>
+            <select
+              value={currencyId}
+              onChange={(e) => handleCurrencyChange(e.target.value)}
+              className="w-full h-9 px-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+            >
+              <option value="">— Chọn tiền tệ —</option>
+              {currencies.map((c) => (
+                <option key={c.id} value={String(c.id)}>
+                  {`${c.code} (${c.name})`}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Exchange Rate */}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Tỷ giá (VND/Ngoại tệ)
+            </label>
+            <input
+              type="number"
+              value={exchangeRate}
+              onChange={(e) => setExchangeRate(e.target.value)}
+              disabled={!currencyId || currencies.find(c => String(c.id) === currencyId)?.code === "VND"}
+              className="w-full h-9 px-3 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+            />
+          </div>
+
+          {/* Header Discount */}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Chiết khấu tổng đơn
+            </label>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="number"
+                min={0}
+                value={
+                  headerDiscountType === "fixed"
+                    ? (headerDiscountAmount || "")
+                    : (headerDiscountPercent || "")
+                }
+                onChange={(e) => {
+                  const val = e.target.value === "" ? 0 : Number(e.target.value);
+                  if (headerDiscountType === "fixed") {
+                    setHeaderDiscountAmount(val);
+                  } else {
+                    setHeaderDiscountPercent(val);
+                  }
+                }}
+                className="w-full h-9 px-3 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 font-mono text-right"
+                placeholder="0"
+              />
+              <select
+                value={headerDiscountType}
+                onChange={(e) => {
+                  const type = e.target.value as "percentage" | "fixed";
+                  setHeaderDiscountType(type);
+                  if (type === "fixed") {
+                    setHeaderDiscountPercent(0);
+                  } else {
+                    setHeaderDiscountAmount(0);
+                  }
+                }}
+                className="h-9 text-xs border border-gray-300 rounded-md px-2 focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+              >
+                <option value="percentage">%</option>
+                <option value="fixed">đ</option>
+              </select>
             </div>
           </div>
         </div>
@@ -430,6 +633,9 @@ export default function RfqCreatePage() {
               <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">
                 Đơn giá
               </th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase w-28">
+                Chiết khấu
+              </th>
               <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">
                 Thuế %
               </th>
@@ -449,14 +655,14 @@ export default function RfqCreatePage() {
             {lines.length === 0 ? (
               <tr>
                 <td
-                  colSpan={9}
+                  colSpan={10}
                   className="px-4 py-10 text-center text-sm text-gray-400"
                 >
                   Tìm kiếm và thêm sản phẩm ở trên
                 </td>
               </tr>
             ) : (
-              lines.map((line, i) => (
+              processedLines.map((line, i) => (
                 <tr key={line.tempId} className="hover:bg-gray-50/60">
                   <td className="px-4 py-2 text-gray-500">{i + 1}</td>
                   <td className="px-4 py-2 font-medium text-gray-900">
@@ -542,6 +748,39 @@ export default function RfqCreatePage() {
                       className="w-28 h-7 px-2 text-sm text-right border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-orange-500 ml-auto block"
                     />
                   </td>
+                  <td className="px-4 py-2">
+                    <div className="flex items-center justify-center gap-1">
+                      <input
+                        type="number"
+                        min={0}
+                        value={
+                          line.discount_type === "fixed"
+                            ? (line.discount_amount ?? "")
+                            : (line.discount_percent ?? "")
+                        }
+                        onChange={(e) => {
+                          const val = e.target.value === "" ? 0 : Number(e.target.value);
+                          if (line.discount_type === "fixed") {
+                            updateLine(line.tempId, "discount_amount", val);
+                          } else {
+                            updateLine(line.tempId, "discount_percent", val);
+                          }
+                        }}
+                        className="w-16 h-7 px-2 text-sm text-right border border-orange-200 rounded focus:outline-none focus:ring-1 focus:ring-orange-500 bg-orange-50/50"
+                        placeholder="0"
+                      />
+                      <select
+                        value={line.discount_type || "percentage"}
+                        onChange={(e) => {
+                          updateLine(line.tempId, "discount_type", e.target.value);
+                        }}
+                        className="h-7 text-xs border border-orange-200 rounded px-1 focus:outline-none focus:ring-1 focus:ring-orange-500 bg-white"
+                      >
+                        <option value="percentage">%</option>
+                        <option value="fixed">đ</option>
+                      </select>
+                    </div>
+                  </td>
                   <td className="px-4 py-2 text-right text-gray-600">
                     {line.tax_rate}%
                   </td>
@@ -582,9 +821,51 @@ export default function RfqCreatePage() {
           </tbody>
           {lines.length > 0 && (
             <tfoot className="border-t border-gray-200 bg-gray-50/50">
+              {totalDiscount > 0 && (
+                <tr>
+                  <td
+                    colSpan={8}
+                    className="px-4 py-2 text-right text-xs font-medium text-gray-500"
+                  >
+                    Tổng tiền hàng gốc
+                  </td>
+                  <td className="px-4 py-2 text-right text-sm text-gray-500 line-through">
+                    {totalGross.toLocaleString("vi-VN")}
+                  </td>
+                  <td colSpan={2} />
+                </tr>
+              )}
+              {totalDiscount > 0 && (
+                <tr>
+                  <td
+                    colSpan={8}
+                    className="px-4 py-2 text-right text-xs font-medium text-orange-500"
+                  >
+                    Chiết khấu dòng
+                  </td>
+                  <td className="px-4 py-2 text-right text-sm font-medium text-orange-600">
+                    -{totalDiscount.toLocaleString("vi-VN")}
+                  </td>
+                  <td colSpan={2} />
+                </tr>
+              )}
+              {evaluatedHeaderDiscountAmount > 0 && (
+                <tr>
+                  <td
+                    colSpan={8}
+                    className="px-4 py-2 text-right text-xs font-medium text-orange-500"
+                  >
+                    Chiết khấu tổng đơn
+                  </td>
+                  <td className="px-4 py-2 text-right text-sm font-medium text-orange-600">
+                    -{evaluatedHeaderDiscountAmount.toLocaleString("vi-VN")}
+                  </td>
+                  <td colSpan={2} />
+                </tr>
+              )}
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="px-4 py-2 text-right text-xs font-medium text-gray-500"
                 >
                   Tổng tiền trước thuế
@@ -596,7 +877,7 @@ export default function RfqCreatePage() {
               </tr>
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="px-4 py-2 text-right text-xs font-medium text-gray-500"
                 >
                   Thuế
@@ -608,7 +889,7 @@ export default function RfqCreatePage() {
               </tr>
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="px-4 py-2 text-right text-sm font-bold text-gray-800"
                 >
                   Tổng cộng

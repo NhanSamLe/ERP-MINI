@@ -1,7 +1,9 @@
 import { useState, ElementType } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store/store";
+import FloatingChatButton from "../../features/ai-chatbot/components/FloatingChatButton";
+import LocalFloatingChatButton from "../../features/ai-local-rag/components/LocalFloatingChatButton";
 import {
   ShoppingCart,
   ShoppingBag,
@@ -155,6 +157,11 @@ const menuItems: MenuItem[] = [
       {
         name: "Scan hóa đơn (OCR)",
         path: "/purchase/document-intelligence",
+        allowedRoles: ["ACCOUNT", "CHACC"],
+      },
+      {
+        name: "Sandbox hóa đơn",
+        path: "/purchase/document-intelligence/sandbox",
         allowedRoles: ["ACCOUNT", "CHACC"],
       },
       {
@@ -469,6 +476,7 @@ const menuItems: MenuItem[] = [
 ];
 
 export default function Sidebar() {
+  const navigate = useNavigate();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const location = useLocation();
   const { user } = useSelector((s: RootState) => s.auth);
@@ -518,9 +526,14 @@ export default function Sidebar() {
               <div key={item.name}>
                 {/* Module row */}
                 <div
-                  onClick={() =>
-                    filteredSubs?.length && toggleExpand(item.name)
-                  }
+                  onClick={() => {
+                    if (item.path) {
+                      navigate(item.path);
+                    }
+                    if (filteredSubs?.length) {
+                      toggleExpand(item.name);
+                    }
+                  }}
                   className={[
                     "flex items-center justify-between px-3 py-2 rounded-md cursor-pointer",
                     "text-sm font-medium transition-colors duration-100 select-none",
@@ -529,24 +542,12 @@ export default function Sidebar() {
                       : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
                   ].join(" ")}
                 >
-                  {item.path ? (
-                    <Link
-                      to={item.path}
-                      className="flex items-center gap-2.5 flex-1 min-w-0"
-                    >
-                      <item.icon
-                        className={`w-4 h-4 shrink-0 ${moduleActive ? "text-orange-500" : "text-gray-400"}`}
-                      />
-                      <span className="truncate">{item.name}</span>
-                    </Link>
-                  ) : (
-                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                      <item.icon
-                        className={`w-4 h-4 shrink-0 ${moduleActive ? "text-orange-500" : "text-gray-400"}`}
-                      />
-                      <span className="truncate">{item.name}</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                    <item.icon
+                      className={`w-4 h-4 shrink-0 ${moduleActive ? "text-orange-500" : "text-gray-400"}`}
+                    />
+                    <span className="truncate">{item.name}</span>
+                  </div>
 
                   {filteredSubs && filteredSubs.length > 0 && (
                     <ChevronRight
@@ -591,7 +592,11 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t border-gray-100">
+      <div className="px-4 py-3 border-t border-gray-100 flex flex-col gap-2.5 items-center bg-gray-50/50">
+        <div className="flex gap-3 justify-center items-center">
+          <LocalFloatingChatButton />
+          <FloatingChatButton />
+        </div>
         <p className="text-[10px] text-gray-400 font-medium">ERP UTE · v1.0</p>
       </div>
     </aside>

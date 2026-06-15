@@ -250,11 +250,39 @@ export const purchaseOrderService = {
     // Validate input
     await validationService.validatePO(data);
 
-    // 👉 chỉ return poId trong transaction
     const poId = await sequelize.transaction(async (t) => {
-      let totalBeforeTax = 0;
-      let totalTax = 0;
-      let totalAfterTax = 0;
+      // 1. Calculate each line's initial values (before header discount)
+      const calculatedLines = [];
+      let totalBeforeHeaderDiscount = 0;
+
+      for (const line of data.lines) {
+        if (!line.tax_rate_id) {
+          const productForTax = await productService.getById(line.product_id);
+          if ((productForTax as any)?.tax_rate_id) {
+            line.tax_rate_id = (productForTax as any).tax_rate_id;
+          }
+        }
+        const calc = await this.calculateLine(line);
+        calculatedLines.push({
+          line,
+          calc,
+        });
+        totalBeforeHeaderDiscount += calc.line_total;
+      }
+
+      // 2. Determine Header Discount Amount
+      let headerDiscountAmount = 0;
+      let headerDiscountPercent = 0;
+
+      if (data.discount_type === "fixed") {
+        headerDiscountAmount = Number(data.discount_amount || 0);
+        headerDiscountPercent = totalBeforeHeaderDiscount > 0
+          ? (headerDiscountAmount / totalBeforeHeaderDiscount) * 100
+          : 0;
+      } else {
+        headerDiscountPercent = Number(data.discount_percent || 0);
+        headerDiscountAmount = totalBeforeHeaderDiscount * (headerDiscountPercent / 100);
+      }
 
       const po = await PurchaseOrder.create(
         {
@@ -268,26 +296,34 @@ export const purchaseOrderService = {
           created_by: user.id,
           status: "draft",
           description: data.description,
+          discount_percent: headerDiscountPercent,
+          discount_amount: headerDiscountAmount,
         },
         { transaction: t },
       );
 
-      for (const line of data.lines) {
-        // Nếu không có tax_rate_id, tự lookup từ product default
-        if (!line.tax_rate_id) {
-          const productForTax = await productService.getById(line.product_id);
-          if ((productForTax as any)?.tax_rate_id) {
-            line.tax_rate_id = (productForTax as any).tax_rate_id;
-          }
-        }
+      let totalBeforeTax = 0;
+      let totalTax = 0;
+      let totalAfterTax = 0;
 
-        const calc = await this.calculateLine(line);
+      for (const item of calculatedLines) {
+        const line = item.line;
+        const calc = item.calc;
 
-        totalBeforeTax += calc.line_total;
-        totalTax += calc.line_tax;
-        totalAfterTax += calc.line_total_after_tax;
+        // Pro-rata distribution of header discount
+        const weight = totalBeforeHeaderDiscount > 0 ? (calc.line_total / totalBeforeHeaderDiscount) : 0;
+        const distributedDiscount = headerDiscountAmount * weight;
 
-        // Lấy stock UOM của product để quy đổi (uom_id = stock UOM, không phải purchase_uom_id)
+        const netLineTotal = calc.line_total - distributedDiscount;
+        const taxRate = line.tax_rate_id ? await TaxRate.findByPk(line.tax_rate_id) : null;
+        const rate = taxRate ? Number(taxRate.rate) : 0;
+        const lineTax = (netLineTotal * rate) / 100;
+        const lineTotalAfterTax = netLineTotal + lineTax;
+
+        totalBeforeTax += netLineTotal;
+        totalTax += lineTax;
+        totalAfterTax += lineTotalAfterTax;
+
         const product = await productService.getById(line.product_id);
         const productStockUomId = product?.uom_id ?? null;
         const qty_in_stock_uom = await resolveQtyInStockUom(
@@ -305,10 +341,12 @@ export const purchaseOrderService = {
             ...(line.uom_id != null && { uom_id: line.uom_id }),
             qty_in_stock_uom,
             unit_price: line.unit_price,
+            discount_percent: calc.discount_percent ?? 0,
+            discount_amount: calc.discount_amount,
             ...(line.tax_rate_id != null && { tax_rate_id: line.tax_rate_id }),
-            line_total: calc.line_total,
-            line_tax: calc.line_tax,
-            line_total_after_tax: calc.line_total_after_tax,
+            line_total: netLineTotal,
+            line_tax: lineTax,
+            line_total_after_tax: lineTotalAfterTax,
           },
           { transaction: t },
         );
@@ -372,9 +410,34 @@ export const purchaseOrderService = {
       throw new Error("Bạn chỉ có thể chỉnh sửa đơn mua hàng của mình");
 
     await sequelize.transaction(async (t) => {
-      let totalBeforeTax = 0;
-      let totalTax = 0;
-      let totalAfterTax = 0;
+      // 1. Calculate each line's initial values (before header discount)
+      const calculatedLines = [];
+      let totalBeforeHeaderDiscount = 0;
+
+      if (data.lines?.length) {
+        for (const line of data.lines) {
+          const calc = await this.calculateLine(line);
+          calculatedLines.push({
+            line,
+            calc,
+          });
+          totalBeforeHeaderDiscount += calc.line_total;
+        }
+      }
+
+      // 2. Determine Header Discount Amount
+      let headerDiscountAmount = 0;
+      let headerDiscountPercent = 0;
+
+      if (data.discount_type === "fixed") {
+        headerDiscountAmount = Number(data.discount_amount || 0);
+        headerDiscountPercent = totalBeforeHeaderDiscount > 0
+          ? (headerDiscountAmount / totalBeforeHeaderDiscount) * 100
+          : 0;
+      } else {
+        headerDiscountPercent = Number(data.discount_percent || 0);
+        headerDiscountAmount = totalBeforeHeaderDiscount * (headerDiscountPercent / 100);
+      }
 
       await po.update(
         {
@@ -386,6 +449,8 @@ export const purchaseOrderService = {
           exchange_rate: data.exchange_rate || 1.0,
           order_date: new Date(data.order_date),
           description: data.description,
+          discount_percent: headerDiscountPercent,
+          discount_amount: headerDiscountAmount,
         },
         { transaction: t },
       );
@@ -397,68 +462,76 @@ export const purchaseOrderService = {
         });
       }
 
-      if (data.lines?.length) {
-        for (const line of data.lines) {
-          const calc = await this.calculateLine(line);
+      let totalBeforeTax = 0;
+      let totalTax = 0;
+      let totalAfterTax = 0;
 
-          totalBeforeTax += calc.line_total;
-          totalTax += calc.line_tax;
-          totalAfterTax += calc.line_total_after_tax;
+      for (const item of calculatedLines) {
+        const line = item.line;
+        const calc = item.calc;
 
-          if (line.id) {
-            const product = await productService.getById(line.product_id);
-            const productStockUomId = product?.uom_id ?? null;
-            const qty_in_stock_uom = await resolveQtyInStockUom(
-              line.quantity,
-              line.uom_id ?? null,
-              productStockUomId,
-              line.product_id,
-            );
+        // Pro-rata distribution of header discount
+        const weight = totalBeforeHeaderDiscount > 0 ? (calc.line_total / totalBeforeHeaderDiscount) : 0;
+        const distributedDiscount = headerDiscountAmount * weight;
 
-            await PurchaseOrderLine.update(
-              {
-                product_id: line.product_id,
-                quantity: line.quantity,
-                ...(line.uom_id != null && { uom_id: line.uom_id }),
-                qty_in_stock_uom,
-                unit_price: line.unit_price,
-                ...(line.tax_rate_id != null && {
-                  tax_rate_id: line.tax_rate_id,
-                }),
-                line_total: calc.line_total,
-                line_tax: calc.line_tax,
-                line_total_after_tax: calc.line_total_after_tax,
-              },
-              { where: { id: line.id, po_id: id }, transaction: t },
-            );
-          } else {
-            const product = await productService.getById(line.product_id);
-            const productStockUomId = product?.uom_id ?? null;
-            const qty_in_stock_uom = await resolveQtyInStockUom(
-              line.quantity,
-              line.uom_id ?? null,
-              productStockUomId,
-              line.product_id,
-            );
+        const netLineTotal = calc.line_total - distributedDiscount;
+        const taxRate = line.tax_rate_id ? await TaxRate.findByPk(line.tax_rate_id) : null;
+        const rate = taxRate ? Number(taxRate.rate) : 0;
+        const lineTax = (netLineTotal * rate) / 100;
+        const lineTotalAfterTax = netLineTotal + lineTax;
 
-            await PurchaseOrderLine.create(
-              {
-                po_id: id,
-                product_id: line.product_id,
-                quantity: line.quantity,
-                ...(line.uom_id != null && { uom_id: line.uom_id }),
-                qty_in_stock_uom,
-                unit_price: line.unit_price,
-                ...(line.tax_rate_id != null && {
-                  tax_rate_id: line.tax_rate_id,
-                }),
-                line_total: calc.line_total,
-                line_tax: calc.line_tax,
-                line_total_after_tax: calc.line_total_after_tax,
-              },
-              { transaction: t },
-            );
-          }
+        totalBeforeTax += netLineTotal;
+        totalTax += lineTax;
+        totalAfterTax += lineTotalAfterTax;
+
+        const product = await productService.getById(line.product_id);
+        const productStockUomId = product?.uom_id ?? null;
+        const qty_in_stock_uom = await resolveQtyInStockUom(
+          line.quantity,
+          line.uom_id ?? null,
+          productStockUomId,
+          line.product_id,
+        );
+
+        if (line.id) {
+          await PurchaseOrderLine.update(
+            {
+              product_id: line.product_id,
+              quantity: line.quantity,
+              ...(line.uom_id != null && { uom_id: line.uom_id }),
+              qty_in_stock_uom,
+              unit_price: line.unit_price,
+              discount_percent: calc.discount_percent ?? 0,
+              discount_amount: calc.discount_amount,
+              ...(line.tax_rate_id != null && {
+                tax_rate_id: line.tax_rate_id,
+              }),
+              line_total: netLineTotal,
+              line_tax: lineTax,
+              line_total_after_tax: lineTotalAfterTax,
+            },
+            { where: { id: line.id, po_id: id }, transaction: t },
+          );
+        } else {
+          await PurchaseOrderLine.create(
+            {
+              po_id: id,
+              product_id: line.product_id,
+              quantity: line.quantity,
+              ...(line.uom_id != null && { uom_id: line.uom_id }),
+              qty_in_stock_uom,
+              unit_price: line.unit_price,
+              discount_percent: calc.discount_percent ?? 0,
+              discount_amount: calc.discount_amount,
+              ...(line.tax_rate_id != null && {
+                tax_rate_id: line.tax_rate_id,
+              }),
+              line_total: netLineTotal,
+              line_tax: lineTax,
+              line_total_after_tax: lineTotalAfterTax,
+            },
+            { transaction: t },
+          );
         }
       }
 
@@ -858,6 +931,8 @@ export const purchaseOrderService = {
       unit_price: Number(line.unit_price ?? 0),
       uom_id: line.uom_id,
       tax_rate_id: line.tax_rate_id,
+      discount_percent: Number(line.discount_percent ?? 0),
+      discount_amount: Number(line.discount_amount ?? 0),
       line_total: Number(line.line_total ?? 0),
       line_tax: Number(line.line_tax ?? 0),
       line_total_after_tax: Number(line.line_total_after_tax ?? 0),
@@ -890,8 +965,20 @@ export const purchaseOrderService = {
       : null;
 
     const rate = taxRate ? Number(taxRate.rate) : 0;
+    const grossTotal = Number(line.quantity) * Number(line.unit_price);
+    
+    let discountAmount = 0;
+    let discountPercent = 0;
 
-    const lineTotal = Number(line.quantity) * Number(line.unit_price);
+    if (line.discount_type === "fixed") {
+      discountAmount = Number(line.discount_amount || 0);
+      discountPercent = grossTotal > 0 ? (discountAmount / grossTotal) * 100 : 0;
+    } else {
+      discountPercent = Number(line.discount_percent || 0);
+      discountAmount = grossTotal * (discountPercent / 100);
+    }
+
+    const lineTotal = grossTotal - discountAmount;
     const lineTax = (lineTotal * rate) / 100;
     const lineTotalAfterTax = lineTotal + lineTax;
 
@@ -899,6 +986,8 @@ export const purchaseOrderService = {
       line_total: lineTotal,
       line_tax: lineTax,
       line_total_after_tax: lineTotalAfterTax,
+      discount_amount: discountAmount,
+      discount_percent: discountPercent,
     };
   },
 

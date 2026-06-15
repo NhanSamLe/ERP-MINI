@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { ReportController } from "./controllers/report.controller";
 import { inventoryReportController } from "./controllers/inventoryReport.controller";
+import { purchaseReportController } from "./controllers/purchaseReport.controller";
 import { ocrReportController } from "./controllers/ocrReport.controller";
 import { authMiddleware } from "../../core/middleware/auth";
 import { Role } from "../../core/types/enum";
@@ -8,6 +9,14 @@ import { Role } from "../../core/types/enum";
 const router = Router();
 
 const allRoles = authMiddleware([Role.ADMIN, Role.WHMANAGER, Role.WHSTAFF]);
+const purchaseDashboardRoles = authMiddleware([
+  Role.ADMIN,
+  Role.PURCHASE,
+  Role.PURCHASEMANAGER,
+  Role.ACCOUNT,
+  Role.CHACC,
+  Role.CEO,
+]);
 const financeRoles = authMiddleware([
   Role.ACCOUNT,
   Role.CHACC,
@@ -48,6 +57,11 @@ router.get(
   "/inventory/dashboard-stats",
   allRoles,
   inventoryReportController.dashboardStats,
+);
+router.get(
+  "/purchase/dashboard-stats",
+  purchaseDashboardRoles,
+  purchaseReportController.dashboardStats,
 );
 
 // OCR & AP Invoice reports

@@ -251,11 +251,15 @@ export default function RfqComparePage() {
                                 <div className="font-semibold text-gray-900">
                                   {formatVND(lineData.unit_price)}
                                 </div>
-                                {lineData.discount_percent > 0 && (
+                                {(lineData.discount_type === "fixed" && lineData.discount_amount > 0) ? (
+                                  <div className="text-xs text-red-600">
+                                    -{formatVND(lineData.discount_amount)}
+                                  </div>
+                                ) : lineData.discount_percent > 0 ? (
                                   <div className="text-xs text-red-600">
                                     -{lineData.discount_percent}%
                                   </div>
-                                )}
+                                ) : null}
                                 <div className="text-xs text-gray-500">
                                   Chi phí/đơn vị: {formatVND(costPerUnit)}
                                 </div>

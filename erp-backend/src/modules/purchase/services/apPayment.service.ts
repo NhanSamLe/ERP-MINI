@@ -558,30 +558,11 @@ export const apPaymentService = {
           );
         }
 
-        // Check duplicate from same payment
+        // Check duplicate from same payment -> update amount instead of throwing error
         const existingAllocation = await ApPaymentAllocation.findOne({
           where: { payment_id: paymentId, ap_invoice_id: item.invoice_id },
           transaction: t,
         });
-        if (existingAllocation) {
-          throw new Error(
-            `Invoice ${item.invoice_id} already allocated from this payment`,
-          );
-        }
-
-        // Check allocation from other payment
-        const allocatedFromOther = await ApPaymentAllocation.findOne({
-          where: {
-            ap_invoice_id: item.invoice_id,
-            payment_id: { [Op.ne]: paymentId },
-          },
-          transaction: t,
-        });
-        if (allocatedFromOther) {
-          throw new Error(
-            `Invoice ${item.invoice_id} already allocated from another payment`,
-          );
-        }
 
         if (item.amount > invoice.unpaid_amount) {
           throw new Error(
@@ -589,14 +570,19 @@ export const apPaymentService = {
           );
         }
 
-        await ApPaymentAllocation.create(
-          {
-            payment_id: paymentId,
-            ap_invoice_id: item.invoice_id,
-            applied_amount: item.amount,
-          },
-          { transaction: t },
-        );
+        if (existingAllocation) {
+          existingAllocation.applied_amount = Number(existingAllocation.applied_amount || 0) + item.amount;
+          await existingAllocation.save({ transaction: t });
+        } else {
+          await ApPaymentAllocation.create(
+            {
+              payment_id: paymentId,
+              ap_invoice_id: item.invoice_id,
+              applied_amount: item.amount,
+            },
+            { transaction: t },
+          );
+        }
 
         // Update invoice paid_amount and status
         const unpaidAfter = invoice.unpaid_amount - item.amount;

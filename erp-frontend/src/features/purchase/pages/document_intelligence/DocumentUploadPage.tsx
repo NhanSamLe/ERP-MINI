@@ -1,6 +1,6 @@
 // DocumentUploadPage.tsx
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import {
   Upload,
@@ -16,6 +16,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { searchProductsThunk, fetchProductsThunk } from "../../../products/store/product.thunks";
 import {
   uploadDocumentThunk,
   pollDocumentStatusThunk,
@@ -326,6 +327,8 @@ function ConfirmModal({
 export default function DocumentUploadPage() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const docIdParam = searchParams.get("doc");
 
   const { uploading, currentDocumentId, status, result, loading, error } =
     useAppSelector((s) => s.documentIntelligence);
@@ -353,6 +356,24 @@ export default function DocumentUploadPage() {
   >([]);
   const [selectedPoId, setSelectedPoId] = useState<number | null>(null);
 
+  // ── Master Data states ──
+  const [uoms, setUoms] = useState<any[]>([]);
+  const [taxRates, setTaxRates] = useState<any[]>([]);
+  const [currencies, setCurrencies] = useState<any[]>([]);
+  const [paymentTerms, setPaymentTerms] = useState<any[]>([]);
+  const [allProductsList, setAllProductsList] = useState<any[]>([]);
+
+  // ── Selected invoice settings ──
+  const [selectedCurrencyId, setSelectedCurrencyId] = useState<string>("");
+  const [selectedExchangeRate, setSelectedExchangeRate] = useState<string>("1.0");
+  const [selectedPaymentTermId, setSelectedPaymentTermId] = useState<string>("");
+  const [poLines, setPoLines] = useState<any[]>([]);
+
+  // ── Inline Product Search states ──
+  const [productSearch, setProductSearch] = useState<Record<number, string>>({});
+  const [productOptions, setProductOptions] = useState<Record<number, any[]>>({});
+  const [activeSearchIndex, setActiveSearchIndex] = useState<number | null>(null);
+
   // ── Editable OCR fields ──
   const [editVendorName, setEditVendorName] = useState("");
   const [editInvoiceNo, setEditInvoiceNo] = useState("");
@@ -360,7 +381,112 @@ export default function DocumentUploadPage() {
   const [editSubtotal, setEditSubtotal] = useState<number>(0);
   const [editTaxAmount, setEditTaxAmount] = useState<number>(0);
   const [editTotal, setEditTotal] = useState<number>(0);
-  const [editItems, setEditItems] = useState<OcrLineItem[]>([]);
+  const [editItems, setEditItems] = useState<any[]>([]);
+
+  // Tải Master Data khi mount
+  useEffect(() => {
+    dispatch(fetchProductsThunk())
+      .unwrap()
+      .then((res) => setAllProductsList(res ?? []))
+      .catch(() => setAllProductsList([]));
+    import("@/api/axiosClient").then(({ default: axiosClient }) => {
+      axiosClient.get("master-data/uoms")
+        .then((res) => setUoms(res.data?.data ?? res.data ?? []))
+        .catch(() => setUoms([]));
+      axiosClient.get("master-data/taxes")
+        .then((res) => setTaxRates(res.data?.data ?? res.data ?? []))
+        .catch(() => setTaxRates([]));
+      axiosClient.get("master-data/currencies")
+        .then((res) => {
+          const list = res.data?.currencies ?? res.data ?? [];
+          setCurrencies(list);
+          const vnd = list.find((c: any) => c.code === "VND");
+          if (vnd) {
+            setSelectedCurrencyId(String(vnd.id));
+          }
+        })
+        .catch(() => setCurrencies([]));
+      axiosClient.get("master-data/payment-terms")
+        .then((res) => setPaymentTerms(res.data ?? []))
+        .catch(() => setPaymentTerms([]));
+    });
+  }, []);
+
+  // Tải chi tiết PO khi po_id được chọn
+  useEffect(() => {
+    if (selectedPoId) {
+      import("@/api/axiosClient").then(({ default: axiosClient }) => {
+        axiosClient.get(`purchase-orders/${selectedPoId}`)
+          .then((res) => {
+            const po = res.data?.data ?? res.data;
+            if (po) {
+              setPoLines(po.lines ?? []);
+              if (po.currency_id) {
+                setSelectedCurrencyId(String(po.currency_id));
+                setSelectedExchangeRate(String(po.exchange_rate ?? "1.0"));
+              }
+              if (po.payment_term_id) {
+                setSelectedPaymentTermId(String(po.payment_term_id));
+              }
+            }
+          })
+          .catch((err) => console.error("Error fetching PO detail:", err));
+      });
+    } else {
+      setPoLines([]);
+    }
+  }, [selectedPoId]);
+
+  // Load POs when vendor is matched or manually selected
+  const effectiveVendorId =
+    result?.vendor_match?.matchedPartnerId ?? selectedVendorId ?? null;
+
+  // Tải thông tin NCC khi vendor được xác định
+  useEffect(() => {
+    if (effectiveVendorId) {
+      import("@/api/axiosClient").then(({ default: axiosClient }) => {
+        axiosClient.get(`partners/${effectiveVendorId}`)
+          .then((res) => {
+            const supplier = res.data?.data ?? res.data;
+            if (supplier) {
+              if (supplier.currency_id) {
+                setSelectedCurrencyId(String(supplier.currency_id));
+                // Nếu tiền tệ là VND thì tỷ giá là 1.0, ngược lại sẽ gọi tỷ giá
+                if (supplier.currency?.code === "VND") {
+                  setSelectedExchangeRate("1.0");
+                }
+              }
+              if (supplier.payment_term_id) {
+                setSelectedPaymentTermId(String(supplier.payment_term_id));
+              }
+            }
+          })
+          .catch((err) => console.error("Error fetching supplier info:", err));
+      });
+    }
+  }, [effectiveVendorId]);
+
+  // Tự động khớp các dòng PO khi poLines hoặc editItems thay đổi
+  useEffect(() => {
+    if (selectedPoId && editItems.length > 0 && poLines.length > 0) {
+      setEditItems((prev) =>
+        prev.map((item) => {
+          if (item.product_id && !item.po_line_id) {
+            const matched = poLines.find((pol) => pol.product_id === item.product_id);
+            if (matched) {
+              return {
+                ...item,
+                po_line_id: matched.id,
+                uom_id: matched.uom_id ?? item.uom_id,
+                tax_rate_id: matched.tax_rate_id ?? item.tax_rate_id,
+              };
+            }
+          }
+          return item;
+        })
+      );
+    }
+  }, [selectedPoId, poLines]);
 
   // Populate editable fields when result arrives
   useEffect(() => {
@@ -372,13 +498,48 @@ export default function DocumentUploadPage() {
       setEditSubtotal(ocr.subtotal ?? 0);
       setEditTaxAmount(ocr.tax_amount ?? 0);
       setEditTotal(ocr.total ?? 0);
-      setEditItems(ocr.items ?? []);
+      
+      const mapped = (ocr.items ?? []).map((item, idx) => {
+         const matchedProductId = result.product_matches?.[idx]?.matchedProductId ?? null;
+         return {
+           ...item,
+           product_id: matchedProductId,
+           uom_id: null,
+           tax_rate_id: null,
+           po_line_id: null,
+           discount_percent: item.discount_percent ?? 0,
+           discount_amount: item.discount_amount ?? 0,
+           _autoFilledMasterData: false, // Flag để useEffect fill data sau
+         };
+      });
+      setEditItems(mapped);
     }
   }, [result]);
 
-  // Load POs when vendor is matched or manually selected
-  const effectiveVendorId =
-    result?.vendor_match?.matchedPartnerId ?? selectedVendorId ?? null;
+  // Tự động điền UOM và Thuế suất từ Master Data cho các dòng được Auto-match
+  useEffect(() => {
+    if (allProductsList.length > 0 && editItems.length > 0) {
+      setEditItems((prev) => {
+        let changed = false;
+        const next = prev.map((item) => {
+          if (item.product_id && item.uom_id === null && !item._autoFilledMasterData) {
+            const prod = allProductsList.find((p) => p.id === item.product_id);
+            if (prod) {
+              changed = true;
+              return {
+                ...item,
+                uom_id: prod.purchase_uom_id ?? prod.uom_id ?? null,
+                tax_rate_id: item.tax_rate_id ?? prod.tax_rate_id ?? null,
+                _autoFilledMasterData: true,
+              };
+            }
+          }
+          return item;
+        });
+        return changed ? next : prev;
+      });
+    }
+  }, [allProductsList, editItems]);
 
   useEffect(() => {
     if (effectiveVendorId) {
@@ -442,21 +603,41 @@ export default function DocumentUploadPage() {
     return () => stopPolling();
   }, [currentDocumentId, status?.status, dispatch, stopPolling]);
 
-  // Reset state khi mount — đảm bảo mỗi lần vào trang tạo mới là form trắng
+  // Reset hoặc tải tài liệu tùy thuộc vào việc có docIdParam trong URL hay không
   useEffect(() => {
-    dispatch(resetDocumentState());
-    setSelectedFile(null);
-    setSelectedVendorId(null);
-    setSelectedPoId(null);
-    setEditVendorName("");
-    setEditInvoiceNo("");
-    setEditInvoiceDate("");
-    setEditSubtotal(0);
-    setEditTaxAmount(0);
-    setEditTotal(0);
-    setEditItems([]);
+    if (docIdParam) {
+      const id = Number(docIdParam);
+      if (!isNaN(id)) {
+        if (currentDocumentId === id && result) {
+          return;
+        }
+        dispatch(setCurrentDocumentId(id));
+        dispatch(pollDocumentStatusThunk(id))
+          .unwrap()
+          .then((statusRes) => {
+            if (statusRes.status === OcrStatus.DONE) {
+              dispatch(getDocumentResultThunk(id));
+            }
+          })
+          .catch((err) => {
+            console.error("Error loading document from URL parameter:", err);
+          });
+      }
+    } else {
+      dispatch(resetDocumentState());
+      setSelectedFile(null);
+      setSelectedVendorId(null);
+      setSelectedPoId(null);
+      setEditVendorName("");
+      setEditInvoiceNo("");
+      setEditInvoiceDate("");
+      setEditSubtotal(0);
+      setEditTaxAmount(0);
+      setEditTotal(0);
+      setEditItems([]);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [docIdParam]);
 
   // Cleanup on unmount — chỉ dừng polling
   useEffect(() => {
@@ -519,17 +700,24 @@ export default function DocumentUploadPage() {
       result.vendor_match?.matchedPartnerId ?? selectedVendorId ?? null;
 
     const items: ConfirmLineItem[] = editItems.map((item, idx) => ({
-      product_id: result.product_matches?.[idx]?.matchedProductId ?? null,
+      product_id: item.product_id ?? result.product_matches?.[idx]?.matchedProductId ?? null,
       description: item.name,
       quantity: item.qty,
       unit_price: item.unit_price,
-      tax_rate_id: null,
+      tax_rate_id: item.tax_rate_id ?? null,
+      uom_id: item.uom_id ?? null,
+      po_line_id: item.po_line_id ?? null,
+      discount_percent: Number(item.discount_percent ?? 0),
+      discount_amount: Number(item.discount_amount ?? 0),
     }));
 
     const payload: ConfirmPayload = {
       vendor_id: vendorId,
       po_id: selectedPoId,
       overrideDuplicate,
+      currency_id: selectedCurrencyId ? Number(selectedCurrencyId) : null,
+      exchange_rate: Number(selectedExchangeRate) || 1.0,
+      payment_term_id: selectedPaymentTermId ? Number(selectedPaymentTermId) : null,
       items,
     };
 
@@ -551,7 +739,7 @@ export default function DocumentUploadPage() {
     }
   };
 
-  const updateItem = (idx: number, field: keyof OcrLineItem, value: any) => {
+  const updateItem = (idx: number, field: keyof OcrLineItem | keyof ConfirmLineItem, value: any) => {
     setEditItems((prev) =>
       prev.map((item, i) => (i === idx ? { ...item, [field]: value } : item)),
     );
@@ -649,21 +837,24 @@ export default function DocumentUploadPage() {
               </div>
             )}
 
-            <button
-              onClick={handleUpload}
-              disabled={!selectedFile || uploading}
-              className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white px-6 py-2.5 rounded-lg font-medium transition-colors"
-            >
-              {uploading && <Loader2 className="w-4 h-4 animate-spin" />}
-              Tải lên & Xử lý
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleUpload}
+                disabled={!selectedFile || uploading}
+                className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white px-6 py-2.5 rounded-lg font-medium transition-colors"
+              >
+                {uploading && <Loader2 className="w-4 h-4 animate-spin" />}
+                Tải lên & Xử lý
+              </button>
 
-            {error && (
-              <p className="text-sm text-red-600 flex items-center gap-1">
-                <XCircle className="w-4 h-4" />
-                {error}
-              </p>
-            )}
+              {error && (
+                <p className="text-sm text-red-600 flex items-center gap-1">
+                  <XCircle className="w-4 h-4" />
+                  {error}
+                </p>
+              )}
+            </div>
+
           </div>
         )}
 
@@ -919,6 +1110,58 @@ export default function DocumentUploadPage() {
                     className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tiền tệ
+                  </label>
+                  <select
+                    value={selectedCurrencyId}
+                    onChange={(e) => {
+                      setSelectedCurrencyId(e.target.value);
+                      const selected = currencies.find((c) => String(c.id) === e.target.value);
+                      if (selected?.code === "VND") {
+                        setSelectedExchangeRate("1.0");
+                      }
+                    }}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm bg-white"
+                  >
+                    <option value="">-- Chọn tiền tệ --</option>
+                    {currencies.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.code} - {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tỷ giá
+                  </label>
+                  <input
+                    type="text"
+                    value={selectedExchangeRate}
+                    onChange={(e) => setSelectedExchangeRate(e.target.value)}
+                    disabled={currencies.find((c) => String(c.id) === selectedCurrencyId)?.code === "VND"}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm disabled:bg-gray-100 disabled:text-gray-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Điều khoản thanh toán
+                  </label>
+                  <select
+                    value={selectedPaymentTermId}
+                    onChange={(e) => setSelectedPaymentTermId(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm bg-white"
+                  >
+                    <option value="">-- Chọn điều khoản --</option>
+                    {paymentTerms.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} ({t.days} ngày)
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -932,7 +1175,24 @@ export default function DocumentUploadPage() {
                   <thead className="bg-orange-50/60 border-b border-orange-100">
                     <tr>
                       <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                        Tên mặt hàng
+                        Tên mặt hàng (OCR)
+                      </th>
+                      <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                        Sản phẩm hệ thống
+                      </th>
+                      {selectedPoId && (
+                        <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                          Dòng PO
+                        </th>
+                      )}
+                      <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                        Đơn vị tính
+                      </th>
+                      <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                        Thuế suất
+                      </th>
+                      <th className="px-4 py-3 text-right font-semibold text-gray-700">
+                        Chiết khấu (%)
                       </th>
                       <th className="px-4 py-3 text-right font-semibold text-gray-700">
                         Số lượng
@@ -949,7 +1209,7 @@ export default function DocumentUploadPage() {
                     {editItems.length === 0 && (
                       <tr>
                         <td
-                          colSpan={4}
+                          colSpan={selectedPoId ? 9 : 8}
                           className="px-4 py-8 text-center text-gray-400"
                         >
                           Không có mặt hàng nào
@@ -958,7 +1218,7 @@ export default function DocumentUploadPage() {
                     )}
                     {editItems.map((item, idx) => (
                       <tr key={idx} className="hover:bg-orange-50/40 transition-colors">
-                        <td className="px-4 py-3 w-1/2">
+                        <td className="px-4 py-3 w-64 min-w-[200px]">
                           <input
                             type="text"
                             value={item.name}
@@ -968,7 +1228,99 @@ export default function DocumentUploadPage() {
                             className="w-full px-2 py-1 border rounded focus:ring-1 focus:ring-orange-500 outline-none text-sm"
                           />
                         </td>
-                        <td className="px-4 py-3 text-right w-28">
+                        <td className="px-4 py-3 w-64 min-w-[200px]">
+                          <select
+                            value={item.product_id ?? ""}
+                            onChange={(e) => {
+                              const val = e.target.value ? Number(e.target.value) : null;
+                              updateItem(idx, "product_id", val);
+                              if (val) {
+                                const prod = allProductsList.find((p) => p.id === val);
+                                if (prod) {
+                                  updateItem(idx, "uom_id", prod.purchase_uom_id ?? prod.uom_id ?? null);
+                                  updateItem(idx, "tax_rate_id", prod.tax_rate_id ?? null);
+                                }
+                              }
+                            }}
+                            className="w-full px-2 py-1 border rounded focus:ring-1 focus:ring-orange-500 outline-none text-sm bg-white"
+                          >
+                            <option value="">-- Chưa liên kết sản phẩm --</option>
+                            {allProductsList.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.sku ? `[${p.sku}] ` : ""}{p.name}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        {selectedPoId && (
+                          <td className="px-4 py-3 w-64 min-w-[200px]">
+                            <select
+                              value={item.po_line_id ?? ""}
+                              onChange={(e) => {
+                                const val = e.target.value ? Number(e.target.value) : null;
+                                updateItem(idx, "po_line_id", val);
+                                if (val) {
+                                  const poLine = poLines.find((pl) => pl.id === val);
+                                  if (poLine) {
+                                    updateItem(idx, "uom_id", poLine.uom_id ?? null);
+                                    updateItem(idx, "tax_rate_id", poLine.tax_rate_id ?? null);
+                                    updateItem(idx, "unit_price", Number(poLine.unit_price ?? 0));
+                                  }
+                                }
+                              }}
+                              className="w-full px-2 py-1 border rounded focus:ring-1 focus:ring-orange-500 outline-none text-sm bg-white"
+                            >
+                              <option value="">-- Chọn dòng PO --</option>
+                              {poLines.map((pl) => (
+                                <option key={pl.id} value={pl.id}>
+                                  Dòng #{pl.id} - {pl.description || "PO Line"}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                        )}
+                        <td className="px-4 py-3 w-36 min-w-[120px]">
+                          <select
+                            value={item.uom_id ?? ""}
+                            onChange={(e) => updateItem(idx, "uom_id", e.target.value ? Number(e.target.value) : null)}
+                            className="w-full px-2 py-1 border rounded focus:ring-1 focus:ring-orange-500 outline-none text-sm bg-white"
+                          >
+                            <option value="">-- Chọn DVT --</option>
+                            {uoms.map((u) => (
+                              <option key={u.id} value={u.id}>
+                                {u.name}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-4 py-3 w-36 min-w-[120px]">
+                          <select
+                            value={item.tax_rate_id ?? ""}
+                            onChange={(e) => updateItem(idx, "tax_rate_id", e.target.value ? Number(e.target.value) : null)}
+                            className="w-full px-2 py-1 border rounded focus:ring-1 focus:ring-orange-500 outline-none text-sm bg-white"
+                          >
+                            <option value="">-- Thuế suất --</option>
+                            {taxRates.map((t) => (
+                              <option key={t.id} value={t.id}>
+                                {t.name ?? `${t.rate}%`}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-4 py-3 w-28 min-w-[90px] text-right">
+                          <input
+                            type="number"
+                            value={item.discount_percent ?? 0}
+                            onChange={(e) =>
+                              updateItem(idx, "discount_percent", Number(e.target.value))
+                            }
+                            className="w-full px-2 py-1 border rounded focus:ring-1 focus:ring-orange-500 outline-none text-sm text-right"
+                            min="0"
+                            max="100"
+                            placeholder="%"
+                          />
+                        </td>
+                        <td className="px-4 py-3 text-right w-28 min-w-[90px]">
                           <input
                             type="number"
                             value={item.qty}
@@ -978,7 +1330,7 @@ export default function DocumentUploadPage() {
                             className="w-full px-2 py-1 border rounded focus:ring-1 focus:ring-orange-500 outline-none text-sm text-right"
                           />
                         </td>
-                        <td className="px-4 py-3 text-right w-40">
+                        <td className="px-4 py-3 text-right w-40 min-w-[130px]">
                           <input
                             type="number"
                             value={item.unit_price}
@@ -993,7 +1345,13 @@ export default function DocumentUploadPage() {
                           />
                         </td>
                         <td className="px-4 py-3 text-right font-medium whitespace-nowrap">
-                          {(item.qty * item.unit_price).toLocaleString("vi-VN")}
+                          {(() => {
+                            const qty = item.qty ?? 0;
+                            const price = item.unit_price ?? 0;
+                            const discount = item.discount_percent ?? 0;
+                            const lineTotal = qty * price * (1 - discount / 100);
+                            return lineTotal.toLocaleString("vi-VN");
+                          })()}
                         </td>
                       </tr>
                     ))}

@@ -26,6 +26,8 @@ const SYSTEM_PROMPT = `You are an invoice OCR assistant. Extract invoice data fr
       "unit": "string",
       "unit_price": number,
       "tax_rate": number,
+      "discount_percent": number,
+      "discount_amount": number,
       "amount": number
     }
   ],
@@ -76,13 +78,42 @@ export class OpenAIVisionOcr implements IOcrEngine {
             const pdfData = await pdfParse(fileBuffer);
             const pdfText = pdfData.text?.trim() || "";
 
-            messages = [
-              { role: "system", content: SYSTEM_PROMPT },
-              {
-                role: "user",
-                content: `Extract invoice data from the following invoice text:\n\n${pdfText}`,
-              },
-            ];
+            if (pdfText.length < 20) {
+              // PDF dạng ảnh (Scanned PDF) -> mượn tạm Cloudinary để convert PDF sang Ảnh
+              const { uploadBufferToCloudinary, deleteFromCloudinary } = require("../../../core/utils/uploadCloudinary");
+              const cloudinaryResult = await uploadBufferToCloudinary(fileBuffer, "ocr_temp");
+              
+              // Đổi extension sang .jpg để ép Cloudinary render trang đầu tiên thành Ảnh
+              const imageUrl = cloudinaryResult.url.replace(/\.pdf$/i, ".jpg");
+
+              messages = [
+                { role: "system", content: SYSTEM_PROMPT },
+                {
+                  role: "user",
+                  content: [
+                    {
+                      type: "image_url",
+                      image_url: { url: imageUrl },
+                    },
+                  ],
+                },
+              ];
+
+              // Dọn dẹp Cloudinary sau 2 phút (để OpenAI kịp kéo ảnh về)
+              setTimeout(() => {
+                deleteFromCloudinary(cloudinaryResult.public_id).catch((err: any) => {
+                  logger.warn(`Failed to cleanup temp OCR cloudinary image: ${err.message}`);
+                });
+              }, 120000);
+            } else {
+              messages = [
+                { role: "system", content: SYSTEM_PROMPT },
+                {
+                  role: "user",
+                  content: `Extract invoice data from the following invoice text:\n\n${pdfText}`,
+                },
+              ];
+            }
           } else {
             // Image (jpg/jpeg/png): send as base64 image_url
             const fileBuffer = fs.readFileSync(filePath);

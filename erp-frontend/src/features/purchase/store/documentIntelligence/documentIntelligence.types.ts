@@ -197,12 +197,19 @@ export interface ConfirmLineItem {
   quantity: number;
   unit_price: number;
   tax_rate_id: number | null;
+  uom_id?: number | null;
+  po_line_id?: number | null;
+  discount_percent?: number;
+  discount_amount?: number;
 }
 
 export interface ConfirmPayload {
   vendor_id: number | null;
   po_id: number | null;
   overrideDuplicate: boolean;
+  currency_id?: number | null;
+  exchange_rate?: number;
+  payment_term_id?: number | null;
   items: ConfirmLineItem[];
 }
 
