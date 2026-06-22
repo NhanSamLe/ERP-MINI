@@ -279,6 +279,37 @@ export const stockMoveService = {
     }
   },
 
+  async getAlreadyReceivedQtyForReturn(
+    returnId: number,
+    productId: number,
+  ): Promise<number> {
+    const postedMoves = await StockMove.findAll({
+      where: {
+        reference_id: returnId,
+        reference_type: "purchase_return",
+        type: "receipt",
+        status: "posted",
+      },
+      attributes: ["id"],
+      raw: true,
+    });
+
+    if (postedMoves.length === 0) return 0;
+
+    const moveIds = postedMoves.map((m) => m.id);
+
+    const lines = await StockMoveLine.findAll({
+      where: {
+        move_id: moveIds,
+        product_id: productId,
+      },
+      attributes: ["quantity"],
+      raw: true,
+    });
+
+    return lines.reduce((sum, l) => sum + Number(l.quantity), 0);
+  },
+
   async createReceipt(body: StockMoveCreateDTO, user: any) {
     if (!body.reference_id) {
       throw new Error("Reference ID is required to create a receipt.");
@@ -300,36 +331,90 @@ export const stockMoveService = {
 
     const t = await sequelize.transaction();
     try {
-      const poLines = await purchaseOrderService.getPOLines(body.reference_id);
-      const poMap = new Map<number, PurchaseOrderLine>();
-      poLines.forEach((l) => {
-        if (l.product_id != null) {
-          poMap.set(l.product_id, l);
+      if (body.reference_type === "purchase_return") {
+        const { PurchaseReturn } = await import("../../purchase/models/purchaseReturn.model");
+        const { PurchaseReturnLine } = await import("../../purchase/models/purchaseReturnLine.model");
+
+        const pr = await PurchaseReturn.findByPk(body.reference_id, { transaction: t });
+        if (!pr) {
+          throw new Error("Không tìm thấy Phiếu trả hàng.");
         }
-      });
+        if (pr.return_type !== "replacement") {
+          throw new Error("Chỉ hỗ trợ nhập kho đối với phiếu trả hàng loại Đổi trả hàng (replacement).");
+        }
+        if (!["confirmed", "completed"].includes(pr.status)) {
+          throw new Error("Phiếu trả hàng phải ở trạng thái Đã xác nhận hoặc Đã hoàn thành mới được nhập kho.");
+        }
 
-      for (const line of body.lines) {
-        const poLine = await purchaseOrderService.validateProductInPO(
-          poMap,
-          line.product_id,
-        );
+        const prLines = await PurchaseReturnLine.findAll({
+          where: { return_id: body.reference_id },
+          transaction: t
+        });
+        const prMap = new Map<number, any>();
+        prLines.forEach((l) => {
+          if (l.product_id != null) {
+            prMap.set(l.product_id, l);
+          }
+        });
 
-        const received = await purchaseOrderService.getAlreadyReceivedQty(
-          body.reference_id,
-          line.product_id,
-        );
+        for (const line of body.lines) {
+          const prLine = prMap.get(line.product_id);
+          if (!prLine) {
+            const productResult = await productService.getById(line.product_id);
+            throw {
+              status: 400,
+              message: `Sản phẩm ${productResult?.name} không nằm trong Phiếu trả hàng.`,
+            };
+          }
 
-        // Validate theo stock UOM: dùng qty_in_stock_uom của PO line (đã quy đổi)
-        // line.quantity từ stock move cũng phải là stock UOM
-        const poQtyInStockUom = parseFloat(
-          String(poLine.qty_in_stock_uom ?? poLine.quantity ?? 0),
-        );
-        await purchaseOrderService.validateRemainingQuantity(
-          line.product_id,
-          line.quantity,
-          poQtyInStockUom,
-          received,
-        );
+          const received = await this.getAlreadyReceivedQtyForReturn(
+            body.reference_id,
+            line.product_id,
+          );
+
+          const prQtyInStockUom = parseFloat(
+            String(prLine.quantity_confirmed_stock_uom ?? prLine.qty_in_stock_uom ?? 0)
+          );
+
+          const remaining = prQtyInStockUom - received;
+          if (line.quantity > remaining) {
+            const productResult = await productService.getById(line.product_id);
+            throw {
+              status: 400,
+              message: `Sản phẩm ${productResult?.name} vượt quá số lượng còn lại trong Phiếu trả hàng. Còn lại: ${remaining}, nhập: ${line.quantity}`,
+            };
+          }
+        }
+      } else {
+        const poLines = await purchaseOrderService.getPOLines(body.reference_id);
+        const poMap = new Map<number, PurchaseOrderLine>();
+        poLines.forEach((l) => {
+          if (l.product_id != null) {
+            poMap.set(l.product_id, l);
+          }
+        });
+
+        for (const line of body.lines) {
+          const poLine = await purchaseOrderService.validateProductInPO(
+            poMap,
+            line.product_id,
+          );
+
+          const received = await purchaseOrderService.getAlreadyReceivedQty(
+            body.reference_id,
+            line.product_id,
+          );
+
+          const poQtyInStockUom = parseFloat(
+            String(poLine.qty_in_stock_uom ?? poLine.quantity ?? 0),
+          );
+          await purchaseOrderService.validateRemainingQuantity(
+            line.product_id,
+            line.quantity,
+            poQtyInStockUom,
+            received,
+          );
+        }
       }
 
       const data: any = {
@@ -557,6 +642,32 @@ export const stockMoveService = {
 
       const lines = (ret as any).lines as any[];
       for (const line of lines) {
+        let lotId: number | null = null;
+        if (ret.purchase_order_id) {
+          const originalReceiptLine = await StockMoveLine.findOne({
+            include: [
+              {
+                model: StockMove,
+                as: "move",
+                where: {
+                  reference_type: "purchase_order",
+                  reference_id: ret.purchase_order_id,
+                  type: "receipt",
+                  status: "posted",
+                },
+              },
+            ],
+            where: {
+              product_id: line.product_id,
+            },
+            order: [["id", "DESC"]],
+            transaction: t,
+          });
+          if (originalReceiptLine?.lot_id) {
+            lotId = originalReceiptLine.lot_id;
+          }
+        }
+
         await StockMoveLine.create({
           move_id: move.id,
           product_id: line.product_id,
@@ -564,7 +675,7 @@ export const stockMoveService = {
           uom_id: line.uom_id ?? null,
           location_from_id: defaultLocId,
           location_to_id: null,
-          lot_id: null,
+          lot_id: lotId,
         }, { transaction: t });
       }
 
@@ -1725,6 +1836,15 @@ export const stockMoveService = {
         if (poLine?.unit_price != null) {
           unitCost = parseFloat(String(poLine.unit_price));
         }
+      } else if (move.reference_type === "purchase_return" && move.reference_id) {
+        const { PurchaseReturnLine } = await import("../../purchase/models/purchaseReturnLine.model");
+        const prLine = await PurchaseReturnLine.findOne({
+          where: { return_id: move.reference_id, product_id: line.product_id },
+          transaction: t
+        });
+        if (prLine?.unit_price != null) {
+          unitCost = parseFloat(String(prLine.unit_price));
+        }
       } else if (move.reference_type === "sales_return" && move.reference_id) {
         const { SalesReturnLine } = await import("../../sales/models/salesReturnLine.model");
         const srLine = await SalesReturnLine.findOne({
@@ -1745,6 +1865,78 @@ export const stockMoveService = {
         unitCost,
         t
       );
+    }
+
+    // Nếu là Phiếu trả hàng (PR)
+    if (move.reference_type === "purchase_return" && move.reference_id) {
+      const { PurchaseReturn } = await import("../../purchase/models/purchaseReturn.model");
+      const { PurchaseReturnLine } = await import("../../purchase/models/purchaseReturnLine.model");
+
+      const pr = await PurchaseReturn.findByPk(move.reference_id, { transaction: t });
+      if (!pr) return;
+
+      const prLines = await PurchaseReturnLine.findAll({
+        where: { return_id: pr.id },
+        transaction: t
+      });
+
+      const productIds = prLines.map((line) => line.product_id);
+
+      const allLines = await StockMoveLine.findAll({
+        include: [
+          {
+            model: StockMove,
+            as: "move",
+            where: {
+              reference_type: "purchase_return",
+              reference_id: pr.id,
+              type: "receipt",
+              status: "posted",
+            },
+          },
+        ],
+        where: {
+          product_id: { [Op.in]: productIds },
+        },
+        transaction: t
+      });
+
+      let fullyReceived = true;
+      for (const prLine of prLines) {
+        const prQty = parseFloat(
+          String(prLine.quantity_confirmed_stock_uom ?? prLine.qty_in_stock_uom ?? 0),
+        );
+
+        const previousReceived = allLines
+          .filter(
+            (line) =>
+              line.product_id === prLine.product_id && line.move_id !== move.id,
+          )
+          .reduce((sum, line) => sum + parseFloat(String(line.quantity ?? 0)), 0);
+        const currentReceived = lines
+          .filter((line) => line.product_id === prLine.product_id)
+          .reduce((sum, line) => sum + parseFloat(String(line.quantity ?? 0)), 0);
+
+        const totalReceived = previousReceived + currentReceived;
+
+        if (totalReceived < prQty) {
+          fullyReceived = false;
+          break;
+        }
+      }
+
+      if (fullyReceived) {
+        await pr.update({ status: "completed" }, { transaction: t });
+        // Cập nhật PRA liên kết nếu có
+        if (pr.pra_id) {
+          const { PurchaseReturnAuthorization } = await import("../../purchase/models/purchaseReturnAuthorization.model");
+          const pra = await PurchaseReturnAuthorization.findByPk(pr.pra_id, { transaction: t });
+          if (pra && (pra.status === "processing" || pra.status === "approved")) {
+            await pra.update({ status: "completed" }, { transaction: t });
+          }
+        }
+      }
+      return;
     }
 
     // Nếu không phải PO thì thôi
@@ -1918,7 +2110,7 @@ export const stockMoveService = {
     if (move.reference_type === "purchase_return" && move.reference_id) {
       const { PurchaseReturn } = await import("../../purchase/models/purchaseReturn.model");
       await PurchaseReturn.update(
-        { status: "confirmed" },
+        { status: "shipped" },
         { where: { id: move.reference_id }, transaction: t }
       );
     }

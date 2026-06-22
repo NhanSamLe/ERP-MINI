@@ -10,6 +10,7 @@ import { fetchPurchaseOrdersThunk } from "../../store/purchaseOrder.thunks";
 import { getAllApInvoicesThunk } from "../../store/apInvoice/apInvoice.thunks";
 import { StandardFormLayout } from "../../../../components/layout/StandardFormLayout";
 import { FormSection } from "../../../../components/layout/FormSection";
+import { getErrorMessage } from "@/utils/ErrorHelper";
 
 const RETURN_TYPE_OPTIONS = [
   { value: "debit_note", label: "Thẻ nợ (Trừ công nợ)" },
@@ -57,6 +58,19 @@ export default function PraCreatePage() {
     if (po?.supplier_id) setSupplierId(po.supplier_id);
   }, [purchaseOrderId, purchaseOrders]);
 
+  // Filter POs to confirmed/partially_received/completed only
+  const eligiblePOs = purchaseOrders.filter((po) =>
+    ["confirmed", "partially_received", "completed"].includes(po.status),
+  );
+
+  const selectedPoObj = eligiblePOs.find((p) => p.id === purchaseOrderId);
+  const selectedInvObj = apInvoices.find((i) => i.id === apInvoiceId);
+  const maxReturnAmount = selectedInvObj
+    ? Number(selectedInvObj.total_after_tax ?? 0)
+    : selectedPoObj
+      ? Number(selectedPoObj.total_after_tax ?? 0)
+      : 0;
+
   const handleSubmit = async () => {
     if (!supplierId) {
       toast.error("Vui lòng chọn nhà cung cấp");
@@ -72,6 +86,12 @@ export default function PraCreatePage() {
     }
     if (!totalReturnAmount || Number(totalReturnAmount) <= 0) {
       toast.error("Tổng giá trị trả hàng phải lớn hơn 0");
+      return;
+    }
+    if (Number(totalReturnAmount) > maxReturnAmount) {
+      toast.error(
+        `Số tiền trả hàng không được vượt quá giá trị tối đa cho phép là ${maxReturnAmount.toLocaleString("vi-VN")} đ`
+      );
       return;
     }
 
@@ -91,16 +111,13 @@ export default function PraCreatePage() {
       toast.success(`Đã tạo PRA ${pra.pra_no}`);
       navigate(`/purchase/return-authorizations/${pra.id}`);
     } catch (e: any) {
-      toast.error(e?.message ?? "Tạo PRA thất bại");
+      toast.error(getErrorMessage(e));
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Filter POs to confirmed/partially_received/completed only
-  const eligiblePOs = purchaseOrders.filter((po) =>
-    ["confirmed", "partially_received", "completed"].includes(po.status),
-  );
+
 
   return (
     <StandardFormLayout
@@ -143,6 +160,11 @@ export default function PraCreatePage() {
                 </option>
               ))}
             </select>
+            {selectedPoObj && (
+              <p className="text-xs text-blue-600 mt-1">
+                Giá trị PO: {Number(selectedPoObj.total_after_tax).toLocaleString("vi-VN")} đ
+              </p>
+            )}
             {purchaseOrders.length > 0 && eligiblePOs.length === 0 && (
               <p className="text-xs text-amber-600 mt-1">
                 Không có đơn mua hàng nào đủ điều kiện. Đơn mua hàng phải ở trạng thái Đã xác nhận / Đã nhận hàng một phần / Đã hoàn thành.
@@ -177,6 +199,11 @@ export default function PraCreatePage() {
                   </option>
                 ))}
             </select>
+            {selectedInvObj && (
+              <p className="text-xs text-blue-600 mt-1">
+                Giá trị hóa đơn: {Number(selectedInvObj.total_after_tax).toLocaleString("vi-VN")} đ
+              </p>
+            )}
             {!purchaseOrderId && (
               <p className="text-[10px] text-gray-500 mt-1">
                 Vui lòng chọn PO trước để xem các hóa đơn tương ứng
@@ -240,6 +267,11 @@ export default function PraCreatePage() {
               placeholder="0"
               className="w-full h-9 px-3 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
             />
+            {maxReturnAmount > 0 && (
+              <p className="text-[11px] text-orange-600 mt-1 font-medium">
+                Tối đa: {maxReturnAmount.toLocaleString("vi-VN")} đ
+              </p>
+            )}
           </div>
 
           {/* Branch (read-only) */}

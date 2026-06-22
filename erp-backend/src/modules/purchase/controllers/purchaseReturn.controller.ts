@@ -213,6 +213,17 @@ export const apDebitNoteController = {
       handleError(res, err);
     }
   },
+  async getPreviewFromReturn(req: Request, res: Response) {
+    try {
+      const data = await apDebitNoteService.getPreviewFromReturn(
+        Number(req.params.returnId),
+        (req as any).user,
+      );
+      res.json({ success: true, data });
+    } catch (err: any) {
+      handleError(res, err);
+    }
+  },
   async createFromReturn(req: Request, res: Response) {
     try {
       const data = await apDebitNoteService.createFromReturn(

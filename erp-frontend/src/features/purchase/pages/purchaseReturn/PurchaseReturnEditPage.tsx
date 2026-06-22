@@ -15,6 +15,7 @@ import { purchaseReturnApi } from "../../api/purchaseReturn.api";
 import { StandardFormLayout } from "../../../../components/layout/StandardFormLayout";
 import { FormSection } from "../../../../components/layout/FormSection";
 import { PurchaseOrderLine } from "../../store";
+import { getErrorMessage } from "@/utils/ErrorHelper";
 
 interface ReturnLine {
   tempId: number;
@@ -204,7 +205,7 @@ export default function PurchaseReturnEditPage() {
       toast.success("Đã cập nhật Phiếu trả hàng mua");
       navigate(`/purchase/returns/${ret.id}`);
     } catch (e: any) {
-      toast.error(e?.message ?? "Cập nhật Phiếu trả hàng mua thất bại");
+      toast.error(getErrorMessage(e));
     } finally {
       setSubmitting(false);
     }

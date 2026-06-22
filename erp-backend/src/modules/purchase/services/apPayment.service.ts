@@ -600,7 +600,7 @@ export const apPaymentService = {
            FROM ap_payment_allocations WHERE ap_invoice_id = ?`,
           { replacements: [item.invoice_id], transaction: t, type: "SELECT" },
         );
-        const newPaidAmount = Number(paidResult?.total_paid ?? 0) + item.amount;
+        const newPaidAmount = Number(paidResult?.total_paid ?? 0);
 
         await sequelize.query(
           `UPDATE ap_invoices SET status = ?, paid_amount = ?, last_payment_date = CURDATE() WHERE id = ?`,

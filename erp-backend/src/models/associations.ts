@@ -1320,7 +1320,6 @@ export function applyAssociations() {
     as: "stockMove",
   });
   PurchaseReturn.belongsTo(User, { foreignKey: "created_by", as: "creator" });
-  PurchaseReturn.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
   PurchaseReturnLine.belongsTo(Product, {
     foreignKey: "product_id",
     as: "product",
@@ -1363,7 +1362,6 @@ export function applyAssociations() {
   });
   ApDebitNote.belongsTo(GlEntry, { foreignKey: "gl_entry_id", as: "glEntry" });
   ApDebitNote.belongsTo(User, { foreignKey: "created_by", as: "creator" });
-  ApDebitNote.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
   ApDebitNoteLine.belongsTo(Product, {
     foreignKey: "product_id",
     as: "product",

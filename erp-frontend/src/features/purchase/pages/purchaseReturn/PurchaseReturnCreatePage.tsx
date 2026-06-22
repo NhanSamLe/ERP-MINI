@@ -13,6 +13,7 @@ import { FormSection } from "../../../../components/layout/FormSection";
 import { PurchaseOrderLine } from "../../store";
 import { fetchWarehousesThunk } from "../../../inventory/store/stock/warehouse/warehouse.thunks";
 import axiosClient from "@/api/axiosClient";
+import { getErrorMessage } from "@/utils/ErrorHelper";
 
 interface ReturnLine {
   tempId: number;
@@ -56,11 +57,12 @@ export default function PurchaseReturnCreatePage() {
   const [purchaseOrderId, setPurchaseOrderId] = useState<number | "">("");
   const [warehouseId, setWarehouseId] = useState<number | "">("");
   const [returnDate, setReturnDate] = useState(
-    new Date().toISOString().split("T")[0],
+    new Date().toISOString().split("T")[0]
   );
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<ReturnLine[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [praReturnType, setPraReturnType] = useState<string>("");
 
   // For adding lines from PO
   const [showPoLines, setShowPoLines] = useState(false);
@@ -81,6 +83,7 @@ export default function PurchaseReturnCreatePage() {
         if (pra) {
           if (pra.supplier_id) setSupplierId(pra.supplier_id);
           if (pra.purchase_order_id) setPurchaseOrderId(pra.purchase_order_id);
+          if (pra.return_type) setPraReturnType(pra.return_type);
         }
       } catch (err: any) {
         console.error(err);
@@ -206,7 +209,7 @@ export default function PurchaseReturnCreatePage() {
       toast.success(`Đã tạo Phiếu trả hàng mua ${ret.return_no}`);
       navigate(`/purchase/returns/${ret.id}`);
     } catch (e: any) {
-      toast.error(e?.message ?? "Tạo Phiếu trả hàng mua thất bại");
+      toast.error(getErrorMessage(e));
     } finally {
       setSubmitting(false);
     }
@@ -310,6 +313,23 @@ export default function PurchaseReturnCreatePage() {
               ))}
             </select>
           </div>
+
+          {praId && (
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Loại trả hàng (từ PRA)
+              </label>
+              <div className="h-9 px-3 flex items-center text-sm bg-gray-50 border border-gray-200 rounded-md text-gray-700 font-medium">
+                {praReturnType === "debit_note"
+                  ? "Thẻ nợ (Trừ công nợ)"
+                  : praReturnType === "refund"
+                    ? "Hoàn tiền (NCC hoàn tiền)"
+                    : praReturnType === "replacement"
+                      ? "Đổi hàng (Đổi trả hàng)"
+                      : praReturnType || "—"}
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">

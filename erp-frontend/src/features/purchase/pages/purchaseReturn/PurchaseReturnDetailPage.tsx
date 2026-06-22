@@ -33,6 +33,8 @@ export default function PurchaseReturnDetailPage() {
   const [modal, setModal] = useState<
     "ship" | "confirm" | "complete" | "debit_note" | null
   >(null);
+  const [debitNotePreview, setDebitNotePreview] = useState<any>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
 
   interface ConfirmLineState {
     line_id: number;
@@ -87,6 +89,26 @@ export default function PurchaseReturnDetailPage() {
       dispatch(clearSelectedReturn());
     };
   }, [id, dispatch]);
+
+  useEffect(() => {
+    if (modal === "debit_note" && ret) {
+      const getPreview = async () => {
+        try {
+          setLoadingPreview(true);
+          const { apDebitNoteApi } = await import("../../api/purchaseReturn.api");
+          const res = await apDebitNoteApi.getPreview(ret.id);
+          setDebitNotePreview(res);
+        } catch (e: any) {
+          toast.error("Không thể tải thông tin xem trước Thẻ nợ: " + e);
+        } finally {
+          setLoadingPreview(false);
+        }
+      };
+      getPreview();
+    } else {
+      setDebitNotePreview(null);
+    }
+  }, [modal, ret]);
 
   const handleAction = async () => {
     if (!ret) return;
@@ -186,7 +208,9 @@ export default function PurchaseReturnDetailPage() {
           },
         ]
       : []),
-    ...(["confirmed", "completed"].includes(ret.status) && isAccountant
+    ...(["confirmed", "completed"].includes(ret.status) &&
+    isAccountant &&
+    ret.return_type !== "replacement"
       ? [
           {
             label: "Tạo Thẻ nợ",
@@ -238,6 +262,18 @@ export default function PurchaseReturnDetailPage() {
             <div>
               <p className="text-xs text-gray-500 mb-1">Người tạo</p>
               <p className="text-sm">{ret.creator?.full_name ?? "—"}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Loại trả hàng</p>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-55 text-orange-700">
+                {ret.return_type === "debit_note"
+                  ? "Thẻ nợ (Trừ công nợ)"
+                  : ret.return_type === "refund"
+                    ? "Hoàn tiền (NCC hoàn tiền)"
+                    : ret.return_type === "replacement"
+                      ? "Đổi hàng (Đổi trả hàng)"
+                      : ret.return_type || "—"}
+              </span>
             </div>
             <div>
               <p className="text-xs text-gray-500 mb-1">Thời gian tạo</p>
@@ -387,16 +423,133 @@ export default function PurchaseReturnDetailPage() {
         variant="success"
         loading={actionLoading}
       />
-      <ActionConfirmModal
-        isOpen={modal === "debit_note"}
-        onClose={() => setModal(null)}
-        onConfirm={handleAction}
-        title="Tạo Thẻ nợ"
-        description={`Tạo Thẻ nợ phải trả từ phiếu ${ret.return_no}? Chỉ số lượng hàng đã được nhà cung cấp xác nhận nhận mới được đưa vào thẻ nợ.`}
-        confirmText="Tạo Thẻ nợ"
-        variant="primary"
-        loading={actionLoading}
-      />
+      {modal === "debit_note" && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setModal(null);
+          }}
+        >
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-xl overflow-hidden animate-slide-up flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-gray-100 bg-orange-50/20">
+              <div className="flex items-center gap-3">
+                <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-orange-50">
+                  <AlertCircle className="w-5 h-5 text-orange-500" />
+                </span>
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900">Tạo Thẻ nợ</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Xác nhận và xem trước định khoản kế toán cho phiếu {ret.return_no}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setModal(null)}
+                className="shrink-0 p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 overflow-y-auto flex-1 space-y-4">
+              <p className="text-sm text-gray-600">
+                Chỉ số lượng hàng đã được nhà cung cấp xác nhận nhận thực tế mới được đưa vào thẻ nợ.
+              </p>
+
+              {loadingPreview ? (
+                <div className="flex flex-col items-center justify-center py-6 gap-2">
+                  <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+                  <p className="text-xs text-gray-400">Đang tính toán xem trước hạch toán...</p>
+                </div>
+              ) : debitNotePreview ? (
+                <div className="space-y-3">
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Xem trước định khoản (GL Entry)</p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs text-left border-collapse">
+                        <thead>
+                          <tr className="border-b border-gray-200 text-gray-600 bg-gray-100/50">
+                            <th className="py-2 px-3 font-semibold">Tài khoản</th>
+                            <th className="py-2 px-3 font-semibold text-right">Nợ (Debit)</th>
+                            <th className="py-2 px-3 font-semibold text-right">Có (Credit)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {/* 331 AP */}
+                          <tr>
+                            <td className="py-2.5 px-3">
+                              <span className="font-semibold block">331</span>
+                              <span className="text-gray-400 text-[10px]">Phải trả nhà cung cấp</span>
+                            </td>
+                            <td className="py-2.5 px-3 text-right text-emerald-600 font-bold">
+                              {formatVND(debitNotePreview.total_after_tax)}
+                            </td>
+                            <td className="py-2.5 px-3 text-right text-gray-300">—</td>
+                          </tr>
+                          {/* 156 Inventory */}
+                          {debitNotePreview.total_before_tax > 0 && (
+                            <tr>
+                              <td className="py-2.5 px-3">
+                                <span className="font-semibold block">156</span>
+                                <span className="text-gray-400 text-[10px]">Hàng hóa</span>
+                              </td>
+                              <td className="py-2.5 px-3 text-right text-gray-300">—</td>
+                              <td className="py-2.5 px-3 text-right text-orange-600 font-bold">
+                                {formatVND(debitNotePreview.total_before_tax)}
+                              </td>
+                            </tr>
+                          )}
+                          {/* 1331 VAT */}
+                          {debitNotePreview.total_tax > 0 && (
+                            <tr>
+                              <td className="py-2.5 px-3">
+                                <span className="font-semibold block">1331</span>
+                                <span className="text-gray-400 text-[10px]">Thuế GTGT được khấu trừ</span>
+                              </td>
+                              <td className="py-2.5 px-3 text-right text-gray-300">—</td>
+                              <td className="py-2.5 px-3 text-right text-orange-600 font-bold">
+                                {formatVND(debitNotePreview.total_tax)}
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  
+                  {/* Totals Summary */}
+                  <div className="flex justify-between items-center text-xs font-semibold px-2 py-1 bg-orange-50 text-orange-800 rounded">
+                    <span>Tổng số tiền đối trừ công nợ:</span>
+                    <span className="text-sm font-bold">{formatVND(debitNotePreview.total_after_tax)}</span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-red-500 italic text-center">Không thể tính toán xem trước. Vui lòng kiểm tra lại.</p>
+              )}
+            </div>
+
+            {/* Footer Actions */}
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-3">
+              <button
+                onClick={() => setModal(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleAction}
+                disabled={actionLoading || loadingPreview || !debitNotePreview}
+                className="px-4 py-2 text-sm font-semibold text-white bg-orange-500 rounded-lg hover:bg-orange-600 shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {actionLoading && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
+                Xác nhận tạo Thẻ nợ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {modal === "confirm" && (
         <div
