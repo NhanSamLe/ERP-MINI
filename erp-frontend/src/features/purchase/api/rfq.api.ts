@@ -59,6 +59,8 @@ export interface Rfq {
   supplier?: { id: number; name: string; email?: string; phone?: string };
   creator?: { id: number; full_name: string; avatar_url?: string };
   approver?: { id: number; full_name: string; avatar_url?: string };
+  currency?: { id: number; name: string; code: string };
+  paymentTerm?: { id: number; name: string; days: number };
   lines?: RfqLine[];
 }
 

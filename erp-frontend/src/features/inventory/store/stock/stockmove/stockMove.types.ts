@@ -51,7 +51,7 @@ export interface StockMove {
   warehouse_to_id?: number | null;
   reference_type: ReferenceType;
   reference_id: number;
-  status: "draft" | "waiting_approval" | "posted" | "cancelled";
+  status: "draft" | "waiting_approval" | "in_transit" | "posted" | "cancelled";
   note?: string;
   created_at: string;
   updated_at: string;

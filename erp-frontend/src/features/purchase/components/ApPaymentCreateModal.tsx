@@ -8,6 +8,7 @@ import { createApPaymentThunk } from "../store/apPayment/apPayment.thunks";
 import { Partner } from "@/features/partner/store/partner.types";
 import { toast } from "react-toastify";
 import { getErrorMessage } from "@/utils/ErrorHelper";
+import axiosClient from "@/api/axiosClient";
 import {
   CreditCard,
   X,
@@ -44,6 +45,9 @@ export default function ApPaymentCreateModal({
   const [postedSuppliers, setPostedSuppliers] = useState<Partner[]>([]);
   const [loadingSuppliers, setLoadingSuppliers] = useState(false);
 
+  const [bankAccounts, setBankAccounts] = useState<any[]>([]);
+  const [bankAccountId, setBankAccountId] = useState<string>("");
+
   const { postedSummary } = useAppSelector((s) => s.apInvoice);
   const loading = useAppSelector((s) => s.apPayment.loading);
 
@@ -62,11 +66,13 @@ export default function ApPaymentCreateModal({
   const totalPayable = postedSummary?.total_amount ?? 0;
   const amountNum = Number(form.amount.replace(/,/g, "")) || 0;
   const isOverLimit = amountNum > totalPayable;
+  const isBankMethod = ["bank", "transfer"].includes(form.method);
   const canSubmit =
     supplierId !== null &&
     form.payment_date &&
     amountNum > 0 &&
     !isOverLimit &&
+    (!isBankMethod || bankAccountId !== "") &&
     !loading;
 
   /* ─── Load suppliers on open ─────────────────────────────────────────── */
@@ -79,6 +85,15 @@ export default function ApPaymentCreateModal({
       .catch(console.error)
       .finally(() => setLoadingSuppliers(false));
   }, [open, dispatch]);
+
+  /* ─── Load bank accounts on open ─────────────────────────────────────── */
+  useEffect(() => {
+    if (!open) return;
+    axiosClient
+      .get("/master-data/bank-accounts")
+      .then((res) => setBankAccounts(res.data || []))
+      .catch(console.error);
+  }, [open]);
 
   /* ─── Load posted summary when supplier changes ──────────────────────── */
   useEffect(() => {
@@ -98,6 +113,7 @@ export default function ApPaymentCreateModal({
         amount: "",
         method: "bank",
       });
+      setBankAccountId("");
       setAmountError(null);
     }
   }, [open]);
@@ -134,7 +150,8 @@ export default function ApPaymentCreateModal({
           payment_date: form.payment_date,
           amount: amountNum.toString(),
           method: form.method,
-        }),
+          bank_account_id: isBankMethod && bankAccountId ? Number(bankAccountId) : null,
+        } as any),
       ).unwrap();
 
       toast.success("Tạo thanh toán AP thành công");
@@ -365,6 +382,30 @@ export default function ApPaymentCreateModal({
               ))}
             </div>
           </div>
+
+          {/* Bank Account */}
+          {isBankMethod && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Tài khoản ngân hàng <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <select
+                  value={bankAccountId}
+                  onChange={(e) => setBankAccountId(e.target.value)}
+                  className="w-full appearance-none border border-gray-300 rounded-xl px-4 py-2.5 pr-10 text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none bg-white transition"
+                >
+                  <option value="">Chọn tài khoản ngân hàng...</option>
+                  {bankAccounts.map((acc) => (
+                    <option key={acc.id} value={acc.id}>
+                      {acc.bank_name} - {acc.account_number} ({acc.account_name})
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── Footer ── */}

@@ -42,19 +42,41 @@ export const updateSaleOrder = createAsyncThunk<SaleOrderDto, { id: number; data
   async ({ id, data }) => await service.updateSaleOrder(id, data)
 );
 
-export const submitSaleOrder = createAsyncThunk<SaleOrderDto, number>(
+export const submitSaleOrder = createAsyncThunk<SaleOrderDto, number, { rejectValue: string }>(
   "saleOrders/submit",
-  async (id) => await service.submitSaleOrder(id)
+  async (id, { rejectWithValue }) => {
+    try {
+      return await service.submitSaleOrder(id);
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || err.message);
+    }
+  }
 );
 
-export const approveSaleOrder = createAsyncThunk<SaleOrderDto, number>(
+export const approveSaleOrder = createAsyncThunk<SaleOrderDto, number, { rejectValue: string }>(
   "saleOrders/approve",
-  async (id) => await service.approveSaleOrder(id)
+  async (id, { rejectWithValue }) => {
+    try {
+      return await service.approveSaleOrder(id);
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || err.message);
+    }
+  }
 );
 
-export const rejectSaleOrder = createAsyncThunk<SaleOrderDto, { id: number; reason: string }>(
+export const rejectSaleOrder = createAsyncThunk<
+  SaleOrderDto,
+  { id: number; reason: string },
+  { rejectValue: string }
+>(
   "saleOrders/reject",
-  async ({ id, reason }) => await service.rejectSaleOrder(id, reason)
+  async ({ id, reason }, { rejectWithValue }) => {
+    try {
+      return await service.rejectSaleOrder(id, reason);
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || err.message);
+    }
+  }
 );
 
 // Helper: sync item cập nhật vào danh sách

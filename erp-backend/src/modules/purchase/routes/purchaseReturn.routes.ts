@@ -60,6 +60,11 @@ purchaseReturnRouter.post(
 export const apDebitNoteRouter = Router();
 apDebitNoteRouter.get("/", accountRoles, apDebitNoteController.getAll);
 apDebitNoteRouter.get("/:id", accountRoles, apDebitNoteController.getById);
+apDebitNoteRouter.get(
+  "/from-return/:returnId/preview",
+  accountRoles,
+  apDebitNoteController.getPreviewFromReturn,
+);
 apDebitNoteRouter.post(
   "/from-return/:returnId",
   accountRoles,

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { RotateCw, FileMinusIcon } from "lucide-react";
+import { RotateCw, FileMinusIcon, AlertCircle, X, Loader2 } from "lucide-react";
 import { RootState, AppDispatch } from "../../../../store/store";
 import {
   fetchDebitNotesThunk,
@@ -214,22 +214,141 @@ export default function DebitNoteListPage() {
         </div>
       </div>
 
+      {actionTarget?.type === "post" && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setActionTarget(null);
+          }}
+        >
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-xl overflow-hidden animate-slide-up flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-gray-100 bg-orange-50/20">
+              <div className="flex items-center gap-3">
+                <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-orange-50">
+                  <AlertCircle className="w-5 h-5 text-orange-500" />
+                </span>
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900">Ghi sổ Thẻ nợ</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Xác nhận hạch toán kế toán cho thẻ nợ {actionTarget.dn.debit_note_no}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setActionTarget(null)}
+                className="shrink-0 p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 overflow-y-auto flex-1 space-y-4">
+              <p className="text-sm text-gray-600 text-left">
+                Khi ghi sổ, hệ thống sẽ tự động tạo bút toán sổ cái (GL Entry) và giảm trừ khoản phải trả nhà cung cấp tương ứng.
+              </p>
+
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 text-left">Xem trước định khoản (GL Entry)</p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-gray-200 text-gray-600 bg-gray-100/50">
+                        <th className="py-2 px-3 font-semibold">Tài khoản</th>
+                        <th className="py-2 px-3 font-semibold text-right">Nợ (Debit)</th>
+                        <th className="py-2 px-3 font-semibold text-right">Có (Credit)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {/* 331 AP */}
+                      <tr>
+                        <td className="py-2.5 px-3 text-left">
+                          <span className="font-semibold block">331</span>
+                          <span className="text-gray-400 text-[10px]">Phải trả nhà cung cấp</span>
+                        </td>
+                        <td className="py-2.5 px-3 text-right text-emerald-600 font-bold">
+                          {formatVND(actionTarget.dn.total_after_tax)}
+                        </td>
+                        <td className="py-2.5 px-3 text-right text-gray-300">—</td>
+                      </tr>
+                      {/* 156 Inventory */}
+                      {Number(actionTarget.dn.total_before_tax) > 0 && (
+                        <tr>
+                          <td className="py-2.5 px-3 text-left">
+                            <span className="font-semibold block">156</span>
+                            <span className="text-gray-400 text-[10px]">Hàng hóa</span>
+                          </td>
+                          <td className="py-2.5 px-3 text-right text-gray-300">—</td>
+                          <td className="py-2.5 px-3 text-right text-orange-600 font-bold">
+                            {formatVND(actionTarget.dn.total_before_tax)}
+                          </td>
+                        </tr>
+                      )}
+                      {/* 1331 VAT */}
+                      {Number(actionTarget.dn.total_tax) > 0 && (
+                        <tr>
+                          <td className="py-2.5 px-3 text-left">
+                            <span className="font-semibold block">1331</span>
+                            <span className="text-gray-400 text-[10px]">Thuế GTGT được khấu trừ</span>
+                          </td>
+                          <td className="py-2.5 px-3 text-right text-gray-300">—</td>
+                          <td className="py-2.5 px-3 text-right text-orange-600 font-bold">
+                            {formatVND(actionTarget.dn.total_tax)}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Summary */}
+              <div className="space-y-1.5 border border-gray-150 rounded-lg p-3 text-xs bg-gray-50/50">
+                <div className="flex justify-between text-gray-500">
+                  <span>Trước thuế:</span>
+                  <span className="font-medium text-gray-800">{formatVND(actionTarget.dn.total_before_tax)}</span>
+                </div>
+                <div className="flex justify-between text-gray-500">
+                  <span>Thuế GTGT:</span>
+                  <span className="font-medium text-gray-800">{formatVND(actionTarget.dn.total_tax)}</span>
+                </div>
+                <div className="flex justify-between border-t border-gray-200 pt-1.5 font-bold text-gray-900">
+                  <span>Tổng tiền giảm trừ (Sau thuế):</span>
+                  <span className="text-orange-600 text-sm">{formatVND(actionTarget.dn.total_after_tax)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-3">
+              <button
+                onClick={() => setActionTarget(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleAction}
+                disabled={actionLoading}
+                className="px-4 py-2 text-sm font-semibold text-white bg-orange-500 rounded-lg hover:bg-orange-600 shadow-md transition disabled:opacity-50 flex items-center gap-2"
+              >
+                {actionLoading && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
+                Xác nhận Ghi sổ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <ActionConfirmModal
-        isOpen={!!actionTarget}
+        isOpen={actionTarget?.type === "cancel"}
         onClose={() => setActionTarget(null)}
         onConfirm={handleAction}
-        title={
-          actionTarget?.type === "post"
-            ? "Ghi sổ Thẻ nợ"
-            : "Hủy Thẻ nợ"
-        }
-        description={
-          actionTarget?.type === "post"
-            ? `Ghi sổ thẻ nợ ${actionTarget?.dn.debit_note_no}? Bút toán sổ cái sẽ được tạo và giảm khoản phải trả nhà cung cấp.`
-            : `Hủy thẻ nợ ${actionTarget?.dn.debit_note_no}?`
-        }
-        confirmText={actionTarget?.type === "post" ? "Ghi sổ" : "Hủy bỏ"}
-        variant={actionTarget?.type === "post" ? "success" : "danger"}
+        title="Hủy Thẻ nợ"
+        description={`Bạn có chắc chắn muốn hủy thẻ nợ ${actionTarget?.dn.debit_note_no}?`}
+        confirmText="Hủy bỏ"
+        variant="danger"
         loading={actionLoading}
       />
     </div>

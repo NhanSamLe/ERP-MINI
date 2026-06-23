@@ -31,6 +31,9 @@ export interface ConfirmPayload {
   vendor_id?: number | null;
   po_id?: number | null;
   overrideDuplicate?: boolean;
+  currency_id?: number | null;
+  exchange_rate?: number;
+  payment_term_id?: number | null;
   items?: Array<{
     product_id?: number | null;
     description?: string;
@@ -42,6 +45,7 @@ export interface ConfirmPayload {
     line_total_after_tax?: number;
     po_line_id?: number;
     grn_line_id?: number;
+    uom_id?: number | null;
   }>;
   // Fields from legacy/direct usage
   supplier_id?: number;
@@ -65,6 +69,7 @@ export interface ConfirmPayload {
     line_total_after_tax?: number;
     po_line_id?: number;
     grn_line_id?: number;
+    uom_id?: number | null;
   }>;
 }
 
@@ -442,6 +447,7 @@ export class DocumentService {
         line_total_after_tax: item.line_total_after_tax ?? lineTotal,
         po_line_id: item.po_line_id ?? null,
         grn_line_id: item.grn_line_id ?? null,
+        uom_id: item.uom_id ?? null,
       };
     });
 
@@ -469,6 +475,9 @@ export class DocumentService {
           total_after_tax: payload.total_after_tax ?? ocr?.total ?? 0,
           lines: resolvedLines,
           overrideDuplicate: payload.overrideDuplicate ?? false,
+          payment_term_id: payload.payment_term_id ?? null,
+          currency_id: payload.currency_id ?? null,
+          exchange_rate: payload.exchange_rate ?? 1.0,
           ...(payload.overrideDuplicate && {
             override_reason: "Người dùng xác nhận ghi đè từ OCR review",
           }),

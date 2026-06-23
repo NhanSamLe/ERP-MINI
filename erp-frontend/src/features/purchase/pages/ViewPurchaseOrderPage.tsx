@@ -55,7 +55,8 @@ interface LineItem {
   sku?: string;
   quantity: number;
   uom_id?: number | null;
-  discount?: number | null;
+  discount_percent?: number | null;
+  discount_amount?: number | null;
   tax_rate_id?: number;
   tax_type: string;
   tax_rate: number;
@@ -193,11 +194,6 @@ export default function ViewPurchaseOrderPage() {
           const tax = await dispatch(
             fetchTaxRatesByIdThunk(product.tax_rate_id || 0),
           ).unwrap();
-          const taxAmount =
-            (Number(l.unit_price || 0) *
-              Number(l.quantity || 0) *
-              (tax?.rate || 0)) /
-            100;
           return {
             id: l.id ?? undefined,
             temp_id: l.id ?? Date.now(),
@@ -209,25 +205,22 @@ export default function ViewPurchaseOrderPage() {
             quantity: Number(l.quantity || 0),
             uom_id: l.uom_id ?? null,
             uom: (l as any).uom,
-            discount: Number(l.discount ?? 0),
+            discount_percent: l.discount_percent ?? 0,
+            discount_amount: l.discount_amount ?? 0,
+            discount_type: (l as any).discount_type || ((l.discount_amount && !l.discount_percent) ? "fixed" : "percentage"),
             tax_rate: tax?.rate || 0,
             tax_rate_id: product.tax_rate_id,
             tax_type: tax?.type || "VAT",
-            tax_amount: taxAmount,
+            tax_amount: Number(l.line_tax || 0),
             line_total: Number(l.line_total || 0),
             line_total_after_tax: Number(l.line_total_after_tax || 0),
           };
         }),
       );
       setLines(enrichedLines);
-      const before = enrichedLines.reduce(
-        (s, l) => s + (l.sale_price || 0) * l.quantity,
-        0,
-      );
-      const tax = enrichedLines.reduce((s, l) => s + l.tax_amount, 0);
-      setTotalBeforeTax(before);
-      setTotalOrderTax(tax);
-      setTotalAfterTax(finalPO?.total_after_tax ?? 0);
+      setTotalBeforeTax(Number(finalPO?.total_before_tax ?? 0));
+      setTotalOrderTax(Number(finalPO?.total_tax ?? 0));
+      setTotalAfterTax(Number(finalPO?.total_after_tax ?? 0));
     };
     loadLines();
   }, [finalPO, dispatch]);
@@ -417,7 +410,7 @@ export default function ViewPurchaseOrderPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-100">
-                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider w-[40%]">
+                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider w-[35%]">
                         Sản phẩm
                       </th>
                       <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
@@ -428,6 +421,9 @@ export default function ViewPurchaseOrderPage() {
                       </th>
                       <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
                         Đơn giá
+                      </th>
+                      <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        Chiết khấu
                       </th>
                       <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
                         Thuế
@@ -444,7 +440,7 @@ export default function ViewPurchaseOrderPage() {
                     {lines.length === 0 ? (
                       <tr>
                         <td
-                          colSpan={7}
+                          colSpan={8}
                           className="py-14 text-center text-gray-400 text-sm"
                         >
                           Không có sản phẩm nào
@@ -478,11 +474,15 @@ export default function ViewPurchaseOrderPage() {
                                     SKU: {line.sku}
                                   </p>
                                 )}
-                                {line.discount && line.discount > 0 && (
+                                {line.discount_type === "fixed" && (line.discount_amount ?? 0) > 0 ? (
                                   <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-xs font-medium mt-0.5">
-                                    -{line.discount}%
+                                    -{formatVND(line.discount_amount || 0)}
                                   </span>
-                                )}
+                                ) : (line.discount_percent ?? 0) > 0 ? (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-xs font-medium mt-0.5">
+                                    -{line.discount_percent}%
+                                  </span>
+                                ) : null}
                               </div>
                             </div>
                           </td>
@@ -496,6 +496,19 @@ export default function ViewPurchaseOrderPage() {
                           </td>
                           <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
                             {formatVND(line.sale_price || 0)}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {line.discount_type === "fixed" && (line.discount_amount ?? 0) > 0 ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-600 border border-orange-100">
+                                -{formatVND(line.discount_amount || 0)}
+                              </span>
+                            ) : (line.discount_percent ?? 0) > 0 ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-600 border border-orange-100">
+                                -{line.discount_percent}%
+                              </span>
+                            ) : (
+                              <span className="text-xs text-gray-300">—</span>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-center">
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600 border border-blue-100">
@@ -801,6 +814,23 @@ export default function ViewPurchaseOrderPage() {
                   value={date}
                 />
                 <InfoRow
+                  icon={<Calendar className="w-3.5 h-3.5" />}
+                  label="Điều khoản TT"
+                  value={(finalPO as any)?.paymentTerm?.name || "—"}
+                />
+                <InfoRow
+                  icon={<FileText className="w-3.5 h-3.5" />}
+                  label="Tiền tệ"
+                  value={(finalPO as any)?.currency?.code || "VND"}
+                />
+                {(finalPO as any)?.currency?.code && (finalPO as any)?.currency?.code !== "VND" && (
+                  <InfoRow
+                    icon={<TrendingUp className="w-3.5 h-3.5" />}
+                    label="Tỷ giá"
+                    value={Number((finalPO as any).exchange_rate).toLocaleString("vi-VN") + " ₫"}
+                  />
+                )}
+                <InfoRow
                   icon={<Building2 className="w-3.5 h-3.5" />}
                   label="Chi nhánh"
                   value={selectedBranchName}
@@ -835,8 +865,32 @@ export default function ViewPurchaseOrderPage() {
               </div>
               <div className="p-4 space-y-2.5">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Tổng tiền trước thuế</span>
+                  <span className="text-gray-500">Tiền hàng (chưa CK)</span>
                   <span className="font-medium text-gray-700 tabular-nums">
+                    {formatVND(lines.reduce((s, l) => s + (l.sale_price || 0) * l.quantity, 0))}
+                  </span>
+                </div>
+                {lines.some(l => (l.discount_percent ?? 0) > 0 || (l.discount_amount ?? 0) > 0) && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-orange-500">Chiết khấu dòng</span>
+                    <span className="font-medium text-orange-600 tabular-nums">
+                      -{formatVND(lines.reduce((s, l) => s + Number(l.discount_amount ?? 0), 0))}
+                    </span>
+                  </div>
+                )}
+                {finalPO?.discount_amount && Number(finalPO.discount_amount) > 0 ? (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-orange-500">
+                      Chiết khấu tổng đơn {finalPO.discount_percent ? `(${finalPO.discount_percent}%)` : ""}
+                    </span>
+                    <span className="font-medium text-orange-600 tabular-nums">
+                      -{formatVND(Number(finalPO.discount_amount))}
+                    </span>
+                  </div>
+                ) : null}
+                <div className="flex justify-between text-sm pt-1.5 border-t border-gray-50">
+                  <span className="text-gray-500">Trước thuế</span>
+                  <span className="font-semibold text-gray-900 tabular-nums">
                     {formatVND(totalBeforeTax)}
                   </span>
                 </div>

@@ -4,7 +4,7 @@ import { PurchaseRfq } from "../models/purchaseRfq.model";
 import { PurchaseRfqLine } from "../models/purchaseRfqLine.model";
 import { PurchaseOrder } from "../models/purchaseOrder.model";
 import { PurchaseOrderLine } from "../models/purchaseOrderLine.model";
-import { Partner } from "../../../models";
+import { Partner, Currency, PaymentTerm, TaxRate } from "../../../models";
 import { User } from "../../auth/models/user.model";
 import { Branch } from "../../company/models/branch.model";
 import { Product } from "../../product/models/product.model";
@@ -103,6 +103,8 @@ const INCLUDE_FULL = [
     as: "approver",
     attributes: ["id", "full_name", "email", "avatar_url"],
   },
+  { model: Currency, as: "currency" },
+  { model: PaymentTerm, as: "paymentTerm" },
   {
     model: PurchaseRfqLine,
     as: "lines",
@@ -116,6 +118,11 @@ const INCLUDE_FULL = [
         model: Uom,
         as: "uom",
         attributes: ["id", "name"],
+      },
+      {
+        model: TaxRate,
+        as: "taxRate",
+        attributes: ["id", "name", "rate"],
       },
     ],
   },
@@ -159,6 +166,39 @@ export const rfqService = {
 
   // ─── CREATE ────────────────────────────────────────────────────────────────
 
+  async calculateLine(line: any) {
+    const taxRate = line.tax_rate_id
+      ? await TaxRate.findByPk(line.tax_rate_id)
+      : null;
+
+    const rate = taxRate ? Number(taxRate.rate) : 0;
+    const qty = Number(line.quantity);
+    const price = Number(line.unit_price ?? 0);
+    const grossTotal = qty * price;
+    let discountAmount = 0;
+    let discountPercent = 0;
+
+    if (line.discount_type === "fixed") {
+      discountAmount = Number(line.discount_amount || 0);
+      discountPercent = grossTotal > 0 ? (discountAmount / grossTotal) * 100 : 0;
+    } else {
+      discountPercent = Number(line.discount_percent || 0);
+      discountAmount = grossTotal * (discountPercent / 100);
+    }
+
+    const lineTotal = grossTotal - discountAmount;
+    const lineTax = (lineTotal * rate) / 100;
+    const lineTotalAfterTax = lineTotal + lineTax;
+
+    return {
+      line_total: lineTotal,
+      line_tax: lineTax,
+      line_total_after_tax: lineTotalAfterTax,
+      discount_amount: discountAmount,
+      discount_percent: discountPercent,
+    };
+  },
+
   async create(payload: any, user: any) {
     if (!payload.rfq_date)
       throw { status: 400, message: "rfq_date is required" };
@@ -167,6 +207,33 @@ export const rfqService = {
     }
 
     const rfqId = await sequelize.transaction(async (t) => {
+      // 1. Calculate each line's initial values (before header discount)
+      const calculatedLines = [];
+      let totalBeforeHeaderDiscount = 0;
+
+      for (const line of payload.lines) {
+        const calc = await this.calculateLine(line);
+        calculatedLines.push({
+          line,
+          calc,
+        });
+        totalBeforeHeaderDiscount += calc.line_total;
+      }
+
+      // 2. Determine Header Discount Amount
+      let headerDiscountAmount = 0;
+      let headerDiscountPercent = 0;
+
+      if (payload.discount_type === "fixed") {
+        headerDiscountAmount = Number(payload.discount_amount || 0);
+        headerDiscountPercent = totalBeforeHeaderDiscount > 0
+          ? (headerDiscountAmount / totalBeforeHeaderDiscount) * 100
+          : 0;
+      } else {
+        headerDiscountPercent = Number(payload.discount_percent || 0);
+        headerDiscountAmount = totalBeforeHeaderDiscount * (headerDiscountPercent / 100);
+      }
+
       const rfq = await PurchaseRfq.create(
         {
           branch_id: user.branch_id,
@@ -184,8 +251,8 @@ export const rfqService = {
           total_before_tax: 0,
           total_tax: 0,
           total_after_tax: 0,
-          discount_percent: payload.discount_percent ?? 0,
-          discount_amount: payload.discount_amount ?? 0,
+          discount_percent: headerDiscountPercent,
+          discount_amount: headerDiscountAmount,
           supplier_notes: payload.supplier_notes ?? null,
           internal_notes: payload.internal_notes ?? null,
           buyer_id: payload.buyer_id ?? user.id,
@@ -196,29 +263,38 @@ export const rfqService = {
 
       let totalBeforeTax = 0;
       let totalTax = 0;
+      let totalAfterTax = 0;
 
-      for (const line of payload.lines) {
-        const qty = Number(line.quantity);
-        const price = Number(line.unit_price ?? 0);
-        const discPct = Number(line.discount_percent ?? 0);
-        const discAmt = Number(line.discount_amount ?? 0);
-        const lineTotal = qty * price * (1 - discPct / 100) - discAmt;
-        const lineTax = Number(line.line_tax ?? 0);
-        const lineTotalAfterTax = lineTotal + lineTax;
+      for (const item of calculatedLines) {
+        const line = item.line;
+        const calc = item.calc;
+
+        // Pro-rata distribution of header discount
+        const weight = totalBeforeHeaderDiscount > 0 ? (calc.line_total / totalBeforeHeaderDiscount) : 0;
+        const distributedDiscount = headerDiscountAmount * weight;
+
+        const netLineTotal = calc.line_total - distributedDiscount;
+        // Scale the line tax proportionally
+        const netLineTax = calc.line_total > 0 ? calc.line_tax * (netLineTotal / calc.line_total) : 0;
+        const lineTotalAfterTax = netLineTotal + netLineTax;
+
+        totalBeforeTax += netLineTotal;
+        totalTax += netLineTax;
+        totalAfterTax += lineTotalAfterTax;
 
         await PurchaseRfqLine.create(
           {
             rfq_id: rfq.id,
             product_id: line.product_id,
             ...(line.description != null && { description: line.description }),
-            quantity: qty,
+            quantity: Number(line.quantity),
             ...(line.uom_id != null && { uom_id: line.uom_id }),
-            unit_price: price,
-            ...(discPct > 0 && { discount_percent: discPct }),
-            ...(discAmt > 0 && { discount_amount: discAmt }),
+            unit_price: Number(line.unit_price ?? 0),
+            discount_percent: calc.discount_percent,
+            discount_amount: calc.discount_amount,
             ...(line.tax_rate_id != null && { tax_rate_id: line.tax_rate_id }),
-            line_total: lineTotal,
-            line_tax: lineTax,
+            line_total: netLineTotal,
+            line_tax: netLineTax,
             line_total_after_tax: lineTotalAfterTax,
             ...(line.lead_time_days != null && {
               lead_time_days: line.lead_time_days,
@@ -226,16 +302,13 @@ export const rfqService = {
           },
           { transaction: t },
         );
-
-        totalBeforeTax += lineTotal;
-        totalTax += lineTax;
       }
 
       await rfq.update(
         {
           total_before_tax: totalBeforeTax,
           total_tax: totalTax,
-          total_after_tax: totalBeforeTax + totalTax,
+          total_after_tax: totalAfterTax,
         },
         { transaction: t },
       );
@@ -261,6 +334,40 @@ export const rfqService = {
     }
 
     await sequelize.transaction(async (t) => {
+      // 1. Calculate each line's initial values (before header discount)
+      const calculatedLines = [];
+      let totalBeforeHeaderDiscount = 0;
+
+      if (Array.isArray(payload.lines)) {
+        for (const line of payload.lines) {
+          const calc = await this.calculateLine(line);
+          calculatedLines.push({
+            line,
+            calc,
+          });
+          totalBeforeHeaderDiscount += calc.line_total;
+        }
+      }
+
+      // 2. Determine Header Discount Amount
+      let headerDiscountAmount = 0;
+      let headerDiscountPercent = 0;
+
+      if (payload.lines) {
+        if (payload.discount_type === "fixed") {
+          headerDiscountAmount = Number(payload.discount_amount || 0);
+          headerDiscountPercent = totalBeforeHeaderDiscount > 0
+            ? (headerDiscountAmount / totalBeforeHeaderDiscount) * 100
+            : 0;
+        } else {
+          headerDiscountPercent = Number(payload.discount_percent || 0);
+          headerDiscountAmount = totalBeforeHeaderDiscount * (headerDiscountPercent / 100);
+        }
+      } else {
+        headerDiscountAmount = rfq.discount_amount;
+        headerDiscountPercent = rfq.discount_percent;
+      }
+
       // Update header
       await rfq.update(
         {
@@ -270,8 +377,8 @@ export const rfqService = {
           payment_term_id: payload.payment_term_id ?? rfq.payment_term_id,
           rfq_date: payload.rfq_date ?? rfq.rfq_date,
           valid_until: payload.valid_until ?? rfq.valid_until,
-          discount_percent: payload.discount_percent ?? rfq.discount_percent,
-          discount_amount: payload.discount_amount ?? rfq.discount_amount,
+          discount_percent: headerDiscountPercent,
+          discount_amount: headerDiscountAmount,
           supplier_notes: payload.supplier_notes ?? rfq.supplier_notes,
           internal_notes: payload.internal_notes ?? rfq.internal_notes,
           buyer_id: payload.buyer_id ?? rfq.buyer_id,
@@ -288,14 +395,19 @@ export const rfqService = {
 
         let totalBeforeTax = 0;
         let totalTax = 0;
+        let totalAfterTax = 0;
 
-        for (const line of payload.lines) {
-          const qty = Number(line.quantity);
-          const price = Number(line.unit_price ?? 0);
-          const discPct = Number(line.discount_percent ?? 0);
-          const discAmt = Number(line.discount_amount ?? 0);
-          const lineTotal = qty * price * (1 - discPct / 100) - discAmt;
-          const lineTax = Number(line.line_tax ?? 0);
+        for (const item of calculatedLines) {
+          const line = item.line;
+          const calc = item.calc;
+
+          // Pro-rata distribution of header discount
+          const weight = totalBeforeHeaderDiscount > 0 ? (calc.line_total / totalBeforeHeaderDiscount) : 0;
+          const distributedDiscount = headerDiscountAmount * weight;
+
+          const netLineTotal = calc.line_total - distributedDiscount;
+          const netLineTax = calc.line_total > 0 ? calc.line_tax * (netLineTotal / calc.line_total) : 0;
+          const lineTotalAfterTax = netLineTotal + netLineTax;
 
           await PurchaseRfqLine.create(
             {
@@ -304,17 +416,17 @@ export const rfqService = {
               ...(line.description != null && {
                 description: line.description,
               }),
-              quantity: qty,
+              quantity: Number(line.quantity),
               ...(line.uom_id != null && { uom_id: line.uom_id }),
-              unit_price: price,
-              ...(discPct > 0 && { discount_percent: discPct }),
-              ...(discAmt > 0 && { discount_amount: discAmt }),
+              unit_price: Number(line.unit_price ?? 0),
+              discount_percent: calc.discount_percent,
+              discount_amount: calc.discount_amount,
               ...(line.tax_rate_id != null && {
                 tax_rate_id: line.tax_rate_id,
               }),
-              line_total: lineTotal,
-              line_tax: lineTax,
-              line_total_after_tax: lineTotal + lineTax,
+              line_total: netLineTotal,
+              line_tax: netLineTax,
+              line_total_after_tax: lineTotalAfterTax,
               ...(line.lead_time_days != null && {
                 lead_time_days: line.lead_time_days,
               }),
@@ -322,15 +434,16 @@ export const rfqService = {
             { transaction: t },
           );
 
-          totalBeforeTax += lineTotal;
-          totalTax += lineTax;
+          totalBeforeTax += netLineTotal;
+          totalTax += netLineTax;
+          totalAfterTax += lineTotalAfterTax;
         }
 
         await rfq.update(
           {
             total_before_tax: totalBeforeTax,
             total_tax: totalTax,
-            total_after_tax: totalBeforeTax + totalTax,
+            total_after_tax: totalAfterTax,
           },
           { transaction: t },
         );

@@ -8,6 +8,7 @@ export interface StockBalanceAttrs {
   location_id?: number | null;
   lot_id?: number | null;
   quantity: number;
+  reserved_qty: number;
   unit_cost?: number | null;
   total_value?: number | null;
   created_at?: Date;
@@ -16,7 +17,7 @@ export interface StockBalanceAttrs {
 
 type StockBalanceCreation = Optional<
   StockBalanceAttrs,
-  "id" | "quantity" | "unit_cost" | "total_value" | "location_id" | "lot_id"
+  "id" | "quantity" | "reserved_qty" | "unit_cost" | "total_value" | "location_id" | "lot_id"
 >;
 
 export class StockBalance
@@ -29,10 +30,11 @@ export class StockBalance
   public location_id?: number | null;
   public lot_id?: number | null;
   public quantity!: number;
+  public reserved_qty!: number;
   public unit_cost?: number | null;
   public total_value?: number | null;
-  public created_at?: Date;
-  public updated_at?: Date;
+  public readonly created_at!: Date;
+  public readonly updated_at!: Date;
 }
 
 StockBalance.init(
@@ -43,6 +45,7 @@ StockBalance.init(
     location_id: { type: DataTypes.BIGINT, allowNull: true },
     lot_id: { type: DataTypes.BIGINT, allowNull: true },
     quantity: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },
+    reserved_qty: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },
     unit_cost: {
       type: DataTypes.DECIMAL(18, 4),
       allowNull: true,

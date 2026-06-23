@@ -51,6 +51,7 @@ import { PurchaseOrderStatus } from "../constants/purchaseStatus.enum";
 import { formatVND } from "@/utils/currency.helper";
 import { StatusBadge } from "../components/Common";
 import { purchasePriceListApi } from "../api/purchasePriceList.api";
+import axiosClient from "../../../api/axiosClient";
 
 interface LineItem {
   id?: number;
@@ -70,6 +71,9 @@ interface LineItem {
   tax_type: string;
   tax_rate: number;
   tax_amount: number;
+  discount_percent?: number;
+  discount_amount?: number;
+  discount_type?: "percentage" | "fixed";
   line_total: number;
   price_source?: "price_list" | "supplier_info" | "cost_price" | "manual";
 }
@@ -98,6 +102,11 @@ export default function EditPurchaseOrderPage() {
   const [totalBeforeTax, setTotalBeforeTax] = useState(0);
   const [totalAfterTax, setTotalAfterTax] = useState(0);
   const [description, setDescription] = useState("");
+
+  const [headerDiscountType, setHeaderDiscountType] = useState<"percentage" | "fixed">("percentage");
+  const [headerDiscountPercent, setHeaderDiscountPercent] = useState(0);
+  const [headerDiscountAmount, setHeaderDiscountAmount] = useState(0);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -106,12 +115,23 @@ export default function EditPurchaseOrderPage() {
   const [lines, setLines] = useState<LineItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [priceInputs, setPriceInputs] = useState<Record<number, string>>({});
+  const [paymentTerms, setPaymentTerms] = useState<any[]>([]);
+  const [paymentTermId, setPaymentTermId] = useState("");
+  const [currencies, setCurrencies] = useState<any[]>([]);
+  const [currencyId, setCurrencyId] = useState("");
+  const [exchangeRate, setExchangeRate] = useState("1.0");
 
   useEffect(() => {
     if (id) dispatch(fetchPurchaseOrderByIdThunk(Number(id)));
     dispatch(loadPartners({ type: "supplier" }));
     dispatch(fetchAllUomsThunk());
     dispatch(fetchAllConversionsThunk());
+    axiosClient.get("/master-data/payment-terms")
+      .then((res) => setPaymentTerms(res.data || []))
+      .catch((err) => console.error("Error fetching payment terms:", err));
+    axiosClient.get("/master-data/currencies")
+      .then((res) => setCurrencies(res.data?.currencies || []))
+      .catch((err) => console.error("Error fetching currencies:", err));
   }, [dispatch, id]);
 
   useEffect(() => {
@@ -154,17 +174,60 @@ export default function EditPurchaseOrderPage() {
     return () => clearTimeout(timer);
   }, [searchTerm, dispatch]);
 
-  const recalcTotals = (updatedLines: LineItem[]) => {
-    const before = updatedLines.reduce(
-      (s, l) =>
-        s + (l.sale_price || 0) * (l.quantity_in_stock_uom || l.quantity),
+  const recalcTotals = (
+    updatedLines: LineItem[],
+    headDiscountType = headerDiscountType,
+    headDiscountPct = headerDiscountPercent,
+    headDiscountAmt = headerDiscountAmount
+  ) => {
+    const sumLineTotal = updatedLines.reduce(
+      (sum, l) => {
+        const qty = l.quantity_in_stock_uom || l.quantity;
+        const gross = (l.sale_price || 0) * qty;
+        let discountAmt = 0;
+        if (l.discount_type === "fixed") {
+          discountAmt = l.discount_amount || 0;
+        } else {
+          discountAmt = gross * ((l.discount_percent || 0) / 100);
+        }
+        return sum + (gross - discountAmt);
+      },
       0,
     );
-    const tax = updatedLines.reduce((s, l) => s + l.tax_amount, 0);
-    const after = updatedLines.reduce((s, l) => s + l.line_total, 0);
-    setTotalBeforeTax(before);
-    setTotalOrderTax(tax);
-    setTotalAfterTax(after);
+
+    let finalHeaderDiscountAmount = 0;
+    if (headDiscountType === "fixed") {
+      finalHeaderDiscountAmount = headDiscountAmt;
+    } else {
+      finalHeaderDiscountAmount = sumLineTotal * (headDiscountPct / 100);
+    }
+
+    updatedLines.forEach(l => {
+      const qty = l.quantity_in_stock_uom || l.quantity;
+      const gross = (l.sale_price || 0) * qty;
+      let discountAmt = 0;
+      if (l.discount_type === "fixed") {
+        discountAmt = l.discount_amount || 0;
+      } else {
+        discountAmt = gross * ((l.discount_percent || 0) / 100);
+      }
+      const lineTotalBeforeHeader = gross - discountAmt;
+      const weight = sumLineTotal > 0 ? (lineTotalBeforeHeader / sumLineTotal) : 0;
+      const distributedDiscount = finalHeaderDiscountAmount * weight;
+      const netLineTotal = lineTotalBeforeHeader - distributedDiscount;
+      const taxAmount = netLineTotal * (l.tax_rate / 100);
+      
+      l.tax_amount = taxAmount;
+      l.line_total = netLineTotal + taxAmount;
+    });
+
+    const finalBeforeTax = sumLineTotal - finalHeaderDiscountAmount;
+    const finalTax = updatedLines.reduce((sum, l) => sum + l.tax_amount, 0);
+    const finalAfterTax = finalBeforeTax + finalTax;
+
+    setTotalBeforeTax(finalBeforeTax);
+    setTotalOrderTax(finalTax);
+    setTotalAfterTax(finalAfterTax);
   };
 
   const resolvePrice = (
@@ -270,6 +333,7 @@ export default function EditPurchaseOrderPage() {
       tax_type: tax?.type ?? "VAT",
       tax_rate: rate,
       tax_amount: taxAmount,
+      discount_percent: discountPercent,
       line_total: lineTotal,
       price_source: priceSource,
     };
@@ -296,6 +360,30 @@ export default function EditPurchaseOrderPage() {
       }
       setReference(finalPO?.po_no || "");
       setDescription(finalPO?.description || "");
+      if (finalPO?.payment_term_id) {
+        setPaymentTermId(finalPO.payment_term_id.toString());
+      } else {
+        setPaymentTermId("");
+      }
+      if (finalPO?.currency_id) {
+        setCurrencyId(finalPO.currency_id.toString());
+      } else {
+        setCurrencyId("");
+      }
+      if (finalPO?.exchange_rate) {
+        setExchangeRate(finalPO.exchange_rate.toString());
+      } else {
+        setExchangeRate("1.0");
+      }
+
+      // Load Header discounts
+      const discountPct = Number(finalPO?.discount_percent ?? 0);
+      const discountAmt = Number(finalPO?.discount_amount ?? 0);
+      const discountType = (discountAmt > 0 && !discountPct) ? "fixed" : "percentage";
+      setHeaderDiscountType(discountType);
+      setHeaderDiscountPercent(discountPct);
+      setHeaderDiscountAmount(discountAmt);
+
       const enrichedLines = await Promise.all(
         linesToLoad.map(async (l: PurchaseOrderLine) => {
           const product = await dispatch(
@@ -331,6 +419,11 @@ export default function EditPurchaseOrderPage() {
           const taxRate = Number(tax?.rate || 0);
           const taxAmount = priceInStockUom * qtyInStockUom * (taxRate / 100);
           const lineTotal = priceInStockUom * qtyInStockUom + taxAmount;
+
+          const lineDiscountPct = Number((l as any).discount_percent ?? 0);
+          const lineDiscountAmt = Number((l as any).discount_amount ?? 0);
+          const lineDiscountType = (lineDiscountAmt > 0 && !lineDiscountPct) ? "fixed" : "percentage";
+
           return {
             id: l.id ?? undefined,
             temp_id: l.id ?? Date.now(),
@@ -349,6 +442,9 @@ export default function EditPurchaseOrderPage() {
             tax_rate_id: product.tax_rate_id,
             tax_type: tax?.type || "VAT",
             tax_amount: taxAmount,
+            discount_percent: lineDiscountPct,
+            discount_amount: lineDiscountAmt,
+            discount_type: lineDiscountType,
             line_total: lineTotal,
             price_source: ((finalPO as any)?.price_list_id ? "price_list" : "supplier_info") as "price_list" | "supplier_info",
           };
@@ -361,7 +457,7 @@ export default function EditPurchaseOrderPage() {
           newPriceInputs[l.temp_id] = String(l.price_in_purchase_uom ?? 0);
       });
       setPriceInputs(newPriceInputs);
-      recalcTotals(enrichedLines);
+      recalcTotals(enrichedLines, discountType, discountPct, discountAmt);
     };
     loadLines();
   }, [finalPO, dispatch]);
@@ -398,14 +494,17 @@ export default function EditPurchaseOrderPage() {
         );
         const qtyForCalc = line.quantity_in_stock_uom || line.quantity;
         const baseTotal = qtyForCalc * newPriceInStockUom;
-        const discountedTotal = baseTotal * (1 - discountPercent / 100);
-        const taxAmount = discountedTotal * (line.tax_rate / 100);
-        const lineTotal = discountedTotal + taxAmount;
+        const discountAmt = baseTotal * (discountPercent / 100);
+        const taxAmount = (baseTotal - discountAmt) * (line.tax_rate / 100);
+        const lineTotal = baseTotal - discountAmt + taxAmount;
 
         return {
           ...line,
           price_in_purchase_uom: newPriceInPurchaseUom,
           sale_price: newPriceInStockUom,
+          discount_percent: discountPercent,
+          discount_amount: discountAmt,
+          discount_type: "percentage" as const,
           tax_amount: taxAmount,
           line_total: lineTotal,
           price_source: priceSource,
@@ -422,12 +521,36 @@ export default function EditPurchaseOrderPage() {
     setPriceInputs(newPriceInputs);
   };
 
+  const handleCurrencyChange = async (newCurrencyId: string) => {
+    setCurrencyId(newCurrencyId);
+    const selected = currencies.find((c) => String(c.id) === newCurrencyId);
+    if (!selected || selected.code === "VND") {
+      setExchangeRate("1.0");
+      return;
+    }
+    try {
+      const res = await axiosClient.get("/master-data/currencies/rates");
+      const rates = res.data?.rates || [];
+      const rateObj = rates.find((r: any) => String(r.quote_currency_id) === newCurrencyId);
+      if (rateObj) {
+        const val = Number(rateObj.rate);
+        const rateToVnd = val > 0 ? (1 / val).toFixed(2) : "1.0";
+        setExchangeRate(rateToVnd);
+      } else {
+        setExchangeRate("1.0");
+      }
+    } catch (e) {
+      console.error("Failed to load exchange rate", e);
+      setExchangeRate("1.0");
+    }
+  };
+
   const updateLine = async (
     temp_id: number,
     field: keyof LineItem,
-    value: number,
+    value: any,
   ) => {
-    if (field === "quantity" && value <= 0) {
+    if (field === "quantity" && Number(value) <= 0) {
       removeLine(temp_id);
       return;
     }
@@ -436,7 +559,7 @@ export default function EditPurchaseOrderPage() {
     if ((field === "quantity" || field === "uom_id") && supplierId) {
       const line = lines.find((l) => l.temp_id === temp_id);
       if (line) {
-        const newQty = field === "quantity" ? (value || 1) : line.quantity;
+        const newQty = field === "quantity" ? (Number(value) || 1) : line.quantity;
         try {
           const pRes = await purchasePriceListApi.evaluatePrice({
             product_id: Number(line.product_id),
@@ -466,7 +589,7 @@ export default function EditPurchaseOrderPage() {
       }
 
       if (field === "quantity") {
-        const newQty = value || 1;
+        const newQty = Number(value) || 1;
         updated.quantity_in_stock_uom =
           updated.uom_id &&
           updated.stock_uom_id &&
@@ -482,7 +605,7 @@ export default function EditPurchaseOrderPage() {
       }
       if (field === "price_in_purchase_uom") {
         updated.sale_price = convertPrice(
-          value,
+          Number(value),
           updated.uom_id,
           updated.stock_uom_id,
           conversions,
@@ -490,10 +613,26 @@ export default function EditPurchaseOrderPage() {
         );
         updated.price_source = "manual";
       }
+
       const qtyForCalc = updated.quantity_in_stock_uom || updated.quantity;
-      const taxAmount =
-        (updated.sale_price || 0) * qtyForCalc * (updated.tax_rate / 100);
-      const lineTotal = (updated.sale_price || 0) * qtyForCalc + taxAmount;
+      const grossAmount = (updated.sale_price || 0) * qtyForCalc;
+      let discountAmount = 0;
+      let discountPercent = 0;
+
+      if (updated.discount_type === "fixed") {
+        discountAmount = Number(updated.discount_amount || 0);
+        discountPercent = grossAmount > 0 ? (discountAmount / grossAmount) * 100 : 0;
+      } else {
+        discountPercent = Number(updated.discount_percent || 0);
+        discountAmount = grossAmount * (discountPercent / 100);
+      }
+
+      updated.discount_amount = discountAmount;
+      updated.discount_percent = discountPercent;
+
+      const netAmount = grossAmount - discountAmount;
+      const taxAmount = netAmount * (updated.tax_rate / 100);
+      const lineTotal = netAmount + taxAmount;
       return { ...updated, tax_amount: taxAmount, line_total: lineTotal };
     });
     setLines(updatedLines);
@@ -545,27 +684,38 @@ export default function EditPurchaseOrderPage() {
         (id): id is number => id !== undefined && !currentLineIds.includes(id),
       );
 
-      const updatedLines: PurchaseOrderLine[] = lines.map((l) => ({
-        id: l.id,
-        product_id: Number(l.product_id),
-        quantity: Number(l.quantity),
-        qty_in_stock_uom: Number(l.quantity_in_stock_uom || l.quantity),
-        uom_id: l.uom_id ?? undefined,
-        unit_price: Number(l.price_in_purchase_uom ?? l.sale_price ?? 0),
-        tax_rate_id: l.tax_rate_id ? Number(l.tax_rate_id) : undefined,
-        line_total: Number(l.line_total),
-        line_tax: l.tax_amount,
-        line_total_after_tax: l.line_total,
-      }));
+      const updatedLines: PurchaseOrderLine[] = lines.map((l) => {
+        return {
+          id: l.id,
+          product_id: Number(l.product_id),
+          quantity: Number(l.quantity),
+          qty_in_stock_uom: Number(l.quantity_in_stock_uom || l.quantity),
+          uom_id: l.uom_id ?? undefined,
+          unit_price: Number(l.price_in_purchase_uom ?? l.sale_price ?? 0),
+          discount_percent: Number(l.discount_percent ?? 0),
+          discount_amount: Number(l.discount_amount ?? 0),
+          discount_type: l.discount_type || "percentage",
+          tax_rate_id: l.tax_rate_id ? Number(l.tax_rate_id) : undefined,
+          line_total: Number(l.line_total),
+          line_tax: l.tax_amount,
+          line_total_after_tax: l.line_total,
+        };
+      });
 
       const requestBody: PurchaseOrderUpdate & { deletedLineIds?: number[] } = {
         branch_id: branch.id ?? 0,
         po_no: reference,
         supplier_id: Number(supplierId),
         order_date: date,
+        payment_term_id: paymentTermId ? Number(paymentTermId) : null,
+        currency_id: currencyId ? Number(currencyId) : null,
+        exchange_rate: Number(exchangeRate) || 1.0,
         total_before_tax: totalBeforeTax,
         total_tax: totalOrderTax,
         total_after_tax: totalAfterTax,
+        discount_percent: headerDiscountPercent,
+        discount_amount: headerDiscountAmount,
+        discount_type: headerDiscountType,
         description,
         lines: updatedLines,
         deletedLineIds: deletedLineIds.length ? deletedLineIds : undefined,
@@ -586,6 +736,18 @@ export default function EditPurchaseOrderPage() {
 
   const selectedSupplierName =
     partners.items.find((w) => w.id === Number(supplierId))?.name || "";
+
+  const selectedPaymentTermName = paymentTermId
+    ? paymentTerms.find((t) => String(t.id) === paymentTermId)
+      ? `${paymentTerms.find((t) => String(t.id) === paymentTermId)?.name} (${paymentTerms.find((t) => String(t.id) === paymentTermId)?.days} ngày)`
+      : ""
+    : "";
+
+  const selectedCurrencyName = currencyId
+    ? currencies.find((c) => String(c.id) === currencyId)
+      ? `${currencies.find((c) => String(c.id) === currencyId)?.code} (${currencies.find((c) => String(c.id) === currencyId)?.name})`
+      : ""
+    : "";
 
   /* ─── Sidebar ─── */
   const SidebarSummary = (
@@ -613,11 +775,88 @@ export default function EditPurchaseOrderPage() {
             <span className="font-semibold text-gray-900">{lines.length}</span>
           </div>
           <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-500">Tổng tiền trước thuế</span>
+            <span className="text-gray-500">Tiền hàng (chưa CK)</span>
             <span className="font-medium text-gray-700">
+              {formatVND(lines.reduce((s, l) => {
+                const qty = l.quantity_in_stock_uom || l.quantity;
+                return s + (l.sale_price || 0) * qty;
+              }, 0))}
+            </span>
+          </div>
+          {lines.some(l => (l.discount_percent ?? 0) > 0 || (l.discount_amount ?? 0) > 0) && (
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-orange-500">Chiết khấu dòng</span>
+              <span className="font-medium text-orange-600">
+                -{formatVND(lines.reduce((s, l) => {
+                  const qty = l.quantity_in_stock_uom || l.quantity;
+                  const gross = (l.sale_price || 0) * qty;
+                  let discountAmt = 0;
+                  if (l.discount_type === "fixed") {
+                    discountAmt = l.discount_amount || 0;
+                  } else {
+                    discountAmt = gross * ((l.discount_percent || 0) / 100);
+                  }
+                  return s + discountAmt;
+                }, 0))}
+              </span>
+            </div>
+          )}
+
+          {/* Header Discount Input Section */}
+          <div className="pt-2 border-t border-gray-100 space-y-1.5">
+            <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+              Chiết khấu tổng đơn
+            </label>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="number"
+                min={0}
+                value={
+                  headerDiscountType === "fixed"
+                    ? (headerDiscountAmount || "")
+                    : (headerDiscountPercent || "")
+                }
+                onChange={(e) => {
+                  const val = e.target.value === "" ? 0 : Number(e.target.value);
+                  if (headerDiscountType === "fixed") {
+                    setHeaderDiscountAmount(val);
+                    recalcTotals(lines, headerDiscountType, headerDiscountPercent, val);
+                  } else {
+                    setHeaderDiscountPercent(val);
+                    recalcTotals(lines, headerDiscountType, val, headerDiscountAmount);
+                  }
+                }}
+                className="w-full h-8 text-right border border-gray-300 rounded-lg px-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono"
+                placeholder="0"
+              />
+              <select
+                value={headerDiscountType}
+                onChange={(e) => {
+                  const type = e.target.value as "percentage" | "fixed";
+                  setHeaderDiscountType(type);
+                  if (type === "fixed") {
+                    setHeaderDiscountPercent(0);
+                    recalcTotals(lines, type, 0, headerDiscountAmount);
+                  } else {
+                    setHeaderDiscountAmount(0);
+                    recalcTotals(lines, type, headerDiscountPercent, 0);
+                  }
+                }}
+                className="h-8 text-xs border border-gray-300 rounded-lg px-1 focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+              >
+                <option value="percentage">%</option>
+                <option value="fixed">đ</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center text-sm pt-2">
+            <span className="text-gray-500">Trước thuế</span>
+            <span className="font-semibold text-gray-900">
               {formatVND(totalBeforeTax)}
             </span>
           </div>
+
           <div className="flex justify-between items-center text-sm">
             <span className="text-gray-500">Thuế</span>
             <span className="font-medium text-blue-600">
@@ -782,6 +1021,60 @@ export default function EditPurchaseOrderPage() {
                       className="h-9 text-sm font-mono"
                     />
                   </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Điều khoản thanh toán
+                    </label>
+                    <Select
+                      value={paymentTermId}
+                      onValueChange={setPaymentTermId}
+                      defaultLabel={selectedPaymentTermName}
+                    >
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder="Chọn điều khoản..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {paymentTerms.map((t) => (
+                          <SelectItem key={t.id} value={String(t.id)}>
+                            {`${t.name} (${t.days} ngày)`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Tiền tệ
+                    </label>
+                    <Select
+                      value={currencyId}
+                      onValueChange={handleCurrencyChange}
+                      defaultLabel={selectedCurrencyName}
+                    >
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder="Chọn tiền tệ..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {currencies.map((c) => (
+                          <SelectItem key={c.id} value={String(c.id)}>
+                            {`${c.code} (${c.name})`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Tỷ giá (VND/Ngoại tệ)
+                    </label>
+                    <Input
+                      type="number"
+                      value={exchangeRate}
+                      onChange={setExchangeRate}
+                      disabled={!currencyId || currencies.find(c => String(c.id) === currencyId)?.code === "VND"}
+                      className="h-9 text-sm"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -882,7 +1175,7 @@ export default function EditPurchaseOrderPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-100">
-                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider w-[30%]">
+                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider w-[28%]">
                         Sản phẩm
                       </th>
                       <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
@@ -898,6 +1191,9 @@ export default function EditPurchaseOrderPage() {
                         Số lượng quy đổi
                       </th>
                       <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        Chiết khấu
+                      </th>
+                      <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
                         Thuế
                       </th>
                       <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
@@ -909,7 +1205,7 @@ export default function EditPurchaseOrderPage() {
                   <tbody className="divide-y divide-gray-50">
                     {lines.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="py-14 text-center">
+                        <td colSpan={9} className="py-14 text-center">
                           <div className="flex flex-col items-center gap-2 text-gray-400">
                             <Package className="w-8 h-8 text-gray-300" />
                             <span className="text-sm">
@@ -1118,6 +1414,39 @@ export default function EditPurchaseOrderPage() {
                                   line.quantity_in_stock_uom || line.quantity
                                 ).toFixed(2)}
                               </span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  value={
+                                    line.discount_type === "fixed"
+                                      ? (line.discount_amount ?? "")
+                                      : (line.discount_percent ?? "")
+                                  }
+                                  onChange={(e) => {
+                                    const val = e.target.value === "" ? 0 : Number(e.target.value);
+                                    if (line.discount_type === "fixed") {
+                                      updateLine(line.temp_id!, "discount_amount", val);
+                                    } else {
+                                      updateLine(line.temp_id!, "discount_percent", val);
+                                    }
+                                  }}
+                                  className="w-20 text-center border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                                  placeholder="0"
+                                />
+                                <select
+                                  value={line.discount_type || "percentage"}
+                                  onChange={(e) => {
+                                    updateLine(line.temp_id!, "discount_type", e.target.value);
+                                  }}
+                                  className="text-xs border border-gray-300 rounded-lg px-1 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+                                >
+                                  <option value="percentage">%</option>
+                                  <option value="fixed">đ</option>
+                                </select>
+                              </div>
                             </td>
                             <td className="px-4 py-3 text-center">
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600 border border-blue-100">

@@ -7,9 +7,8 @@ import { Transaction } from "sequelize";
 import { GlJournal } from "../../finance/models/glJournal.model";
 import { GlEntry } from "../../finance/models/glEntry.model";
 import { GlEntryLine } from "../../finance/models/glEntryLine.model";
-import { ApPaymentAllocation, Partner, sequelize } from "../../../models";
-import { requireGlAccounts } from "../../finance/services/glAccount.helper";
-import { getCompanyIdFromBranch } from "../../finance/services/companyScope.service";
+import { GlAccount } from "../../finance/models/glAccount.model";
+import { ApPaymentAllocation, Partner, sequelize, BankAccount } from "../../../models";
 import { Op, QueryTypes } from "sequelize";
 import { notificationService } from "../../../core/services/notification.service";
 import { getMappedAccount } from "../../finance/services/glAccount.service";
@@ -52,6 +51,11 @@ export const apPaymentService = {
           as: "approver",
           attributes: ["id", "full_name", "email", "phone", "avatar_url"],
         },
+        {
+          model: BankAccount,
+          as: "bankAccount",
+          required: false,
+        },
       ],
       order: [["created_at", "DESC"]],
     });
@@ -82,6 +86,11 @@ export const apPaymentService = {
           model: User,
           as: "approver",
           attributes: ["id", "full_name", "email", "phone", "avatar_url"],
+        },
+        {
+          model: BankAccount,
+          as: "bankAccount",
+          required: false,
         },
       ],
     });
@@ -263,7 +272,8 @@ export const apPaymentService = {
       const entryDate: Date = payment.payment_date || new Date();
       const amount = Number(payment.amount || 0);
       if (amount <= 0) throw new Error("Payment amount must be > 0");
-      const amountBase = amount * Number(payment.exchange_rate || 1);
+      const exchangeRate = Number(payment.exchange_rate ?? 1.0);
+      const baseAmount = amount * exchangeRate; // Quy đổi ra VND để ghi sổ cái
 
       const entry = await GlEntry.create(
         {
@@ -284,14 +294,14 @@ export const apPaymentService = {
       const lineDebit: any = {
         entry_id: entry.id,
         account_id: debitAccountId,
-        debit: amountBase,
+        debit: baseAmount,
         credit: 0,
       };
       const lineCredit: any = {
         entry_id: entry.id,
         account_id: creditAccountId,
         debit: 0,
-        credit: amountBase,
+        credit: baseAmount,
       };
 
       if (supplierId) {
@@ -560,30 +570,11 @@ export const apPaymentService = {
           );
         }
 
-        // Check duplicate from same payment
+        // Check duplicate from same payment -> update amount instead of throwing error
         const existingAllocation = await ApPaymentAllocation.findOne({
           where: { payment_id: paymentId, ap_invoice_id: item.invoice_id },
           transaction: t,
         });
-        if (existingAllocation) {
-          throw new Error(
-            `Invoice ${item.invoice_id} already allocated from this payment`,
-          );
-        }
-
-        // Check allocation from other payment
-        const allocatedFromOther = await ApPaymentAllocation.findOne({
-          where: {
-            ap_invoice_id: item.invoice_id,
-            payment_id: { [Op.ne]: paymentId },
-          },
-          transaction: t,
-        });
-        if (allocatedFromOther) {
-          throw new Error(
-            `Invoice ${item.invoice_id} already allocated from another payment`,
-          );
-        }
 
         if (item.amount > invoice.unpaid_amount) {
           throw new Error(
@@ -591,14 +582,19 @@ export const apPaymentService = {
           );
         }
 
-        await ApPaymentAllocation.create(
-          {
-            payment_id: paymentId,
-            ap_invoice_id: item.invoice_id,
-            applied_amount: item.amount,
-          },
-          { transaction: t },
-        );
+        if (existingAllocation) {
+          existingAllocation.applied_amount = Number(existingAllocation.applied_amount || 0) + item.amount;
+          await existingAllocation.save({ transaction: t });
+        } else {
+          await ApPaymentAllocation.create(
+            {
+              payment_id: paymentId,
+              ap_invoice_id: item.invoice_id,
+              applied_amount: item.amount,
+            },
+            { transaction: t },
+          );
+        }
 
         // Update invoice paid_amount and status
         const unpaidAfter = invoice.unpaid_amount - item.amount;

@@ -581,14 +581,25 @@ export default function ViewApPaymentPage() {
                 </p>
               </div>
             )}
-            {(payment as any).bank_account_id && (
+            {((payment as any).bankAccount || (payment as any).bank_account_id) && (
               <div className="bg-gray-50 rounded-xl p-4">
                 <p className="text-xs text-gray-500 font-medium mb-1">
                   Tài khoản ngân hàng
                 </p>
-                <p className="font-semibold text-gray-800">
-                  #{(payment as any).bank_account_id}
-                </p>
+                {(payment as any).bankAccount ? (
+                  <>
+                    <p className="font-semibold text-gray-800">
+                      {(payment as any).bankAccount.bank_name} - {(payment as any).bankAccount.account_number}
+                    </p>
+                    <p className="text-[10px] text-gray-400 font-semibold uppercase mt-0.5">
+                      {(payment as any).bankAccount.account_name}
+                    </p>
+                  </>
+                ) : (
+                  <p className="font-semibold text-gray-800">
+                    #{(payment as any).bank_account_id}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -731,8 +742,16 @@ function AllocateModal({
         const invoices = await dispatch(
           getApPaymentUnpaidInvoicesThunk(paymentId),
         ).unwrap();
-        setAvailableAmount(result.available_amount);
-        setLocalInvoices(invoices.map((i) => ({ ...i, allocate_amount: 0 })));
+        setAvailableAmount(Number(result.available_amount || 0));
+        setLocalInvoices(
+          invoices.map((i) => ({
+            ...i,
+            unpaid_amount: Number(i.unpaid_amount || 0),
+            total_after_tax: Number(i.total_after_tax || 0),
+            allocated_amount: Number(i.allocated_amount || 0),
+            allocate_amount: 0,
+          })),
+        );
       } catch (e) {
         toast.error(getErrorMessage(e));
         onClose();
@@ -748,12 +767,12 @@ function AllocateModal({
     (sum, i) => sum + Number(i.allocate_amount || 0),
     0,
   );
-  const remaining = availableAmount - totalAllocate;
+  const remaining = Number(availableAmount || 0) - totalAllocate;
   const invalid =
     totalAllocate <= 0 ||
-    totalAllocate > availableAmount ||
+    totalAllocate > Number(availableAmount || 0) ||
     localInvoices.some(
-      (i) => i.allocate_amount! < 0 || i.allocate_amount! > i.unpaid_amount,
+      (i) => i.allocate_amount! < 0 || i.allocate_amount! > Number(i.unpaid_amount || 0),
     );
 
   /* ===== HANDLERS ===== */
@@ -766,15 +785,15 @@ function AllocateModal({
 
   // ✅ Phase 3: Fill max — tự động điền tối đa có thể cho từng invoice
   const handleFillMax = () => {
-    let budget = availableAmount;
-    setLocalInvoices((prev) =>
-      prev.map((inv) => {
-        if (budget <= 0) return { ...inv, allocate_amount: 0 };
-        const fill = Math.min(inv.unpaid_amount, budget);
-        budget -= fill;
-        return { ...inv, allocate_amount: fill };
-      }),
-    );
+    let budget = Number(availableAmount || 0);
+    const nextInvoices = localInvoices.map((inv) => {
+      const unpaid = Number(inv.unpaid_amount || 0);
+      if (budget <= 0) return { ...inv, allocate_amount: 0 };
+      const fill = Math.min(unpaid, budget);
+      budget -= fill;
+      return { ...inv, allocate_amount: fill };
+    });
+    setLocalInvoices(nextInvoices);
   };
 
   const handleSubmit = async () => {
@@ -793,7 +812,9 @@ function AllocateModal({
       onClose();
       dispatch(getApPaymentByIdThunk(paymentId));
     } catch (e) {
-      toast.error(getErrorMessage(e));
+      const errMsg = getErrorMessage(e);
+      toast.error(errMsg);
+      alert("LỖI PHÂN BỔ: " + errMsg);
     } finally {
       setSubmitting(false);
     }
@@ -977,6 +998,11 @@ function AllocateModal({
             </table>
           </div>
         )}
+
+        {/* DEBUGGING TEXT */}
+        <div className="text-[10px] text-gray-400 bg-gray-50 p-2 rounded-lg my-2 font-mono break-all">
+          [DEBUG] Invoices: {JSON.stringify(localInvoices.map(i => ({ id: i.id, unpaid: i.unpaid_amount, allocated: i.allocate_amount })))} | Available: {availableAmount}
+        </div>
 
         {/* FOOTER */}
         <div className="flex justify-end gap-3 mt-5">

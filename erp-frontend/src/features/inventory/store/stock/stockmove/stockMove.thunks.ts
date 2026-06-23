@@ -167,3 +167,16 @@ export const rejectStockMoveThunk = createAsyncThunk<
     return rejectWithValue(getErrorMessage(error));
   }
 });
+
+export const receiveTransferThunk = createAsyncThunk<
+  StockMove,
+  number,
+  { rejectValue: string }
+>("stockMove/receive", async (id, { rejectWithValue }) => {
+  try {
+    const res = await stockMoveService.receiveTransfer(id);
+    return res;
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});

@@ -34,6 +34,7 @@ import {
 const statusColors: Record<string, string> = {
   draft: "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-100",
   in_progress: "bg-blue-50 text-blue-700 border-blue-150 hover:bg-blue-50",
+  waiting_approval: "bg-amber-50 text-amber-700 border-amber-150 hover:bg-amber-50",
   validated: "bg-emerald-50 text-emerald-700 border-emerald-150 hover:bg-emerald-50",
   cancelled: "bg-rose-50 text-rose-700 border-rose-150 hover:bg-rose-50",
 };
@@ -41,6 +42,7 @@ const statusColors: Record<string, string> = {
 const statusLabels: Record<string, string> = {
   draft: "Nháp",
   in_progress: "Đang thực hiện",
+  waiting_approval: "Chờ phê duyệt",
   validated: "Đã xác nhận",
   cancelled: "Đã hủy",
 };
@@ -128,7 +130,7 @@ export default function PhysicalInventoryListPage() {
       </div>
 
       {/* Quick Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-3.5 transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
           <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 shrink-0">
             <Layers className="w-5 h-5" />
@@ -147,6 +149,18 @@ export default function PhysicalInventoryListPage() {
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Đang thực hiện</p>
             <p className="text-lg font-extrabold text-slate-850 mt-0.5">
               {items.filter(x => x.status === 'in_progress').length}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-3.5 transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-500 shrink-0">
+            <ClipboardList className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Chờ phê duyệt</p>
+            <p className="text-lg font-extrabold text-slate-850 mt-0.5">
+              {items.filter(x => x.status === 'waiting_approval').length}
             </p>
           </div>
         </div>
@@ -198,6 +212,7 @@ export default function PhysicalInventoryListPage() {
               <SelectItem value="">Tất cả trạng thái</SelectItem>
               <SelectItem value="draft">Nháp</SelectItem>
               <SelectItem value="in_progress">Đang thực hiện</SelectItem>
+              <SelectItem value="waiting_approval">Chờ phê duyệt</SelectItem>
               <SelectItem value="validated">Đã xác nhận</SelectItem>
               <SelectItem value="cancelled">Đã hủy</SelectItem>
             </SelectContent>

@@ -6,6 +6,7 @@ export type AuditAction =
   | "auto_created"
   | "override_duplicate"
   | "mismatch_accepted"
+  | "mismatch_overridden"
   | "manual_override";
 
 export interface ApInvoiceAuditLogAttrs {

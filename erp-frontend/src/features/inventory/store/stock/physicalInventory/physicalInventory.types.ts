@@ -25,10 +25,13 @@ export interface PhysicalInventory {
   warehouse_id: number;
   branch_id: number;
   inv_date: string;
-  status: "draft" | "in_progress" | "validated" | "cancelled";
+  status: "draft" | "in_progress" | "waiting_approval" | "validated" | "cancelled";
   created_by: number;
   validated_by?: number | null;
   validated_at?: string | null;
+  approved_by?: number | null;
+  approved_at?: string | null;
+  reject_reason?: string | null;
   created_at?: string;
   updated_at?: string;
   warehouse?: { id: number; name: string; code: string };

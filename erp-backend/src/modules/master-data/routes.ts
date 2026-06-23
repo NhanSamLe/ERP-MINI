@@ -64,5 +64,32 @@ router.get("/payment-terms/:id", authMiddleware([]), paymentTermController.getPa
 router.post("/payment-terms", authMiddleware([]), paymentTermController.createPaymentTerm);
 router.put("/payment-terms/:id", authMiddleware([]), paymentTermController.updatePaymentTerm);
 router.delete("/payment-terms/:id", authMiddleware([]), paymentTermController.deletePaymentTerm);
+// 📌 Payment Terms
+import { PaymentTerm } from "./models/paymentTerm.model";
+router.get("/payment-terms", authMiddleware([]), async (req, res) => {
+  try {
+    const terms = await PaymentTerm.findAll({ where: { is_active: true } });
+    res.json(terms);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// 📌 Bank Accounts
+import { BankAccount } from "./models/bankAccount.model";
+router.get("/bank-accounts", authMiddleware([]), async (req, res) => {
+  try {
+    const user = (req as any).user;
+    const accounts = await BankAccount.findAll({
+      where: {
+        is_active: true,
+        branch_id: user.branch_id,
+      },
+    });
+    res.json(accounts);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+});
 
 export default router;

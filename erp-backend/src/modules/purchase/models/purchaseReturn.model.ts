@@ -18,19 +18,16 @@ export interface PurchaseReturnAttrs {
   return_date: string;
   warehouse_id?: number | null;
   status: PurchaseReturnStatus;
-  approval_status: "draft" | "waiting_approval" | "approved" | "rejected";
   total_return_amount: number;
+  return_type: "refund" | "replacement" | "debit_note";
   stock_move_id?: number | null;
   created_by: number;
-  approved_by?: number | null;
-  submitted_at?: Date | null;
-  approved_at?: Date | null;
   notes?: string | null;
 }
 
 type PurchaseReturnCreation = Optional<
   PurchaseReturnAttrs,
-  "id" | "status" | "approval_status" | "total_return_amount"
+  "id" | "status" | "total_return_amount" | "return_type"
 >;
 
 export class PurchaseReturn
@@ -46,17 +43,10 @@ export class PurchaseReturn
   public return_date!: string;
   public warehouse_id?: number | null;
   public status!: PurchaseReturnStatus;
-  public approval_status!:
-    | "draft"
-    | "waiting_approval"
-    | "approved"
-    | "rejected";
   public total_return_amount!: number;
+  public return_type!: "refund" | "replacement" | "debit_note";
   public stock_move_id?: number | null;
   public created_by!: number;
-  public approved_by?: number | null;
-  public submitted_at?: Date | null;
-  public approved_at?: Date | null;
   public notes?: string | null;
 }
 
@@ -81,21 +71,18 @@ PurchaseReturn.init(
       allowNull: false,
       defaultValue: "draft",
     },
-    approval_status: {
-      type: DataTypes.ENUM("draft", "waiting_approval", "approved", "rejected"),
-      allowNull: false,
-      defaultValue: "draft",
-    },
     total_return_amount: {
       type: DataTypes.DECIMAL(18, 2),
       allowNull: false,
       defaultValue: 0,
     },
+    return_type: {
+      type: DataTypes.ENUM("refund", "replacement", "debit_note"),
+      allowNull: false,
+      defaultValue: "debit_note",
+    },
     stock_move_id: { type: DataTypes.BIGINT, allowNull: true },
     created_by: { type: DataTypes.BIGINT, allowNull: false },
-    approved_by: { type: DataTypes.BIGINT, allowNull: true },
-    submitted_at: { type: DataTypes.DATE, allowNull: true },
-    approved_at: { type: DataTypes.DATE, allowNull: true },
     notes: { type: DataTypes.TEXT, allowNull: true },
   },
   {

@@ -91,7 +91,8 @@ export const SaleOrderController = {
       const result = await saleOrderService.approve(id, user, req.app);
       return res.json({ message: "Approved", data: result });
     } catch (err: any) {
-      return res.status(403).json({ message: err.message });
+      const status = typeof err?.status === "number" ? err.status : 400;
+      return res.status(status).json({ message: err.message });
     }
   },
 
@@ -106,7 +107,8 @@ export const SaleOrderController = {
 
       return res.json({ message: "Rejected", data: result });
     } catch (err: any) {
-      return res.status(403).json({ message: err.message });
+      const status = typeof err?.status === "number" ? err.status : 400;
+      return res.status(status).json({ message: err.message });
     }
   },
 };

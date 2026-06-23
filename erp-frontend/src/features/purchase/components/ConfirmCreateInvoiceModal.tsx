@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   X,
   FileText,
@@ -51,9 +51,9 @@ interface Props {
 const fmt = (v: number) =>
   v.toLocaleString("en-US", { minimumFractionDigits: 0 });
 
-const today = () => new Date().toISOString().split("T")[0];
-const plusDays = (days: number) => {
-  const d = new Date();
+const plusDays = (days: number, baseDateStr?: string) => {
+  const d = baseDateStr ? new Date(baseDateStr) : new Date();
+  if (isNaN(d.getTime())) return baseDateStr || "";
   d.setDate(d.getDate() + days);
   return d.toISOString().split("T")[0];
 };
@@ -76,29 +76,33 @@ export default function ConfirmCreateInvoiceModal({
   const [fetchingLines, setFetchingLines] = useState(false);
   const [showLines, setShowLines] = useState(true);
 
+  const getTodayStr = () => new Date().toISOString().split("T")[0];
+
   const [meta, setMeta] = useState<InvoiceMetadata>({
     invoice_no: genInvoiceNo(),
-    invoice_date: today(),
+    invoice_date: getTodayStr(),
     due_date: plusDays(30),
     invoice_series: "",
     invoice_template: "",
     tax_code: "",
   });
 
-  // Reset khi mở lại
+  // Reset khi mở lại hoặc PO thay đổi
   useEffect(() => {
     if (open) {
       setStep(1);
+      const termDays = po?.paymentTerm?.days ?? 30;
+      const todayStr = getTodayStr();
       setMeta({
         invoice_no: genInvoiceNo(),
-        invoice_date: today(),
-        due_date: plusDays(30),
+        invoice_date: todayStr,
+        due_date: plusDays(termDays, todayStr),
         invoice_series: "",
         invoice_template: "",
         tax_code: "",
       });
     }
-  }, [open]);
+  }, [open, po]);
 
   // Fetch line summary khi chọn PO
   useEffect(() => {
@@ -123,6 +127,93 @@ export default function ConfirmCreateInvoiceModal({
       .finally(() => setFetchingLines(false));
   }, [open, po]);
 
+  const invoiceCalculation = useMemo(() => {
+    if (!po) {
+      return {
+        totalGrossAmount: 0,
+        totalLineDiscount: 0,
+        totalBeforeHeaderDiscount: 0,
+        headerDiscountAmount: 0,
+        totalBeforeTax: 0,
+        totalTax: 0,
+        totalAfterTax: 0,
+      };
+    }
+
+    // 1. Calculate each line's initial values (before header discount)
+    const lines = [];
+    let totalBeforeHeaderDiscount = 0;
+    let totalGrossAmount = 0;
+    let totalLineDiscount = 0;
+
+    for (const sel of selectedLines) {
+      if (!sel.checked || sel.quantity <= 0) continue;
+      const summaryLine = summaryLines.find((l) => l.po_line_id === sel.po_line_id);
+      if (!summaryLine) continue;
+
+      const unitPrice = Number(summaryLine.unit_price ?? 0);
+      const gross = sel.quantity * unitPrice;
+      const discountPercent = Number(summaryLine.discount_percent ?? 0);
+      const discountAmount = gross * (discountPercent / 100);
+      const lineTotalBeforeHeader = gross - discountAmount;
+
+      totalGrossAmount += gross;
+      totalLineDiscount += discountAmount;
+      totalBeforeHeaderDiscount += lineTotalBeforeHeader;
+
+      lines.push({
+        summaryLine,
+        quantity: sel.quantity,
+        unitPrice,
+        discountPercent,
+        discountAmount,
+        lineTotalBeforeHeader,
+      });
+    }
+
+    // 2. Determine Header Discount Amount
+    let headerDiscountAmount = 0;
+    let headerDiscountPercent = 0;
+
+    if (po.discount_percent && Number(po.discount_percent) > 0) {
+      headerDiscountPercent = Number(po.discount_percent);
+      headerDiscountAmount = totalBeforeHeaderDiscount * (headerDiscountPercent / 100);
+    } else if (po.discount_amount && Number(po.discount_amount) > 0) {
+      const poTotalBeforeHeaderDiscount = Number(po.total_before_tax ?? 0) + Number(po.discount_amount ?? 0);
+      const ratio = poTotalBeforeHeaderDiscount > 0 ? (totalBeforeHeaderDiscount / poTotalBeforeHeaderDiscount) : 0;
+      headerDiscountAmount = Number(po.discount_amount) * ratio;
+      headerDiscountPercent = totalBeforeHeaderDiscount > 0 ? (headerDiscountAmount / totalBeforeHeaderDiscount) * 100 : 0;
+    }
+
+    // 3. Pro-rata distribution of header discount to lines
+    const totalBeforeTax = totalBeforeHeaderDiscount - headerDiscountAmount;
+    let totalTax = 0;
+
+    for (const item of lines) {
+      const summaryLine = item.summaryLine;
+      const weight = totalBeforeHeaderDiscount > 0 ? (item.lineTotalBeforeHeader / totalBeforeHeaderDiscount) : 0;
+      const distributedDiscount = headerDiscountAmount * weight;
+
+      const netLineTotal = item.lineTotalBeforeHeader - distributedDiscount;
+      // Dynamically calculate tax rate from original PO line: taxRateValue = (line.line_tax / line.line_total) * 100
+      const taxRateValue = summaryLine.line_total > 0 ? (summaryLine.line_tax / summaryLine.line_total) * 100 : 0;
+      const netLineTax = (netLineTotal * taxRateValue) / 100;
+      totalTax += netLineTax;
+    }
+
+    const totalAfterTax = totalBeforeTax + totalTax;
+
+    return {
+      totalGrossAmount,
+      totalLineDiscount,
+      totalBeforeHeaderDiscount,
+      headerDiscountAmount,
+      totalBeforeTax,
+      totalTax,
+      totalAfterTax,
+    };
+  }, [selectedLines, summaryLines, po]);
+
   if (!open || !po) return null;
 
   const poTotal = Number(po.total_after_tax ?? 0);
@@ -130,14 +221,7 @@ export default function ConfirmCreateInvoiceModal({
   const invoiceCount = po.invoice_count ?? 0;
   const isPartialHistory = invoiceCount > 0;
 
-  const thisInvoiceTotal = selectedLines.reduce((sum, sel) => {
-    if (!sel.checked || sel.quantity <= 0) return sum;
-    const line = summaryLines.find((l) => l.po_line_id === sel.po_line_id);
-    if (!line) return sum;
-    const lineTotal = sel.quantity * line.unit_price;
-    const taxRate = line.tax_rate_id ? 0.1 : 0;
-    return sum + lineTotal * (1 + taxRate);
-  }, 0);
+  const thisInvoiceTotal = invoiceCalculation.totalAfterTax;
 
   const checkedCount = selectedLines.filter(
     (s) => s.checked && s.quantity > 0,
@@ -234,7 +318,7 @@ export default function ConfirmCreateInvoiceModal({
               {/* PO amount summary */}
               <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-2 text-sm">
                 <div className="flex justify-between text-gray-600">
-                  <span>Tổng tiền PO</span>
+                  <span>Tổng tiền PO (sau thuế)</span>
                   <span className="font-semibold text-gray-900">
                     {fmt(poTotal)} VND
                   </span>
@@ -247,7 +331,7 @@ export default function ConfirmCreateInvoiceModal({
                       </span>
                       <span className="font-semibold">{fmt(invoiced)} VND</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-1.5">
+                    <div className="w-full bg-gray-200 rounded-full h-1.5 mb-2">
                       <div
                         className="h-1.5 rounded-full bg-orange-400"
                         style={{
@@ -257,9 +341,39 @@ export default function ConfirmCreateInvoiceModal({
                     </div>
                   </>
                 )}
+
+                {checkedCount > 0 && (
+                  <div className="border-t pt-2 space-y-1 text-xs text-gray-600">
+                    <div className="flex justify-between">
+                      <span>Cộng tiền hàng (chưa chiết khấu)</span>
+                      <span className="font-medium text-gray-800">{fmt(invoiceCalculation.totalGrossAmount)} VND</span>
+                    </div>
+                    {invoiceCalculation.totalLineDiscount > 0 && (
+                      <div className="flex justify-between text-red-600">
+                        <span>Chiết khấu dòng</span>
+                        <span>-{fmt(invoiceCalculation.totalLineDiscount)} VND</span>
+                      </div>
+                    )}
+                    {invoiceCalculation.headerDiscountAmount > 0 && (
+                      <div className="flex justify-between text-red-600">
+                        <span>Chiết khấu tổng phân bổ</span>
+                        <span>-{fmt(invoiceCalculation.headerDiscountAmount)} VND</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-semibold text-gray-800 border-t border-dashed pt-1 mt-1">
+                      <span>Tiền trước thuế</span>
+                      <span>{fmt(invoiceCalculation.totalBeforeTax)} VND</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Thuế GTGT</span>
+                      <span className="font-medium text-gray-800">{fmt(Math.round(invoiceCalculation.totalTax))} VND</span>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex justify-between font-bold text-orange-600 text-base border-t pt-2">
-                  <span>Hóa đơn này</span>
-                  <span>{fmt(thisInvoiceTotal)} VND</span>
+                  <span>Hóa đơn này (Tổng thanh toán)</span>
+                  <span>{fmt(Math.round(thisInvoiceTotal))} VND</span>
                 </div>
               </div>
 
@@ -451,7 +565,7 @@ export default function ConfirmCreateInvoiceModal({
                   Đã chọn <strong className="text-orange-600">{checkedCount}</strong> dòng
                 </span>
                 <span className="font-bold text-orange-600">
-                  {fmt(thisInvoiceTotal)} VND
+                  {fmt(Math.round(thisInvoiceTotal))} VND
                 </span>
               </div>
 
@@ -491,12 +605,15 @@ export default function ConfirmCreateInvoiceModal({
                       <input
                         type="date"
                         value={meta.invoice_date}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const newDate = e.target.value;
+                          const termDays = po?.paymentTerm?.days ?? 30;
                           setMeta((p) => ({
                             ...p,
-                            invoice_date: e.target.value,
-                          }))
-                        }
+                            invoice_date: newDate,
+                            due_date: plusDays(termDays, newDate),
+                          }));
+                        }}
                         className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none"
                       />
                     </FormField>
@@ -586,13 +703,13 @@ export default function ConfirmCreateInvoiceModal({
             <>
               <div className="text-sm text-gray-600">
                 {checkedCount > 0 ? (
-                  <span>
-                    Đã chọn <strong className="text-orange-600">{checkedCount}</strong> dòng ·{" "}
-                    <strong className="text-orange-600">
-                      {fmt(thisInvoiceTotal)}
-                    </strong>{" "}
-                    VND
-                  </span>
+                   <span>
+                     Đã chọn <strong className="text-orange-600">{checkedCount}</strong> dòng ·{" "}
+                     <strong className="text-orange-600">
+                       {fmt(Math.round(thisInvoiceTotal))}
+                     </strong>{" "}
+                     VND
+                   </span>
                 ) : (
                   <span className="text-gray-400">Chưa chọn dòng nào</span>
                 )}

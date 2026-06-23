@@ -35,6 +35,8 @@ export class InvoiceParser {
         unit: item.unit ?? "",
         unit_price: Number(item.unit_price) || 0,
         tax_rate: Number(item.tax_rate) || 0,
+        discount_percent: Number(item.discount_percent) || 0,
+        discount_amount: Number(item.discount_amount) || 0,
         amount: Number(item.amount) || 0,
         confidence: conf,
         needsReview: conf < 0.7,

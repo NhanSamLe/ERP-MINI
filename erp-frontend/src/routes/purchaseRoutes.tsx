@@ -15,6 +15,7 @@ import ViewApPaymentPage from "@/features/purchase/pages/ap_payment/ViewApPaymen
 import DocumentUploadPage from "@/features/purchase/pages/document_intelligence/DocumentUploadPage";
 import DocumentHistoryPage from "@/features/purchase/pages/document_intelligence/DocumentHistoryPage";
 import AnomalyDashboardPage from "@/features/purchase/pages/document_intelligence/AnomalyDashboardPage";
+import InvoiceGeneratorPage from "@/features/purchase/pages/document_intelligence/InvoiceGeneratorPage";
 // New pages
 import RfqListPage from "@/features/purchase/pages/rfq/RfqListPage";
 import RfqDetailPage from "@/features/purchase/pages/rfq/RfqDetailPage";
@@ -42,7 +43,16 @@ const purchaseRoutes: RouteObject[] = [
   {
     path: "/purchase",
     element: (
-      <ProtectedRoute allowedRoles={[Roles.PURCHASE, Roles.PURCHASEMANAGER]}>
+      <ProtectedRoute
+        allowedRoles={[
+          "PURCHASE",
+          "PURCHASEMANAGER",
+          "ACCOUNT",
+          "CHACC",
+          "CEO",
+          "ADMIN",
+        ]}
+      >
         <PurchaseDashboard />
       </ProtectedRoute>
     ),
@@ -105,7 +115,7 @@ const purchaseRoutes: RouteObject[] = [
   {
     path: "purchase/invoices",
     element: (
-      <ProtectedRoute allowedRoles={[Roles.ACCOUNT, Roles.CHACC]}>
+      <ProtectedRoute allowedRoles={["ACCOUNT", "CHACC"]}>
         <ApInvoicePages />
       </ProtectedRoute>
     ),
@@ -114,7 +124,7 @@ const purchaseRoutes: RouteObject[] = [
   {
     path: "purchase/payments",
     element: (
-      <ProtectedRoute allowedRoles={[Roles.ACCOUNT, Roles.CHACC]}>
+      <ProtectedRoute allowedRoles={["ACCOUNT", "CHACC"]}>
         <ApPaymentPages />
       </ProtectedRoute>
     ),
@@ -123,7 +133,7 @@ const purchaseRoutes: RouteObject[] = [
   {
     path: "purchase/payments/:id",
     element: (
-      <ProtectedRoute allowedRoles={[Roles.ACCOUNT, Roles.CHACC]}>
+      <ProtectedRoute allowedRoles={["ACCOUNT", "CHACC"]}>
         <ViewApPaymentPage />
       </ProtectedRoute>
     ),
@@ -132,7 +142,7 @@ const purchaseRoutes: RouteObject[] = [
   {
     path: "purchase/invoices/:id",
     element: (
-      <ProtectedRoute allowedRoles={[Roles.ACCOUNT, Roles.CHACC]}>
+      <ProtectedRoute allowedRoles={["ACCOUNT", "CHACC"]}>
         <ViewApInvoicePage />
       </ProtectedRoute>
     ),
@@ -188,7 +198,7 @@ const purchaseRoutes: RouteObject[] = [
   {
     path: "purchase/document-intelligence",
     element: (
-      <ProtectedRoute allowedRoles={[Roles.ACCOUNT, Roles.CHACC]}>
+      <ProtectedRoute allowedRoles={["ACCOUNT", "CHACC"]}>
         <DocumentUploadPage />
       </ProtectedRoute>
     ),
@@ -196,7 +206,7 @@ const purchaseRoutes: RouteObject[] = [
   {
     path: "purchase/document-intelligence/upload",
     element: (
-      <ProtectedRoute allowedRoles={[Roles.ACCOUNT, Roles.CHACC]}>
+      <ProtectedRoute allowedRoles={["ACCOUNT", "CHACC"]}>
         <DocumentUploadPage />
       </ProtectedRoute>
     ),
@@ -204,8 +214,16 @@ const purchaseRoutes: RouteObject[] = [
   {
     path: "purchase/document-intelligence/history",
     element: (
-      <ProtectedRoute allowedRoles={[Roles.ACCOUNT, Roles.CHACC]}>
+      <ProtectedRoute allowedRoles={["ACCOUNT", "CHACC"]}>
         <DocumentHistoryPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "purchase/document-intelligence/sandbox",
+    element: (
+      <ProtectedRoute allowedRoles={["ACCOUNT", "CHACC"]}>
+        <InvoiceGeneratorPage />
       </ProtectedRoute>
     ),
   },
@@ -214,10 +232,10 @@ const purchaseRoutes: RouteObject[] = [
     element: (
       <ProtectedRoute
         allowedRoles={[
-          Roles.ACCOUNT,
-          Roles.CHACC,
-          Roles.PURCHASEMANAGER,
-          Roles.CEO,
+          "ACCOUNT",
+          "CHACC",
+          "PURCHASEMANAGER",
+          "CEO",
         ]}
       >
         <AnomalyDashboardPage />

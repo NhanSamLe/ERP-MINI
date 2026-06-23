@@ -99,6 +99,46 @@ export const physicalInventoryController = {
     }
   },
 
+  /** POST /physical-inventories/:id/submit */
+  async submitForApproval(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id ?? "");
+      const user = (req as any).user;
+      const data = await physicalInventoryService.submitForApproval(id, user.id);
+      res.json(data);
+    } catch (err: any) {
+      const status = err.status ?? 500;
+      res.status(status).json({ message: err.message });
+    }
+  },
+
+  /** POST /physical-inventories/:id/approve */
+  async approve(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id ?? "");
+      const user = (req as any).user;
+      const data = await physicalInventoryService.approve(id, user.id);
+      res.json(data);
+    } catch (err: any) {
+      const status = err.status ?? 500;
+      res.status(status).json({ message: err.message });
+    }
+  },
+
+  /** POST /physical-inventories/:id/reject */
+  async reject(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id ?? "");
+      const user = (req as any).user;
+      const { reason } = req.body;
+      const data = await physicalInventoryService.reject(id, user.id, reason);
+      res.json(data);
+    } catch (err: any) {
+      const status = err.status ?? 500;
+      res.status(status).json({ message: err.message });
+    }
+  },
+
   /** POST /physical-inventories/:id/validate */
   async validate(req: Request, res: Response) {
     try {

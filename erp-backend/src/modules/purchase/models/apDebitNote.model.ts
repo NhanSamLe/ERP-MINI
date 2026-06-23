@@ -12,7 +12,6 @@ export interface ApDebitNoteAttrs {
   supplier_id: number;
   debit_note_date: string;
   status: ApDebitNoteStatus;
-  approval_status: "draft" | "waiting_approval" | "approved" | "rejected";
   total_before_tax: number;
   total_tax: number;
   total_after_tax: number;
@@ -20,10 +19,6 @@ export interface ApDebitNoteAttrs {
   exchange_rate?: number;
   gl_entry_id?: number | null;
   created_by: number;
-  approved_by?: number | null;
-  submitted_at?: Date | null;
-  approved_at?: Date | null;
-  reject_reason?: string | null;
   notes?: string | null;
 }
 
@@ -31,7 +26,6 @@ type ApDebitNoteCreation = Optional<
   ApDebitNoteAttrs,
   | "id"
   | "status"
-  | "approval_status"
   | "total_before_tax"
   | "total_tax"
   | "total_after_tax"
@@ -49,11 +43,6 @@ export class ApDebitNote
   public supplier_id!: number;
   public debit_note_date!: string;
   public status!: ApDebitNoteStatus;
-  public approval_status!:
-    | "draft"
-    | "waiting_approval"
-    | "approved"
-    | "rejected";
   public total_before_tax!: number;
   public total_tax!: number;
   public total_after_tax!: number;
@@ -61,10 +50,6 @@ export class ApDebitNote
   public exchange_rate?: number;
   public gl_entry_id?: number | null;
   public created_by!: number;
-  public approved_by?: number | null;
-  public submitted_at?: Date | null;
-  public approved_at?: Date | null;
-  public reject_reason?: string | null;
   public notes?: string | null;
 }
 
@@ -83,11 +68,6 @@ ApDebitNote.init(
     debit_note_date: { type: DataTypes.DATEONLY, allowNull: false },
     status: {
       type: DataTypes.ENUM("draft", "posted", "applied", "cancelled"),
-      allowNull: false,
-      defaultValue: "draft",
-    },
-    approval_status: {
-      type: DataTypes.ENUM("draft", "waiting_approval", "approved", "rejected"),
       allowNull: false,
       defaultValue: "draft",
     },
@@ -114,10 +94,6 @@ ApDebitNote.init(
     },
     gl_entry_id: { type: DataTypes.BIGINT, allowNull: true },
     created_by: { type: DataTypes.BIGINT, allowNull: false },
-    approved_by: { type: DataTypes.BIGINT, allowNull: true },
-    submitted_at: { type: DataTypes.DATE, allowNull: true },
-    approved_at: { type: DataTypes.DATE, allowNull: true },
-    reject_reason: { type: DataTypes.TEXT, allowNull: true },
     notes: { type: DataTypes.TEXT, allowNull: true },
   },
   {
@@ -128,3 +104,4 @@ ApDebitNote.init(
     updatedAt: "updated_at",
   },
 );
+

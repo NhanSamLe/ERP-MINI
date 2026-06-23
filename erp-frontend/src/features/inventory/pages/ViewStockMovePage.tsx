@@ -7,6 +7,7 @@ import {
   fetchStockMoveByIdThunk,
   rejectStockMoveThunk,
   submitStockMoveThunk,
+  receiveTransferThunk,
 } from "../store";
 import { fetchWarehousesThunk } from "../store/stock/warehouse/warehouse.thunks";
 import { Button } from "../../../components/ui/Button";
@@ -45,6 +46,7 @@ export interface UserInfo {
 const statusColors: Record<string, string> = {
   draft: "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-100",
   waiting_approval: "bg-yellow-50 text-yellow-700 border-yellow-255 hover:bg-yellow-50",
+  in_transit: "bg-blue-50 text-blue-700 border-blue-150 hover:bg-blue-50",
   posted: "bg-emerald-50 text-emerald-700 border-emerald-255 hover:bg-emerald-50",
   cancelled: "bg-rose-50 text-rose-700 border-rose-255 hover:bg-rose-50",
 };
@@ -52,6 +54,7 @@ const statusColors: Record<string, string> = {
 const statusLabels: Record<string, string> = {
   draft: "Nháp",
   waiting_approval: "Chờ duyệt",
+  in_transit: "Đang vận chuyển",
   posted: "Đã duyệt",
   cancelled: "Đã hủy",
 };
@@ -90,10 +93,12 @@ export default function ViewStockMovePage() {
   const [confirmSubmit, setConfirmSubmit] = useState(false);
   const [confirmApprove, setConfirmApprove] = useState(false);
   const [confirmReject, setConfirmReject] = useState(false);
+  const [confirmReceive, setConfirmReceive] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
 
   let stockMoveBranchId: number | undefined = undefined;
+  let destinationBranchId: number | undefined = undefined;
   if (data) {
     let warehouseIdToCheck: number | undefined;
     switch (data.type) {
@@ -108,6 +113,11 @@ export default function ViewStockMovePage() {
     }
     const warehouse = warehouses.find((w) => w.id === warehouseIdToCheck);
     stockMoveBranchId = warehouse?.branch_id;
+
+    if (data.warehouse_to_id) {
+      const whTo = warehouses.find((w) => w.id === data.warehouse_to_id);
+      destinationBranchId = whTo?.branch_id;
+    }
   }
 
   useEffect(() => {
@@ -149,6 +159,21 @@ export default function ViewStockMovePage() {
       setData(mapToViewStockMove(fresh, warehouses));
       setConfirmApprove(false);
       toast.success("Đã phê duyệt thành công!");
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleReceive = async () => {
+    setSubmitting(true);
+    try {
+      await dispatch(receiveTransferThunk(data!.id)).unwrap();
+      const fresh = await dispatch(fetchStockMoveByIdThunk(data!.id)).unwrap();
+      setData(mapToViewStockMove(fresh, warehouses));
+      setConfirmReceive(false);
+      toast.success("Xác nhận nhận hàng thành công, phiếu hoàn thành!");
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
@@ -203,6 +228,11 @@ export default function ViewStockMovePage() {
   }
 
   const isTransfer = data.type === "transfer";
+  const canReceive =
+    data.type === "transfer" &&
+    data.status === "in_transit" &&
+    (currentUser?.role.code === Roles.WHSTAFF || currentUser?.role.code === Roles.WHMANAGER) &&
+    destinationBranchId === currentUser?.branch.id;
 
   return (
     <div className="max-w-6xl mx-auto p-6 md:p-8 space-y-6">
@@ -251,7 +281,7 @@ export default function ViewStockMovePage() {
         <div className="flex items-center gap-2.5 self-end md:self-auto">
           {data.status === "draft" &&
             currentUser?.role.code === Roles.WHSTAFF &&
-            data.creator?.id === currentUser?.id &&
+            (data.creator?.id === currentUser?.id || !!data.reference_type) &&
             stockMoveBranchId === currentUser?.branch.id && (
               <Button
                 onClick={() => setConfirmSubmit(true)}
@@ -282,6 +312,16 @@ export default function ViewStockMovePage() {
                 </Button>
               </>
             )}
+
+          {canReceive && (
+            <Button
+              onClick={() => setConfirmReceive(true)}
+              variant="success"
+              leftIcon={<CheckCircle2 className="w-4 h-4" />}
+            >
+              Nhận hàng (Xác nhận)
+            </Button>
+          )}
         </div>
       </div>
 
@@ -703,6 +743,41 @@ export default function ViewStockMovePage() {
               className="w-full sm:w-auto"
             >
               Hủy phiếu
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* CONFIRM RECEIVE */}
+      <Dialog open={confirmReceive} onOpenChange={setConfirmReceive}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 mb-4 animate-pulse">
+              <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+            </div>
+            <DialogTitle className="text-center text-lg font-bold text-slate-900">
+              Xác nhận nhận hàng?
+            </DialogTitle>
+            <DialogDescription className="text-center text-sm text-gray-500 mt-1">
+              Bạn có chắc chắn muốn xác nhận nhận hàng cho phiếu điều chuyển này? Tồn kho tại kho đích sẽ tăng lên và hàng đi đường (In-Transit) sẽ được xóa bỏ tương ứng.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-row justify-center gap-3 mt-4 border-t border-slate-100 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmReceive(false)}
+              disabled={submitting}
+              className="w-full sm:w-auto"
+            >
+              Hủy
+            </Button>
+            <Button
+              variant="success"
+              onClick={handleReceive}
+              loading={submitting}
+              className="w-full sm:w-auto"
+            >
+              Xác nhận nhận
             </Button>
           </DialogFooter>
         </DialogContent>

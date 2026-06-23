@@ -4,6 +4,7 @@ import { sequelize } from "../../../config/db";
 export type PhysicalInventoryStatus =
   | "draft"
   | "in_progress"
+  | "waiting_approval"
   | "validated"
   | "cancelled";
 
@@ -17,11 +18,14 @@ export interface PhysicalInventoryAttrs {
   created_by: number;
   validated_by?: number | null;
   validated_at?: Date | null;
+  approved_by?: number | null;
+  approved_at?: Date | null;
+  reject_reason?: string | null;
 }
 
 type PhysicalInventoryCreation = Optional<
   PhysicalInventoryAttrs,
-  "id" | "status" | "validated_by" | "validated_at"
+  "id" | "status" | "validated_by" | "validated_at" | "approved_by" | "approved_at" | "reject_reason"
 >;
 
 export class PhysicalInventory
@@ -37,6 +41,9 @@ export class PhysicalInventory
   public created_by!: number;
   public validated_by?: number | null;
   public validated_at?: Date | null;
+  public approved_by?: number | null;
+  public approved_at?: Date | null;
+  public reject_reason?: string | null;
 }
 
 PhysicalInventory.init(
@@ -47,13 +54,16 @@ PhysicalInventory.init(
     branch_id: { type: DataTypes.BIGINT, allowNull: false },
     inv_date: { type: DataTypes.DATEONLY, allowNull: false },
     status: {
-      type: DataTypes.ENUM("draft", "in_progress", "validated", "cancelled"),
+      type: DataTypes.ENUM("draft", "in_progress", "waiting_approval", "validated", "cancelled"),
       allowNull: false,
       defaultValue: "draft",
     },
     created_by: { type: DataTypes.BIGINT, allowNull: false },
     validated_by: { type: DataTypes.BIGINT, allowNull: true },
     validated_at: { type: DataTypes.DATE, allowNull: true },
+    approved_by: { type: DataTypes.BIGINT, allowNull: true },
+    approved_at: { type: DataTypes.DATE, allowNull: true },
+    reject_reason: { type: DataTypes.STRING(255), allowNull: true },
   },
   {
     sequelize,

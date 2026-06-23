@@ -80,7 +80,7 @@ export default function DocumentHistoryPage() {
       dispatch(setCurrentDocumentId(id));
       dispatch(setStatus(statusRes));
       dispatch(setResult(resultRes));
-      navigate("/purchase/document-intelligence");
+      navigate(`/purchase/document-intelligence?doc=${id}`);
     } catch (err: any) {
       toast.error(err?.message ?? "Không thể tải kết quả OCR");
     } finally {

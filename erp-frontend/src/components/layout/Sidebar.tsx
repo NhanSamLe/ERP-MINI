@@ -1,7 +1,9 @@
 import { useState, ElementType } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store/store";
+import FloatingChatButton from "../../features/ai-chatbot/components/FloatingChatButton";
+import LocalFloatingChatButton from "../../features/ai-local-rag/components/LocalFloatingChatButton";
 import {
   ShoppingCart,
   ShoppingBag,
@@ -154,6 +156,11 @@ const menuItems: MenuItem[] = [
       {
         name: "Scan hóa đơn (OCR)",
         path: "/purchase/document-intelligence",
+        allowedRoles: ["ACCOUNT", "CHACC"],
+      },
+      {
+        name: "Sandbox hóa đơn",
+        path: "/purchase/document-intelligence/sandbox",
         allowedRoles: ["ACCOUNT", "CHACC"],
       },
       {
@@ -543,9 +550,14 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
               <div key={item.name}>
                 {/* Module row */}
                 <div
-                  onClick={() =>
-                    filteredSubs?.length && toggleExpand(item.name)
-                  }
+                  onClick={() => {
+                    if (item.path) {
+                      navigate(item.path);
+                    }
+                    if (filteredSubs?.length) {
+                      toggleExpand(item.name);
+                    }
+                  }}
                   className={[
                     "flex items-center justify-between px-3 py-2 rounded-md cursor-pointer",
                     "text-sm font-medium transition-colors duration-100 select-none",

@@ -196,4 +196,30 @@ export const StockMoveController = {
         });
     }
   },
+
+  /**
+   * POST /:id/receive
+   * Phase 2 của internal transfer: kho đích xác nhận nhận hàng.
+   * Chỉ WHMANAGER hoặc WHSTAFF của kho đích mới được gọi.
+   */
+  async receiveTransfer(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const user = (req as any).user;
+
+      const updatedMove = await stockMoveService.receiveTransfer(id, user);
+
+      return res.json({
+        success: true,
+        data: updatedMove,
+        message: "Đã xác nhận nhận hàng thành công. Phiếu điều chuyển hoàn tất.",
+      });
+    } catch (err: any) {
+      return res.status(err.status ?? 400).json({
+        success: false,
+        message: err.message || "Lỗi khi xác nhận nhận hàng",
+      });
+    }
+  },
 };
+

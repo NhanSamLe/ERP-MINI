@@ -10,9 +10,11 @@ import {
 } from "../../store/purchaseReturn";
 import { loadPartners } from "@/features/partner/store/partner.thunks";
 import { fetchPurchaseOrdersThunk } from "../../store/purchaseOrder.thunks";
+import { getAllApInvoicesThunk } from "../../store/apInvoice/apInvoice.thunks";
 import { praApi } from "../../api/purchaseReturn.api";
 import { StandardFormLayout } from "../../../../components/layout/StandardFormLayout";
 import { FormSection } from "../../../../components/layout/FormSection";
+import { getErrorMessage } from "@/utils/ErrorHelper";
 
 const RETURN_TYPE_OPTIONS = [
   { value: "debit_note", label: "Thẻ nợ (Trừ công nợ)" },
@@ -32,6 +34,7 @@ export default function PraEditPage() {
   const { selectedPra: pra, loading } = useSelector(
     (s: RootState) => s.purchaseReturn,
   );
+  const { list: apInvoices } = useSelector((s: RootState) => s.apInvoice);
   const user = useSelector((s: RootState) => s.auth.user);
 
   // Form fields
@@ -74,6 +77,7 @@ export default function PraEditPage() {
   useEffect(() => {
     dispatch(loadPartners({ type: "supplier" }));
     dispatch(fetchPurchaseOrdersThunk());
+    dispatch(getAllApInvoicesThunk());
   }, [dispatch]);
 
   // Auto-fill supplier when PO is selected
@@ -82,6 +86,19 @@ export default function PraEditPage() {
     const po = purchaseOrders.find((p) => p.id === purchaseOrderId);
     if (po?.supplier_id) setSupplierId(po.supplier_id);
   }, [purchaseOrderId, purchaseOrders]);
+
+  // Max return amount calculation
+  const eligiblePOs = purchaseOrders.filter((po) =>
+    ["confirmed", "partially_received", "completed"].includes(po.status),
+  );
+  const selectedPoObj = eligiblePOs.find((p) => p.id === purchaseOrderId);
+  // PRA object has ap_invoice_id
+  const selectedInvObj = apInvoices.find((i) => i.id === (pra?.ap_invoice_id ?? 0));
+  const maxReturnAmount = selectedInvObj
+    ? Number(selectedInvObj.total_after_tax ?? 0)
+    : selectedPoObj
+      ? Number(selectedPoObj.total_after_tax ?? 0)
+      : 0;
 
   const handleSubmit = async () => {
     if (!pra) return;
@@ -101,6 +118,12 @@ export default function PraEditPage() {
       toast.error("Tổng giá trị trả hàng phải lớn hơn 0");
       return;
     }
+    if (Number(totalReturnAmount) > maxReturnAmount) {
+      toast.error(
+        `Số tiền trả hàng không được vượt quá giá trị tối đa cho phép là ${maxReturnAmount.toLocaleString("vi-VN")} đ`
+      );
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -108,6 +131,7 @@ export default function PraEditPage() {
       await praApi.update(pra.id, {
         supplier_id: supplierId as number,
         purchase_order_id: purchaseOrderId as number,
+        ap_invoice_id: pra.ap_invoice_id ?? null,
         return_type: returnType,
         reason: reason.trim(),
         total_return_amount: Number(totalReturnAmount),
@@ -117,7 +141,7 @@ export default function PraEditPage() {
       toast.success("Đã cập nhật PRA");
       navigate(`/purchase/return-authorizations/${pra.id}`);
     } catch (e: any) {
-      toast.error(e?.message ?? "Cập nhật PRA thất bại");
+      toast.error(getErrorMessage(e));
     } finally {
       setSubmitting(false);
     }
@@ -162,11 +186,6 @@ export default function PraEditPage() {
     );
   }
 
-  // Filter POs to confirmed/partially_received/completed only
-  const eligiblePOs = purchaseOrders.filter((po) =>
-    ["confirmed", "partially_received", "completed"].includes(po.status),
-  );
-
   return (
     <StandardFormLayout
       title={`Chỉnh sửa Yêu cầu trả hàng mua: ${pra.pra_no}`}
@@ -208,6 +227,16 @@ export default function PraEditPage() {
                 </option>
               ))}
             </select>
+            {selectedPoObj && (
+              <p className="text-xs text-blue-600 mt-1">
+                Giá trị PO: {Number(selectedPoObj.total_after_tax).toLocaleString("vi-VN")} đ
+              </p>
+            )}
+            {selectedInvObj && (
+              <p className="text-xs text-blue-600 mt-1">
+                Giá trị hóa đơn cấn trừ: {Number(selectedInvObj.total_after_tax).toLocaleString("vi-VN")} đ
+              </p>
+            )}
             {purchaseOrders.length > 0 && eligiblePOs.length === 0 && (
               <p className="text-xs text-amber-600 mt-1">
                 Không có đơn mua hàng nào đủ điều kiện. Đơn mua hàng phải ở trạng thái Đã xác nhận / Đã nhận hàng một phần / Đã hoàn thành.
@@ -271,6 +300,11 @@ export default function PraEditPage() {
               placeholder="0"
               className="w-full h-9 px-3 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
             />
+            {maxReturnAmount > 0 && (
+              <p className="text-[11px] text-orange-600 mt-1 font-medium">
+                Tối đa: {maxReturnAmount.toLocaleString("vi-VN")} đ
+              </p>
+            )}
           </div>
 
           {/* Branch (read-only) */}

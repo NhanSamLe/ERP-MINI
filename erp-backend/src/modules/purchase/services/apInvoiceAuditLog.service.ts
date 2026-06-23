@@ -71,7 +71,7 @@ export class ApInvoiceAuditLogService {
     try {
       const actionMap: Record<string, AuditAction> = {
         duplicate: "override_duplicate",
-        mismatch: "mismatch_accepted",
+        mismatch: "mismatch_overridden",
         manual: "manual_override",
       };
 

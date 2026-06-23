@@ -6,6 +6,9 @@ import {
   fetchPhysicalInventoryByIdThunk,
   startPhysicalInventoryThunk,
   validatePhysicalInventoryThunk,
+  submitPhysicalInventoryThunk,
+  approvePhysicalInventoryThunk,
+  rejectPhysicalInventoryThunk,
   cancelPhysicalInventoryThunk,
 } from "../store";
 import { physicalInventoryApi } from "../api/physicalInventory.api";
@@ -30,6 +33,7 @@ import { ChevronLeft, ClipboardList, Info, BarChart3, ListCollapse, Play, CheckC
 const statusColors: Record<string, string> = {
   draft: "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-100",
   in_progress: "bg-blue-50 text-blue-700 border-blue-150 hover:bg-blue-50",
+  waiting_approval: "bg-amber-50 text-amber-700 border-amber-150 hover:bg-amber-50",
   validated: "bg-emerald-50 text-emerald-700 border-emerald-150 hover:bg-emerald-50",
   cancelled: "bg-rose-50 text-rose-700 border-rose-150 hover:bg-rose-50",
 };
@@ -37,6 +41,7 @@ const statusColors: Record<string, string> = {
 const statusLabels: Record<string, string> = {
   draft: "Nháp",
   in_progress: "Đang thực hiện",
+  waiting_approval: "Chờ phê duyệt",
   validated: "Đã xác nhận",
   cancelled: "Đã hủy",
 };
@@ -53,8 +58,9 @@ export default function PhysicalInventoryDetailPage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [confirmAction, setConfirmAction] = useState<
-    "start" | "validate" | "cancel" | null
+    "start" | "validate" | "submit" | "approve" | "reject" | "cancel" | null
   >(null);
+  const [rejectReason, setRejectReason] = useState("");
   // counted_qty edits: lineId → value
   const [editedQty, setEditedQty] = useState<Record<number, string>>({});
   const [savingLine, setSavingLine] = useState<number | null>(null);
@@ -63,7 +69,7 @@ export default function PhysicalInventoryDetailPage() {
     if (id) dispatch(fetchPhysicalInventoryByIdThunk(Number(id)));
   }, [id, dispatch]);
 
-  const handleAction = async (action: "start" | "validate" | "cancel") => {
+  const handleAction = async (action: "start" | "validate" | "submit" | "approve" | "reject" | "cancel") => {
     if (!inv) return;
     setSubmitting(true);
     try {
@@ -73,6 +79,22 @@ export default function PhysicalInventoryDetailPage() {
       } else if (action === "validate") {
         await dispatch(validatePhysicalInventoryThunk(inv.id)).unwrap();
         toast.success("Đã xác nhận đợt kiểm kê — số dư tồn kho đã được cập nhật!");
+      } else if (action === "submit") {
+        await dispatch(submitPhysicalInventoryThunk(inv.id)).unwrap();
+        toast.success("Đã gửi duyệt phiếu kiểm kê!");
+      } else if (action === "approve") {
+        await dispatch(approvePhysicalInventoryThunk(inv.id)).unwrap();
+        toast.success("Đã duyệt phiếu kiểm kê!");
+      } else if (action === "reject") {
+        if (!rejectReason.trim()) {
+          toast.error("Vui lòng nhập lý do từ chối!");
+          return;
+        }
+        await dispatch(
+          rejectPhysicalInventoryThunk({ id: inv.id, reject_reason: rejectReason })
+        ).unwrap();
+        toast.success("Đã từ chối phiếu kiểm kê!");
+        setRejectReason("");
       } else {
         await dispatch(cancelPhysicalInventoryThunk(inv.id)).unwrap();
         toast.success("Đã hủy đợt kiểm kê!");
@@ -127,8 +149,10 @@ export default function PhysicalInventoryDetailPage() {
     currentUser?.role.code === Roles.WHMANAGER ||
     currentUser?.role.code === Roles.ADMIN;
   const canStart = inv.status === "draft";
-  const canValidate = inv.status === "in_progress" && isManager;
-  const canCancel = ["draft", "in_progress"].includes(inv.status);
+  const canSubmit = inv.status === "in_progress";
+  const canApprove = inv.status === "waiting_approval" && isManager;
+  const canReject = inv.status === "waiting_approval" && isManager;
+  const canCancel = ["draft", "in_progress", "waiting_approval"].includes(inv.status);
 
   return (
     <div className="max-w-6xl mx-auto p-6 md:p-8 space-y-6">
@@ -176,26 +200,56 @@ export default function PhysicalInventoryDetailPage() {
               Bắt đầu kiểm kê
             </Button>
           )}
-          {canValidate && (
+          {canSubmit && (
             <Button
-              variant="success"
-              onClick={() => setConfirmAction("validate")}
+              variant="primary"
+              onClick={() => setConfirmAction("submit")}
               leftIcon={<CheckCircle className="w-4 h-4" />}
             >
-              Xác nhận
+              Gửi duyệt
+            </Button>
+          )}
+          {canApprove && (
+            <Button
+              variant="success"
+              onClick={() => setConfirmAction("approve")}
+              leftIcon={<CheckCircle className="w-4 h-4" />}
+            >
+              Duyệt
+            </Button>
+          )}
+          {canReject && (
+            <Button
+              variant="danger"
+              onClick={() => setConfirmAction("reject")}
+              leftIcon={<Ban className="w-4 h-4" />}
+            >
+              Từ chối
             </Button>
           )}
           {canCancel && (
             <Button
-              variant="danger"
+              variant="outline"
               onClick={() => setConfirmAction("cancel")}
               leftIcon={<Ban className="w-4 h-4" />}
+              className="text-rose-600 border-rose-200 hover:bg-rose-50"
             >
               Hủy
             </Button>
           )}
         </div>
       </div>
+
+      {/* Reject Reason Banner */}
+      {inv.reject_reason && inv.status === "in_progress" && (
+        <div className="bg-rose-50 border border-rose-150 rounded-xl p-4 flex gap-3 text-rose-800 text-sm shadow-sm">
+          <AlertTriangle className="w-5 h-5 text-rose-650 shrink-0 mt-0.5" />
+          <div>
+            <h4 className="font-bold">Đợt kiểm kê bị từ chối duyệt trước đó</h4>
+            <p className="mt-1 text-rose-700 font-medium">Lý do: {inv.reject_reason}</p>
+          </div>
+        </div>
+      )}
 
       {/* Info + Summary grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -466,18 +520,38 @@ export default function PhysicalInventoryDetailPage() {
                 </div>
                 <DialogTitle className="text-center text-lg font-bold text-slate-900">
                   {confirmAction === "start" && "Bắt đầu đợt kiểm kê?"}
+                  {confirmAction === "submit" && "Gửi duyệt phiếu kiểm kê?"}
+                  {confirmAction === "approve" && "Phê duyệt phiếu kiểm kê?"}
+                  {confirmAction === "reject" && "Từ chối phiếu kiểm kê?"}
                   {confirmAction === "validate" && "Xác nhận kết quả kiểm kê?"}
                   {confirmAction === "cancel" && "Hủy bỏ đợt kiểm kê?"}
                 </DialogTitle>
                 <DialogDescription className="text-center text-sm text-gray-500 mt-1.5">
                   {confirmAction === "start" &&
                     "Hành động này sẽ khởi tạo phiếu kiểm kê và khóa số lượng tồn kho hiện tại làm số lượng lý thuyết."}
+                  {confirmAction === "submit" &&
+                    "Xác nhận gửi phiếu kiểm kê này để chờ Quản lý kho / Kế toán trưởng phê duyệt."}
+                  {confirmAction === "approve" &&
+                    "Xác nhận phê duyệt phiếu kiểm kê này. Tồn kho thực tế sẽ được điều chỉnh."}
+                  {confirmAction === "reject" &&
+                    "Vui lòng điền lý do từ chối phê duyệt phiếu kiểm kê dưới đây."}
                   {confirmAction === "validate" &&
                     "CẢNH BÁO: Hành động này sẽ chốt số lượng đếm, xác nhận các chênh lệch và điều chỉnh lượng tồn kho tương ứng. Không thể hoàn tác."}
                   {confirmAction === "cancel" &&
                     "Hành động này sẽ hủy bỏ đợt kiểm kê. Các dữ liệu đã đếm sẽ bị loại bỏ."}
                 </DialogDescription>
               </DialogHeader>
+
+              {confirmAction === "reject" && (
+                <div className="mt-3">
+                  <textarea
+                    className="w-full min-h-[80px] border border-slate-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 transition"
+                    placeholder="Nhập lý do từ chối tại đây..."
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                  />
+                </div>
+              )}
 
               <DialogFooter className="flex-row justify-center gap-3 mt-4 border-t border-slate-100 pt-4">
                 <Button
@@ -489,7 +563,13 @@ export default function PhysicalInventoryDetailPage() {
                   Đóng
                 </Button>
                 <Button
-                  variant={confirmAction === "validate" ? "success" : confirmAction === "cancel" ? "danger" : "primary"}
+                  variant={
+                    confirmAction === "approve" || confirmAction === "validate"
+                      ? "success"
+                      : confirmAction === "cancel" || confirmAction === "reject"
+                      ? "danger"
+                      : "primary"
+                  }
                   onClick={() => handleAction(confirmAction)}
                   loading={submitting}
                   className="w-full sm:w-auto"

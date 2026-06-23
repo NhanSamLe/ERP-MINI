@@ -13,6 +13,7 @@ import {
   fetchPurchaseOrderByStatus,
   PurchaseOrder,
 } from "../../../../purchase/store";
+import { fetchReturnsThunk } from "../../../../purchase/store/purchaseReturn";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../../../../store/store";
 import { toast } from "react-toastify";
@@ -67,6 +68,7 @@ export default function CreateReceiptModal({
 }: CreateReceiptModalProps) {
   const dispatch = useDispatch<AppDispatch>();
   const purchaseOrder = useSelector((state: RootState) => state.purchaseOrder);
+  const purchaseReturn = useSelector((state: RootState) => state.purchaseReturn);
 
   const generateMoveNo = (): string => {
     const timestamp = Date.now();
@@ -88,8 +90,12 @@ export default function CreateReceiptModal({
   const [selectedPOId, setSelectedPOId] = useState<string>("");
 
   useEffect(() => {
-    dispatch(fetchPurchaseOrderByStatus("confirmed,partially_received"));
-  }, [dispatch]);
+    if (form.reference_type === "purchase_order") {
+      dispatch(fetchPurchaseOrderByStatus("confirmed,partially_received"));
+    } else if (form.reference_type === "purchase_return") {
+      dispatch(fetchReturnsThunk({ status: "confirmed,completed", return_type: "replacement" }));
+    }
+  }, [dispatch, form.reference_type]);
 
   useEffect(() => {
     if (!open) return;
@@ -119,45 +125,85 @@ export default function CreateReceiptModal({
         return;
       }
 
-      const po = purchaseOrder.items.find(
-        (x: PurchaseOrder) => x.id.toString() === selectedPOId,
-      );
-
-      if (!po || !po.lines) {
-        setProducts([]);
-        return;
-      }
-
-      try {
-        const fetchedProducts = await Promise.all(
-          po.lines.map(async (line) => {
-            const result = await dispatch(
-              fetchProductByIdThunk(line.product_id),
-            ).unwrap();
-
-            return {
-              id: result.id,
-              name: result.name,
-              sku: result.sku,
-              uom: result.uom?.name ?? result.uom?.code ?? "",
-              uom_id: result.uom_id ?? null,
-              uomOptions: buildUomOptions(result),
-              image: result.image_url,
-              quantity: line.qty_in_stock_uom ?? line.quantity,
-              default_supplier_id: po.supplier_id ?? null,
-            } as ProductItem;
-          }),
+      if (form.reference_type === "purchase_order") {
+        const po = purchaseOrder.items.find(
+          (x: PurchaseOrder) => x.id.toString() === selectedPOId,
         );
 
-        setProducts(fetchedProducts);
-      } catch (err) {
-        console.error(err);
-        toast.error("Tải chi tiết sản phẩm thất bại");
+        if (!po || !po.lines) {
+          setProducts([]);
+          return;
+        }
+
+        try {
+          const fetchedProducts = await Promise.all(
+            po.lines.map(async (line) => {
+              const result = await dispatch(
+                fetchProductByIdThunk(line.product_id),
+              ).unwrap();
+
+              return {
+                id: result.id,
+                name: result.name,
+                sku: result.sku,
+                uom: result.uom?.name ?? result.uom?.code ?? "",
+                uom_id: result.uom_id ?? null,
+                uomOptions: buildUomOptions(result),
+                image: result.image_url,
+                quantity: line.qty_in_stock_uom ?? line.quantity,
+                default_supplier_id: po.supplier_id ?? null,
+              } as ProductItem;
+            }),
+          );
+
+          setProducts(fetchedProducts);
+        } catch (err) {
+          console.error(err);
+          toast.error("Tải chi tiết sản phẩm thất bại");
+        }
+      } else if (form.reference_type === "purchase_return") {
+        const pr = purchaseReturn.returns.find(
+          (x: any) => x.id.toString() === selectedPOId,
+        );
+
+        if (!pr || !pr.lines) {
+          setProducts([]);
+          return;
+        }
+
+        try {
+          const fetchedProducts = await Promise.all(
+            pr.lines.map(async (line) => {
+              const result = await dispatch(
+                fetchProductByIdThunk(line.product_id),
+              ).unwrap();
+
+              const quantity = line.quantity_confirmed_stock_uom ?? line.qty_in_stock_uom ?? line.quantity_returned;
+
+              return {
+                id: result.id,
+                name: result.name,
+                sku: result.sku,
+                uom: result.uom?.name ?? result.uom?.code ?? "",
+                uom_id: result.uom_id ?? null,
+                uomOptions: buildUomOptions(result),
+                image: result.image_url,
+                quantity: quantity,
+                default_supplier_id: pr.supplier_id ?? null,
+              } as ProductItem;
+            }),
+          );
+
+          setProducts(fetchedProducts);
+        } catch (err) {
+          console.error(err);
+          toast.error("Tải chi tiết sản phẩm thất bại");
+        }
       }
     };
 
     loadProducts();
-  }, [selectedPOId, purchaseOrder.items, dispatch]);
+  }, [selectedPOId, purchaseOrder.items, purchaseReturn.returns, form.reference_type, dispatch]);
 
   const handleQuantityChange = (id: number, value: number) => {
     setProducts((prev) =>
@@ -169,7 +215,11 @@ export default function CreateReceiptModal({
 
   const handleSubmit = () => {
     if (!selectedPOId) {
-      toast.error("Vui lòng chọn đơn mua hàng");
+      toast.error(
+        form.reference_type === "purchase_order"
+          ? "Vui lòng chọn đơn mua hàng"
+          : "Vui lòng chọn phiếu trả hàng"
+      );
       return;
     }
 
@@ -228,7 +278,7 @@ export default function CreateReceiptModal({
           <div>
             <DialogTitle className="text-lg font-bold text-slate-900">Tạo phiếu nhập kho</DialogTitle>
             <DialogDescription className="text-xs text-slate-400 mt-0.5">
-              Nhập nguyên vật liệu hoặc sản phẩm từ các đơn mua hàng đang đến
+              Nhập nguyên vật liệu hoặc sản phẩm từ các đơn mua hàng hoặc đổi trả hàng
             </DialogDescription>
           </div>
         </DialogHeader>
@@ -272,21 +322,56 @@ export default function CreateReceiptModal({
               />
             </div>
 
-            {/* Purchase Order Select */}
+            {/* Reference Type Select */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Loại tham chiếu *</label>
+              <Select
+                value={form.reference_type}
+                onValueChange={(v) => {
+                  setForm((prev) => ({ ...prev, reference_type: v }));
+                  setSelectedPOId("");
+                  setProducts([]);
+                }}
+              >
+                <SelectTrigger className="w-full h-10 bg-white border-slate-200 focus:ring-orange-500 focus:border-orange-500 rounded-lg">
+                  <SelectValue placeholder="Chọn loại tham chiếu" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="purchase_order">Đơn mua hàng (PO)</SelectItem>
+                  <SelectItem value="purchase_return">Đổi trả hàng (PR)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Document Select */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                <ShoppingCart className="w-3.5 h-3.5 text-slate-400" /> Đơn mua hàng (PO) *
+                {form.reference_type === "purchase_order" ? (
+                  <>
+                    <ShoppingCart className="w-3.5 h-3.5 text-slate-400" /> Đơn mua hàng (PO) *
+                  </>
+                ) : (
+                  <>
+                    <Clipboard className="w-3.5 h-3.5 text-slate-400" /> Phiếu trả hàng (PR) *
+                  </>
+                )}
               </label>
               <Select value={selectedPOId} onValueChange={setSelectedPOId}>
                 <SelectTrigger className="w-full h-10 bg-white border-slate-200 focus:ring-orange-500 focus:border-orange-500 rounded-lg">
-                  <SelectValue placeholder="Chọn PO" />
+                  <SelectValue placeholder={form.reference_type === "purchase_order" ? "Chọn PO" : "Chọn Phiếu trả hàng"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {purchaseOrder.items?.map((po: PurchaseOrder) => (
-                    <SelectItem key={po.id} value={po.id.toString()}>
-                      {po.po_no}
-                    </SelectItem>
-                  ))}
+                  {form.reference_type === "purchase_order"
+                    ? purchaseOrder.items?.map((po: PurchaseOrder) => (
+                        <SelectItem key={po.id} value={po.id.toString()}>
+                          {po.po_no}
+                        </SelectItem>
+                      ))
+                    : purchaseReturn.returns?.map((pr: any) => (
+                        <SelectItem key={pr.id} value={pr.id.toString()}>
+                          {pr.return_no}
+                        </SelectItem>
+                      ))}
                 </SelectContent>
               </Select>
             </div>
@@ -435,7 +520,7 @@ export default function CreateReceiptModal({
                   ) : (
                     <tr>
                       <td colSpan={7} className="py-12 text-center text-slate-400 italic">
-                        Chưa chọn đơn mua hàng hoặc chưa tải danh sách sản phẩm.
+                        Chưa chọn chứng từ tham chiếu hoặc chưa tải danh sách sản phẩm.
                       </td>
                     </tr>
                   )}

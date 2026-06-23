@@ -64,11 +64,10 @@ export interface PurchaseReturn {
   return_date: string;
   warehouse_id?: number | null;
   status: "draft" | "shipped" | "confirmed" | "completed" | "cancelled";
-  approval_status: "draft" | "waiting_approval" | "approved" | "rejected";
   total_return_amount: number;
+  return_type?: "refund" | "replacement" | "debit_note";
   stock_move_id?: number | null;
   created_by: number;
-  approved_by?: number | null;
   notes?: string | null;
   created_at: string;
   updated_at: string;
@@ -107,7 +106,6 @@ export interface ApDebitNote {
   supplier_id: number;
   debit_note_date: string;
   status: "draft" | "posted" | "applied" | "cancelled";
-  approval_status: "draft" | "waiting_approval" | "approved" | "rejected";
   total_before_tax: number;
   total_tax: number;
   total_after_tax: number;
@@ -115,7 +113,6 @@ export interface ApDebitNote {
   exchange_rate?: number;
   gl_entry_id?: number | null;
   created_by: number;
-  approved_by?: number | null;
   notes?: string | null;
   created_at: string;
   updated_at: string;
@@ -245,6 +242,12 @@ export const apDebitNoteApi = {
   createFromReturn: async (returnId: number): Promise<ApDebitNote> => {
     const res = await axiosClient.post(
       `/purchase/debit-notes/from-return/${returnId}`,
+    );
+    return res.data.data;
+  },
+  getPreview: async (returnId: number): Promise<any> => {
+    const res = await axiosClient.get(
+      `/purchase/debit-notes/from-return/${returnId}/preview`,
     );
     return res.data.data;
   },

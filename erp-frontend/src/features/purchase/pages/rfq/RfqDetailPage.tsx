@@ -297,6 +297,24 @@ export default function RfqDetailPage() {
               <p className="text-sm text-gray-800">v{rfq.version}</p>
             </div>
             <div>
+              <p className="text-xs text-gray-500 mb-1">Điều khoản thanh toán</p>
+              <p className="text-sm text-gray-800">
+                {rfq.paymentTerm ? `${rfq.paymentTerm.name} (${rfq.paymentTerm.days} ngày)` : "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Tiền tệ</p>
+              <p className="text-sm text-gray-800">
+                {rfq.currency ? `${rfq.currency.code} (${rfq.currency.name})` : "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Tỷ giá</p>
+              <p className="text-sm text-gray-800">
+                {rfq.exchange_rate ? Number(rfq.exchange_rate).toLocaleString("vi-VN") : "1"}
+              </p>
+            </div>
+            <div>
               <p className="text-xs text-gray-500 mb-1">Trạng thái</p>
               <StatusBadge status={rfq.status} />
             </div>
@@ -440,44 +458,86 @@ export default function RfqDetailPage() {
                     </td>
                   </tr>
                 ) : (
-                  lines.map((line, i) => (
-                    <tr key={line.id ?? i} className="hover:bg-gray-50/60">
-                      <td className="px-4 py-3 text-gray-500">{i + 1}</td>
-                      <td className="px-4 py-3 font-medium text-gray-900">
-                        {line.product?.name ?? `Product #${line.product_id}`}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">
-                        {line.description ?? "—"}
-                      </td>
-                      <td className="px-4 py-3 text-right text-gray-800">
-                        {line.quantity}
-                      </td>
-                      <td className="px-4 py-3 text-left text-gray-600">
-                        {/* Assuming RFQ API returns uom object with name */}
-                        {(line as any).uom?.name ?? "—"}
-                      </td>
-                      <td className="px-4 py-3 text-right text-gray-800">
-                        {formatVND(line.unit_price)}
-                      </td>
-                      <td className="px-4 py-3 text-right text-gray-600">
-                        {line.discount_percent ?? 0}%
-                      </td>
-                      <td className="px-4 py-3 text-right text-gray-600">
-                        {formatVND(line.line_tax ?? 0)}
-                      </td>
-                      <td className="px-4 py-3 text-right font-semibold text-gray-900">
-                        {formatVND(line.line_total_after_tax ?? 0)}
-                      </td>
-                      <td className="px-4 py-3 text-right text-gray-600">
-                        {line.lead_time_days != null
-                          ? `${line.lead_time_days} ngày`
-                          : "—"}
-                      </td>
-                    </tr>
-                  ))
+                  lines.map((line, i) => {
+                    const gross = Number(line.quantity) * Number(line.unit_price);
+                    const lineDiscount = Number(line.discount_amount || 0);
+                    const lineTotalBeforeHeader = gross - lineDiscount;
+                    const taxRate = Number((line as any).taxRate?.rate ?? 0);
+                    const lineTaxGross = (lineTotalBeforeHeader * taxRate) / 100;
+                    const lineTotalAfterTaxGross = lineTotalBeforeHeader + lineTaxGross;
+                    return (
+                      <tr key={line.id ?? i} className="hover:bg-gray-50/60">
+                        <td className="px-4 py-3 text-gray-500">{i + 1}</td>
+                        <td className="px-4 py-3 font-medium text-gray-900">
+                          <div>
+                            <p>{line.product?.name ?? `Product #${line.product_id}`}</p>
+                            {line.discount_type === "fixed" && (line.discount_amount ?? 0) > 0 ? (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-medium mt-0.5">
+                                -{formatVND(line.discount_amount || 0)}
+                              </span>
+                            ) : (line.discount_percent ?? 0) > 0 ? (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-medium mt-0.5">
+                                -{line.discount_percent}%
+                              </span>
+                            ) : null}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-600">
+                          {line.description ?? "—"}
+                        </td>
+                        <td className="px-4 py-3 text-right text-gray-800">
+                          {line.quantity}
+                        </td>
+                        <td className="px-4 py-3 text-left text-gray-600">
+                          {(line as any).uom?.name ?? "—"}
+                        </td>
+                        <td className="px-4 py-3 text-right text-gray-800">
+                          {formatVND(line.unit_price)}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {line.discount_type === "fixed" && (line.discount_amount ?? 0) > 0 ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-600 border border-orange-100">
+                              -{formatVND(line.discount_amount || 0)}
+                            </span>
+                          ) : (line.discount_percent ?? 0) > 0 ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-600 border border-orange-100">
+                              -{line.discount_percent}%
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-300">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right text-gray-600">
+                          {formatVND(lineTaxGross)}
+                        </td>
+                        <td className="px-4 py-3 text-right font-semibold text-gray-900">
+                          {formatVND(lineTotalAfterTaxGross)}
+                        </td>
+                        <td className="px-4 py-3 text-right text-gray-600">
+                          {line.lead_time_days != null
+                            ? `${line.lead_time_days} ngày`
+                            : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
               <tfoot className="border-t border-gray-200 bg-gray-50/50">
+                {Number(rfq.discount_amount || 0) > 0 && (
+                  <tr>
+                    <td
+                      colSpan={8}
+                      className="px-4 py-3 text-right text-sm font-medium text-orange-500"
+                    >
+                      Chiết khấu tổng đơn
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm font-medium text-orange-600">
+                      -{formatVND(rfq.discount_amount)}
+                    </td>
+                    <td />
+                  </tr>
+                )}
                 <tr>
                   <td
                     colSpan={8}
@@ -492,7 +552,7 @@ export default function RfqDetailPage() {
                 </tr>
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className="px-4 py-3 text-right text-sm font-medium text-gray-600"
                   >
                     Thuế
@@ -504,7 +564,7 @@ export default function RfqDetailPage() {
                 </tr>
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className="px-4 py-3 text-right text-sm font-bold text-gray-800"
                   >
                     Tổng cộng
