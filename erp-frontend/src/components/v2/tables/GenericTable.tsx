@@ -4,7 +4,7 @@
  * @author Senior Frontend Team
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { GenericTableProps, ColumnDef, SortInfo } from './types';
 import { Button } from '@/components/ui/Button';
 import { Search, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -116,7 +116,7 @@ export function GenericTable<T extends Record<string, any>>({
   /**
    * Render actions
    */
-  const renderActions = (row: T) => {
+  const renderActions = (row: T, mobile = false) => {
     if (!config.actions || config.actions.length === 0) return null;
 
     const visibleActions = config.actions.filter(action => 
@@ -126,7 +126,7 @@ export function GenericTable<T extends Record<string, any>>({
     if (visibleActions.length === 0) return null;
 
     return (
-      <div className="flex items-center gap-2">
+      <div className={mobile ? "flex flex-wrap items-center justify-end gap-2" : "flex flex-wrap items-center justify-end gap-2"}>
         {visibleActions.map((action, index) => {
           const isDisabled = action.disabled?.(row);
           
@@ -135,7 +135,7 @@ export function GenericTable<T extends Record<string, any>>({
               key={index}
               onClick={() => !isDisabled && action.onClick(row)}
               disabled={isDisabled}
-              className={`px-3 py-1 text-sm rounded-md transition-colors ${
+              className={`${mobile ? "min-h-9 px-3 py-1.5" : "min-h-8 px-3 py-1"} text-sm rounded-md transition-colors whitespace-normal text-center ${
                 action.variant === 'danger'
                   ? 'text-red-600 hover:bg-red-50'
                   : action.variant === 'success'
@@ -163,24 +163,24 @@ export function GenericTable<T extends Record<string, any>>({
     const end = Math.min(currentPage * pageSize, totalItems);
 
     return (
-      <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-3 px-4 sm:px-6 py-4 border-t border-gray-200 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
           <span className="text-sm text-gray-700">
-            Showing {start} to {end} of {totalItems} results
+            Hiển thị {start} đến {end} trên {totalItems} kết quả
           </span>
           
           <select
             value={pageSize}
             onChange={(e) => onPageSizeChange?.(Number(e.target.value))}
-            className="px-3 py-1 border border-gray-300 rounded-md text-sm"
+            className="w-full sm:w-auto px-3 py-1 border border-gray-300 rounded-md text-sm"
           >
             {paginationConfig.pageSizeOptions.map(size => (
-              <option key={size} value={size}>{size} per page</option>
+              <option key={size} value={size}>{size} / trang</option>
             ))}
           </select>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -191,7 +191,7 @@ export function GenericTable<T extends Record<string, any>>({
           </Button>
           
           <span className="text-sm text-gray-700">
-            Page {currentPage} of {totalPages}
+            Trang {currentPage} / {totalPages}
           </span>
           
           <Button
@@ -208,16 +208,16 @@ export function GenericTable<T extends Record<string, any>>({
   };
 
   return (
-    <div className={`bg-white rounded-lg shadow-sm border border-gray-200 ${className}`}>
+    <div className={`bg-white rounded-lg shadow-sm border border-gray-200 min-w-0 ${className}`}>
       {/* Header */}
       {(title || description || config.searchable || toolbarActions) && (
-        <div className="px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              {title && <h2 className="text-xl font-bold text-gray-900">{title}</h2>}
-              {description && <p className="text-sm text-gray-600 mt-1">{description}</p>}
+        <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
+          <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              {title && <h2 className="text-xl font-bold text-gray-900 break-words">{title}</h2>}
+              {description && <p className="text-sm text-gray-600 mt-1 break-words">{description}</p>}
             </div>
-            {toolbarActions && <div>{toolbarActions}</div>}
+            {toolbarActions && <div className="flex flex-wrap items-center gap-2">{toolbarActions}</div>}
           </div>
 
           {config.searchable && (
@@ -227,7 +227,7 @@ export function GenericTable<T extends Record<string, any>>({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                placeholder={config.searchPlaceholder || 'Search...'}
+                placeholder={config.searchPlaceholder || 'Tìm kiếm...'}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none"
               />
             </div>
@@ -235,9 +235,80 @@ export function GenericTable<T extends Record<string, any>>({
         </div>
       )}
 
-      {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full">
+      {/* Mobile cards */}
+      <div className="space-y-3 p-3 md:hidden">
+        {loading ? (
+          <div className="rounded-lg border border-gray-200 bg-white px-4 py-10 text-center text-sm text-gray-500">
+            {config.loadingMessage || 'Đang tải...'}
+          </div>
+        ) : data.length === 0 ? (
+          <div className="rounded-lg border border-gray-200 bg-white px-4 py-10 text-center text-sm text-gray-500">
+            {config.emptyMessage || 'Không có dữ liệu'}
+          </div>
+        ) : (
+          data.map((row, rowIndex) => {
+            const isSelected = selectedRows.some(r => r[rowKey] === row[rowKey]);
+            const visibleColumns = config.columns.filter(column => !column.hideOnMobile);
+            const [primaryColumn, ...detailColumns] = visibleColumns.length > 0 ? visibleColumns : config.columns;
+
+            return (
+              <article
+                key={row[rowKey] || rowIndex}
+                className={`rounded-lg border border-gray-200 bg-white p-4 shadow-sm ${
+                  config.onRowClick ? 'cursor-pointer active:bg-gray-50' : ''
+                } ${isSelected ? 'border-orange-200 bg-orange-50/30' : ''}`}
+                onClick={() => config.onRowClick?.(row)}
+              >
+                <div className="flex items-start gap-3">
+                  {config.selectable && (
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleSelectRow(row)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="mt-1 w-4 h-4 text-brand-500 bg-gray-100 border-gray-300 rounded focus:ring-brand-500"
+                    />
+                  )}
+
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      {primaryColumn?.label || 'Bản ghi'}
+                    </p>
+                    <div className="mt-1 text-sm font-semibold text-gray-900 break-words">
+                      {primaryColumn ? renderCell(primaryColumn, row, rowIndex) : row[rowKey]}
+                    </div>
+                  </div>
+                </div>
+
+                {detailColumns.length > 0 && (
+                  <dl className="mt-4 space-y-3">
+                    {detailColumns.slice(0, 6).map((column, index) => (
+                      <div key={index} className="flex items-start justify-between gap-3 border-t border-gray-100 pt-3">
+                        <dt className="min-w-[6rem] text-xs font-medium text-gray-500">
+                          {column.label}
+                        </dt>
+                        <dd className="min-w-0 flex-1 text-right text-sm text-gray-800 break-words">
+                          {renderCell(column, row, rowIndex)}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+
+                {config.actions && config.actions.length > 0 && (
+                  <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-gray-100 pt-3" onClick={(e) => e.stopPropagation()}>
+                    {renderActions(row, true)}
+                  </div>
+                )}
+              </article>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full min-w-[44rem]">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               {config.selectable && (
@@ -254,7 +325,7 @@ export function GenericTable<T extends Record<string, any>>({
               {config.columns.map((column, index) => (
                 <th
                   key={index}
-                  className={`px-6 py-3 text-${column.align || 'left'} text-xs font-medium text-gray-700 uppercase tracking-wider ${
+                  className={`px-3 sm:px-6 py-3 text-${column.align || 'left'} text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap ${
                     column.sortable ? 'cursor-pointer hover:bg-gray-100' : ''
                   } ${column.hideOnMobile ? 'hidden md:table-cell' : ''}`}
                   style={{ width: column.width }}
@@ -269,7 +340,7 @@ export function GenericTable<T extends Record<string, any>>({
               
               {config.actions && config.actions.length > 0 && (
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Actions
+                  Thao tác
                 </th>
               )}
             </tr>
@@ -282,7 +353,7 @@ export function GenericTable<T extends Record<string, any>>({
                   colSpan={config.columns.length + (config.selectable ? 1 : 0) + (config.actions ? 1 : 0)}
                   className="px-6 py-12 text-center text-gray-500"
                 >
-                  {config.loadingMessage || 'Loading...'}
+                  {config.loadingMessage || 'Đang tải...'}
                 </td>
               </tr>
             ) : data.length === 0 ? (
@@ -291,7 +362,7 @@ export function GenericTable<T extends Record<string, any>>({
                   colSpan={config.columns.length + (config.selectable ? 1 : 0) + (config.actions ? 1 : 0)}
                   className="px-6 py-12 text-center text-gray-500"
                 >
-                  {config.emptyMessage || 'No data available'}
+                  {config.emptyMessage || 'Không có dữ liệu'}
                 </td>
               </tr>
             ) : (
@@ -322,15 +393,17 @@ export function GenericTable<T extends Record<string, any>>({
                     {config.columns.map((column, colIndex) => (
                       <td
                         key={colIndex}
-                        className={`px-6 py-4 text-sm text-gray-900 ${column.hideOnMobile ? 'hidden md:table-cell' : ''} ${column.className || ''}`}
+                        className={`px-3 sm:px-6 py-4 text-sm text-gray-900 align-top ${column.hideOnMobile ? 'hidden md:table-cell' : ''} ${column.className || ''}`}
                         style={{ textAlign: column.align || 'left' }}
                       >
-                        {renderCell(column, row, rowIndex)}
+                        <div className="max-w-[18rem] break-words">
+                          {renderCell(column, row, rowIndex)}
+                        </div>
                       </td>
                     ))}
                     
                     {config.actions && config.actions.length > 0 && (
-                      <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                      <td className="px-3 sm:px-6 py-4 text-right align-top" onClick={(e) => e.stopPropagation()}>
                         {renderActions(row)}
                       </td>
                     )}

@@ -12,6 +12,7 @@ import {
   changePipelineStage
 } from "./opportunity.thunks";
 import { OpportunityState } from "./opportunity.type";
+import { Opportunity } from "../../dto/opportunity.dto";
 
 const initialState: OpportunityState = {
   allOpportunities: [],
@@ -19,6 +20,28 @@ const initialState: OpportunityState = {
   loading: false,
   error: null,
 };
+
+const unwrapOpportunityPayload = (payload: any): Opportunity =>
+  payload?.opp ?? payload?.opportunity ?? payload?.data?.opp ?? payload?.data ?? payload;
+
+const mergeOpportunity = (
+  existing: Opportunity | null | undefined,
+  updated: Opportunity,
+): Opportunity => (existing?.id === updated.id ? { ...existing, ...updated } : updated);
+
+const mergeOpportunityList = (items: Opportunity[], updated: Opportunity) =>
+  items.map((item) => (item.id === updated.id ? mergeOpportunity(item, updated) : item));
+
+const applyUpdatedOpportunity = (state: OpportunityState, payload: any) => {
+  const updated = unwrapOpportunityPayload(payload);
+  if (!updated?.id) return;
+
+  state.allOpportunities = mergeOpportunityList(state.allOpportunities, updated);
+  if (state.detail?.id === updated.id) {
+    state.detail = mergeOpportunity(state.detail, updated);
+  }
+};
+
 export const opportunitySlice = createSlice({
   name: "opportunity",
   initialState,
@@ -70,36 +93,26 @@ export const opportunitySlice = createSlice({
     });
     // ========== UPDATE OPPORTUNITY ==========
     builder.addCase(updateOpportunity.fulfilled, (state, action) => {
-      const updated = action.payload;
-        state.allOpportunities = state.allOpportunities.map((o) => o.id === updated.id ? updated : o);
-        // state.myOpportunities = state.myOpportunities.map((o) => o.id === updated.id ? updated : o);
+      applyUpdatedOpportunity(state, action.payload);
     });
     // ========== MOVE TO NEGOTIATION ==========
     builder.addCase(moveToNegotiation.fulfilled, (state, action) => {
-      const updated = action.payload;
-        state.allOpportunities = state.allOpportunities.map((o) => o.id === updated.id ? updated : o);
-        // state.myOpportunities = state.myOpportunities.map((o) => o.id === updated.id ? updated : o);
+      applyUpdatedOpportunity(state, action.payload);
     });
     // ========== CHANGE PIPELINE STAGE ==========
     builder.addCase(changePipelineStage.fulfilled, (state, action) => {
-      const updated = action.payload;
-      state.allOpportunities = state.allOpportunities.map((o) => o.id === updated.id ? updated : o);
+      applyUpdatedOpportunity(state, action.payload);
     });
     // ========== MARK WON ==========
     builder.addCase(markWon.fulfilled, (state, action) => {
-      const updated = action.payload;
-        state.allOpportunities = state.allOpportunities.map((o) => o.id === updated.id ? updated : o);
-        // state.myOpportunities = state.myOpportunities.map((o) => o.id === updated.id ? updated : o);
+      applyUpdatedOpportunity(state, action.payload);
     });
     // ========== MARK LOST ==========
     builder.addCase(markLost.fulfilled, (state, action) => {
-      const updated = action.payload;
-        state.allOpportunities = state.allOpportunities.map((o) => o.id === updated.id ? updated : o);
-        // state.myOpportunities = state.myOpportunities.map((o) => o.id === updated.id ? updated : o);
+      applyUpdatedOpportunity(state, action.payload);
     });
     builder.addCase(reassignOpportunity.fulfilled, (state, action) => {     
-        const updated = action.payload; 
-        state.allOpportunities = state.allOpportunities.map((o) => o.id === updated.id ? updated : o);
+      applyUpdatedOpportunity(state, action.payload);
     });
     builder.addCase(deleteOpportunity.fulfilled, (state, action) => {
       const deletedId = action.meta.arg;

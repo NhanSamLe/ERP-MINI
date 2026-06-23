@@ -1,6 +1,8 @@
 import axiosClient from "../../../api/axiosClient";
+import { ScoringRulePreviewDto } from "../dto/scoringRule.dto";
 
 export const getAllScoringRules = () => axiosClient.get("/crm/scoring-rules");
+export const getScoringSignals = () => axiosClient.get("/crm/scoring-rules/signals");
 
 export const createScoringRule = (data: {
   name: string;
@@ -8,6 +10,7 @@ export const createScoringRule = (data: {
   operator: string;
   value?: string;
   score: number;
+  is_active?: boolean;
 }) => axiosClient.post("/crm/scoring-rules", data);
 
 export const updateScoringRule = (
@@ -24,3 +27,6 @@ export const updateScoringRule = (
 
 export const deleteScoringRule = (id: number) =>
   axiosClient.delete(`/crm/scoring-rules/${id}`);
+
+export const previewScoringRule = (data: ScoringRulePreviewDto) =>
+  axiosClient.post("/crm/scoring-rules/preview", data);

@@ -30,7 +30,7 @@ export function usePermission(resource: string) {
    */
   const can = useCallback(
     (action: string, item?: any): boolean => {
-      return hasPermission(user, resource, action as any, item);
+      return hasPermission(user ?? null, resource, action as any, item);
     },
     [user, resource]
   );

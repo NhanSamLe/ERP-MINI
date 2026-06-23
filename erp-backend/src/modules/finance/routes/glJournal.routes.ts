@@ -6,8 +6,7 @@ import { authMiddleware } from "../../../core/middleware/auth";
 
 const router = Router();
 
-// chỉ cho view, không cho CRUD
-router.get("/", /* authMiddleware, */ glJournalController.getAll);
+router.get("/", authMiddleware(["ACCOUNT", "CHACC", "ADMIN", "CEO", "BRMN"]), glJournalController.getAll);
 router.get("/journals", authMiddleware(["ACCOUNT", "CHACC", "ADMIN", "CEO"]), glJournalController.listJournals);
 router.get("/journals/:journalId/entries", authMiddleware(["ACCOUNT", "CHACC", "ADMIN", "CEO"]), glJournalController.listEntriesByJournal);
 router.get("/entries/:id", authMiddleware(["ACCOUNT", "CHACC", "ADMIN", "CEO"]), glJournalController.getEntryDetail);

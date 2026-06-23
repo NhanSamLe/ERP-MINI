@@ -64,13 +64,18 @@ export const anomalyController = {
         });
       }
 
-      const result = await anomalyRepository.findHighRisk(branchId, {
-        riskLevel,
-        dateFrom,
-        dateTo,
-        page,
-        limit,
-      });
+      const filters: {
+        riskLevel?: RiskLevel;
+        dateFrom?: Date;
+        dateTo?: Date;
+        page: number;
+        limit: number;
+      } = { page, limit };
+      if (riskLevel !== undefined) filters.riskLevel = riskLevel;
+      if (dateFrom !== undefined) filters.dateFrom = dateFrom;
+      if (dateTo !== undefined) filters.dateTo = dateTo;
+
+      const result = await anomalyRepository.findHighRisk(branchId, filters);
 
       res.status(200).json(result);
     } catch (err: any) {

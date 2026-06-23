@@ -111,6 +111,11 @@ import { ApDebitNoteLine } from "../modules/purchase/models/apDebitNoteLine.mode
 import { VendorRefund } from "../modules/purchase/models/vendorRefund.model";
 import { PurchasePriceList } from "../modules/purchase/models/purchasePriceList.model";
 import { PurchasePriceListItem } from "../modules/purchase/models/purchasePriceListItem.model";
+// CostCenter and PayrollAccountMapping
+import { CostCenter } from "../modules/finance/models/costCenter.model";
+import { PayrollAccountMapping } from "../modules/hrm/models/payrollAccountMapping.model";
+import { AccountMapping } from "../modules/finance/models/accountMapping.model";
+import { PayrollConfig } from "../modules/hrm/models/payrollConfig.model";
 // Associations
 import { applyAssociations } from "./associations";
 
@@ -272,4 +277,8 @@ export {
   VendorRefund,
   PurchasePriceList,
   PurchasePriceListItem,
+  CostCenter,
+  PayrollAccountMapping,
+  AccountMapping,
+  PayrollConfig,
 };

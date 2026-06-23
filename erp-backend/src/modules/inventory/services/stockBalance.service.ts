@@ -97,8 +97,9 @@ export const stockBalanceService = {
       group.total_reserved_qty += reserved;
       group.total_available_qty = group.total_quantity - group.total_reserved_qty;
       group.total_value += qty * cost;
+      const rowUpdatedAt = row.updated_at ?? row.created_at ?? new Date(0);
       group.updated_at =
-        row.updated_at > group.updated_at ? row.updated_at : group.updated_at;
+        rowUpdatedAt > group.updated_at ? rowUpdatedAt : group.updated_at;
 
       // Thêm lot detail nếu có
       if ((row as any).lot) {
@@ -152,6 +153,33 @@ export const stockBalanceService = {
 
   async findByProduct(productId: number) {
     return await StockBalance.findAll({ where: { product_id: productId } });
+  },
+
+  async search(keyword: string, user: JwtPayload) {
+    const q = keyword.trim();
+    if (!q) return this.getAll(user);
+
+    return StockBalance.findAll({
+      include: [
+        {
+          model: Warehouse,
+          as: "warehouse",
+          where: { branch_id: user.branch_id },
+          attributes: ["id", "name", "code"],
+        },
+        {
+          model: Product,
+          as: "product",
+          where: {
+            [Op.or]: [
+              { name: { [Op.like]: `%${q}%` } },
+              { sku: { [Op.like]: `%${q}%` } },
+            ],
+          },
+          attributes: ["id", "name", "sku", "image_url"],
+        },
+      ],
+    });
   },
 
   async findByProductAndWarehouse(productId: number, warehouseId: number) {

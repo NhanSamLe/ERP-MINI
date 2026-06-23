@@ -14,8 +14,9 @@ import { Op } from "sequelize";
 
 export const productService = {
   async getAllOnActive() {
+    const where: any = { status: "active" };
     return await Product.findAll({
-      where: { status: "active" },
+      where,
       include: [
         { model: ProductCategory, as: "category" },
         {
@@ -44,7 +45,9 @@ export const productService = {
   },
 
   async getAll() {
+    const where: any = {};
     return await Product.findAll({
+      where,
       include: [
         { model: ProductCategory, as: "category" },
         {
@@ -128,13 +131,6 @@ export const productService = {
       }
     }
 
-    // Validation: nếu source_type = 'purchased' và product_type != 'service'
-    if (data.source_type === "purchased" && data.product_type !== "service") {
-      console.warn(
-        "⚠️ Product is purchased type but no supplier info provided yet",
-      );
-    }
-
     // Validation: nếu product_type = 'service' thì không nên có stock tracking
     if (data.product_type === "service") {
       data.min_stock_qty = null;
@@ -148,7 +144,6 @@ export const productService = {
         files.thumbnail[0].buffer,
         "product_images/thumbnails",
       );
-      console.log("Thumbnail upload result:", result);
       thumbnailUrl = result.url;
       thumbnailPublicId = result.public_id;
     }
@@ -338,12 +333,9 @@ export const productService = {
   },
 
   async search(keyword: string) {
+    const where: any = { name: { [Op.like]: `%${keyword}%` } };
     return await Product.findAll({
-      where: {
-        name: {
-          [Op.like]: `%${keyword}%`,
-        },
-      },
+      where,
       include: [
         { model: ProductCategory, as: "category" },
         {

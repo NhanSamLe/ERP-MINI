@@ -1,22 +1,7 @@
-// src/store/slices/saleOrder.slice.ts
-import {
-  createSlice,
-  createAsyncThunk,
-  PayloadAction,
-  isPending,
-  isFulfilled,
-  isRejected,
-} from "@reduxjs/toolkit";
-import {
-  SaleOrderDto,
-  CreateSaleOrderDto,
-  UpdateSaleOrderDto,
-} from "../dto/saleOrder.dto";
+import { createSlice, createAsyncThunk, isPending, isRejected } from "@reduxjs/toolkit";
+import { SaleOrderDto, CreateSaleOrderDto, UpdateSaleOrderDto } from "../dto/saleOrder.dto";
 import * as service from "../service/saleOrder.service";
 
-// ==============================
-// TYPES
-// ==============================
 export interface SaleOrderState {
   items: SaleOrderDto[];
   selected: SaleOrderDto | null;
@@ -31,12 +16,15 @@ const initialState: SaleOrderState = {
   error: null,
 };
 
-// ==============================
-// ASYNC ACTIONS
-// ==============================
+// ── Thunks ──────────────────────────────────────────────
 export const fetchSaleOrders = createAsyncThunk<SaleOrderDto[]>(
   "saleOrders/getAll",
   async () => await service.getSaleOrders()
+);
+
+export const fetchSaleOrdersByStatus = createAsyncThunk<SaleOrderDto[], string>(
+  "saleOrders/getByStatus",
+  async (status) => await service.getSaleOrdersByStatus(status)
 );
 
 export const fetchSaleOrderDetail = createAsyncThunk<SaleOrderDto, number>(
@@ -44,15 +32,12 @@ export const fetchSaleOrderDetail = createAsyncThunk<SaleOrderDto, number>(
   async (id) => await service.getSaleOrderById(id)
 );
 
-export const createSaleOrder = createAsyncThunk<
-  SaleOrderDto,
-  CreateSaleOrderDto
->("saleOrders/create", async (data) => await service.createSaleOrder(data));
+export const createSaleOrder = createAsyncThunk<SaleOrderDto, CreateSaleOrderDto>(
+  "saleOrders/create",
+  async (data) => await service.createSaleOrder(data)
+);
 
-export const updateSaleOrder = createAsyncThunk<
-  SaleOrderDto,
-  { id: number; data: UpdateSaleOrderDto }
->(
+export const updateSaleOrder = createAsyncThunk<SaleOrderDto, { id: number; data: UpdateSaleOrderDto }>(
   "saleOrders/update",
   async ({ id, data }) => await service.updateSaleOrder(id, data)
 );
@@ -94,17 +79,16 @@ export const rejectSaleOrder = createAsyncThunk<
   }
 );
 
-export const fetchSaleOrdersByStatus = createAsyncThunk<SaleOrderDto[], string>(
-  "saleOrders/getByStatus",
-  async (status) => {
-    const res = await service.getSaleOrdersByStatus(status);
-    return res;
-  }
-);
+// Helper: sync item cập nhật vào danh sách
+function syncItem(items: SaleOrderDto[], updated: SaleOrderDto): SaleOrderDto[] {
+  const idx = items.findIndex((i) => i.id === updated.id);
+  if (idx === -1) return [updated, ...items];
+  const next = [...items];
+  next[idx] = updated;
+  return next;
+}
 
-// ==============================
-// SLICE
-// ==============================
+// ── Slice ────────────────────────────────────────────────
 export const saleOrderSlice = createSlice({
   name: "saleOrders",
   initialState,
@@ -114,63 +98,83 @@ export const saleOrderSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    // Fulfilled actions
-    builder.addMatcher(
-      isFulfilled(
-        fetchSaleOrders,
-        fetchSaleOrdersByStatus,
-        fetchSaleOrderDetail,
-        createSaleOrder,
-        updateSaleOrder,
-        submitSaleOrder,
-        approveSaleOrder,
-        rejectSaleOrder
-      ),
-      (state, action: PayloadAction<SaleOrderDto | SaleOrderDto[]>) => {
-        state.loading = false;
-        state.error = null;
+    // fetch all list
+    builder.addCase(fetchSaleOrders.fulfilled, (state, action) => {
+      state.loading = false;
+      state.error = null;
+      state.items = action.payload;
+    });
 
-        if (Array.isArray(action.payload)) {
-          state.items = action.payload;
-        } else {
-          state.selected = action.payload;
-        }
-      }
-    );
+    // fetch by status
+    builder.addCase(fetchSaleOrdersByStatus.fulfilled, (state, action) => {
+      state.loading = false;
+      state.error = null;
+      state.items = action.payload;
+    });
 
-    // Pending actions
+    // fetch detail → cập nhật selected và sync list
+    builder.addCase(fetchSaleOrderDetail.fulfilled, (state, action) => {
+      state.loading = false;
+      state.error = null;
+      state.selected = action.payload;
+      state.items = syncItem(state.items, action.payload);
+    });
+
+    // create → prepend vào list
+    builder.addCase(createSaleOrder.fulfilled, (state, action) => {
+      state.loading = false;
+      state.error = null;
+      state.selected = action.payload;
+      state.items = [action.payload, ...state.items];
+    });
+
+    // update → sync vào list
+    builder.addCase(updateSaleOrder.fulfilled, (state, action) => {
+      state.loading = false;
+      state.error = null;
+      state.selected = action.payload;
+      state.items = syncItem(state.items, action.payload);
+    });
+
+    // submit → sync vào list (status thay đổi)
+    builder.addCase(submitSaleOrder.fulfilled, (state, action) => {
+      state.loading = false;
+      state.error = null;
+      state.selected = action.payload;
+      state.items = syncItem(state.items, action.payload);
+    });
+
+    // approve → sync vào list
+    builder.addCase(approveSaleOrder.fulfilled, (state, action) => {
+      state.loading = false;
+      state.error = null;
+      state.selected = action.payload;
+      state.items = syncItem(state.items, action.payload);
+    });
+
+    // reject → sync vào list
+    builder.addCase(rejectSaleOrder.fulfilled, (state, action) => {
+      state.loading = false;
+      state.error = null;
+      state.selected = action.payload;
+      state.items = syncItem(state.items, action.payload);
+    });
+
+    // loading
     builder.addMatcher(
-      isPending(
-        fetchSaleOrders,
-        fetchSaleOrdersByStatus,
-        fetchSaleOrderDetail,
-        createSaleOrder,
-        updateSaleOrder,
-        submitSaleOrder,
-        approveSaleOrder,
-        rejectSaleOrder
-      ),
+      isPending(fetchSaleOrders, fetchSaleOrdersByStatus, fetchSaleOrderDetail, createSaleOrder, updateSaleOrder, submitSaleOrder, approveSaleOrder, rejectSaleOrder),
       (state) => {
         state.loading = true;
         state.error = null;
       }
     );
 
-    // Rejected actions
+    // error
     builder.addMatcher(
-      isRejected(
-        fetchSaleOrders,
-        fetchSaleOrdersByStatus,
-        fetchSaleOrderDetail,
-        createSaleOrder,
-        updateSaleOrder,
-        submitSaleOrder,
-        approveSaleOrder,
-        rejectSaleOrder
-      ),
+      isRejected(fetchSaleOrders, fetchSaleOrdersByStatus, fetchSaleOrderDetail, createSaleOrder, updateSaleOrder, submitSaleOrder, approveSaleOrder, rejectSaleOrder),
       (state, action) => {
         state.loading = false;
-        state.error = (action.payload as string) || action.error?.message || "Error occurred";
+        state.error = action.error?.message ?? "Lỗi xảy ra";
       }
     );
   },

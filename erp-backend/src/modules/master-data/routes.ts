@@ -4,6 +4,7 @@ import { authMiddleware } from "../../core/middleware/auth";
 import * as taxController from "./controllers/tax.controller";
 import * as uomController from "./controllers/uom.controller";
 import * as UomConversionController from "./controllers/uomConversion.controller";
+import * as paymentTermController from "./controllers/paymentTerm.controller";
 const router = Router();
 
 // Danh sách tiền tệ trong DB
@@ -56,6 +57,13 @@ router.post("/uoms", authMiddleware([]), uomController.createUom);
 router.put("/uoms/:id", authMiddleware([]), uomController.updateUom);
 router.delete("/uoms/:id", authMiddleware([]), uomController.deleteUom);
 
+// Payment Terms
+router.get("/payment-terms/active", authMiddleware([]), paymentTermController.getActivePaymentTerms);
+router.get("/payment-terms", authMiddleware([]), paymentTermController.getAllPaymentTerms);
+router.get("/payment-terms/:id", authMiddleware([]), paymentTermController.getPaymentTermById);
+router.post("/payment-terms", authMiddleware([]), paymentTermController.createPaymentTerm);
+router.put("/payment-terms/:id", authMiddleware([]), paymentTermController.updatePaymentTerm);
+router.delete("/payment-terms/:id", authMiddleware([]), paymentTermController.deletePaymentTerm);
 // 📌 Payment Terms
 import { PaymentTerm } from "./models/paymentTerm.model";
 router.get("/payment-terms", authMiddleware([]), async (req, res) => {

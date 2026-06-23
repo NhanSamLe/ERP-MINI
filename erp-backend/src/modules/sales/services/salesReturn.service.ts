@@ -19,6 +19,11 @@ import {
   Warehouse,
   sequelize,
 } from "../../../models";
+import { GlJournal } from "../../finance/models/glJournal.model";
+import { GlEntry } from "../../finance/models/glEntry.model";
+import { GlEntryLine } from "../../finance/models/glEntryLine.model";
+import { requireGlAccounts } from "../../finance/services/glAccount.helper";
+import { getCompanyIdFromBranch } from "../../finance/services/companyScope.service";
 import {
   generateCreditNoteNo,
   generateRefundNo,
@@ -647,9 +652,56 @@ export const salesReturnService = {
 
   async approveCreditNote(id: number, user: any) {
     requireChiefAccountant(user);
+
     const note = await this.getCreditNote(id, user);
     if (note.approval_status === "approved") return note;
-    await note.update({ approval_status: "approved", status: "posted", approved_by: user.id });
+    const companyId = await getCompanyIdFromBranch(note.branch_id);
+
+    await sequelize.transaction(async (t) => {
+      await note.update(
+        { approval_status: "approved", status: "posted", approved_by: user.id },
+        { transaction: t }
+      );
+
+      // GL Posting: Credit Note đảo ngược bút toán doanh thu
+      // Nợ 511, Nợ 3331, Có 131 — lấy tài khoản theo company
+      const salesJournal = await GlJournal.findOne({ where: { code: "SALES" }, transaction: t });
+      if (!salesJournal) throw new Error("GL Journal 'SALES' not found");
+
+      const accounts = await requireGlAccounts(companyId, ["131", "511", "3331"], t);
+      const arAcc = accounts["131"]!;
+      const revenueAcc = accounts["511"]!;
+      const vatAcc = accounts["3331"]!;
+
+      const rate = Number((note as any).exchange_rate || 1);
+      const totalBeforeTax = Number(note.total_before_tax || 0) * rate;
+      const totalTax = Number(note.total_tax || 0) * rate;
+      const totalAfterTax = Number(note.total_after_tax || 0) * rate;
+
+      const entry = await GlEntry.create(
+        {
+          journal_id: salesJournal.id,
+          entry_no: `CN-${(note as any).credit_note_no}`,
+          entry_date: new Date(),
+          reference_type: "AR_CREDIT_NOTE",
+          reference_id: note.id,
+          memo: `Credit Note ${(note as any).credit_note_no}`,
+          status: "posted",
+          branch_id: note.branch_id ?? null,
+        } as any,
+        { transaction: t }
+      );
+
+      await GlEntryLine.bulkCreate(
+        [
+          { entry_id: entry.id, account_id: revenueAcc.id, partner_id: note.customer_id ?? null, debit: totalBeforeTax, credit: 0 },
+          { entry_id: entry.id, account_id: vatAcc.id, debit: totalTax, credit: 0 },
+          { entry_id: entry.id, account_id: arAcc.id, partner_id: note.customer_id ?? null, debit: 0, credit: totalAfterTax },
+        ] as any,
+        { transaction: t }
+      );
+    });
+
     return this.getCreditNote(id, user);
   },
 
@@ -725,17 +777,63 @@ export const salesReturnService = {
 
   async approveRefund(id: number, user: any) {
     requireChiefAccountant(user);
+
     const refund = await this.getRefund(id, user);
     if (refund.status === "posted" && refund.approval_status === "approved") return refund;
+    const companyId = await getCompanyIdFromBranch(refund.branch_id);
+
     await sequelize.transaction(async (t) => {
-      await refund.update({ status: "posted", approval_status: "approved", approved_by: user.id }, { transaction: t });
+      await refund.update(
+        { status: "posted", approval_status: "approved", approved_by: user.id },
+        { transaction: t }
+      );
+
       if (refund.credit_note_id) {
         await ArCreditNote.update(
           { status: "applied" },
           { where: { id: refund.credit_note_id }, transaction: t },
         );
       }
+
+      // GL Posting: hoàn tiền KH — Nợ 131, Có 111/112 — lấy tài khoản theo company
+      const journalCode = (refund as any).method === "cash" ? "CASH" : "BANK";
+      const cashAccCode = (refund as any).method === "cash" ? "111" : "112";
+
+      const journal = await GlJournal.findOne({ where: { code: journalCode }, transaction: t });
+      if (!journal) throw new Error(`GL Journal '${journalCode}' not found`);
+
+      const accounts = await requireGlAccounts(companyId, ["131", cashAccCode], t);
+      const arAcc = accounts["131"]!;
+      const cashAcc = accounts[cashAccCode]!;
+
+      const rate = Number((refund as any).exchange_rate || 1);
+      const amount = Number((refund as any).amount || 0) * rate;
+
+      const entry = await GlEntry.create(
+        {
+          journal_id: journal.id,
+          entry_no: `RF-${(refund as any).refund_no}`,
+          entry_date: new Date(),
+          reference_type: "AR_REFUND",
+          reference_id: refund.id,
+          memo: `AR Refund ${(refund as any).refund_no}`,
+          status: "posted",
+          branch_id: refund.branch_id ?? null,
+        } as any,
+        { transaction: t }
+      );
+
+      await GlEntryLine.bulkCreate(
+        [
+          { entry_id: entry.id, account_id: arAcc.id, partner_id: refund.customer_id ?? null, debit: amount, credit: 0 },
+          { entry_id: entry.id, account_id: cashAcc.id, debit: 0, credit: amount },
+        ] as any,
+        { transaction: t }
+      );
+
+      await refund.update({ gl_entry_id: entry.id } as any, { transaction: t });
     });
+
     return this.getRefund(id, user);
   },
 };

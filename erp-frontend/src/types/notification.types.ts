@@ -7,7 +7,11 @@ export type ReferenceType =
     | "AR_RECEIPT"
     | "PURCHASE_ORDER"
     | "AP_INVOICE"
-    | "AP_PAYMENT";
+    | "AP_PAYMENT"
+    | "LEAD"
+    | "PAYROLL_RUN"
+    | "EMPLOYEE"
+    | "LEAVE_REQUEST";
 
 export interface Notification {
     id: number;

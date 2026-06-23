@@ -62,17 +62,23 @@ export default function UserFormModal({ open, employee, onClose }: Props) {
 
   const save = async () => {
     if (!form.role_id) {
-      toast.error("Please select a role");
+      toast.error("Vui lòng chọn vai trò");
       return;
     }
     if (!form.username || !form.full_name || !form.email || !form.password) {
-      toast.error("Please fill in all required fields");
+      toast.error("Vui lòng điền đầy đủ các trường bắt buộc");
       return;
     }
 
-    const payload = { ...form, role_id: Number(form.role_id) };
-    await axiosClient.post("/auth/users", payload);
-    onClose();
+    try {
+      const payload = { ...form, role_id: Number(form.role_id) };
+      await axiosClient.post("/auth/users", payload);
+      toast.success("Tạo tài khoản người dùng thành công! 🎉");
+      onClose();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.response?.data?.message || "Tạo tài khoản người dùng thất bại");
+    }
   };
 
   return (
@@ -81,10 +87,10 @@ export default function UserFormModal({ open, employee, onClose }: Props) {
         {/* Header */}
         <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-5">
           <h2 className="text-xl font-bold text-white">
-            Create Login Account
+            Tạo tài khoản đăng nhập
           </h2>
           <p className="text-orange-50 text-sm mt-1">
-            Employee: <span className="font-semibold">{employee.full_name}</span>
+            Nhân viên: <span className="font-semibold">{employee.full_name}</span>
           </p>
         </div>
 
@@ -95,28 +101,28 @@ export default function UserFormModal({ open, employee, onClose }: Props) {
               {/* Username */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Username <span className="text-red-500">*</span>
+                  Tên đăng nhập <span className="text-red-500">*</span>
                 </label>
                 <input
                   name="username"
                   value={form.username}
                   onChange={handleChange}
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
-                  placeholder="Enter username"
+                  placeholder="Nhập tên đăng nhập"
                 />
               </div>
 
               {/* Full Name */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Full Name <span className="text-red-500">*</span>
+                  Họ và tên <span className="text-red-500">*</span>
                 </label>
                 <input
                   name="full_name"
                   value={form.full_name}
                   onChange={handleChange}
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
-                  placeholder="Enter full name"
+                  placeholder="Nhập họ và tên"
                 />
               </div>
 
@@ -138,14 +144,14 @@ export default function UserFormModal({ open, employee, onClose }: Props) {
               {/* Phone */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Phone Number
+                  Số điện thoại
                 </label>
                 <input
                   name="phone"
                   value={form.phone ?? ""}
                   onChange={handleChange}
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
-                  placeholder="Enter phone number"
+                  placeholder="Nhập số điện thoại"
                 />
               </div>
 
@@ -161,7 +167,7 @@ export default function UserFormModal({ open, employee, onClose }: Props) {
                     value={form.password}
                     onChange={handleChange}
                     className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all pr-10"
-                    placeholder="Enter password"
+                    placeholder="Nhập mật khẩu"
                   />
                   <button
                     type="button"
@@ -185,7 +191,7 @@ export default function UserFormModal({ open, employee, onClose }: Props) {
               {/* Role */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Role <span className="text-red-500">*</span>
+                  Vai trò / Quyền hạn <span className="text-red-500">*</span>
                 </label>
                 <select
                   name="role_id"
@@ -193,7 +199,7 @@ export default function UserFormModal({ open, employee, onClose }: Props) {
                   onChange={handleChange}
                   className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all bg-white"
                 >
-                  <option value="">-- Select Role --</option>
+                  <option value="">-- Chọn Vai trò --</option>
                   {roles.map((r) => (
                     <option key={r.id} value={r.id}>
                       {r.code} - {r.name}
@@ -210,12 +216,12 @@ export default function UserFormModal({ open, employee, onClose }: Props) {
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              System Information
+              Thông tin hệ thống
             </h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Branch
+                  Chi nhánh (ID)
                 </label>
                 <div className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 font-medium">
                   {form.branch_id}
@@ -223,7 +229,7 @@ export default function UserFormModal({ open, employee, onClose }: Props) {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Employee ID
+                  Nhân viên (ID)
                 </label>
                 <div className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 font-medium">
                   {form.employee_id}
@@ -239,14 +245,14 @@ export default function UserFormModal({ open, employee, onClose }: Props) {
               onClick={onClose}
               className="px-6 py-2.5 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all"
             >
-              Cancel
+              Hủy
             </button>
             <button
               type="button"
               onClick={save}
               className="px-6 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg hover:from-orange-600 hover:to-orange-700 shadow-md hover:shadow-lg transition-all"
             >
-              Create Account
+              Tạo tài khoản
             </button>
           </div>
         </div>

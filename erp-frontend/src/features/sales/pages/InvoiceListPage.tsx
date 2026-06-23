@@ -62,6 +62,10 @@ export default function InvoiceListPage() {
 
   const handleSelectOrder = (orderId: number) => {
     dispatch(createInvoice({ order_id: orderId })).then((action: any) => {
+      if (action.type.endsWith("/rejected")) {
+        toast.error(action.payload ?? action.error?.message ?? "Tạo hóa đơn thất bại");
+        return;
+      }
       setModalOpen(false);
       dispatch(fetchInvoices());
       if (action.payload?.id) navigate(`/invoices/${action.payload.id}`);

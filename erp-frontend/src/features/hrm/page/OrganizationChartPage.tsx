@@ -102,6 +102,15 @@ export default function OrganizationChartPage() {
     return statusMap[status] || 'bg-gray-100 text-gray-600 border-gray-200';
   };
 
+  const getStatusLabel = (status: string) => {
+    const map: Record<string, string> = {
+      'ACTIVE': 'Hoạt động',
+      'INACTIVE': 'Ngừng hoạt động',
+      'ON_LEAVE': 'Nghỉ phép',
+    };
+    return map[status] || status;
+  };
+
   if (!isCEO && !isBranchManager) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center">
@@ -109,8 +118,8 @@ export default function OrganizationChartPage() {
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Building2 className="w-8 h-8 text-red-600" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Access Restricted</h2>
-          <p className="text-gray-600">You do not have permission to view the organization chart. Please contact your administrator.</p>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Truy cập bị giới hạn</h2>
+          <p className="text-gray-600">Bạn không có quyền xem sơ đồ tổ chức. Vui lòng liên hệ với quản trị viên.</p>
         </div>
       </div>
     );
@@ -121,7 +130,7 @@ export default function OrganizationChartPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600 font-medium">Loading organization chart...</p>
+          <p className="text-gray-600 font-medium">Đang tải sơ đồ tổ chức...</p>
         </div>
       </div>
     );
@@ -154,7 +163,7 @@ export default function OrganizationChartPage() {
                 <Building2 className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Organization Chart</h1>
+                <h1 className="text-2xl font-bold text-gray-900">Sơ đồ tổ chức</h1>
                 <p className="text-sm text-gray-500">{data.branch.name} ({data.branch.code})</p>
               </div>
             </div>
@@ -182,7 +191,7 @@ export default function OrganizationChartPage() {
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Departments</p>
+                  <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Phòng ban</p>
                   <p className="text-2xl font-bold text-blue-900 mt-1">{data.departments.length}</p>
                 </div>
                 <div className="w-12 h-12 bg-blue-200 rounded-lg flex items-center justify-center">
@@ -194,7 +203,7 @@ export default function OrganizationChartPage() {
             <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-purple-600 uppercase tracking-wide">Positions</p>
+                  <p className="text-xs font-medium text-purple-600 uppercase tracking-wide">Chức vụ / Vị trí</p>
                   <p className="text-2xl font-bold text-purple-900 mt-1">
                     {data.departments.reduce((acc, d) => acc + d.positions.length, 0)}
                   </p>
@@ -208,7 +217,7 @@ export default function OrganizationChartPage() {
             <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-green-600 uppercase tracking-wide">Employees</p>
+                  <p className="text-xs font-medium text-green-600 uppercase tracking-wide">Nhân viên</p>
                   <p className="text-2xl font-bold text-green-900 mt-1">{getTotalEmployees()}</p>
                 </div>
                 <div className="w-12 h-12 bg-green-200 rounded-lg flex items-center justify-center">
@@ -224,7 +233,7 @@ export default function OrganizationChartPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search departments, positions, employees..."
+                placeholder="Tìm kiếm phòng ban, chức vụ, nhân viên..."
                 className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -257,7 +266,7 @@ export default function OrganizationChartPage() {
               <Building2 className="w-8 h-8 text-gray-400" />
             </div>
             <p className="text-gray-500 font-medium">
-              {searchTerm ? "No matching results found" : "No departments in this branch"}
+              {searchTerm ? "Không tìm thấy kết quả phù hợp" : "Không có phòng ban nào thuộc chi nhánh này"}
             </p>
           </div>
         )}
@@ -292,11 +301,11 @@ export default function OrganizationChartPage() {
                         <div className="flex items-center space-x-4 text-blue-100 text-sm">
                           <span className="flex items-center space-x-1">
                             <Briefcase className="w-4 h-4" />
-                            <span>{dept.positions.length} positions</span>
+                            <span>{dept.positions.length} chức vụ</span>
                           </span>
                           <span className="flex items-center space-x-1">
                             <Users className="w-4 h-4" />
-                            <span>{totalEmployees} employees</span>
+                            <span>{totalEmployees} nhân viên</span>
                           </span>
                         </div>
                       </div>
@@ -315,7 +324,7 @@ export default function OrganizationChartPage() {
                     {dept.positions.length === 0 ? (
                       <div className="text-center py-12 bg-gray-50 rounded-xl">
                         <Briefcase className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                        <p className="text-gray-500">No positions in this department yet</p>
+                        <p className="text-gray-500">Chưa có chức vụ nào trong phòng ban này</p>
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -332,7 +341,7 @@ export default function OrganizationChartPage() {
                                 <div>
                                   <h3 className="font-semibold text-gray-900">{pos.name}</h3>
                                   <p className="text-xs text-gray-500">
-                                    {pos.employees.length} employee(s)
+                                    {pos.employees.length} nhân viên
                                   </p>
                                 </div>
                               </div>
@@ -341,7 +350,7 @@ export default function OrganizationChartPage() {
                             {pos.employees.length === 0 ? (
                               <div className="text-center py-8 bg-gray-50 rounded-lg">
                                 <User className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                                <p className="text-xs text-gray-500">No employees</p>
+                                <p className="text-xs text-gray-500">Không có nhân viên</p>
                               </div>
                             ) : (
                               <div className="grid md:grid-cols-2 gap-3">
@@ -366,7 +375,7 @@ export default function OrganizationChartPage() {
                                             e.status
                                           )}`}
                                         >
-                                          {e.status}
+                                          {getStatusLabel(e.status)}
                                         </span>
                                       </div>
                                     </div>

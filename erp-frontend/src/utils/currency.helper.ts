@@ -86,6 +86,38 @@ export function formatPercent(
 }
 
 /**
+ * Format một giá trị số để HIỂN THỊ TRONG Ô NHẬP LIỆU theo kiểu VN: phân tách
+ * nghìn bằng dấu chấm (1.000.000), giữ nguyên phần thập phân người dùng đang gõ.
+ * Khác formatNumber ở chỗ giữ lại dấu thập phân dở dang (vd "1.000,") khi đang gõ.
+ */
+export function formatNumberInput(raw: string | number | null | undefined): string {
+  if (raw == null || raw === "") return "";
+  let s = String(raw).replace(/\./g, "").replace(/[^\d,]/g, "");
+  // Cho phép tối đa 1 dấu phẩy thập phân
+  const firstComma = s.indexOf(",");
+  if (firstComma !== -1) {
+    s = s.slice(0, firstComma + 1) + s.slice(firstComma + 1).replace(/,/g, "");
+  }
+  const [intPart, decPart] = s.split(",");
+  const intFormatted = intPart
+    ? Number(intPart).toLocaleString("vi-VN")
+    : "";
+  return decPart !== undefined ? `${intFormatted},${decPart}` : intFormatted;
+}
+
+/**
+ * Parse chuỗi từ ô nhập (đã format kiểu VN "1.000,5") về number thuần (1000.5).
+ * Trả về null nếu rỗng/không hợp lệ.
+ */
+export function parseNumberInput(display: string): number | null {
+  if (display == null) return null;
+  const normalized = String(display).replace(/\./g, "").replace(/,/g, ".").replace(/[^\d.-]/g, "");
+  if (normalized === "" || normalized === "-" || normalized === ".") return null;
+  const num = Number(normalized);
+  return Number.isNaN(num) ? null : num;
+}
+
+/**
  * Format currency with proper symbol
  * @param value - Amount to format
  * @param currencySymbol - Currency symbol (e.g., "$", "₫", "€")

@@ -15,6 +15,7 @@ import * as uomService from "@/features/master-data/service/uom.service";
 import * as uomConversionService from "@/features/master-data/service/uomConversion.service";
 import { getValidUomsForProduct, previewQtyInStockUom } from "@/features/purchase/utils/uomHelper";
 import QuantityControl from "./QuantityControl";
+import { NumberField } from "@/components/ui/NumberField";
 import { useSaleOrderForm } from "../hook/useSaleOrderForm";
 import { StandardFormLayout, FormSection } from "@/components/layout";
 import { SearchSelectionModal } from "@/components/common/SearchSelectionModal";
@@ -67,7 +68,6 @@ export default function SaleOrderForm({
   const [exchangeRate, setExchangeRate] = useState<number>(defaultValue?.exchange_rate ?? 1);
   const [uoms, setUoms] = useState<Uom[]>([]);
   const [uomConversions, setUomConversions] = useState<UomConversion[]>([]);
-  const [focusedPriceIdx, setFocusedPriceIdx] = useState<number | null>(null);
 
   const selectedCustomer = customers.find((c) => c.id === customerId);
   const selectedCurrency = currencies.find((c) => c.id === currencyId);
@@ -142,8 +142,6 @@ export default function SaleOrderForm({
     );
   };
 
-  const parsePrice = (str: string) =>
-    Number(str.replace(/\./g, "").replace(/,/g, "").replace(/[^\d]/g, "")) || 0;
 
   const handleUomChange = (lineIdx: number, newUomId: number | null) => {
     const line = lines[lineIdx];
@@ -153,7 +151,7 @@ export default function SaleOrderForm({
       const updated = { ...next[lineIdx], uom_id: newUomId };
       if (product && newUomId && product.uom_id && uomConversions.length > 0) {
         const factor = previewQtyInStockUom(1, newUomId, product.uom_id, uomConversions, product.id);
-        updated.unit_price = Math.round(Number(product.sale_price ?? 0) * factor / Number(exchangeRate || 1));
+        updated.unit_price = Number((Number(product.sale_price ?? 0) * factor / Number(exchangeRate || 1)).toFixed(2));
       }
       next[lineIdx] = updated;
       return next;
@@ -543,18 +541,10 @@ export default function SaleOrderForm({
                         {/* Unit Price */}
                         <td className="px-4 py-3.5">
                           <div className="relative">
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              value={
-                                focusedPriceIdx === index
-                                  ? String(line.unit_price ?? 0)
-                                  : Number(line.unit_price ?? 0).toLocaleString("vi-VN")
-                              }
-                              onFocus={() => setFocusedPriceIdx(index)}
-                              onBlur={() => setFocusedPriceIdx(null)}
-                              onChange={(e) => updateLine(index, "unit_price", parsePrice(e.target.value))}
-                              className="w-full h-8 pl-3 pr-10 text-right text-sm font-medium border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                            <NumberField
+                              value={line.unit_price ?? 0}
+                              onChange={(v) => updateLine(index, "unit_price", v ?? 0)}
+                              className="h-8 pr-10"
                             />
                             <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none select-none">{currencyCode}</span>
                           </div>

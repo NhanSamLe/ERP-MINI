@@ -5,7 +5,7 @@ import { authMiddleware } from "../../../core/middleware/auth";
 const router = Router();
 
 // Middleware
-router.use(authMiddleware);
+router.use(authMiddleware([]));
 
 /**
  * GET /api/purchase-orders/:id/audit-logs

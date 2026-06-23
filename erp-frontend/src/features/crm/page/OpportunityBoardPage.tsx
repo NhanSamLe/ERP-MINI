@@ -183,8 +183,6 @@ export default function OpportunityBoardPage() {
     
     try {
       await dispatch(changePipelineStage({ oppId, newStageId: targetStageId })).unwrap();
-      // Reload data after successful stage change
-      dispatch(fetchAllOpportunities());
       setAlertMsg({ type: "success", message: "Đã chuyển giai đoạn thành công" });
     } catch (err: any) {
       const errorMsg = err?.message || "Không thể chuyển giai đoạn";

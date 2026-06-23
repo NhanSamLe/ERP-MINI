@@ -1,6 +1,10 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import * as scoringRuleApi from "../../api/scoringRule.api";
-import { CreateScoringRuleDto, UpdateScoringRuleDto } from "../../dto/scoringRule.dto";
+import {
+  CreateScoringRuleDto,
+  ScoringRulePreviewDto,
+  UpdateScoringRuleDto,
+} from "../../dto/scoringRule.dto";
 
 export const fetchScoringRules = createAsyncThunk(
   "scoringRule/fetchAll",
@@ -10,6 +14,18 @@ export const fetchScoringRules = createAsyncThunk(
       return res.data.data;
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.message || "Lỗi tải Scoring Rules");
+    }
+  }
+);
+
+export const fetchScoringSignals = createAsyncThunk(
+  "scoringRule/fetchSignals",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await scoringRuleApi.getScoringSignals();
+      return res.data.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || "Lỗi tải danh sách tín hiệu chấm điểm");
     }
   }
 );
@@ -46,6 +62,18 @@ export const deleteScoringRule = createAsyncThunk(
       return id;
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.message || "Lỗi xóa Scoring Rule");
+    }
+  }
+);
+
+export const previewScoringRule = createAsyncThunk(
+  "scoringRule/preview",
+  async (dto: ScoringRulePreviewDto, { rejectWithValue }) => {
+    try {
+      const res = await scoringRuleApi.previewScoringRule(dto);
+      return res.data.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || "Lỗi kiểm thử quy tắc chấm điểm");
     }
   }
 );

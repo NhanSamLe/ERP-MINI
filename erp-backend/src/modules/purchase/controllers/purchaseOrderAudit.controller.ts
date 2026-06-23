@@ -10,6 +10,12 @@ export const purchaseOrderAuditController = {
   async getAuditLogs(req: Request, res: Response) {
     try {
       const { id } = req.params;
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          message: "ID Ä‘Æ¡n Ä‘áº·t hÃ ng khÃ´ng há»£p lá»‡",
+        });
+      }
       const po_id = parseInt(id, 10);
 
       if (isNaN(po_id)) {
@@ -50,6 +56,12 @@ export const purchaseOrderAuditController = {
   async getAuditHistory(req: Request, res: Response) {
     try {
       const { id } = req.params;
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          message: "ID Ä‘Æ¡n Ä‘áº·t hÃ ng khÃ´ng há»£p lá»‡",
+        });
+      }
       const po_id = parseInt(id, 10);
 
       if (isNaN(po_id)) {

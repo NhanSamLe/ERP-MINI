@@ -49,5 +49,10 @@ export const payrollRunApi = {
     apiClient.get<PayrollEvidenceDTO>(
       `/hrm/payroll-runs/${runId}/evidence/${employeeId}`
     ),
-
+  submit: (id: number) =>
+    apiClient.post<PayrollRunDTO>(`/hrm/payroll-runs/${id}/submit`, {}),
+  approve: (id: number) =>
+    apiClient.post<PayrollRunDTO>(`/hrm/payroll-runs/${id}/approve`, {}),
+  reject: (id: number, reason: string) =>
+    apiClient.post<PayrollRunDTO>(`/hrm/payroll-runs/${id}/reject`, { reason }),
 };

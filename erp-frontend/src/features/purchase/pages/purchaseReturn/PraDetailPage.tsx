@@ -5,7 +5,6 @@ import { toast } from "react-toastify";
 import {
   CornerUpLeft,
   CheckCircle,
-  XCircle,
   Clock,
   ArrowRight,
 } from "lucide-react";
@@ -115,7 +114,11 @@ export default function PraDetailPage() {
 
   const buildActions = () => {
     if (!pra) return [];
-    const base = [
+    const base: Array<{
+      label: string;
+      variant: "primary" | "secondary" | "danger" | "success" | "outline";
+      onClick: () => void;
+    }> = [
       {
         label: "Quay lại",
         variant: "outline" as const,

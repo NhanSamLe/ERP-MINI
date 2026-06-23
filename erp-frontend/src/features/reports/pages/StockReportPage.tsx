@@ -371,8 +371,8 @@ export default function StockReportPage() {
                         cx="50%"
                         cy="50%"
                         outerRadius={90}
-                        label={({ category, percent }) =>
-                          `${category} ${(percent * 100).toFixed(0)}%`
+                        label={({ name, payload, percent }) =>
+                          `${name ?? payload?.category ?? ""} ${(((percent ?? 0) * 100)).toFixed(0)}%`
                         }
                         labelLine={false}
                       >

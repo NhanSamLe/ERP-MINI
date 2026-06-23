@@ -120,6 +120,13 @@ export const StockMoveController = {
     return res.json({ message: "Status parameter is required" });
   },
 
+  async search(req: Request, res: Response) {
+    const keyword = String(req.query.q ?? "");
+    const user = (req as any).user;
+    const data = await stockMoveService.search(keyword, user);
+    return res.json(data);
+  },
+
   async submitForApproval(req: Request, res: Response) {
     try {
       const id = Number(req.params.id);
@@ -152,7 +159,6 @@ export const StockMoveController = {
       );
       res.json({ success: true, data: approvedMove });
     } catch (err: any) {
-      console.error(err);
       res.status(400).json({
         success: false,
         message: err.message || "Error approving stock move",

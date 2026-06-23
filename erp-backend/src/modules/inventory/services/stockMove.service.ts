@@ -16,12 +16,13 @@ import { PurchaseOrderLine } from "../../purchase/models/purchaseOrderLine.model
 import { JwtPayload } from "../../../core/types/jwt";
 import { Role } from "../../../core/types/enum";
 import { User } from "../../auth/models/user.model";
-import { Op } from "sequelize";
+import { Op, Transaction } from "sequelize";
 import { Product } from "../../product/models/product.model";
 import { Uom } from "../../master-data/models/uom.model";
 import { UomConversion } from "../../master-data/models/uomConversion.model";
 import { warehouseService } from "./warehouse.service";
 import { sequelize } from "../../../config/db";
+import { checkPeriodLocked } from "../../finance/services/glJournal.service";
 
 /**
  * Convert quantity từ line.uom_id sang product.uom_id (đơn vị lưu kho).
@@ -33,6 +34,7 @@ async function convertToStockUom(
   lineUomId: number | null | undefined,
   productUomId: number | null | undefined,
   productId: number | null | undefined,
+  transaction?: Transaction,
 ): Promise<number> {
   if (!lineUomId || !productUomId || lineUomId === productUomId) {
     return quantity;
@@ -46,6 +48,7 @@ async function convertToStockUom(
         from_uom_id: lineUomId,
         to_uom_id: productUomId,
       },
+      transaction: transaction ?? null,
     });
     if (conversion) {
       return quantity * parseFloat(String(conversion.factor));
@@ -59,6 +62,7 @@ async function convertToStockUom(
       from_uom_id: lineUomId,
       to_uom_id: productUomId,
     },
+    transaction: transaction ?? null,
   });
   if (genericConversion) {
     return quantity * parseFloat(String(genericConversion.factor));
@@ -72,6 +76,7 @@ async function convertToStockUom(
         from_uom_id: productUomId,
         to_uom_id: lineUomId,
       },
+      transaction: transaction ?? null,
     });
     if (reverseProductSpecific) {
       return quantity / parseFloat(String(reverseProductSpecific.factor));
@@ -85,13 +90,30 @@ async function convertToStockUom(
       from_uom_id: productUomId,
       to_uom_id: lineUomId,
     },
+    transaction: transaction ?? null,
   });
   if (reverseGeneric) {
     return quantity / parseFloat(String(reverseGeneric.factor));
   }
 
-  // Step 5: Fallback — no conversion found
-  return quantity;
+  throw new Error(
+    `Missing UOM conversion for product ${productId ?? "unknown"}: ${lineUomId} -> ${productUomId}`,
+  );
+}
+
+async function convertUnitPriceToStockUom(
+  unitPrice: number,
+  lineUomId: number | null | undefined,
+  productUomId: number | null | undefined,
+  productId: number | null | undefined,
+  transaction?: Transaction,
+): Promise<number> {
+  if (!lineUomId || !productUomId || lineUomId === productUomId) return unitPrice;
+  const stockQtyPerLineUom = await convertToStockUom(1, lineUomId, productUomId, productId, transaction);
+  if (stockQtyPerLineUom <= 0) {
+    throw new Error(`Invalid UOM conversion factor for product ${productId ?? "unknown"}`);
+  }
+  return unitPrice / stockQtyPerLineUom;
 }
 
 import { StockLot } from "../models/stockLot.model";
@@ -240,11 +262,19 @@ export const stockMoveService = {
         move_id: moveIds,
         product_id: productId,
       },
-      attributes: ["quantity"],
+      attributes: ["quantity", "uom_id"],
       raw: true,
     });
 
-    return lines.reduce((sum, l) => sum + Number(l.quantity), 0);
+    // Quy đổi mỗi dòng đã xuất về đơn vị lưu kho (stock UOM) trước khi cộng,
+    // để số đã-xuất luôn cùng đơn vị với số đặt hàng và tồn kho khi so sánh.
+    const product = await Product.findByPk(productId, { attributes: ["id", "uom_id"], raw: true });
+    const stockUomId = product?.uom_id ?? null;
+    let total = 0;
+    for (const l of lines) {
+      total += await convertToStockUom(Number(l.quantity), l.uom_id, stockUomId, productId);
+    }
+    return total;
   },
 
   async validateProductInSO(
@@ -509,10 +539,29 @@ export const stockMoveService = {
           line.product_id,
         );
 
-        const orderedQty = parseFloat(String(soLine.quantity ?? 0));
+        const productResult = await productService.getById(line.product_id);
+        const stockUomId = (productResult as any)?.uom_id ?? null;
+
+        // Quy đổi tất cả về đơn vị lưu kho (stock UOM) trước khi so sánh:
+        // số đặt hàng (theo SO line UOM), số nhập (theo move line UOM), số đã xuất
+        // (đã quy đổi trong getAlreadyShippedQty) và tồn kho đều cùng đơn vị.
+        const orderedQty = await convertToStockUom(
+          parseFloat(String(soLine.quantity ?? 0)),
+          (soLine as any).uom_id,
+          stockUomId,
+          line.product_id,
+          t,
+        );
+        const requiredInStockUom = await convertToStockUom(
+          Number(line.quantity),
+          line.uom_id,
+          stockUomId,
+          line.product_id,
+          t,
+        );
         await this.validateSoRemainingQuantity(
           line.product_id,
-          line.quantity,
+          requiredInStockUom,
           orderedQty,
           shipped,
         );
@@ -524,7 +573,6 @@ export const stockMoveService = {
           },
           transaction: t,
         });
-        const productResult = await productService.getById(line.product_id);
 
         if (!balance) {
           throw {
@@ -549,7 +597,7 @@ export const stockMoveService = {
         const available = Number(balance.quantity) - Number(balance.reserved_qty ?? 0) + myReservedQty;
         const required = Number(line.quantity);
 
-        if (available < required) {
+        if (available < requiredInStockUom) {
           throw {
             status: 400,
             message: `Không đủ tồn kho khả dụng cho sản phẩm ${productResult?.name}. Khả dụng: ${available}, Yêu cầu: ${required} (Đã giữ chỗ cho đơn khác: ${Number(balance.reserved_qty ?? 0) - myReservedQty})`,
@@ -672,7 +720,7 @@ export const stockMoveService = {
           move_id: move.id,
           product_id: line.product_id,
           quantity: Number(line.qty_in_stock_uom),
-          uom_id: line.uom_id ?? null,
+          uom_id: null,
           location_from_id: defaultLocId,
           location_to_id: null,
           lot_id: lotId,
@@ -734,6 +782,7 @@ export const stockMoveService = {
             line.uom_id,
             product.uom_id,
             product.id,
+            t,
           );
 
           if (stockBalance.quantity < requiredInStockUom) {
@@ -825,6 +874,7 @@ export const stockMoveService = {
           line.uom_id,
           product.uom_id,
           product.id,
+          t,
         );
 
         if (available < requiredInStockUom) {
@@ -1121,10 +1171,27 @@ export const stockMoveService = {
             id,
           );
 
-          const orderedQty = parseFloat(String(soLine.quantity ?? 0));
+          const productResult = await productService.getById(line.product_id);
+          const stockUomId = (productResult as any)?.uom_id ?? null;
+
+          // Quy đổi về đơn vị lưu kho (stock UOM) trước khi so sánh — xem createIssue.
+          const orderedQty = await convertToStockUom(
+            parseFloat(String(soLine.quantity ?? 0)),
+            (soLine as any).uom_id,
+            stockUomId,
+            line.product_id,
+            t,
+          );
+          const requiredInStockUom = await convertToStockUom(
+            Number(line.quantity),
+            line.uom_id,
+            stockUomId,
+            line.product_id,
+            t,
+          );
           await this.validateSoRemainingQuantity(
             line.product_id,
-            line.quantity,
+            requiredInStockUom,
             orderedQty,
             shipped,
           );
@@ -1136,7 +1203,6 @@ export const stockMoveService = {
             },
             transaction: t,
           });
-          const productResult = await productService.getById(line.product_id);
 
           if (!balance) {
             throw {
@@ -1146,12 +1212,11 @@ export const stockMoveService = {
           }
 
           const available = Number(balance.quantity);
-          const required = Number(line.quantity);
 
-          if (available < required) {
+          if (available < requiredInStockUom) {
             throw {
               status: 400,
-              message: `Not enough quantity for product ${productResult?.name}. Available: ${available}, Required: ${required}`,
+              message: `Not enough quantity for product ${productResult?.name}. Available: ${available}, Required: ${requiredInStockUom}`,
             };
           }
         }
@@ -1489,11 +1554,59 @@ export const stockMoveService = {
   },
 
   async findByType(type: string, user: JwtPayload) {
+    const warehouses = await Warehouse.findAll({
+      where: { branch_id: user.branch_id },
+      attributes: ["id"],
+      raw: true,
+    });
+    const warehouseIds = warehouses.map((w: any) => w.id);
+
     const where: any = {
       type,
-      [Op.or]: [
-        { warehouse_from_id: user.branch_id },
-        { warehouse_to_id: user.branch_id },
+      branch_id: user.branch_id,
+    };
+    if (warehouseIds.length > 0) {
+      where[Op.or] = [
+        { warehouse_from_id: { [Op.in]: warehouseIds } },
+        { warehouse_to_id: { [Op.in]: warehouseIds } },
+        { warehouse_from_id: null },
+      ];
+    }
+
+    if (user.role === Role.WHSTAFF) {
+      where.created_by = user.id;
+    }
+
+    return await StockMove.findAll({ where, include: this.buildIncludes() });
+  },
+
+  async search(keyword: string, user: JwtPayload) {
+    const q = keyword.trim();
+    if (!q) return this.getAll(user);
+
+    const warehouses = await Warehouse.findAll({
+      where: { branch_id: user.branch_id },
+      attributes: ["id"],
+      raw: true,
+    });
+    const warehouseIds = warehouses.map((w: any) => w.id);
+
+    const where: any = {
+      [Op.and]: [
+        {
+          [Op.or]: [
+            { warehouse_from_id: { [Op.in]: warehouseIds } },
+            { warehouse_to_id: { [Op.in]: warehouseIds } },
+          ],
+        },
+        {
+          [Op.or]: [
+            { move_no: { [Op.like]: `%${q}%` } },
+            { type: { [Op.like]: `%${q}%` } },
+            { status: { [Op.like]: `%${q}%` } },
+            { reference_type: { [Op.like]: `%${q}%` } },
+          ],
+        },
       ],
     };
 
@@ -1501,28 +1614,34 @@ export const stockMoveService = {
       where.created_by = user.id;
     }
 
-    return await StockMove.findAll({
-      where,
-      include: this.buildIncludes(),
-    });
+    return StockMove.findAll({ where, include: this.buildIncludes() });
   },
+
   async findByStatus(status: string, user: JwtPayload) {
+    const warehouses = await Warehouse.findAll({
+      where: { branch_id: user.branch_id },
+      attributes: ["id"],
+      raw: true,
+    });
+    const warehouseIds = warehouses.map((w: any) => w.id);
+
     const where: any = {
       status,
-      [Op.or]: [
-        { warehouse_from_id: user.branch_id },
-        { warehouse_to_id: user.branch_id },
-      ],
+      branch_id: user.branch_id,
     };
+    if (warehouseIds.length > 0) {
+      where[Op.or] = [
+        { warehouse_from_id: { [Op.in]: warehouseIds } },
+        { warehouse_to_id: { [Op.in]: warehouseIds } },
+        { warehouse_from_id: null },
+      ];
+    }
 
     if (user.role === Role.WHSTAFF) {
       where.created_by = user.id;
     }
 
-    return await StockMove.findAll({
-      where,
-      include: this.buildIncludes(),
-    });
+    return await StockMove.findAll({ where, include: this.buildIncludes() });
   },
 
   buildIncludes() {
@@ -1732,6 +1851,8 @@ export const stockMoveService = {
 
     const t = await sequelize.transaction();
     try {
+      await checkPeriodLocked(move.move_date || new Date(), t);
+
       switch (move.type) {
         case "receipt":
           await this.processReceipt(move, lines, t);
@@ -1809,7 +1930,6 @@ export const stockMoveService = {
         },
       ],
     });
-    console.log("UPDATED MOVE WITH INCLUDE", updatedMove?.lines);
     return updatedMove?.get({ plain: true });
   },
 
@@ -1824,6 +1944,7 @@ export const stockMoveService = {
         line.uom_id,
         product?.uom_id,
         line.product_id,
+        t,
       );
 
       // Lấy unit_price từ PO line để tính WAC
@@ -1833,8 +1954,23 @@ export const stockMoveService = {
           where: { po_id: move.reference_id, product_id: line.product_id },
           transaction: t
         });
-        if (poLine?.unit_price != null) {
-          unitCost = parseFloat(String(poLine.unit_price));
+        if (poLine) {
+          const qtyInStockUom = Number(poLine.qty_in_stock_uom || 0);
+          const qtyInPurchaseUom = Number(poLine.quantity || 0);
+          const lineTotal = Number(poLine.line_total || 0);
+          if (qtyInStockUom > 0 && lineTotal > 0) {
+            unitCost = lineTotal / qtyInStockUom;
+          } else if (qtyInStockUom > 0 && qtyInPurchaseUom > 0 && poLine.unit_price != null) {
+            unitCost = (Number(poLine.unit_price) * qtyInPurchaseUom) / qtyInStockUom;
+          } else if (poLine.unit_price != null) {
+            unitCost = await convertUnitPriceToStockUom(
+              Number(poLine.unit_price),
+              poLine.uom_id,
+              product?.uom_id,
+              line.product_id,
+              t,
+            );
+          }
         }
       } else if (move.reference_type === "purchase_return" && move.reference_id) {
         const { PurchaseReturnLine } = await import("../../purchase/models/purchaseReturnLine.model");
@@ -1982,25 +2118,40 @@ export const stockMoveService = {
         String(poLine.qty_in_stock_uom ?? poLine.quantity ?? 0),
       );
 
-      const previousReceived = allLines
-        .filter(
-          (line) =>
-            line.product_id === poLine.product_id && line.move_id !== move.id,
-        )
-        .reduce((sum, line) => sum + parseFloat(String(line.quantity ?? 0)), 0);
-      const currentReceived = lines
-        .filter((line) => line.product_id === poLine.product_id)
-        .reduce((sum, line) => sum + parseFloat(String(line.quantity ?? 0)), 0);
+      const product = await Product.findByPk(poLine.product_id, {
+        attributes: ["uom_id"],
+        transaction: t,
+      });
+      let previousReceived = 0;
+      for (const line of allLines.filter(
+        (item) => item.product_id === poLine.product_id && item.move_id !== move.id,
+      )) {
+        previousReceived += await convertToStockUom(
+          Number(line.quantity || 0),
+          line.uom_id,
+          product?.uom_id,
+          line.product_id,
+          t,
+        );
+      }
+      let currentReceived = 0;
+      for (const line of lines.filter((item) => item.product_id === poLine.product_id)) {
+        currentReceived += await convertToStockUom(
+          Number(line.quantity || 0),
+          line.uom_id,
+          product?.uom_id,
+          line.product_id,
+          t,
+        );
+      }
 
       const totalReceived = previousReceived + currentReceived;
 
-      console.log(
-        `Product ${poLine.product_id}: PO Qty(stock)=${poQty}, Previous Received=${previousReceived}, Current Received=${currentReceived}, Total=${totalReceived}`,
-      );
-      if (totalReceived < poQty || totalReceived > poQty) {
+      if (totalReceived < poQty) {
         fullyReceived = false;
         break;
       }
+      // Nhận thừa (totalReceived > poQty) vẫn tính là fully received
     }
     await po.update({
       status: fullyReceived ? "completed" : "partially_received",
@@ -2021,6 +2172,7 @@ export const stockMoveService = {
         line.uom_id,
         product?.uom_id,
         line.product_id,
+        t,
       );
       await this.updateStockBalance(
         move.warehouse_from_id,
@@ -2130,6 +2282,7 @@ export const stockMoveService = {
         line.uom_id,
         product?.uom_id,
         line.product_id,
+        t,
       );
 
       // Trừ tồn kho nguồn
@@ -2276,6 +2429,7 @@ export const stockMoveService = {
           line.uom_id,
           product?.uom_id,
           line.product_id,
+          t,
         ));
       await this.updateStockBalance(
         move.warehouse_from_id,

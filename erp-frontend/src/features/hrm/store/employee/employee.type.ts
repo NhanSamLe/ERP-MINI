@@ -13,7 +13,7 @@ export interface EmployeeType {
   base_salary: number;
   bank_account?: string | null;
   bank_name?: string | null;
-  status: "active" | "inactive";
+  status: "active" | "inactive" | "resigned";
 
   // JOINs
   department?: {
@@ -41,5 +41,5 @@ export interface EmployeeFilterType {
   branch_id?: number;
   department_id?: number;
   position_id?: number;
-  status?: string;
+  status?: "active" | "inactive" | "resigned";
 }

@@ -61,7 +61,7 @@ export default function PositionPage() {
     // error bây giờ là string do rejectWithValue trả về
     const msg = typeof error === "string"
       ? error
-      : error?.message || "An error occurred while saving the position";
+      : error?.message || "Đã xảy ra lỗi khi lưu chức danh";
     toast.error(msg);
   }
 };
@@ -139,14 +139,14 @@ export default function PositionPage() {
               <div className="bg-gradient-to-br from-orange-500 to-orange-600 p-2.5 rounded-xl shadow-lg">
                 <Building2 className="w-7 h-7 text-white" />
               </div>
-              Position Management
+              Quản lý chức danh
             </h1>
             <p className="text-gray-500 mt-2 text-sm">
-              Total:{" "}
+              Tổng cộng:{" "}
               <span className="font-semibold text-gray-700">
                 {totalItems}
               </span>{" "}
-              positions
+              chức danh
             </p>
           </div>
 
@@ -158,7 +158,7 @@ export default function PositionPage() {
             }}
           >
             <Plus className="w-5 h-5" />
-            Add Position
+            Thêm chức danh
           </button>
         </div>
       </div>
@@ -168,7 +168,7 @@ export default function PositionPage() {
         <div className="relative max-w-md">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
-            placeholder="Search by position name..."
+            placeholder="Tìm theo tên chức danh..."
             className="w-full border border-gray-200 rounded-xl pl-12 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent shadow-sm hover:border-gray-300 transition-all duration-200"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -183,19 +183,19 @@ export default function PositionPage() {
             <thead>
               <tr className="bg-gradient-to-r from-gray-50 to-gray-100/50 border-b border-gray-200">
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  ID
+                  Mã ID
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Position Name
+                  Tên chức danh
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Branch
+                  Chi nhánh
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Status
+                  Trạng thái
                 </th>
                 <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Actions
+                  Thao tác
                 </th>
               </tr>
             </thead>
@@ -209,27 +209,27 @@ export default function PositionPage() {
                         <div className="w-12 h-12 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin"></div>
                       </div>
                       <p className="mt-4 text-gray-500 text-sm">
-                        Loading data...
+                        Đang tải dữ liệu...
                       </p>
                     </div>
                   </td>
                 </tr>
               ) : totalItems === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-16">
+                  <td colSpan={5} className="px-6 py-16">
                     <div className="flex flex-col items-center justify-center">
                       <div className="bg-gray-100 rounded-full p-4 mb-4">
                         <AlertCircle className="w-8 h-8 text-gray-400" />
                       </div>
                       <p className="text-gray-500 text-sm font-medium">
                         {search
-                          ? "No matching results found"
-                          : "No positions available"}
+                          ? "Không tìm thấy kết quả phù hợp"
+                          : "Không có chức danh nào"}
                       </p>
                       <p className="text-gray-400 text-xs mt-1">
                         {search
-                          ? "Try searching with different keywords"
-                          : "Click 'Add Position' to create a new one"}
+                          ? "Hãy thử tìm kiếm với từ khóa khác"
+                          : "Bấm 'Thêm chức danh' để tạo mới"}
                       </p>
                     </div>
                   </td>
@@ -267,7 +267,7 @@ export default function PositionPage() {
         : "bg-red-100 text-red-700"
     }`}
   >
-    {p.status === "active" ? "Active" : "Inactive"}
+    {p.status === "active" ? "Hoạt động" : "Ngừng hoạt động"}
   </span>
 </td>
                     <td className="px-6 py-4">
@@ -278,7 +278,7 @@ export default function PositionPage() {
                             setEditing(p);
                             setModalOpen(true);
                           }}
-                          title="Edit"
+                          title="Sửa"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
@@ -291,7 +291,7 @@ export default function PositionPage() {
   }`}
   onClick={() => toggleStatus(p)}
 >
-  {p.status === "active" ? "Lock" : "Unlock"}
+  {p.status === "active" ? "Khóa" : "Mở khóa"}
 </button>
                       </div>
                     </td>
@@ -306,16 +306,16 @@ export default function PositionPage() {
         {totalItems > 0 && (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t bg-gradient-to-r from-gray-50 to-white">
             <div className="text-sm text-gray-600">
-              Showing{" "}
+              Hiển thị{" "}
               <span className="font-semibold text-gray-900">
                 {startIndex + 1} -{" "}
                 {Math.min(startIndex + pageSize, totalItems)}
               </span>{" "}
-              of{" "}
+              trên{" "}
               <span className="font-semibold text-gray-900">
                 {totalItems}
               </span>{" "}
-              positions
+              chức danh
             </div>
 
             <div className="flex items-center gap-2">
@@ -326,7 +326,7 @@ export default function PositionPage() {
                 className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white hover:shadow-sm transition-all duration-200 bg-gray-50"
               >
                 <ChevronLeft className="w-4 h-4" />
-                <span className="hidden sm:inline">Previous</span>
+                <span className="hidden sm:inline">Trước</span>
               </button>
 
               {/* Page Numbers */}
@@ -365,7 +365,7 @@ export default function PositionPage() {
                 disabled={currentPage === totalPages}
                 className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white hover:shadow-sm transition-all duration-200 bg-gray-50"
               >
-                <span className="hidden sm:inline">Next</span>
+                <span className="hidden sm:inline">Sau</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>

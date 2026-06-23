@@ -1,6 +1,8 @@
 import * as model from "../../../models/index";
-import { Op, Sequelize } from "sequelize";
+import { Op } from "sequelize";
 import { TaxType, AppliesTo } from "../../../core/types/enum";
+import { Transaction } from "sequelize";
+
 export class CreateTaxRateDto {
   code!: string;
   name!: string;
@@ -10,7 +12,8 @@ export class CreateTaxRateDto {
   is_vat?: boolean;
   effective_date?: Date;
   expiry_date?: Date | null;
-  status?: "active" | "inactive"; // có thể define enum luôn nếu muốn
+  status?: "active" | "inactive";
+  company_id?: number | null;
 }
 
 export class UpdateTaxRateDto {
@@ -24,94 +27,99 @@ export class UpdateTaxRateDto {
   status?: "active" | "inactive";
 }
 
-export const searchTaxRates = async (search?: string, status?: string) => {
-  const where: any = {};
+function companyWhere(companyId?: number) {
+  if (!companyId) return { company_id: null };
+  return { [Op.or]: [{ company_id: companyId }, { company_id: null }] };
+}
+
+export const searchTaxRates = async (search?: string, status?: string, companyId?: number) => {
+  const where: any = { ...companyWhere(companyId) };
+  const conditions: any[] = [companyWhere(companyId)];
 
   if (search) {
-    where[Op.or] = [
-      { name: { [Op.like]: `%${search}%` } },
-      { code: { [Op.like]: `%${search}%` } },
-    ];
+    conditions.push({ [Op.or]: [{ name: { [Op.like]: `%${search}%` } }, { code: { [Op.like]: `%${search}%` } }] });
   }
-
   if (status) {
-    where.status = status;
+    conditions.push({ status });
   }
 
   return model.TaxRate.findAll({
-    where,
+    where: conditions.length > 1 ? { [Op.and]: conditions } : (conditions[0] as any),
     order: [["id", "ASC"]],
   });
 };
 
-export const getAllTaxRates = async () => {
+export const getAllTaxRates = async (companyId?: number) => {
   return model.TaxRate.findAll({
-    order: [["id", "ASC"]],
+    where: companyWhere(companyId) as any,
+    order: [["company_id", "ASC"], ["id", "ASC"]],
   });
 };
 
-export const getActiveTaxRates = async () => {
-    return model.TaxRate.findAll({
-        where: {    status: "active" }  
-    });
+export const getActiveTaxRates = async (companyId?: number) => {
+  return model.TaxRate.findAll({
+    where: { ...(companyWhere(companyId) as any), status: "active" },
+  });
 };
+
 export const getTaxById = async (id: number) => {
   const tax = await model.TaxRate.findByPk(id);
   if (!tax) throw new Error("Loại thuế không tồn tại.");
   return tax;
 };
 
-export const createTaxRate = async (data: CreateTaxRateDto) => {
+export const createTaxRate = async (data: CreateTaxRateDto, t?: Transaction) => {
   if (!data.code || !data.name || data.rate === undefined) {
     throw new Error("Thiếu thông tin bắt buộc.");
   }
 
-  const existing = await model.TaxRate.findOne({ where: { code: data.code } });
+  const findOptions: any = { where: { code: data.code, company_id: data.company_id ?? null } };
+  if (t) findOptions.transaction = t;
+  const existing = await model.TaxRate.findOne(findOptions);
   if (existing) throw new Error("Mã thuế đã tồn tại.");
 
   if (data.rate < 0 || data.rate > 100) {
     throw new Error("Thuế suất phải nằm trong khoảng 0–100%.");
   }
 
-  if (data.effective_date && data.effective_date < new Date()) {
-    throw new Error("Ngày hiệu lực không hợp lệ.");
-  }
-
-  return model.TaxRate.create({
-    ...data,
-    status: data.status || "active",
-  });
+  const createOptions: any = {};
+  if (t) createOptions.transaction = t;
+  return model.TaxRate.create(
+    { ...data, company_id: data.company_id ?? null, status: data.status || "active" },
+    createOptions
+  );
 };
 
-export const updateTaxRate = async (id: number, data: UpdateTaxRateDto) => {
+export const updateTaxRate = async (id: number, data: UpdateTaxRateDto, companyId?: number) => {
   const tax = await model.TaxRate.findByPk(id);
   if (!tax) throw new Error("Loại thuế không tồn tại.");
+  if (tax.company_id === null) throw new Error("Không thể sửa thuế suất hệ thống.");
+  if (companyId && tax.company_id !== companyId) throw new Error("Loại thuế không tồn tại.");
 
   if (data.rate && (data.rate < 0 || data.rate > 100)) {
     throw new Error("Thuế suất phải nằm trong khoảng 0–100%.");
   }
 
-  if (data.effective_date && data.effective_date < new Date()) {
-    throw new Error("Ngày hiệu lực không hợp lệ.");
-  }
-
   return tax.update(data);
 };
-export const deleteTaxRate = async (id: number) => {
-    const taxRate = await model.TaxRate.findByPk(id);   
-    if (!taxRate) {
-        throw new Error("Tax rate not found.");
-    } 
-    await taxRate.destroy();
-    return true;
-}
-export const findTaxRatesByType = async (type: string) => {
-    return model.TaxRate.findAll({
-        where: { type }
-    });
-}   
-export const findTaxRatesByAppliesTo = async (applies_to: string) => {
-    return model.TaxRate.findAll({
-        where: { applies_to }
-    });
-}
+
+export const deleteTaxRate = async (id: number, companyId?: number) => {
+  const taxRate = await model.TaxRate.findByPk(id);
+  if (!taxRate) throw new Error("Loại thuế không tồn tại.");
+  if (taxRate.company_id === null) throw new Error("Không thể xóa thuế suất hệ thống.");
+  if (companyId && taxRate.company_id !== companyId) throw new Error("Loại thuế không tồn tại.");
+  await taxRate.destroy();
+  return true;
+};
+
+export const findTaxRatesByType = async (type: string, companyId?: number) => {
+  return model.TaxRate.findAll({
+    where: { ...(companyWhere(companyId) as any), type },
+  });
+};
+
+export const findTaxRatesByAppliesTo = async (applies_to: string, companyId?: number) => {
+  return model.TaxRate.findAll({
+    where: { ...(companyWhere(companyId) as any), applies_to },
+  });
+};

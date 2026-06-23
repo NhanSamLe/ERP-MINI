@@ -6,7 +6,7 @@ import { upload } from "../../core/middleware/upload";
 
 const router = Router();
 
-router.post("/users",authMiddleware(["ADMIN","HR_STAFF"]), authController.createUser);
+router.post("/users",authMiddleware(["ADMIN","HR_STAFF", "HRMANAGER"]), authController.createUser);
 router.post("/login", authController.login);
 router.post("/refresh", authController.refresh);
 router.post("/request-password-reset", authController.requestPasswordReset);
@@ -19,7 +19,7 @@ router.put("/update-me",authMiddleware([]), authController.updateUserInfo)
 router.put("/users",authMiddleware(["ADMIN"]), authController.updateUser);
 router.delete("/users/:id",authMiddleware(["ADMIN"]), authController.deleteUser);
 router.get("/users",authMiddleware(["ADMIN"]), authController.getAllUsers);
-router.get("/roles",authMiddleware(["ADMIN","HR_STAFF"]), authController.getAllRoles);
+router.get("/roles",authMiddleware(["ADMIN","HR_STAFF", "HRMANAGER"]), authController.getAllRoles);
 router.get(
   "/me-attendance",
   authMiddleware([]),

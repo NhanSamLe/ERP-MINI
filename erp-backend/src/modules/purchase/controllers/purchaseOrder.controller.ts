@@ -3,6 +3,7 @@ import { searchService } from "../services/searchService";
 import { bulkActionService } from "../services/bulkActionService";
 import { validationService } from "../services/validationService";
 import { Request, Response } from "express";
+import { SearchQuery } from "../services/searchService";
 
 export const purchaseOrderController = {
   async getAllPO(req: Request, res: Response) {
@@ -31,7 +32,6 @@ export const purchaseOrderController = {
       const data = await purchaseOrderService.getByStatus(statusList, user);
       return res.json(data);
     } catch (err) {
-      console.error(err);
       return res.status(500).json({ message: "Server error" });
     }
   },
@@ -153,27 +153,19 @@ export const purchaseOrderController = {
     try {
       const user = (req as any).user;
 
-      const filters = {
-        po_no: req.query.po_no as string,
-        supplier_id: req.query.supplier_id
-          ? parseInt(req.query.supplier_id as string, 10)
-          : undefined,
-        status: req.query.status
-          ? (req.query.status as string).split(",")
-          : undefined,
-        date_from: req.query.date_from as string,
-        date_to: req.query.date_to as string,
-        total_from: req.query.total_from
-          ? parseFloat(req.query.total_from as string)
-          : undefined,
-        total_to: req.query.total_to
-          ? parseFloat(req.query.total_to as string)
-          : undefined,
+      const filters: SearchQuery = {
         page: req.query.page ? parseInt(req.query.page as string, 10) : 1,
         limit: req.query.limit ? parseInt(req.query.limit as string, 10) : 20,
-        sort_by: req.query.sort_by as string,
         sort_order: (req.query.sort_order as "ASC" | "DESC") || "DESC",
       };
+      if (req.query.po_no) filters.po_no = req.query.po_no as string;
+      if (req.query.supplier_id) filters.supplier_id = parseInt(req.query.supplier_id as string, 10);
+      if (req.query.status) filters.status = (req.query.status as string).split(",");
+      if (req.query.date_from) filters.date_from = req.query.date_from as string;
+      if (req.query.date_to) filters.date_to = req.query.date_to as string;
+      if (req.query.total_from) filters.total_from = parseFloat(req.query.total_from as string);
+      if (req.query.total_to) filters.total_to = parseFloat(req.query.total_to as string);
+      if (req.query.sort_by) filters.sort_by = req.query.sort_by as string;
 
       const result = await searchService.search(filters, user.branch_id);
 
@@ -183,7 +175,6 @@ export const purchaseOrderController = {
         pagination: result.pagination,
       });
     } catch (error: any) {
-      console.error("Error searching purchase orders:", error);
       return res.status(500).json({
         success: false,
         message: error.message || "Lỗi khi tìm kiếm đơn đặt hàng",
@@ -204,7 +195,6 @@ export const purchaseOrderController = {
 
       return res.status(200).json(result);
     } catch (error: any) {
-      console.error("Error bulk approving purchase orders:", error);
       const status = error.status || 500;
       return res.status(status).json({
         success: false,
@@ -231,7 +221,6 @@ export const purchaseOrderController = {
 
       return res.status(200).json(result);
     } catch (error: any) {
-      console.error("Error bulk cancelling purchase orders:", error);
       const status = error.status || 500;
       return res.status(status).json({
         success: false,

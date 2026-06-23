@@ -101,7 +101,11 @@ export default function QuotationDetailPage() {
       const result = await dispatch(convertQuotationToOrder(q.id)).unwrap();
       navigate(`/sales/orders/${result.id}`);
     } catch (err: any) {
-      setConvertError(err?.message ?? "Không thể chuyển báo giá thành đơn hàng.");
+      // Thunk reject bằng string (message backend) qua rejectWithValue, nên .unwrap()
+      // ném ra chính string đó — không có .message. Ưu tiên dùng err trực tiếp.
+      const msg =
+        typeof err === "string" ? err : err?.message ?? "Không thể chuyển báo giá thành đơn hàng.";
+      setConvertError(msg);
     }
   };
 

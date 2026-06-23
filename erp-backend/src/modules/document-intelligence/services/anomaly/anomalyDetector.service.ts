@@ -328,14 +328,15 @@ export class AnomalyDetectorService {
       MATH_INCONSISTENCY_TYPES.has(f.type),
     );
 
-    return {
+    const result: AnomalyResult = {
       flags,
       risk_score: riskResult.score,
       risk_level: riskResult.level,
       math_consistent: mathConsistent,
       analyzed_at: new Date(),
       analysis_duration_ms: Date.now() - startTime,
-      skipped_reasons: skippedReasons.length > 0 ? skippedReasons : undefined,
     };
+    if (skippedReasons.length > 0) result.skipped_reasons = skippedReasons;
+    return result;
   }
 }

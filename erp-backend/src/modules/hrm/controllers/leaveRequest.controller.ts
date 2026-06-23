@@ -43,7 +43,7 @@ export async function create(req: AuthRequest, res: Response) {
       return res.status(400).json({ message: "Missing required parameters" });
     }
 
-    const row = await service.create(payload);
+    const row = await service.create(payload, req.user, req.app);
     return res.status(201).json(row);
   } catch (err: any) {
     return res.status(400).json({ message: err.message });
@@ -59,7 +59,7 @@ export async function approve(req: AuthRequest, res: Response) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const row = await service.updateStatus(id, "approved", approvedBy);
+    const row = await service.updateStatus(id, "approved", approvedBy, req.app, req.user);
     return res.status(200).json(row);
   } catch (err: any) {
     return res.status(400).json({ message: err.message });
@@ -75,7 +75,7 @@ export async function reject(req: AuthRequest, res: Response) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const row = await service.updateStatus(id, "rejected", approvedBy);
+    const row = await service.updateStatus(id, "rejected", approvedBy, req.app, req.user);
     return res.status(200).json(row);
   } catch (err: any) {
     return res.status(400).json({ message: err.message });

@@ -4,6 +4,7 @@ export interface Department {
   code: string;
   name: string;
   status?: "active" | "inactive";
+  cost_center_id?: number | null;
   created_at?: string;
   updated_at?: string;
 }

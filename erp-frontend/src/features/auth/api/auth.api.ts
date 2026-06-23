@@ -44,11 +44,11 @@ export function requestPasswordReset(username: string) {
 }
 
 export function validateResetToken(token: string) {
-  return axiosClient.get(`/auth/validate-reset-token?token=${token}`);
+  return axios.get(`${API}/auth/validate-reset-token?token=${token}`);
 }
 
 export function resetPassword(token: string, newPassword: string) {
-  return axiosClient.post("/auth/reset-password", { token, newPassword });
+  return axios.post(`${API}/auth/reset-password`, { token, newPassword });
 }
 export function logout(){
   return axiosClient.post("/auth/logout");

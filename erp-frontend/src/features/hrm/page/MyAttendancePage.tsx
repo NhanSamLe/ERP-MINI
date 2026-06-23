@@ -77,10 +77,10 @@ const MyAttendancePage: React.FC = () => {
     };
     
     const labels: Record<string, string> = {
-      present: "Present",
-      late: "Late",
-      absent: "Absent",
-      leave: "Leave"
+      present: "Có mặt",
+      late: "Đi muộn",
+      absent: "Vắng mặt",
+      leave: "Nghỉ phép"
     };
     
     const statusKey = status || "present"; // Default nếu undefined
@@ -111,10 +111,10 @@ const MyAttendancePage: React.FC = () => {
   // Hàm helper để lấy label trạng thái cho Excel
   const getStatusLabel = (status: string | undefined) => {
     const labels: Record<string, string> = {
-      present: "Present",
-      late: "Late",
-      absent: "Absent",
-      leave: "Leave"
+      present: "Có mặt",
+      late: "Đi muộn",
+      absent: "Vắng mặt",
+      leave: "Nghỉ phép"
     };
     return labels[status || "present"] || status || "present";
   };
@@ -123,12 +123,12 @@ const MyAttendancePage: React.FC = () => {
   const handleExportExcel = () => {
     // Chuẩn bị dữ liệu để xuất (sử dụng filteredData để xuất dữ liệu đã lọc)
     const exportData = filteredData.map((item) => ({
-      "Work Date": formatDate(item.work_date),
-      "Check In": item.check_in ? new Date(item.check_in).toLocaleString("vi-VN") : "--:--",
-      "Check Out": item.check_out ? new Date(item.check_out).toLocaleString("vi-VN") : "--:--",
-      "Hours Worked": item.working_hours && item.working_hours > 0 ? `${item.working_hours}h` : "--",
-      "Status": getStatusLabel(item.status),
-      "Notes": item.note || "No notes"
+      "Ngày làm việc": formatDate(item.work_date),
+      "Giờ vào": item.check_in ? new Date(item.check_in).toLocaleString("vi-VN") : "--:--",
+      "Giờ ra": item.check_out ? new Date(item.check_out).toLocaleString("vi-VN") : "--:--",
+      "Số giờ làm": item.working_hours && item.working_hours > 0 ? `${item.working_hours} giờ` : "--",
+      "Trạng thái": getStatusLabel(item.status),
+      "Ghi chú": item.note || "Không có ghi chú"
     }));
 
     // Tạo worksheet từ dữ liệu
@@ -136,10 +136,10 @@ const MyAttendancePage: React.FC = () => {
 
     // Tạo workbook và thêm worksheet
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance Report");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Báo cáo chấm công");
 
     // Tạo tên file với timestamp
-    const fileName = `Attendance_${employeeName || "Employee"}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    const fileName = `ChamCong_${employeeName || "NhanVien"}_${new Date().toISOString().split('T')[0]}.xlsx`;
 
     // Tải xuống file
     XLSX.writeFile(workbook, fileName);
@@ -165,14 +165,14 @@ const MyAttendancePage: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 mb-1">
-                My Attendance Record
+                Lịch sử chấm công của tôi
               </h1>
               {employeeId && (
                 <div className="flex items-center text-gray-600 mt-2">
                   <User className="w-4 h-4 mr-2" />
                   <span className="font-medium">{employeeName}</span>
                   <span className="mx-2">•</span>
-                  <span className="text-sm">ID: {employeeId}</span>
+                  <span className="text-sm">Mã NV: {employeeId}</span>
                 </div>
               )}
             </div>
@@ -181,7 +181,7 @@ const MyAttendancePage: React.FC = () => {
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               <Download className="w-4 h-4" />
-              Export Excel
+              Xuất Excel
             </button>
           </div>
         </div>
@@ -189,24 +189,24 @@ const MyAttendancePage: React.FC = () => {
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
           <div className="bg-white rounded-lg shadow-sm p-4 border-l-4 border-blue-500">
-            <div className="text-sm text-gray-600 mb-1">Total Days</div>
+            <div className="text-sm text-gray-600 mb-1">Tổng số ngày</div>
             <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
           </div>
           <div className="bg-white rounded-lg shadow-sm p-4 border-l-4 border-green-500">
-            <div className="text-sm text-gray-600 mb-1">Present</div>
+            <div className="text-sm text-gray-600 mb-1">Có mặt</div>
             <div className="text-2xl font-bold text-green-600">{stats.present}</div>
           </div>
           <div className="bg-white rounded-lg shadow-sm p-4 border-l-4 border-yellow-500">
-            <div className="text-sm text-gray-600 mb-1">Late</div>
+            <div className="text-sm text-gray-600 mb-1">Đi muộn</div>
             <div className="text-2xl font-bold text-yellow-600">{stats.late}</div>
           </div>
           <div className="bg-white rounded-lg shadow-sm p-4 border-l-4 border-red-500">
-            <div className="text-sm text-gray-600 mb-1">Absent</div>
+            <div className="text-sm text-gray-600 mb-1">Vắng mặt</div>
             <div className="text-2xl font-bold text-red-600">{stats.absent}</div>
           </div>
           <div className="bg-white rounded-lg shadow-sm p-4 border-l-4 border-purple-500">
-            <div className="text-sm text-gray-600 mb-1">Total Hours</div>
-            <div className="text-2xl font-bold text-purple-600">{stats.totalHours.toFixed(1)}h</div>
+            <div className="text-sm text-gray-600 mb-1">Tổng số giờ</div>
+            <div className="text-2xl font-bold text-purple-600">{stats.totalHours.toFixed(1)} giờ</div>
           </div>
         </div>
 
@@ -215,7 +215,7 @@ const MyAttendancePage: React.FC = () => {
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2">
               <Filter className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Filter:</span>
+              <span className="text-sm font-medium text-gray-700">Bộ lọc:</span>
             </div>
             
             <select 
@@ -223,11 +223,11 @@ const MyAttendancePage: React.FC = () => {
               onChange={(e) => setFilterStatus(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
-              <option value="all">All Statuses</option>
-              <option value="present">Present</option>
-              <option value="late">Late</option>
-              <option value="absent">Absent</option>
-              <option value="leave">Leave</option>
+              <option value="all">Tất cả trạng thái</option>
+              <option value="present">Có mặt</option>
+              <option value="late">Đi muộn</option>
+              <option value="absent">Vắng mặt</option>
+              <option value="leave">Nghỉ phép</option>
             </select>
 
             <input
@@ -235,7 +235,7 @@ const MyAttendancePage: React.FC = () => {
               value={searchMonth}
               onChange={(e) => setSearchMonth(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Select Month"
+              placeholder="Chọn tháng"
             />
 
             {(filterStatus !== "all" || searchMonth) && (
@@ -246,7 +246,7 @@ const MyAttendancePage: React.FC = () => {
                 }}
                 className="text-sm text-blue-600 hover:text-blue-700 font-medium"
               >
-                Clear Filters
+                Xóa bộ lọc
               </button>
             )}
           </div>
@@ -257,7 +257,7 @@ const MyAttendancePage: React.FC = () => {
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="ml-3 text-gray-600">Loading data...</span>
+              <span className="ml-3 text-gray-600">Đang tải dữ liệu...</span>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -267,31 +267,31 @@ const MyAttendancePage: React.FC = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       <div className="flex items-center gap-2">
                         <Calendar className="w-4 h-4" />
-                        Work Date
+                        Ngày làm việc
                       </div>
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4" />
-                        Check In
+                        Giờ vào
                       </div>
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4" />
-                        Check Out
+                        Giờ ra
                       </div>
                     </th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Hours
+                      Số giờ
                     </th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
+                      Trạng thái
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       <div className="flex items-center gap-2">
                         <FileText className="w-4 h-4" />
-                        Notes
+                        Ghi chú
                       </div>
                     </th>
                   </tr>
@@ -316,7 +316,7 @@ const MyAttendancePage: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <div className="text-sm font-semibold text-gray-900">
-                          {item.working_hours && item.working_hours > 0 ? `${item.working_hours}h` : "--"}
+                          {item.working_hours && item.working_hours > 0 ? `${item.working_hours} giờ` : "--"}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -324,7 +324,7 @@ const MyAttendancePage: React.FC = () => {
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm text-gray-600">
-                          {item.note || <span className="text-gray-400 italic">No notes</span>}
+                          {item.note || <span className="text-gray-400 italic">Không có ghi chú</span>}
                         </div>
                       </td>
                     </tr>
@@ -335,8 +335,8 @@ const MyAttendancePage: React.FC = () => {
                       <td colSpan={6} className="px-6 py-12 text-center">
                         <div className="flex flex-col items-center justify-center text-gray-500">
                           <Calendar className="w-12 h-12 mb-3 text-gray-300" />
-                          <p className="text-lg font-medium">No attendance data available</p>
-                          <p className="text-sm mt-1">Please try adjusting the filters</p>
+                          <p className="text-lg font-medium">Không có dữ liệu chấm công</p>
+                          <p className="text-sm mt-1">Vui lòng điều chỉnh lại bộ lọc</p>
                         </div>
                       </td>
                     </tr>

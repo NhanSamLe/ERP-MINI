@@ -1,23 +1,27 @@
 import { Request, Response } from "express";
 import * as uomService from "../services/uom.service";
 
+function getCompanyId(req: Request): number | undefined {
+  return (req as any).user?.company_id ?? undefined;
+}
+
 export const searchUoms = async (req: Request, res: Response) => {
   try {
     const { search } = req.query;
-    const result = await uomService.searchUoms(search as string);
-
+    const result = await uomService.searchUoms(search as string, getCompanyId(req));
     res.status(200).json(result);
   } catch (error: any) {
     res.status(500).json({ message: "Không thể tải danh sách đơn vị tính. Vui lòng thử lại sau." });
   }
 };
+
 export const getAllUoms = async (req: Request, res: Response) => {
   try {
-    const result = await uomService.getAllUoms();   
+    const result = await uomService.getAllUoms(getCompanyId(req));
     res.status(200).json(result);
-    } catch (error: any) {  
+  } catch (error: any) {
     res.status(500).json({ message: "Không thể tải danh sách đơn vị tính. Vui lòng thử lại sau." });
-    }   
+  }
 };
 export const getUomById = async (req: Request, res: Response) => {
   try {
@@ -30,7 +34,7 @@ export const getUomById = async (req: Request, res: Response) => {
 
 export const createUom = async (req: Request, res: Response) => {
   try {
-    const dto: uomService.CreateUomDto = req.body;
+    const dto: uomService.CreateUomDto = { ...req.body, company_id: getCompanyId(req) ?? null };
     const result = await uomService.createUom(dto);
 
     res.status(201).json(result);

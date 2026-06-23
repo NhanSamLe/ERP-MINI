@@ -16,7 +16,6 @@ import {
   Handshake,
   ChevronRight,
   Building2,
-  ClipboardList,
   BrainCircuit,
 } from "lucide-react";
 
@@ -295,6 +294,11 @@ const menuItems: MenuItem[] = [
         allowedRoles: ["ACCOUNT", "CHACC"],
       },
       {
+        name: "Thiết lập định khoản",
+        path: "/finance/mappings",
+        allowedRoles: ["ACCOUNT", "CHACC"],
+      },
+      {
         name: "Báo cáo tài chính",
         path: "/finance/reports",
         allowedRoles: ["ACCOUNT", "CHACC", "CEO", "ADMIN"],
@@ -359,7 +363,22 @@ const menuItems: MenuItem[] = [
       {
         name: "Tính lương",
         path: "/hrm/payroll-runs",
-        allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC"],
+        allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC", "CEO", "ADMIN"],
+      },
+      {
+        name: "Payroll Mapping",
+        path: "/hrm/payroll-mappings",
+        allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC", "CEO", "ADMIN"],
+      },
+      {
+        name: "Cost Centers",
+        path: "/hrm/cost-centers",
+        allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC", "CEO", "ADMIN"],
+      },
+      {
+        name: "Cấu hình lương",
+        path: "/hrm/payroll-configs",
+        allowedRoles: ["HRMANAGER", "HR_STAFF", "CHACC", "ADMIN"],
       },
     ],
   },
@@ -475,8 +494,11 @@ const menuItems: MenuItem[] = [
   },
 ];
 
-export default function Sidebar() {
-  const navigate = useNavigate();
+interface SidebarProps {
+  onNavigate?: () => void;
+}
+
+export default function Sidebar({ onNavigate }: SidebarProps) {
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const location = useLocation();
   const { user } = useSelector((s: RootState) => s.auth);
@@ -503,12 +525,14 @@ export default function Sidebar() {
   const isSubItemActive = (path: string) => path && location.pathname === path;
 
   return (
-    <aside className="w-64 h-screen bg-white border-r border-gray-200 flex flex-col overflow-hidden">
-      {/* Sidebar header label */}
-      <div className="px-4 pt-3 pb-2">
-        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-          Điều hướng
-        </span>
+    <aside className="w-64 h-full bg-white border-r border-gray-200 flex flex-col overflow-hidden">
+      {/* Brand logo block */}
+      <div className="px-4 py-3 border-b border-gray-100">
+        <img
+          src="/assets/banner-lgoo.png"
+          alt="ERP Mini"
+          className="h-10 w-auto object-contain"
+        />
       </div>
 
       {/* Nav items */}
@@ -542,12 +566,25 @@ export default function Sidebar() {
                       : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
                   ].join(" ")}
                 >
-                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                    <item.icon
-                      className={`w-4 h-4 shrink-0 ${moduleActive ? "text-orange-500" : "text-gray-400"}`}
-                    />
-                    <span className="truncate">{item.name}</span>
-                  </div>
+                  {item.path ? (
+                    <Link
+                      to={item.path}
+                      onClick={onNavigate}
+                      className="flex items-center gap-2.5 flex-1 min-w-0"
+                    >
+                      <item.icon
+                        className={`w-4 h-4 shrink-0 ${moduleActive ? "text-orange-500" : "text-gray-400"}`}
+                      />
+                      <span className="truncate">{item.name}</span>
+                    </Link>
+                  ) : (
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                      <item.icon
+                        className={`w-4 h-4 shrink-0 ${moduleActive ? "text-orange-500" : "text-gray-400"}`}
+                      />
+                      <span className="truncate">{item.name}</span>
+                    </div>
+                  )}
 
                   {filteredSubs && filteredSubs.length > 0 && (
                     <ChevronRight
@@ -573,6 +610,7 @@ export default function Sidebar() {
                         <Link
                           key={sub.name}
                           to={targetPath}
+                          onClick={onNavigate}
                           className={[
                             "block px-3 py-1.5 rounded-md text-sm transition-colors duration-100",
                             active
@@ -592,12 +630,8 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t border-gray-100 flex flex-col gap-2.5 items-center bg-gray-50/50">
-        <div className="flex gap-3 justify-center items-center">
-          <LocalFloatingChatButton />
-          <FloatingChatButton />
-        </div>
-        <p className="text-[10px] text-gray-400 font-medium">ERP UTE · v1.0</p>
+      <div className="px-4 py-3 border-t border-gray-100">
+        <p className="text-[10px] text-gray-400 font-medium">ERP Mini · v1.0</p>
       </div>
     </aside>
   );

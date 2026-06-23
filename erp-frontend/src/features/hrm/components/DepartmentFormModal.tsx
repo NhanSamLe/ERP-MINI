@@ -2,12 +2,14 @@ import { useState, useEffect } from "react";
 import { DepartmentDTO } from "../dto/department.dto";
 import { Branch, fetchBranches } from "../../company/branch.service";
 import { X, Building2, Code2, Type, Trash2 } from "lucide-react";
+import { costCenterApi, CostCenterDTO } from "../api/costCenter.api";
 
 type DepartmentFormState = {
   id?: number;
   branch_id?: number;
   code: string;
   name: string;
+  cost_center_id?: number | null;
 };
 
 interface Props {
@@ -32,10 +34,13 @@ export default function DepartmentFormModal({
     branch_id: undefined,
     code: "",
     name: "",
+    cost_center_id: null,
   });
 
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loadingBranches, setLoadingBranches] = useState(false);
+  const [costCenters, setCostCenters] = useState<CostCenterDTO[]>([]);
+  const [loadingCostCenters, setLoadingCostCenters] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [deleteError, setDeleteError] = useState<string>("");
 
@@ -52,12 +57,27 @@ export default function DepartmentFormModal({
   }, []);
 
   useEffect(() => {
+    (async () => {
+      try {
+        setLoadingCostCenters(true);
+        const data = await costCenterApi.getAll();
+        setCostCenters(data);
+      } catch (err) {
+        console.error("Lỗi khi tải trung tâm chi phí:", err);
+      } finally {
+        setLoadingCostCenters(false);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
     if (defaultValue) {
       setForm({
         id: defaultValue.id,
         branch_id: defaultValue.branch_id,
         code: defaultValue.code,
         name: defaultValue.name,
+        cost_center_id: defaultValue.cost_center_id || null,
       });
     } else {
       setForm({
@@ -65,6 +85,7 @@ export default function DepartmentFormModal({
         branch_id: branches[0]?.id,
         code: "",
         name: "",
+        cost_center_id: null,
       });
     }
     setErrors({});
@@ -77,13 +98,13 @@ export default function DepartmentFormModal({
     const newErrors: Record<string, string> = {};
 
     if (!form.branch_id) {
-      newErrors.branch_id = "Please select a branch";
+      newErrors.branch_id = "Vui lòng chọn chi nhánh";
     }
     if (!form.code?.trim()) {
-      newErrors.code = "Department code is required";
+      newErrors.code = "Vui lòng nhập mã phòng ban";
     }
     if (!form.name?.trim()) {
-      newErrors.name = "Department name is required";
+      newErrors.name = "Vui lòng nhập tên phòng ban";
     }
 
     setErrors(newErrors);
@@ -98,6 +119,7 @@ export default function DepartmentFormModal({
       branch_id: form.branch_id!,
       code: form.code.trim(),
       name: form.name.trim(),
+      cost_center_id: form.cost_center_id || null,
     };
 
     onSubmit(payload);
@@ -105,7 +127,7 @@ export default function DepartmentFormModal({
 
   const handleDelete = () => {
     if (employeeCount > 0) {
-      setDeleteError("An error occurred while deleting the department");
+      setDeleteError("Không thể xóa phòng ban đang có nhân viên hoạt động");
       return;
     }
     if (onDelete) {
@@ -121,10 +143,10 @@ export default function DepartmentFormModal({
           <div>
             <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
               <Building2 className="w-5 h-5 text-orange-500" />
-              {form.id ? "Edit Department" : "Create New Department"}
+              {form.id ? "Chỉnh sửa phòng ban" : "Tạo phòng ban mới"}
             </h2>
             <p className="text-sm text-gray-500 mt-1">
-              Manage departments in each branch
+              Quản lý phòng ban tại từng chi nhánh
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -132,7 +154,7 @@ export default function DepartmentFormModal({
               <button
                 onClick={handleDelete}
                 className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg p-2 transition-all duration-200"
-                title="Delete department"
+                title="Xóa phòng ban"
               >
                 <Trash2 className="w-5 h-5" />
               </button>
@@ -159,7 +181,7 @@ export default function DepartmentFormModal({
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
               <Building2 className="w-4 h-4 text-gray-400" />
-              Branch
+              Chi nhánh
               <span className="text-red-500">*</span>
             </label>
             <div className="relative">
@@ -177,7 +199,7 @@ export default function DepartmentFormModal({
                 }}
               >
                 <option value="">
-                  {loadingBranches ? "Loading..." : "Select branch"}
+                  {loadingBranches ? "Đang tải..." : "Chọn chi nhánh"}
                 </option>
                 {branches.map((b) => (
                   <option key={b.id} value={b.id}>
@@ -203,14 +225,14 @@ export default function DepartmentFormModal({
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
               <Code2 className="w-4 h-4 text-gray-400" />
-              Department Code
+              Mã phòng ban
               <span className="text-red-500">*</span>
             </label>
             <input
               className={`w-full border ${
                 errors.code ? "border-red-300" : "border-gray-200"
               } px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-gray-300 transition-all duration-200`}
-              placeholder="e.g. HR, IT, SALES..."
+              placeholder="Ví dụ: HCNS, CNTT, KINHDOANH..."
               value={form.code}
               onChange={(e) => {
                 setForm({ ...form, code: e.target.value.toUpperCase() });
@@ -230,14 +252,14 @@ export default function DepartmentFormModal({
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
               <Type className="w-4 h-4 text-gray-400" />
-              Department Name
+              Tên phòng ban
               <span className="text-red-500">*</span>
             </label>
             <input
               className={`w-full border ${
                 errors.name ? "border-red-300" : "border-gray-200"
               } px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-gray-300 transition-all duration-200`}
-              placeholder="Human Resource, Sales Department..."
+              placeholder="Ví dụ: Hành chính Nhân sự, Phòng Kinh doanh..."
               value={form.name}
               onChange={(e) => {
                 setForm({ ...form, name: e.target.value });
@@ -252,6 +274,40 @@ export default function DepartmentFormModal({
               </p>
             )}
           </div>
+
+          {/* Cost Center */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-gray-400" />
+              Trung tâm chi phí (Cost Center)
+            </label>
+            <div className="relative">
+              <select
+                className="w-full border border-gray-200 px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent bg-white hover:border-gray-300 transition-all duration-200 appearance-none cursor-pointer"
+                value={form.cost_center_id ?? ""}
+                onChange={(e) => {
+                  setForm({
+                    ...form,
+                    cost_center_id: e.target.value ? Number(e.target.value) : null,
+                  });
+                }}
+              >
+                <option value="">
+                  {loadingCostCenters ? "Đang tải trung tâm chi phí..." : "-- Chọn trung tâm chi phí (Không bắt buộc) --"}
+                </option>
+                {costCenters.map((cc) => (
+                  <option key={cc.id} value={cc.id}>
+                    {cc.code} — {cc.name}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Footer */}
@@ -260,13 +316,13 @@ export default function DepartmentFormModal({
             className="px-5 py-2.5 text-sm font-medium border border-gray-300 rounded-xl hover:bg-white hover:shadow-sm transition-all duration-200 text-gray-700"
             onClick={onClose}
           >
-            Cancel
+            Hủy
           </button>
           <button
             className="px-5 py-2.5 text-sm font-medium rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 transition-all duration-200"
             onClick={handleSubmit}
           >
-            {form.id ? "Save changes" : "Create"}
+            {form.id ? "Lưu thay đổi" : "Tạo mới"}
           </button>
         </div>
       </div>

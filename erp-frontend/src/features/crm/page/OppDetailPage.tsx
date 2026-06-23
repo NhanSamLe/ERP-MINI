@@ -120,7 +120,6 @@ export default function OppDetailPage() {
   const handleChangeStage = async (stageId: number) => {
     try {
       await dispatch(changePipelineStage({ oppId, newStageId: stageId })).unwrap();
-      dispatch(fetchOpportunityDetail(oppId));
       setAlert({ type: "success", message: "Đã chuyển giai đoạn thành công" });
     } catch {
       setAlert({ type: "error", message: "Không thể chuyển giai đoạn" });
@@ -130,7 +129,6 @@ export default function OppDetailPage() {
   const handleWon = async () => {
     try {
       await dispatch(markWon(oppId)).unwrap();
-      dispatch(fetchOpportunityDetail(oppId));
       setAlert({ type: "success", message: "Đã đánh dấu THẮNG" });
     } catch {
       setAlert({ type: "error", message: "Không thể đánh dấu Thắng" });
@@ -140,7 +138,6 @@ export default function OppDetailPage() {
   const handleLost = async (reason: string) => {
     try {
       await dispatch(markLost({ oppId, reason })).unwrap();
-      dispatch(fetchOpportunityDetail(oppId));
       setAlert({ type: "success", message: "Đã đánh dấu THUA" });
     } catch {
       setAlert({ type: "error", message: "Không thể đánh dấu Thua" });

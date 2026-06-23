@@ -45,7 +45,7 @@ export function Button({
   return (
     <button
       className={[
-        "inline-flex items-center justify-center font-medium",
+        "inline-flex min-w-0 items-center justify-center font-medium",
         "transition-all duration-150 select-none",
         "focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-1",
         "disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none",
@@ -62,7 +62,9 @@ export function Button({
       ) : (
         leftIcon && <span className="shrink-0">{leftIcon}</span>
       )}
-      <span>{loading ? "Processing..." : children}</span>
+      <span className="min-w-0 whitespace-normal text-center leading-tight">
+        {loading ? "Processing..." : children}
+      </span>
       {!loading && rightIcon && <span className="shrink-0">{rightIcon}</span>}
     </button>
   );

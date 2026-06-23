@@ -16,11 +16,14 @@ export type Branch = {
   status?: "active" | "inactive";
 };
 
+export type BranchPayload = Omit<Branch, "id">;
+export type BranchUpdatePayload = Partial<BranchPayload>;
+
 export const BranchAPI = {
   list:   () => axiosClient.get<Branch[]>("/branch"),
   get:    (id: number)            => axiosClient.get<Branch>(`/branch/${id}`),
-  create: (payload: Branch)       => axiosClient.post<Branch>("/branch", payload),
-  update: (id: number, p: Branch) => axiosClient.put<Branch>(`/branch/${id}`, p),
+  create: (payload: BranchPayload)       => axiosClient.post<Branch>("/branch", payload),
+  update: (id: number, p: BranchUpdatePayload) => axiosClient.put<Branch>(`/branch/${id}`, p),
   deactivate: (id: number)        => axiosClient.patch(`/branch/${id}/deactivate`),
   activate:    (id: number)            => axiosClient.patch(`/branch/${id}/activate`),
   remove: (id: number)            => axiosClient.delete(`/branch/${id}`),

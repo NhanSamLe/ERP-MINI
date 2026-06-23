@@ -11,6 +11,9 @@ import { GlAccount } from "../../finance/models/glAccount.model";
 import { ApPaymentAllocation, Partner, sequelize, BankAccount } from "../../../models";
 import { Op, QueryTypes } from "sequelize";
 import { notificationService } from "../../../core/services/notification.service";
+import { getMappedAccount } from "../../finance/services/glAccount.service";
+import { checkPeriodLocked } from "../../finance/services/glJournal.service";
+import { generatePaymentNo } from "../utils";
 
 export const apPaymentService = {
   // ─── READ ──────────────────────────────────────────────────────────────────
@@ -133,7 +136,7 @@ export const apPaymentService = {
       throw { status: 400, message: "Amount must be greater than zero" };
     }
 
-    const paymentNo = `PAY-${Date.now()}`;
+    const paymentNo = await generatePaymentNo();
 
     const payment = await ApPayment.create({
       payment_no: paymentNo,
@@ -232,6 +235,8 @@ export const apPaymentService = {
       if (payment.branch_id !== user.branch_id)
         throw new Error("You cannot approve payment from another branch");
 
+
+      const companyId = await getCompanyIdFromBranch(payment.branch_id, t);
       if (payment.approval_status !== "waiting_approval")
         throw new Error("Payment is not waiting for approval");
 
@@ -248,27 +253,20 @@ export const apPaymentService = {
         { transaction: t },
       );
 
-      // GL: cash->111, bank/transfer->112
-      const creditAccCode = payment.method === "cash" ? "111" : "112";
-      const debitAccCode = "331";
+      // Kiểm tra kỳ kế toán đã khóa sổ hay chưa
+      await checkPeriodLocked(payment.payment_date || new Date(), t);
 
-      const [debitAcc, creditAcc] = await Promise.all([
-        GlAccount.findOne({ where: { code: debitAccCode }, transaction: t }),
-        GlAccount.findOne({ where: { code: creditAccCode }, transaction: t }),
+      // GL: cash->111, bank/transfer->112 qua mapping động
+      const mappingKey = payment.method === "cash" ? "CASH_ACCOUNT" : "BANK_ACCOUNT";
+      const creditFallback = payment.method === "cash" ? "111" : "112";
+
+      const [debitAccountId, creditAccountId] = await Promise.all([
+        getMappedAccount(payment.branch_id, "AP_PAYABLE", "331", t),
+        getMappedAccount(payment.branch_id, mappingKey, creditFallback, t),
       ]);
 
-      if (!debitAcc || !creditAcc) {
-        throw new Error(`Missing GL Accounts ${debitAccCode} / ${creditAccCode}`);
-      }
-
-      const creditAccountId = creditAcc.id;
-      const debitAccountId = debitAcc.id;
-
       const journalCode = payment.method === "cash" ? "CASH" : "BANK";
-      const journal = await GlJournal.findOne({
-        where: { code: journalCode },
-        transaction: t,
-      });
+      const journal = await GlJournal.findOne({ where: { code: journalCode }, transaction: t });
       if (!journal) throw new Error(`${journalCode} journal not found`);
 
       const entryDate: Date = payment.payment_date || new Date();
@@ -286,7 +284,8 @@ export const apPaymentService = {
           reference_id: payment.id,
           memo: `AP Payment ${payment.payment_no}`,
           status: "posted",
-        },
+          branch_id: payment.branch_id ?? null,
+        } as any,
         { transaction: t },
       );
 
@@ -452,18 +451,26 @@ export const apPaymentService = {
       `SELECT
          ai.id,
          ai.invoice_no,
+         ai.invoice_date,
          ai.total_after_tax,
          COALESCE(SUM(apa.applied_amount), 0) AS allocated_amount,
-         ai.total_after_tax - COALESCE(SUM(apa.applied_amount), 0) AS unpaid_amount
+         COALESCE(dn.debit_amount, 0) AS debit_note_amount,
+         ai.total_after_tax - COALESCE(SUM(apa.applied_amount), 0) - COALESCE(dn.debit_amount, 0) AS unpaid_amount
        FROM ap_invoices ai
-       JOIN purchase_orders po ON po.id = ai.po_id
        LEFT JOIN ap_payment_allocations apa ON apa.ap_invoice_id = ai.id
+       LEFT JOIN (
+         SELECT original_ap_invoice_id, SUM(total_after_tax) AS debit_amount
+         FROM ap_debit_notes
+         WHERE status = 'posted'
+         GROUP BY original_ap_invoice_id
+       ) dn ON dn.original_ap_invoice_id = ai.id
        WHERE ai.status IN ('posted', 'partially_paid')
          AND ai.approval_status = 'approved'
-         AND po.supplier_id = ?
+         AND ai.supplier_id = ?
          AND ai.branch_id = ?
        GROUP BY ai.id
-       HAVING unpaid_amount > 0`,
+       HAVING unpaid_amount > 0
+       ORDER BY ai.invoice_date ASC`,
       {
         replacements: [payment.supplier_id, user.branch_id],
         type: QueryTypes.SELECT,
@@ -527,15 +534,20 @@ export const apPaymentService = {
         if (item.amount <= 0)
           throw new Error("Allocation amount must be greater than zero");
 
-        // Validate invoice: supplier + status + approval + branch + lock
+        // Validate invoice: supplier_id trực tiếp từ ap_invoices (không JOIN PO, hỗ trợ cả invoice không có PO)
         const [invoice]: any = await sequelize.query(
           `SELECT ai.id,
-                  ai.total_after_tax - COALESCE(SUM(apa.applied_amount), 0) AS unpaid_amount
+                  ai.total_after_tax - COALESCE(SUM(apa.applied_amount), 0) - COALESCE(dn.debit_amount, 0) AS unpaid_amount
            FROM ap_invoices ai
-           JOIN purchase_orders po ON po.id = ai.po_id
            LEFT JOIN ap_payment_allocations apa ON apa.ap_invoice_id = ai.id
+           LEFT JOIN (
+             SELECT original_ap_invoice_id, SUM(total_after_tax) AS debit_amount
+             FROM ap_debit_notes
+             WHERE status = 'posted'
+             GROUP BY original_ap_invoice_id
+           ) dn ON dn.original_ap_invoice_id = ai.id
            WHERE ai.id = ?
-             AND po.supplier_id = ?
+             AND ai.supplier_id = ?
              AND ai.status IN ('posted', 'partially_paid')
              AND ai.approval_status = 'approved'
              AND ai.branch_id = ?

@@ -115,8 +115,8 @@ export default function InventoryDashboard() {
 
   const chartData = topProducts.map((p) => ({
     name:
-      p.product?.name?.length > 14
-        ? p.product.name.slice(0, 14) + "…"
+      (p.product?.name ?? "").length > 14
+        ? (p.product?.name ?? "").slice(0, 14) + "…"
         : (p.product?.name ?? ""),
     value: Number(p.total_value ?? 0),
   }));

@@ -134,8 +134,8 @@ export class FraudPatternDetector {
         branch_id: branchId,
         created_at: { [Op.gte]: since },
         status: { [Op.notIn]: ["cancelled"] },
-      },
-    });
+      } as any,
+    }) as number;
 
     if (count > 10) {
       return {
@@ -302,7 +302,7 @@ export class FraudPatternDetector {
         tax_code: vendorTaxCode,
         status: { [Op.notIn]: ["cancelled"] },
         total_after_tax: { [Op.not]: null },
-      },
+      } as any,
       attributes: ["total_after_tax"],
     });
 

@@ -39,7 +39,7 @@ export const contentTemplates = {
           CONCAT('Xác suất: ',      IFNULL(l.probability, 0), '%'),
           CONCAT('Mô tả: ',         IFNULL(l.description, ''))
         ) AS content_text
-      FROM leads l
+      FROM crm_leads l
       LEFT JOIN partners c ON l.customer_id = c.id
     `,
   },

@@ -27,12 +27,18 @@ import priceListRoutes from "../modules/sales/routes/priceList.routes";
 import salesReturnRoutes from "../modules/sales/routes/salesReturn.routes";
 import payrollItemRoutes from "../modules/hrm/routes/payrollItem.routes";
 import payrollRunRoutes from "../modules/hrm/routes/payrollRun.routes";
+import payrollConfigRoutes from "../modules/hrm/routes/payrollConfig.routes";
 import glAccountRoutes from "../modules/finance/routes/glAccount.routes";
 import glJournalRoutes from "../modules/finance/routes/glJournal.routes";
+import costCenterRoutes from "../modules/finance/routes/costCenter.routes";
+import fiscalPeriodRoutes from "../modules/finance/routes/fiscalPeriod.routes";
+import payrollMappingRoutes from "../modules/hrm/routes/payrollAccountMapping.routes";
+import accountMappingRoutes from "../modules/finance/routes/accountMapping.routes";
 import apInvoiceRoutes from "../modules/purchase/routes/apInvoice.routes";
 import apPaymentRoutes from "../modules/purchase/routes/apPayment.route";
 import rfqRoutes from "../modules/purchase/routes/rfq.routes";
 import purchasePriceListRoutes from "../modules/purchase/routes/purchasePriceList.routes";
+import purchaseOrderAuditRoutes from "../modules/purchase/routes/purchaseOrderAudit.routes";
 import matchingToleranceRoutes from "../modules/purchase/routes/matchingTolerance.routes";
 import {
   praRouter,
@@ -52,6 +58,8 @@ import { narrativeRoutes } from "../modules/ai-narrative/routes";
 import aiRoutes from "../modules/ai/ai.routes";
 import agentAdminRoutes from "../modules/ai-agent/routes";
 import blogRoutes from "../modules/blog/routes/blog.route";
+import publicRoutes from "../modules/public/routes";
+import setupRoutes from "../modules/public/setupRoutes";
 const router = express.Router();
 
 router.use("/auth", authRoutes);
@@ -62,6 +70,7 @@ router.use("/branch", branchRoutes);
 router.use("/partners", partnerRoutes);
 router.use("/master-data", masterDataRoutes);
 router.use("/purchase-order", purchaseOrderRoutes);
+router.use("/purchase-order", purchaseOrderAuditRoutes);
 router.use("/hrm/departments", departmentRoutes);
 router.use("/hrm/positions", positionRoutes);
 router.use("/warehouse", warehouseRoutes);
@@ -83,8 +92,13 @@ router.use("/ar/invoices", arInvoiceRoutes);
 router.use("/ar/receipts", arReceiptRoutes);
 router.use("/hrm/payroll-items", payrollItemRoutes);
 router.use("/hrm/payroll-runs", payrollRunRoutes);
+router.use("/hrm/payroll-configs", payrollConfigRoutes);
+router.use("/hrm/payroll-mappings", payrollMappingRoutes);
 router.use("/finance/gl-accounts", glAccountRoutes);
 router.use("/finance/gl-journals", glJournalRoutes);
+router.use("/finance/cost-centers", costCenterRoutes);
+router.use("/finance/fiscal-periods", fiscalPeriodRoutes);
+router.use("/finance/account-mappings", accountMappingRoutes);
 
 router.use("/ap/invoices", apInvoiceRoutes);
 router.use("/ap/payments", apPaymentRoutes);
@@ -111,5 +125,7 @@ router.use("/ai-narrative", narrativeRoutes);
 router.use("/ai", aiRoutes);
 router.use("/ai-agent", agentAdminRoutes);
 router.use("/blog", blogRoutes);
+router.use("/public", publicRoutes);
+router.use("/setup", setupRoutes);
 
 export default router;
