@@ -69,12 +69,12 @@ export function DashboardHeader({
   highlights = [],
 }: DashboardHeaderProps) {
   return (
-    <section className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-6 py-6 text-white border border-slate-800/50 shadow-2xl sm:px-8 sm:py-7 print:bg-white print:p-0 print:text-slate-950 print:shadow-none">
-      <div className="absolute -right-16 -top-24 h-72 w-72 rounded-full bg-orange-500/10 blur-[90px] print:hidden" />
-      <div className="absolute -bottom-24 left-1/3 h-52 w-52 rounded-full bg-amber-400/5 blur-[80px] print:hidden" />
+    <section className="relative overflow-hidden rounded-[2rem] bg-[linear-gradient(135deg,#292524_0%,#431407_55%,#1c1917_100%)] px-6 py-6 text-white shadow-[0_24px_70px_-30px_rgba(67,20,7,0.65)] sm:px-8 sm:py-7 print:bg-white print:p-0 print:text-slate-950 print:shadow-none">
+      <div className="absolute -right-16 -top-24 h-72 w-72 rounded-full bg-orange-500/20 blur-3xl print:hidden" />
+      <div className="absolute -bottom-24 left-1/3 h-52 w-52 rounded-full bg-amber-400/10 blur-3xl print:hidden" />
 
-      <div className="relative flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4 print:border-none">
-        <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/25 bg-orange-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-orange-400 print:hidden">
+      <div className="relative flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4 print:border-none">
+        <div className="inline-flex items-center gap-2 rounded-full border border-orange-300/20 bg-orange-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-orange-100 print:hidden">
           <Sparkles className="h-3.5 w-3.5" />
           {eyebrow}
         </div>
@@ -110,7 +110,7 @@ export function DashboardHeader({
           <button
             type="button"
             onClick={onExport}
-            className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-800 bg-slate-900 hover:bg-slate-850 px-3.5 text-xs font-semibold uppercase tracking-wider text-slate-200 transition hover:text-white"
+            className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/10 hover:bg-white/15 px-3.5 text-xs font-semibold uppercase tracking-wider text-white transition"
           >
             <Download className="h-4 w-4" />
             <span className="hidden sm:inline">Xuất báo cáo</span>
@@ -118,7 +118,7 @@ export function DashboardHeader({
           <button
             type="button"
             onClick={onPrint}
-            className="inline-flex h-10 items-center gap-2 rounded-xl bg-orange-500 hover:bg-orange-600 px-3.5 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-orange-500/10 transition active:scale-[0.98]"
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-orange-500 hover:bg-orange-600 px-3.5 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-orange-950/30 transition active:scale-[0.98]"
           >
             <Printer className="h-4 w-4" />
             <span className="hidden sm:inline">In PDF</span>
@@ -131,7 +131,7 @@ export function DashboardHeader({
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
             {title}
           </h1>
-          <p className="mt-2 max-w-xl text-xs leading-relaxed text-slate-400 print:text-slate-655">
+          <p className="mt-2 max-w-xl text-xs leading-relaxed text-slate-300 print:text-slate-650">
             {description}
           </p>
         </div>
@@ -141,15 +141,15 @@ export function DashboardHeader({
             {highlights.slice(0, 3).map((item) => (
               <div
                 key={item.label}
-                className="rounded-2xl border border-slate-800/80 bg-slate-900/50 p-4 backdrop-blur-sm text-left transition hover:border-orange-500/20 hover:bg-slate-900/85"
+                className="rounded-2xl border border-white/10 bg-white/[0.07] p-4 backdrop-blur-sm text-left transition hover:border-orange-300/25 hover:bg-white/10"
               >
-                <p className="text-[10px] font-bold uppercase tracking-widest text-orange-400">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-orange-200/80">
                   {item.label}
                 </p>
-                <p className="mt-1 text-lg font-bold tracking-tight text-white sm:text-xl">
+                <p className="mt-1.5 text-lg font-bold tracking-tight text-white sm:text-xl">
                   {item.value}
                 </p>
-                <p className="mt-1 truncate text-[10px] text-slate-500">
+                <p className="mt-1 truncate text-[10px] text-slate-350">
                   {item.helper}
                 </p>
               </div>
@@ -159,10 +159,10 @@ export function DashboardHeader({
       </div>
 
       {period === "custom" && (
-        <div className="relative mt-5 flex flex-wrap items-center gap-2 border-t border-slate-850 pt-4 print:hidden">
-          <span className="mr-1 text-xs font-medium text-slate-500">Khoảng báo cáo</span>
+        <div className="relative mt-5 flex flex-wrap items-center gap-2 border-t border-white/10 pt-4 print:hidden">
+          <span className="mr-1 text-xs font-medium text-slate-300">Khoảng báo cáo</span>
           <DateInput value={dateFrom} onChange={onDateFromChange} />
-          <span className="text-slate-600">→</span>
+          <span className="text-slate-400">→</span>
           <DateInput value={dateTo} onChange={onDateToChange} />
         </div>
       )}
@@ -188,11 +188,11 @@ function ControlSelect({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="flex h-10 min-w-[142px] items-center gap-2 rounded-xl border border-slate-800 bg-slate-900 px-3 text-xs font-semibold uppercase tracking-wider text-slate-200 transition hover:bg-slate-850 data-[state=open]:border-orange-500/40"
+          className="flex h-10 min-w-[142px] items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 text-xs font-semibold uppercase tracking-wider text-white backdrop-blur transition hover:bg-white/15 data-[state=open]:border-orange-400/40"
         >
           {icon}
           <span className="truncate">{selected?.label}</span>
-          <ChevronDown className="ml-auto h-4 w-4 text-orange-400 transition duration-200 [[data-state=open]_&]:rotate-180" />
+          <ChevronDown className="ml-auto h-4 w-4 text-orange-200 transition duration-200 [[data-state=open]_&]:rotate-180" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -234,7 +234,7 @@ function DateInput({
       type="date"
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className="h-9 rounded-lg border border-slate-800 bg-slate-900 px-3 text-xs text-white outline-none [color-scheme:dark] focus:border-slate-700"
+      className="h-9 rounded-lg border border-white/10 bg-white/10 px-3 text-xs text-white outline-none [color-scheme:dark] focus:border-white/30"
     />
   );
 }
