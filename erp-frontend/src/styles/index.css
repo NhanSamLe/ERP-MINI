@@ -221,3 +221,258 @@
     padding: 0.75rem;
   }
 }
+
+/* Premium Custom React Toastify Styles */
+.Toastify__toast-container {
+  padding: 16px !important;
+}
+
+.Toastify__toast {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 
+    0 10px 15px -3px rgba(0, 0, 0, 0.05),
+    0 4px 6px -4px rgba(0, 0, 0, 0.05),
+    0 0 0 1px rgba(0, 0, 0, 0.04) !important;
+  color: #1f2937 !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  padding: 14px 16px !important;
+  min-height: unset !important;
+  margin-bottom: 12px !important;
+  border: 1px solid rgba(0, 0, 0, 0.04) !important;
+  overflow: hidden;
+}
+
+.dark .Toastify__toast {
+  background: rgba(17, 24, 39, 0.95) !important;
+  color: #f9fafb !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 
+    0 10px 15px -3px rgba(0, 0, 0, 0.3),
+    0 4px 6px -4px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+}
+
+.Toastify__toast--success {
+  border-left: 4px solid #f97316 !important; /* Premium orange primary accent */
+}
+
+.Toastify__toast--error {
+  border-left: 4px solid #ef4444 !important;
+}
+
+.Toastify__toast--warning {
+  border-left: 4px solid #f59e0b !important;
+}
+
+.Toastify__toast--info {
+  border-left: 4px solid #3b82f6 !important;
+}
+
+.Toastify__toast-body {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.Toastify__toast-icon {
+  margin-right: 12px !important;
+  width: 20px !important;
+  height: 20px !important;
+  flex-shrink: 0;
+}
+
+/* Clean up custom icons color to match the border branding */
+.Toastify__toast--success .Toastify__toast-icon svg {
+  fill: #f97316 !important;
+}
+.Toastify__toast--error .Toastify__toast-icon svg {
+  fill: #ef4444 !important;
+}
+.Toastify__toast--warning .Toastify__toast-icon svg {
+  fill: #f59e0b !important;
+}
+.Toastify__toast--info .Toastify__toast-icon svg {
+  fill: #3b82f6 !important;
+}
+
+.Toastify__close-button {
+  color: #9ca3af !important;
+  opacity: 0.7 !important;
+  align-self: center !important;
+}
+
+.Toastify__close-button:hover {
+  color: #4b5563 !important;
+  opacity: 1 !important;
+}
+
+/* Thin, modern progress bar */
+.Toastify__progress-bar {
+  height: 3px !important;
+  bottom: 0 !important;
+}
+.Toastify__progress-bar--success {
+  background: #f97316 !important;
+}
+.Toastify__progress-bar--error {
+  background: #ef4444 !important;
+}
+.Toastify__progress-bar--warning {
+  background: #f59e0b !important;
+}
+.Toastify__progress-bar--info {
+  background: #3b82f6 !important;
+}
+
+/* Premium SweetAlert2 Custom Styling */
+.swal2-container {
+  background-color: rgba(0, 0, 0, 0.4) !important;
+  backdrop-filter: blur(4px);
+  z-index: 999999 !important; /* Ensure it stays above everything */
+}
+
+.swal2-popup {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  border-radius: 16px !important;
+  padding: 2.25rem 2rem 2rem 2rem !important;
+  box-shadow: 
+    0 20px 25px -5px rgba(0, 0, 0, 0.08), 
+    0 8px 10px -6px rgba(0, 0, 0, 0.08) !important;
+  border: 1px solid rgba(0, 0, 0, 0.04) !important;
+  background: #ffffff !important;
+  max-width: 440px !important;
+}
+
+.dark .swal2-popup {
+  background: #1f2937 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 
+    0 20px 25px -5px rgba(0, 0, 0, 0.3), 
+    0 8px 10px -6px rgba(0, 0, 0, 0.3) !important;
+}
+
+.swal2-title {
+  font-size: 1.25rem !important;
+  font-weight: 600 !important;
+  color: #111827 !important;
+  margin: 1rem 0 0.5rem 0 !important;
+  padding: 0 !important;
+}
+
+.dark .swal2-title {
+  color: #f9fafb !important;
+}
+
+.swal2-html-container {
+  font-size: 0.875rem !important;
+  color: #4b5563 !important;
+  line-height: 1.5rem !important;
+  margin: 0.5rem 0 1.5rem 0 !important;
+  padding: 0 !important;
+  text-align: center !important;
+}
+
+.dark .swal2-html-container {
+  color: #d1d5db !important;
+}
+
+.swal2-actions {
+  gap: 12px !important;
+  margin: 1.25rem 0 0 0 !important;
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+}
+
+/* Beautiful custom buttons */
+.swal2-styled {
+  margin: 0 !important;
+  padding: 0.5rem 1.25rem !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  border-radius: 8px !important;
+  transition: all 0.15s ease-in-out !important;
+  box-shadow: none !important;
+  outline: none !important;
+  min-height: 2.25rem !important;
+}
+
+.swal2-styled.swal2-confirm {
+  background-color: #ef4444 !important; /* Destructive red as default, or overridden by confirmButtonColor */
+  color: #ffffff !important;
+  border: none !important;
+}
+
+.swal2-styled.swal2-confirm:hover {
+  filter: brightness(0.95);
+}
+
+.swal2-styled.swal2-cancel {
+  background-color: #f3f4f6 !important;
+  color: #374151 !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+.swal2-styled.swal2-cancel:hover {
+  background-color: #e5e7eb !important;
+  color: #1f2937 !important;
+}
+
+.dark .swal2-styled.swal2-cancel {
+  background-color: #374151 !important;
+  color: #f9fafb !important;
+  border-color: #4b5563 !important;
+}
+
+.dark .swal2-styled.swal2-cancel:hover {
+  background-color: #4b5563 !important;
+}
+
+/* Styled Warning/Success/Error Icons */
+.swal2-icon {
+  margin: 0 auto 0.75rem auto !important;
+  border-width: 3px !important;
+  scale: 0.95;
+  width: 5rem !important;
+  height: 5rem !important;
+  line-height: 5rem !important;
+}
+
+.swal2-icon.swal2-warning {
+  border-color: #f97316 !important;
+  color: #f97316 !important;
+}
+
+.swal2-icon.swal2-warning [class^=swal2-warning-body] {
+  background-color: #f97316 !important;
+}
+
+.swal2-icon.swal2-warning .swal2-warning-dot {
+  background-color: #f97316 !important;
+}
+
+.swal2-icon.swal2-success {
+  border-color: #22c55e !important;
+}
+
+.swal2-icon.swal2-success [class^=swal2-success-line] {
+  background-color: #22c55e !important;
+}
+
+.swal2-icon.swal2-success .swal2-success-ring {
+  border: 4px solid rgba(34, 197, 94, 0.2) !important;
+}
+
+.swal2-icon.swal2-error {
+  border-color: #ef4444 !important;
+}
+
+.swal2-icon.swal2-error [class^=swal2-error-line] {
+  background-color: #ef4444 !important;
+}
+
+
