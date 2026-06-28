@@ -8,7 +8,8 @@ import {
   Product,
   Partner,
   Branch,
-  User
+  User,
+  Quotation
 } from "../../../models";
 import * as XLSX from "xlsx";
 
@@ -95,17 +96,6 @@ async function buildSalesScopes(user: any, reqBranchId: any) {
   return { orderWhere, invoiceWhere, receiptWhere, returnWhere, invoiceInclude };
 }
 
-function compactCurrency(value: number) {
-  return new Intl.NumberFormat("vi-VN", {
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(value);
-}
-
-function fullCurrency(value: number) {
-  return `${Math.round(value).toLocaleString("vi-VN")} ₫`;
-}
-
 export const salesDashboardService = {
   async getSalesDashboardData(user: any, query: any) {
     const { startDate, endDate } = parseDateRange(query);
@@ -115,7 +105,7 @@ export const salesDashboardService = {
     const { orderWhere, invoiceWhere, receiptWhere, returnWhere, invoiceInclude } = await buildSalesScopes(user, query.branch_id);
 
     // ===============================================================
-    // 1. SUMMARY METRICS (IN PERIOD OR CUMULATIVE)
+    // 1. ACCOUNTING/AR METRICS (IN PERIOD OR CUMULATIVE)
     // ===============================================================
 
     // Net Sales (Invoiced) in period - posted only
@@ -169,7 +159,79 @@ export const salesDashboardService = {
     const returnRate = netSales > 0 ? Number(((returnAmount / netSales) * 100).toFixed(2)) : 0;
 
     // ===============================================================
-    // 2. TREND CHARTS (REVENUE VS COLLECTION)
+    // 2. SALESPERSON SPECIFIC KPIS (ORDERS & QUOTES)
+    // ===============================================================
+
+    // Sale Orders count
+    const ordersCount = await SaleOrder.count({
+      where: {
+        ...orderWhere,
+        order_date: { [Op.between]: [startDate, endDate] }
+      }
+    });
+
+    // Sale Orders total value
+    const ordersValueData = await SaleOrder.findOne({
+      attributes: [[fn("SUM", literal("total_after_tax * exchange_rate")), "total"]],
+      where: {
+        ...orderWhere,
+        order_date: { [Op.between]: [startDate, endDate] }
+      },
+      raw: true
+    }) as any;
+    const ordersValue = Number(ordersValueData?.total ?? 0);
+
+    // Sale Orders by Status breakdown
+    const orderStatuses = ["draft", "confirmed", "shipped", "completed", "cancelled"];
+    const ordersByStatus = await Promise.all(
+      orderStatuses.map(async (st) => ({
+        status: st,
+        count: await SaleOrder.count({
+          where: {
+            ...orderWhere,
+            status: st,
+            order_date: { [Op.between]: [startDate, endDate] }
+          }
+        })
+      }))
+    );
+
+    // Quotations count
+    const quotesCount = await Quotation.count({
+      where: {
+        ...orderWhere,
+        quotation_date: { [Op.between]: [startDate.toISOString().substring(0, 10), endDate.toISOString().substring(0, 10)] }
+      }
+    });
+
+    // Quotations total value
+    const quotesValueData = await Quotation.findOne({
+      attributes: [[fn("SUM", literal("total_after_tax * exchange_rate")), "total"]],
+      where: {
+        ...orderWhere,
+        quotation_date: { [Op.between]: [startDate.toISOString().substring(0, 10), endDate.toISOString().substring(0, 10)] }
+      },
+      raw: true
+    }) as any;
+    const quotesValue = Number(quotesValueData?.total ?? 0);
+
+    // Quotations by Status breakdown
+    const quoteStatuses = ["draft", "sent", "accepted", "rejected", "expired", "cancelled", "converted"];
+    const quotesByStatus = await Promise.all(
+      quoteStatuses.map(async (st) => ({
+        status: st,
+        count: await Quotation.count({
+          where: {
+            ...orderWhere,
+            status: st,
+            quotation_date: { [Op.between]: [startDate.toISOString().substring(0, 10), endDate.toISOString().substring(0, 10)] }
+          }
+        })
+      }))
+    );
+
+    // ===============================================================
+    // 3. TREND CHARTS (REVENUE VS COLLECTION)
     // ===============================================================
     const revenueVsCollection: any[] = [];
     if (diffDays <= 31) {
@@ -234,7 +296,7 @@ export const salesDashboardService = {
     }
 
     // ===============================================================
-    // 3. ACCOUNTS RECEIVABLE AGING
+    // 4. ACCOUNTS RECEIVABLE AGING
     // ===============================================================
     const unpaidInvoices = await ArInvoice.findAll({
       attributes: ["id", "invoice_no", "due_date", "total_after_tax", "paid_amount", "exchange_rate"],
@@ -280,7 +342,7 @@ export const salesDashboardService = {
     ];
 
     // ===============================================================
-    // 4. LOW STOCK ALERTS (INVENTORY WARNINGS)
+    // 5. LOW STOCK ALERTS (INVENTORY WARNINGS)
     // ===============================================================
     const stockBalanceData = await StockBalance.findAll({
       include: [{
@@ -306,7 +368,7 @@ export const salesDashboardService = {
       }));
 
     // ===============================================================
-    // 5. OVERDUE CUSTOMERS ALERT
+    // 6. OVERDUE CUSTOMERS ALERT
     // ===============================================================
     const overdueInvoicesList = await ArInvoice.findAll({
       where: {
@@ -342,7 +404,13 @@ export const salesDashboardService = {
         netSales,
         cashCollected,
         outstandingAr,
-        returnRate
+        returnRate,
+        ordersCount,
+        ordersValue,
+        quotesCount,
+        quotesValue,
+        ordersByStatus,
+        quotesByStatus
       },
       charts: {
         revenueVsCollection,
