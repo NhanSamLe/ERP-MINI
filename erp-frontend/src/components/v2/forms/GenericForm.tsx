@@ -188,7 +188,7 @@ export function GenericForm<T extends Record<string, any>>({
             }}
             disabled={isSubmitting || loading}
           >
-            {config?.cancelLabel || 'Cancel'}
+            {config?.cancelLabel || 'Hủy'}
           </Button>
         )}
         
@@ -198,7 +198,7 @@ export function GenericForm<T extends Record<string, any>>({
           loading={isSubmitting || loading}
           disabled={isSubmitting || loading || (mode === 'edit' && !isDirty)}
         >
-          {config?.submitLabel || (mode === 'create' ? 'Create' : 'Save')}
+          {config?.submitLabel || (mode === 'create' ? 'Tạo mới' : 'Lưu')}
         </Button>
       </div>
     );

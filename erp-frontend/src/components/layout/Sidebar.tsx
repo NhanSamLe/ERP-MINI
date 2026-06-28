@@ -501,6 +501,7 @@ interface SidebarProps {
 export default function Sidebar({ onNavigate }: SidebarProps) {
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useSelector((s: RootState) => s.auth);
   const branches = useSelector((s: RootState) => s.branch.branches || []);
   const defaultBranchId = branches[0]?.id;

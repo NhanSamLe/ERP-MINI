@@ -1,4 +1,6 @@
+import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
+import { subscribeToActiveRequests } from "../../api/axiosClient";
 
 type Variant = "primary" | "secondary" | "outline" | "ghost" | "danger" | "success" | "warning";
 type Size = "xs" | "sm" | "md" | "lg";
@@ -40,12 +42,63 @@ export function Button({
   children,
   disabled,
   className = "",
+  onClick,
   ...props
 }: ButtonProps) {
+  const [isClicked, setIsClicked] = useState(false);
+  const [networkLoading, setNetworkLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isClicked) return;
+
+    let hasStartedRequest = false;
+
+    const unsubscribe = subscribeToActiveRequests((count) => {
+      if (count > 0) {
+        hasStartedRequest = true;
+        setNetworkLoading(true);
+      } else {
+        if (hasStartedRequest) {
+          setNetworkLoading(false);
+          setIsClicked(false);
+        }
+      }
+    });
+
+    // Fallback timers:
+    // 1. If no network request starts within 300ms, reset clicked state (likely a local client-side action/validation error)
+    // 2. Safe timeout of 8 seconds to prevent getting stuck in loading state
+    const timeout = setTimeout(() => {
+      if (!hasStartedRequest) {
+        setIsClicked(false);
+      }
+    }, 300);
+
+    const maxTimeout = setTimeout(() => {
+      setIsClicked(false);
+      setNetworkLoading(false);
+    }, 8000);
+
+    return () => {
+      unsubscribe();
+      clearTimeout(timeout);
+      clearTimeout(maxTimeout);
+    };
+  }, [isClicked]);
+
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    setIsClicked(true);
+    if (onClick) {
+      onClick(e);
+    }
+  };
+
+  const showLoading = loading || networkLoading;
+
   return (
     <button
       className={[
-        "inline-flex min-w-0 items-center justify-center font-medium",
+        "inline-flex min-w-0 items-center justify-center font-medium whitespace-nowrap",
         "transition-all duration-150 select-none",
         "focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-1",
         "disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none",
@@ -54,18 +107,19 @@ export function Button({
         fullWidth ? "w-full" : "",
         className,
       ].join(" ")}
-      disabled={disabled || loading}
+      disabled={disabled || showLoading}
+      onClick={handleClick}
       {...props}
     >
-      {loading ? (
-        <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+      {showLoading ? (
+        <Loader2 className="w-4 h-4 animate-spin shrink-0 mr-2" />
       ) : (
         leftIcon && <span className="shrink-0">{leftIcon}</span>
       )}
-      <span className="min-w-0 whitespace-normal text-center leading-tight">
-        {loading ? "Processing..." : children}
+      <span className="min-w-0 whitespace-nowrap text-center leading-tight flex items-center justify-center gap-1.5">
+        {children}
       </span>
-      {!loading && rightIcon && <span className="shrink-0">{rightIcon}</span>}
+      {!showLoading && rightIcon && <span className="shrink-0">{rightIcon}</span>}
     </button>
   );
 }

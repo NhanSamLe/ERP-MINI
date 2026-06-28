@@ -42,7 +42,7 @@ export function StandardFormLayout({
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-gray-400">
           <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
-          <span className="text-sm font-medium">Loading...</span>
+          <span className="text-sm font-medium">Đang tải...</span>
         </div>
       </div>
     );
@@ -85,7 +85,7 @@ export function StandardFormLayout({
                     )
                   )}
                   <span className="whitespace-normal text-center leading-tight">
-                    {action.isLoading ? "Processing..." : action.label}
+                    {action.isLoading ? "Đang xử lý..." : action.label}
                   </span>
                 </button>
               ))}
