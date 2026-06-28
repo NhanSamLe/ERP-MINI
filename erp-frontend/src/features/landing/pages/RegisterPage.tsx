@@ -248,7 +248,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 flex flex-col pt-28">
+    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 flex flex-col pt-24 pb-12">
       
       {/* ─── Floating Glass Header ─── */}
       <div className="fixed top-6 left-6 right-6 max-w-6xl mx-auto bg-white/75 dark:bg-slate-900/75 backdrop-blur-lg border border-slate-200/50 dark:border-slate-800/50 rounded-full z-50 shadow-[0_8px_30px_rgba(0,0,0,0.03)] px-8 py-3.5 flex justify-between items-center h-14 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]">
@@ -270,289 +270,292 @@ export default function RegisterPage() {
         </span>
       </div>
 
-      <div className="max-w-5xl w-full mx-auto px-6 py-10 flex-1 flex flex-col justify-center">
-        
-        {/* Pill-shaped step progress indicator */}
-        <div className="bg-slate-100 dark:bg-slate-800/60 p-1 rounded-full flex gap-1 max-w-[320px] mx-auto mb-12">
-          {[
-            { num: 1, label: 'Công ty' },
-            { num: 2, label: 'Admin' },
-          ].map(({ num, label }) => (
-            <button
-              key={num}
-              disabled
-              className={[
-                'flex-1 py-1.5 px-4 rounded-full text-xs font-bold transition-all duration-500 flex items-center justify-center gap-2',
-                step === num
-                  ? 'bg-white dark:bg-slate-700 text-orange-500 shadow-sm'
-                  : 'text-slate-400 dark:text-slate-500',
-              ].join(' ')}
-            >
-              <span className={step === num ? 'text-orange-500' : 'text-slate-400'}>0{num}</span>
-              <span>{label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Two-column layout */}
-        <div className="grid lg:grid-cols-5 gap-8 items-start">
-          
-          {/* Form column (Double Bezel Card) */}
-          <div className="lg:col-span-3 bg-slate-900/[0.02] dark:bg-white/[0.01] ring-1 ring-slate-900/[0.04] dark:ring-white/[0.06] p-2 rounded-[2.5rem] shadow-sm">
-            <div className="bg-white dark:bg-slate-900 rounded-[calc(2.5rem-0.5rem)] p-8 border border-slate-200/40 dark:border-slate-800/40 shadow-sm">
-              {step === 1 ? (
-                <>
-                  <div className="text-left mb-6 space-y-1">
-                    <h2 className="text-2xl font-bold text-slate-805 dark:text-white">
-                      Thông tin công ty
-                    </h2>
-                    <p className="text-xs text-slate-400">
-                      Điền thông tin doanh nghiệp của bạn để bắt đầu
-                    </p>
+      <div className="max-w-5xl w-full mx-auto px-6 py-6 flex-1 flex flex-col justify-center">
+        {/* Unified Dual-Pane Card */}
+        <div className="bg-slate-900/[0.02] dark:bg-white/[0.01] ring-1 ring-slate-900/[0.04] dark:ring-white/[0.06] p-2 rounded-[2.5rem] shadow-sm w-full">
+          <div className="bg-white dark:bg-slate-900 rounded-[calc(2.5rem-0.5rem)] border border-slate-200/40 dark:border-slate-800/40 shadow-2xl overflow-hidden grid lg:grid-cols-12">
+            
+            {/* Left Pane: Form (7 Columns) */}
+            <div className="lg:col-span-7 p-8 sm:p-10 flex flex-col justify-between">
+              <div>
+                {/* Step indicator inside form header */}
+                <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100 dark:border-slate-800/60">
+                  <div className="flex flex-col text-left">
+                    <span className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">
+                      Đăng ký tài khoản
+                    </span>
+                    <span className="text-xs text-slate-400 font-medium mt-0.5">
+                      {step === 1 ? 'Bước 1: Thông tin doanh nghiệp' : 'Bước 2: Tài khoản quản trị'}
+                    </span>
                   </div>
+                  
+                  {/* Modern mini dots indicator */}
+                  <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/60 px-3 py-1.5 rounded-full">
+                    <div className={`w-2 h-2 rounded-full transition-colors duration-300 ${step === 1 ? 'bg-orange-500' : 'bg-slate-300 dark:bg-slate-650'}`} />
+                    <div className={`w-2 h-2 rounded-full transition-colors duration-300 ${step === 2 ? 'bg-orange-500' : 'bg-slate-300 dark:bg-slate-650'}`} />
+                  </div>
+                </div>
 
-                  <div className="grid sm:grid-cols-2 gap-5">
-                    <div className="sm:col-span-2">
+                {step === 1 ? (
+                  <>
+                    <div className="text-left mb-6 space-y-1">
+                      <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
+                        Thông tin doanh nghiệp
+                      </h2>
+                      <p className="text-xs text-slate-400">
+                        Nhập các thông tin cơ bản để chúng tôi khởi tạo không gian làm việc riêng cho bạn.
+                      </p>
+                    </div>
+
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div className="sm:col-span-2">
+                        <Field
+                          label="Tên công ty"
+                          required
+                          error={errors.company_name}
+                        >
+                          <input
+                            type="text"
+                            value={step1.company_name}
+                            onChange={updateStep1('company_name')}
+                            placeholder="Ví dụ: Công ty TNHH Giải pháp Công nghệ Việt"
+                            className={inputCls(errors.company_name)}
+                          />
+                        </Field>
+                      </div>
+
                       <Field
-                        label="Tên công ty"
+                        label="Mã số thuế"
                         required
-                        error={errors.company_name}
+                        error={errors.tax_code}
                       >
                         <input
                           type="text"
-                          value={step1.company_name}
-                          onChange={updateStep1('company_name')}
-                          placeholder="VD: Công ty TNHH ABC"
-                          className={inputCls(errors.company_name)}
+                          value={step1.tax_code}
+                          onChange={updateStep1('tax_code')}
+                          placeholder="10 hoặc 13 chữ số"
+                          maxLength={13}
+                          className={inputCls(errors.tax_code)}
                         />
                       </Field>
-                    </div>
 
-                    <Field
-                      label="Mã số thuế"
-                      required
-                      error={errors.tax_code}
-                    >
-                      <input
-                        type="text"
-                        value={step1.tax_code}
-                        onChange={updateStep1('tax_code')}
-                        placeholder="10 hoặc 13 chữ số"
-                        maxLength={13}
-                        className={inputCls(errors.tax_code)}
-                      />
-                    </Field>
-
-                    <Field label="Số điện thoại công ty">
-                      <input
-                        type="tel"
-                        value={step1.company_phone}
-                        onChange={updateStep1('company_phone')}
-                        placeholder="0xxx xxx xxx"
-                        className={inputCls()}
-                      />
-                    </Field>
-
-                    <div className="sm:col-span-2">
-                      <Field label="Email công ty" error={errors.company_email}>
+                      <Field label="Số điện thoại công ty">
                         <input
-                          type="email"
-                          value={step1.company_email}
-                          onChange={updateStep1('company_email')}
-                          placeholder="contact@company.com"
-                          className={inputCls(errors.company_email)}
-                        />
-                      </Field>
-                    </div>
-
-                    <div className="sm:col-span-2">
-                      <Field label="Địa chỉ">
-                        <input
-                          type="text"
-                          value={step1.address}
-                          onChange={updateStep1('address')}
-                          placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/TP"
+                          type="tel"
+                          value={step1.company_phone}
+                          onChange={updateStep1('company_phone')}
+                          placeholder="024 xxx xxxx"
                           className={inputCls()}
                         />
                       </Field>
-                    </div>
 
-                    <Field label="Ngành nghề">
-                      <select
-                        value={step1.industry}
-                        onChange={updateStep1('industry')}
-                        className={inputCls()}
-                      >
-                        {INDUSTRY_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-
-                    <Field label="Quy mô nhân sự">
-                      <select
-                        value={step1.employee_count}
-                        onChange={updateStep1('employee_count')}
-                        className={inputCls()}
-                      >
-                        {EMPLOYEE_COUNT_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                  </div>
-
-                  <button
-                    onClick={handleNextStep}
-                    className="mt-8 w-full inline-flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs uppercase tracking-wider py-3 rounded-full transition-all duration-300 hover:scale-[1.01] active:scale-[0.98] shadow-md shadow-orange-500/10"
-                  >
-                    Tiếp theo
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </>
-              ) : (
-                <form onSubmit={handleSubmit}>
-                  <div className="text-left mb-6 space-y-1">
-                    <h2 className="text-2xl font-bold text-slate-805 dark:text-white">
-                      Tài khoản quản trị viên
-                    </h2>
-                    <p className="text-xs text-slate-400">
-                      Tạo tài khoản admin đầu tiên cho hệ thống
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col gap-5">
-                    <Field
-                      label="Họ tên người đại diện"
-                      required
-                      error={errors.full_name}
-                    >
-                      <input
-                        type="text"
-                        value={step2.full_name}
-                        onChange={updateStep2('full_name')}
-                        placeholder="Nguyễn Văn A"
-                        className={inputCls(errors.full_name)}
-                      />
-                    </Field>
-
-                    <Field
-                      label="Email đăng nhập"
-                      required
-                      error={errors.email}
-                    >
-                      <input
-                        type="email"
-                        value={step2.email}
-                        onChange={updateStep2('email')}
-                        placeholder="admin@company.com"
-                        className={inputCls(errors.email)}
-                      />
-                    </Field>
-
-                    <Field label="Số điện thoại">
-                      <input
-                        type="tel"
-                        value={step2.phone}
-                        onChange={updateStep2('phone')}
-                        placeholder="0xxx xxx xxx"
-                        className={inputCls()}
-                      />
-                    </Field>
-
-                    {serverError && (
-                      <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-650 dark:text-red-400 text-xs px-4 py-3.5 rounded-xl">
-                        {serverError}
+                      <div className="sm:col-span-2">
+                        <Field label="Email công ty" error={errors.company_email}>
+                          <input
+                            type="email"
+                            value={step1.company_email}
+                            onChange={updateStep1('company_email')}
+                            placeholder="lienhe@congty.com"
+                            className={inputCls(errors.company_email)}
+                          />
+                        </Field>
                       </div>
-                    )}
 
-                    <div className="flex gap-3 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setStep(1);
-                          setErrors({});
-                          setServerError(null);
-                        }}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-850 hover:border-slate-300 text-slate-600 dark:text-slate-350 font-semibold text-xs uppercase tracking-wider py-3 rounded-full transition-all duration-300 active:scale-[0.98]"
-                      >
-                        <ArrowLeft className="w-4 h-4" />
-                        Quay lại
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={loading}
-                        className="flex-1 inline-flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-xs uppercase tracking-wider py-3 rounded-full transition-all duration-300 hover:scale-[1.01] active:scale-[0.98] shadow-md shadow-orange-500/10"
-                      >
-                        {loading ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Đang xử lý...
-                          </>
-                        ) : (
-                          <>
-                            Hoàn thành
-                            <CheckCircle className="w-4 h-4" />
-                          </>
-                        )}
-                      </button>
+                      <div className="sm:col-span-2">
+                        <Field label="Địa chỉ">
+                          <input
+                            type="text"
+                            value={step1.address}
+                            onChange={updateStep1('address')}
+                            placeholder="Số nhà, tên đường, quận/huyện, tỉnh/thành phố"
+                            className={inputCls()}
+                          />
+                        </Field>
+                      </div>
+
+                      <Field label="Ngành nghề kinh doanh">
+                        <select
+                          value={step1.industry}
+                          onChange={updateStep1('industry')}
+                          className={inputCls()}
+                        >
+                          {INDUSTRY_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+
+                      <Field label="Quy mô nhân sự">
+                        <select
+                          value={step1.employee_count}
+                          onChange={updateStep1('employee_count')}
+                          className={inputCls()}
+                        >
+                          {EMPLOYEE_COUNT_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
                     </div>
-                  </div>
-                </form>
-              )}
-            </div>
-          </div>
 
-          {/* Info column */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Why choose ERP Mini */}
-            <div className="bg-slate-900/[0.02] dark:bg-white/[0.01] ring-1 ring-slate-900/[0.04] dark:ring-white/[0.06] p-2 rounded-[2.5rem] shadow-sm">
-              <div className="bg-gradient-to-br from-orange-500 to-amber-500 rounded-[calc(2.5rem-0.5rem)] p-8 text-white text-left space-y-6 border border-orange-500/10 shadow-lg">
-                <div className="space-y-1">
-                  <h3 className="text-lg font-bold">Tại sao chọn ERP Mini?</h3>
-                  <p className="text-orange-100 text-xs">
-                    Hàng trăm doanh nghiệp Việt Nam đã tin tưởng
+                    <button
+                      onClick={handleNextStep}
+                      className="mt-8 w-full inline-flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs uppercase tracking-wider py-3 rounded-full transition-all duration-300 hover:scale-[1.01] active:scale-[0.98] shadow-md shadow-orange-500/10"
+                    >
+                      Tiếp tục bước tiếp theo
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </>
+                ) : (
+                  <form onSubmit={handleSubmit}>
+                    <div className="text-left mb-6 space-y-1">
+                      <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
+                        Tài khoản quản trị
+                      </h2>
+                      <p className="text-xs text-slate-400">
+                        Tài khoản này dùng để đăng nhập và thiết lập cấu hình hệ thống ban đầu.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col gap-4">
+                      <Field
+                        label="Họ tên người đại diện"
+                        required
+                        error={errors.full_name}
+                      >
+                        <input
+                          type="text"
+                          value={step2.full_name}
+                          onChange={updateStep2('full_name')}
+                          placeholder="Nguyễn Văn A"
+                          className={inputCls(errors.full_name)}
+                        />
+                      </Field>
+
+                      <Field
+                        label="Email đăng nhập quản trị"
+                        required
+                        error={errors.email}
+                      >
+                        <input
+                          type="email"
+                          value={step2.email}
+                          onChange={updateStep2('email')}
+                          placeholder="admin@congty.com"
+                          className={inputCls(errors.email)}
+                        />
+                      </Field>
+
+                      <Field label="Số điện thoại cá nhân">
+                        <input
+                          type="tel"
+                          value={step2.phone}
+                          onChange={updateStep2('phone')}
+                          placeholder="09xx xxx xxx"
+                          className={inputCls()}
+                        />
+                      </Field>
+
+                      {serverError && (
+                        <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-650 dark:text-red-400 text-xs px-4 py-3.5 rounded-xl">
+                          {serverError}
+                        </div>
+                      )}
+
+                      <div className="flex gap-3 pt-4">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setStep(1);
+                            setErrors({});
+                            setServerError(null);
+                          }}
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-800 hover:border-slate-350 text-slate-600 dark:text-slate-300 font-semibold text-xs uppercase tracking-wider py-3 rounded-full transition-all duration-300 active:scale-[0.98]"
+                        >
+                          <ArrowLeft className="w-4 h-4" />
+                          Quay lại
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={loading}
+                          className="flex-1 inline-flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-xs uppercase tracking-wider py-3 rounded-full transition-all duration-300 hover:scale-[1.01] active:scale-[0.98] shadow-md shadow-orange-500/10"
+                        >
+                          {loading ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Đang đăng ký...
+                            </>
+                          ) : (
+                            <>
+                              Hoàn thành đăng ký
+                              <CheckCircle className="w-4 h-4" />
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                )}
+              </div>
+            </div>
+
+            {/* Right Pane: Marketing Info (5 Columns) */}
+            <div className="lg:col-span-5 bg-slate-950 text-white p-8 sm:p-10 flex flex-col justify-between relative overflow-hidden border-l border-slate-200/10 dark:border-slate-800/50">
+              {/* Background ambient lighting effects */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/10 rounded-full blur-[80px] pointer-events-none" />
+              <div className="absolute bottom-0 left-0 w-64 h-64 bg-amber-500/5 rounded-full blur-[85px] pointer-events-none" />
+
+              <div className="relative z-10 space-y-8 flex-1 flex flex-col justify-center">
+                <div className="space-y-2 text-left">
+                  <h3 className="text-lg font-bold tracking-tight text-white">
+                    Trải nghiệm ERP toàn diện
+                  </h3>
+                  <p className="text-slate-400 text-xs leading-relaxed">
+                    Hệ thống quản trị hợp nhất dành riêng cho doanh nghiệp SME và Startups tại Việt Nam.
                   </p>
                 </div>
-                <ul className="space-y-4">
+
+                {/* Key Benefits List */}
+                <div className="space-y-5">
                   {BENEFITS.map(({ icon: Icon, text }) => (
-                    <li key={text} className="flex items-center gap-3">
-                      <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Icon className="w-3.5 h-3.5 text-white" />
+                    <div key={text} className="flex items-start gap-3 text-left">
+                      <div className="w-7 h-7 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <Icon className="w-3.5 h-3.5 text-orange-400" />
                       </div>
-                      <span className="text-xs text-orange-50 font-medium">{text}</span>
-                    </li>
+                      <p className="text-xs font-medium text-slate-300 leading-normal">{text}</p>
+                    </div>
                   ))}
-                </ul>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-slate-800/80 my-2" />
+
+                {/* Trial features details */}
+                <div className="text-left space-y-3">
+                  <span className="text-[10px] font-bold text-orange-400 uppercase tracking-widest block">
+                    Gói dùng thử chuyên nghiệp bao gồm:
+                  </span>
+                  <ul className="space-y-2">
+                    {[
+                      'Đầy đủ tính năng phân hệ Professional',
+                      'Không giới hạn dung lượng và số lượng chứng từ',
+                      'Onboarding và hướng dẫn cài đặt 1-1 miễn phí',
+                      'Tự động import nhanh dữ liệu từ file Excel',
+                    ].map((item) => (
+                      <li key={item} className="flex items-start gap-2 text-xs text-slate-400">
+                        <CheckCircle className="w-3.5 h-3.5 text-orange-500 mt-0.5 flex-shrink-0" />
+                        <span className="leading-tight">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             </div>
 
-            {/* In the trial plan */}
-            <div className="bg-slate-900/[0.02] dark:bg-white/[0.01] ring-1 ring-slate-900/[0.04] dark:ring-white/[0.06] p-2 rounded-[2.5rem] shadow-sm">
-              <div className="bg-white dark:bg-slate-900 border border-slate-200/40 dark:border-slate-800/40 rounded-[calc(2.5rem-0.5rem)] p-8 text-left space-y-4 shadow-sm">
-                <h4 className="font-bold text-sm text-slate-800 dark:text-white uppercase tracking-wider">
-                  Bao gồm trong gói dùng thử
-                </h4>
-                <ul className="space-y-3 text-xs text-slate-500 dark:text-slate-400">
-                  {[
-                    'Đầy đủ tính năng Professional',
-                    'Không giới hạn dữ liệu thử',
-                    'Hướng dẫn onboarding 1-1',
-                    'Import dữ liệu từ Excel',
-                    'Hỗ trợ qua chat & email',
-                  ].map((item) => (
-                    <li key={item} className="flex items-start gap-2.5">
-                      <CheckCircle className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
           </div>
         </div>
       </div>
