@@ -368,41 +368,43 @@ export default function SalesDashboard() {
           </ChartPanel>
         </div>
 
-        <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_16px_45px_-30px_rgba(15,23,42,0.5)] print:hidden">
-          <header className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900">Tồn kho cần chú ý</h2>
-              <p className="mt-1 text-xs text-slate-500">Sản phẩm dưới ngưỡng tồn kho an toàn</p>
-            </div>
-            <div className="flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-[10px] font-semibold text-amber-700">
-              <Boxes className="h-3.5 w-3.5" />
-              {alerts.lowStockItems.length} cảnh báo
-            </div>
-          </header>
-          {alerts.lowStockItems.length ? (
-            <div className="grid grid-cols-1 divide-y divide-slate-100 md:grid-cols-2 md:divide-x md:divide-y-0 xl:grid-cols-4">
-              {alerts.lowStockItems.slice(0, 4).map((item) => (
-                <div key={`${item.productId}-${item.sku}`} className="group p-5 transition hover:bg-amber-50/40">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-slate-800">{item.name}</p>
-                      <p className="mt-1 text-xs text-slate-400">SKU: {item.sku || "—"}</p>
+        <div className="bg-slate-900/[0.01] dark:bg-white/[0.01] ring-1 ring-slate-900/[0.03] dark:ring-white/[0.05] p-2 rounded-[2rem] print:hidden">
+          <section className="overflow-hidden rounded-[calc(2rem-0.5rem)] border border-slate-200/40 dark:border-slate-800/40 bg-white dark:bg-slate-900 shadow-[0_8px_30px_rgba(0,0,0,0.02)]">
+            <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 px-5 py-4">
+              <div className="text-left">
+                <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Tồn kho cần chú ý</h2>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Sản phẩm dưới ngưỡng tồn kho an toàn</p>
+              </div>
+              <div className="flex items-center gap-2 rounded-full bg-amber-50 dark:bg-amber-500/10 px-3 py-1 text-[10px] font-bold text-amber-700 dark:text-amber-400 border border-amber-250/20">
+                <Boxes className="h-3.5 w-3.5" />
+                {alerts.lowStockItems.length} cảnh báo
+              </div>
+            </header>
+            {alerts.lowStockItems.length ? (
+              <div className="grid grid-cols-1 divide-y divide-slate-100 dark:divide-slate-800/60 md:grid-cols-2 md:divide-x md:divide-y-0 xl:grid-cols-4">
+                {alerts.lowStockItems.slice(0, 4).map((item) => (
+                  <div key={`${item.productId}-${item.sku}`} className="group p-5 transition hover:bg-amber-50/20 dark:hover:bg-amber-500/5 text-left">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-200">{item.name}</p>
+                        <p className="mt-1 text-xs text-slate-450 dark:text-slate-500">SKU: {item.sku || "—"}</p>
+                      </div>
+                      <span className="rounded-lg bg-amber-100 dark:bg-amber-500/20 px-2 py-1 text-xs font-bold text-amber-750 dark:text-amber-400 border border-amber-200/30">
+                        {item.stock}
+                      </span>
                     </div>
-                    <span className="rounded-lg bg-amber-100 px-2 py-1 text-xs font-bold text-amber-700">
-                      {item.stock}
-                    </span>
+                    <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                      <div className="h-full rounded-full bg-amber-400" style={{ width: `${Math.min(Math.max(item.stock / item.minStockQty, 0), 1) * 100}%` }} />
+                    </div>
+                    <p className="mt-2 text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500 font-semibold">
+                      Ngưỡng đã cấu hình: {item.minStockQty.toLocaleString("vi-VN")}
+                    </p>
                   </div>
-                  <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                    <div className="h-full rounded-full bg-amber-400" style={{ width: `${Math.min(Math.max(item.stock / item.minStockQty, 0), 1) * 100}%` }} />
-                  </div>
-                  <p className="mt-2 text-[10px] uppercase tracking-wide text-slate-400">
-                    Ngưỡng đã cấu hình: {item.minStockQty.toLocaleString("vi-VN")}
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : <EmptyState icon={PackageCheck} text="Tồn kho đang ở mức an toàn" />}
-        </section>
+                ))}
+              </div>
+            ) : <EmptyState icon={PackageCheck} text="Tồn kho đang ở mức an toàn" />}
+          </section>
+        </div>
       </div>
     </main>
   );
