@@ -110,20 +110,25 @@ export default function UserProfile() {
 
   return (
     <div className="page-container max-w-5xl mx-auto py-12 px-6 lg:px-8 space-y-8">
-      {/* Upper Profile Banner (Double Bezel) - Clean Layout (No Cover Image) */}
-      <div className="relative overflow-hidden bg-slate-900/[0.02] dark:bg-white/[0.01] ring-1 ring-slate-900/[0.04] dark:ring-white/[0.06] p-2 rounded-[2.5rem] shadow-sm">
-        <div className="bg-white dark:bg-slate-900 rounded-[calc(2.5rem-0.5rem)] p-8 border border-slate-200/40 dark:border-slate-800/40 shadow-[0_8px_30px_rgba(0,0,0,0.015)]">
-          <div className="flex flex-col md:flex-row items-center gap-8">
+      {/* Upper Profile Banner (Double Bezel) - Dark Charcoal Accent (Cam Trắng Đen Theme) */}
+      <div className="relative overflow-hidden bg-slate-950/[0.04] dark:bg-white/[0.01] p-2 rounded-[2.5rem] shadow-sm">
+        <div className="relative overflow-hidden bg-slate-900 dark:bg-slate-900 rounded-[calc(2.5rem-0.5rem)] p-8 border border-slate-800 dark:border-slate-800 shadow-[0_15px_35px_rgba(0,0,0,0.15)] text-white text-left">
+          
+          {/* Subtle Orange Glow Ambient Lights */}
+          <div className="absolute -right-16 -top-24 h-64 w-64 rounded-full bg-orange-500/10 blur-[80px] pointer-events-none" />
+          <div className="absolute -bottom-24 left-1/3 h-48 w-48 rounded-full bg-amber-400/5 blur-[70px] pointer-events-none" />
+
+          <div className="relative flex flex-col md:flex-row items-center gap-8 z-10">
             {/* Avatar Click-to-Upload Container */}
             <div className="relative shrink-0 group">
               <label htmlFor="avatar-file-input" className="cursor-pointer group relative block">
-                <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-orange-500/20 dark:border-orange-500/40 shadow-sm group-hover:border-orange-500 transition duration-300">
+                <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.2)] group-hover:border-orange-400 transition duration-300">
                   <img
                     src={imagePreview}
                     alt="Avatar"
                     className="w-full h-full object-cover transition duration-300 group-hover:scale-105"
                   />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition duration-300 rounded-full">
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition duration-300 rounded-full">
                     <Camera className="w-5 h-5 text-white" />
                   </div>
                 </div>
@@ -143,11 +148,11 @@ export default function UserProfile() {
             {/* User Title & Info */}
             <div className="flex-1 text-center md:text-left pt-2 space-y-2">
               <div className="flex flex-col md:flex-row md:items-center gap-3">
-                <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                <h1 className="text-3xl font-extrabold tracking-tight text-white">
                   {user?.full_name}
                 </h1>
                 <div className="flex justify-center md:justify-start">
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] uppercase tracking-widest font-extrabold bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-200/50 dark:border-orange-500/20">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] uppercase tracking-widest font-extrabold bg-orange-500/20 text-orange-400 border border-orange-500/30">
                     {user?.role?.name || "Thành viên"}
                   </span>
                 </div>
@@ -161,12 +166,12 @@ export default function UserProfile() {
       <div className="bg-slate-900/[0.02] dark:bg-white/[0.01] ring-1 ring-slate-900/[0.04] dark:ring-white/[0.06] p-2 rounded-[2.5rem] shadow-sm">
         <div className="bg-white dark:bg-slate-900 rounded-[calc(2.5rem-0.5rem)] p-8 border border-slate-200/40 dark:border-slate-800/40 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.02)]">
             {/* Tab Selectors (Pill Slider) */}
-            <div className="p-1 bg-slate-100 dark:bg-slate-800/60 rounded-full flex gap-1 max-w-md mx-auto mb-8 border border-slate-200/30 dark:border-slate-700/30">
+            <div className="p-1 bg-slate-100 dark:bg-slate-850 rounded-full flex gap-1 max-w-md mx-auto mb-8 border border-slate-200/30 dark:border-slate-700/30">
               <button
                 onClick={() => setActiveTab("info")}
                 className={`flex-1 py-2.5 px-6 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] flex items-center justify-center gap-2 ${
                   activeTab === "info"
-                    ? "bg-white dark:bg-slate-800 text-orange-500 shadow-[0_4px_12px_rgba(0,0,0,0.05)]"
+                    ? "bg-orange-500 text-white shadow-[0_4px_14px_rgba(249,115,22,0.3)] font-bold"
                     : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                 }`}
               >
@@ -177,7 +182,7 @@ export default function UserProfile() {
                 onClick={() => setActiveTab("password")}
                 className={`flex-1 py-2.5 px-6 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] flex items-center justify-center gap-2 ${
                   activeTab === "password"
-                    ? "bg-white dark:bg-slate-800 text-orange-500 shadow-[0_4px_12px_rgba(0,0,0,0.05)]"
+                    ? "bg-orange-500 text-white shadow-[0_4px_14px_rgba(249,115,22,0.3)] font-bold"
                     : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                 }`}
               >
