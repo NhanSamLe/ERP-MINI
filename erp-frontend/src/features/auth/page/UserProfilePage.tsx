@@ -109,7 +109,7 @@ export default function UserProfile() {
   };
 
   return (
-    <div className="page-container max-w-7xl mx-auto py-12 px-6 lg:px-12 space-y-8">
+    <div className="page-container max-w-5xl mx-auto py-12 px-6 lg:px-8 space-y-8">
       {/* Upper Profile Banner (Double Bezel) - Clean Layout (No Cover Image) */}
       <div className="relative overflow-hidden bg-slate-900/[0.02] dark:bg-white/[0.01] ring-1 ring-slate-900/[0.04] dark:ring-white/[0.06] p-2 rounded-[2.5rem] shadow-sm">
         <div className="bg-white dark:bg-slate-900 rounded-[calc(2.5rem-0.5rem)] p-8 border border-slate-200/40 dark:border-slate-800/40 shadow-[0_8px_30px_rgba(0,0,0,0.015)]">
@@ -149,63 +149,9 @@ export default function UserProfile() {
         </div>
       </div>
 
-      {/* Main Content Grid Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        {/* Left Side: Summary Card (Double Bezel) */}
-        <div className="lg:col-span-1 bg-slate-900/[0.02] dark:bg-white/[0.01] ring-1 ring-slate-900/[0.04] dark:ring-white/[0.06] p-2 rounded-[2.5rem] shadow-sm">
-          <div className="bg-white dark:bg-slate-900 rounded-[calc(2.5rem-0.5rem)] p-8 border border-slate-200/40 dark:border-slate-800/40 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.02)] space-y-6">
-            <div>
-              <span className="text-[10px] uppercase tracking-[0.2em] font-semibold text-orange-500">Hồ sơ cá nhân</span>
-              <h2 className="text-lg font-bold text-slate-800 dark:text-white mt-1">Chi tiết tài khoản</h2>
-            </div>
-            
-            <div className="space-y-5 text-sm pt-2">
-              <div className="flex items-center gap-4 group">
-                <span className="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center text-orange-500 shrink-0 transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-110">
-                  <User className="w-5 h-5" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">Họ & Tên</p>
-                  <p className="font-semibold text-slate-700 dark:text-slate-200 truncate">{user?.full_name}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4 group">
-                <span className="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center text-orange-500 shrink-0 transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-110">
-                  <Mail className="w-5 h-5" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">Địa chỉ Email</p>
-                  <p className="font-semibold text-slate-700 dark:text-slate-200 truncate">{user?.email || "Chưa thiết lập"}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4 group">
-                <span className="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center text-orange-500 shrink-0 transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-110">
-                  <Phone className="w-5 h-5" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">Số điện thoại</p>
-                  <p className="font-semibold text-slate-700 dark:text-slate-200 truncate">{user?.phone || "Chưa thiết lập"}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4 group">
-                <span className="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center text-orange-500 shrink-0 transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-110">
-                  <Globe className="w-5 h-5" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">Chi nhánh trực thuộc</p>
-                  <p className="font-semibold text-slate-700 dark:text-slate-200 truncate">{user?.branch?.name || "Toàn công ty"}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Side: Operations Tabs Card (Double Bezel) */}
-        <div className="lg:col-span-2 bg-slate-900/[0.02] dark:bg-white/[0.01] ring-1 ring-slate-900/[0.04] dark:ring-white/[0.06] p-2 rounded-[2.5rem] shadow-sm">
-          <div className="bg-white dark:bg-slate-900 rounded-[calc(2.5rem-0.5rem)] p-8 border border-slate-200/40 dark:border-slate-800/40 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.02)]">
+      {/* Main Content Single Panel (Double Bezel) */}
+      <div className="bg-slate-900/[0.02] dark:bg-white/[0.01] ring-1 ring-slate-900/[0.04] dark:ring-white/[0.06] p-2 rounded-[2.5rem] shadow-sm">
+        <div className="bg-white dark:bg-slate-900 rounded-[calc(2.5rem-0.5rem)] p-8 border border-slate-200/40 dark:border-slate-800/40 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.02)]">
             {/* Tab Selectors (Pill Slider) */}
             <div className="p-1 bg-slate-100 dark:bg-slate-800/60 rounded-full flex gap-1 max-w-md mx-auto mb-8 border border-slate-200/30 dark:border-slate-700/30">
               <button
