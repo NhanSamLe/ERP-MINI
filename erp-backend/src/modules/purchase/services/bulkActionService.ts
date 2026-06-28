@@ -4,6 +4,7 @@ import { notificationService } from "../../../core/services/notification.service
 import { sequelize } from "../../../config/db";
 import { Op } from "sequelize";
 import { Role } from "../../../core/types/enum";
+import { getCompanyBranchIds } from "../../finance/services/companyScope.service";
 
 export interface BulkResult {
   success: boolean;
@@ -32,7 +33,7 @@ export const bulkActionService = {
       };
     }
 
-    if (user.role !== Role.PURCHASEMANAGER) {
+    if (user.role !== Role.PURCHASEMANAGER && user.role !== "ADMIN" && user.role !== "CEO") {
       throw {
         status: 403,
         message: "Bạn không có quyền phê duyệt đơn đặt hàng",
@@ -46,13 +47,18 @@ export const bulkActionService = {
     }> = [];
     let successCount = 0;
 
+    const companyBranchIds = await getCompanyBranchIds(user);
+    const branchFilter = (user.role === "ADMIN" || user.role === "CEO")
+      ? { [Op.in]: companyBranchIds }
+      : user.branch_id;
+
     // Lấy tất cả PO cần phê duyệt
     const pos = await PurchaseOrder.findAll({
       where: {
         id: {
           [Op.in]: po_ids,
         },
-        branch_id: user.branch_id,
+        branch_id: branchFilter,
       },
     });
 
@@ -140,7 +146,7 @@ export const bulkActionService = {
       };
     }
 
-    if (user.role !== Role.PURCHASEMANAGER) {
+    if (user.role !== Role.PURCHASEMANAGER && user.role !== "ADMIN" && user.role !== "CEO") {
       throw {
         status: 403,
         message: "Bạn không có quyền hủy đơn đặt hàng",
@@ -154,13 +160,18 @@ export const bulkActionService = {
     }> = [];
     let successCount = 0;
 
+    const companyBranchIds = await getCompanyBranchIds(user);
+    const branchFilter = (user.role === "ADMIN" || user.role === "CEO")
+      ? { [Op.in]: companyBranchIds }
+      : user.branch_id;
+
     // Lấy tất cả PO cần hủy
     const pos = await PurchaseOrder.findAll({
       where: {
         id: {
           [Op.in]: po_ids,
         },
-        branch_id: user.branch_id,
+        branch_id: branchFilter,
       },
     });
 

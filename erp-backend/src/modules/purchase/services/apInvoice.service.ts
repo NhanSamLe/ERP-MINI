@@ -21,7 +21,7 @@ import { notificationService } from "../../../core/services/notification.service
 import { getMappedAccount } from "../../finance/services/glAccount.service";
 import { checkPeriodLocked } from "../../finance/services/glJournal.service";
 import { requireGlAccounts } from "../../finance/services/glAccount.helper";
-import { getCompanyIdFromBranch } from "../../finance/services/companyScope.service";
+import { getCompanyIdFromBranch, getCompanyBranchIds } from "../../finance/services/companyScope.service";
 import { DuplicateDetectorService } from "../../document-intelligence/services/duplicateDetector.service";
 import { ThreeWayMatcherService } from "../../document-intelligence/services/threeWayMatcher.service";
 import { apInvoiceAuditLogService } from "./apInvoiceAuditLog.service";
@@ -93,8 +93,14 @@ export const apInvoiceService = {
   },
 
   async getById(id: number, user: any) {
-    const where: any = { id, branch_id: user.branch_id };
-
+    const companyBranchIds = await getCompanyBranchIds(user);
+    const where: any = { id };
+    if (user.role === "ADMIN" || user.role === "CEO") {
+      where.branch_id = { [Op.in]: companyBranchIds };
+    } else {
+      where.branch_id = user.branch_id;
+    }
+ 
     if (user.role === "ACCOUNT") {
       where.created_by = user.id;
     }
@@ -371,7 +377,7 @@ export const apInvoiceService = {
    * Ví dụ: Kế toán nhấn "Tạo hóa đơn" từ màn hình chi tiết PO-2024-001
    */
   async createFromPO(poId: number, user: any) {
-    if (![Role.ACCOUNT].includes(user.role)) {
+    if (![Role.ACCOUNT, Role.CHACC, "ADMIN", "CEO"].includes(user.role)) {
       throw {
         status: 403,
         message: "You do not have permission to create AP Invoice",
@@ -583,7 +589,7 @@ export const apInvoiceService = {
       tax_code?: string;
     },
   ) {
-    if (![Role.ACCOUNT].includes(user.role)) {
+    if (![Role.ACCOUNT, Role.CHACC, "ADMIN", "CEO"].includes(user.role)) {
       throw {
         status: 403,
         message: "You do not have permission to create AP Invoice",
@@ -809,7 +815,7 @@ export const apInvoiceService = {
   },
 
   async approve(id: number, user: any) {
-    if (user.role !== Role.CHACC)
+    if (user.role !== Role.CHACC && user.role !== "ADMIN" && user.role !== "CEO")
       throw new Error("Only Chief Accountant can approve");
 
     const t: Transaction = await sequelize.transaction();
@@ -928,15 +934,19 @@ export const apInvoiceService = {
   },
 
   async reject(id: number, reason: string, user: any, app?: any) {
-    if (user.role !== Role.CHACC) {
+    if (user.role !== Role.CHACC && user.role !== "ADMIN" && user.role !== "CEO") {
       throw new Error("Only Chief Accountant can reject");
     }
-
+ 
     const invoice = await ApInvoice.findByPk(id);
     if (!invoice) throw new Error("AP Invoice not found");
-
-    if (invoice.branch_id !== user.branch_id) {
+ 
+    const companyBranchIds = await getCompanyBranchIds(user);
+    if (user.role !== "ADMIN" && user.role !== "CEO" && invoice.branch_id !== user.branch_id) {
       throw new Error("You cannot reject invoice from another branch");
+    }
+    if (!companyBranchIds.includes(invoice.branch_id)) {
+      throw new Error("You cannot reject invoice for a different company");
     }
     if (invoice.approval_status !== "waiting_approval") {
       throw new Error("Invoice is not waiting for approval");
@@ -1091,8 +1101,14 @@ export const apInvoiceService = {
    *   ?date_from / date_to — filter theo invoice_date
    */
   async getAllWithFilters(query: any, user: any) {
-    const where: any = { branch_id: user.branch_id };
-
+    const companyBranchIds = await getCompanyBranchIds(user);
+    const where: any = {};
+    if (user.role === "ADMIN" || user.role === "CEO") {
+      where.branch_id = { [Op.in]: companyBranchIds };
+    } else {
+      where.branch_id = user.branch_id;
+    }
+ 
     if (user.role === "ACCOUNT") where.created_by = user.id;
 
     // Existing filters
@@ -1248,7 +1264,7 @@ export const apInvoiceService = {
   },
 
   async overrideMismatch(id: number, user: any, reason: string) {
-    if (user.role !== Role.CHACC) {
+    if (user.role !== Role.CHACC && user.role !== "ADMIN" && user.role !== "CEO") {
       throw { status: 403, message: "Chỉ Kế toán trưởng mới được ghi đè mismatch" };
     }
     const invoice = await ApInvoice.findByPk(id);

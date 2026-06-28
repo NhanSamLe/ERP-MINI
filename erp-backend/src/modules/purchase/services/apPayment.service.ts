@@ -14,7 +14,7 @@ import { notificationService } from "../../../core/services/notification.service
 import { getMappedAccount } from "../../finance/services/glAccount.service";
 import { checkPeriodLocked } from "../../finance/services/glJournal.service";
 import { generatePaymentNo } from "../utils";
-import { getCompanyIdFromBranch } from "../../finance/services/companyScope.service";
+import { getCompanyIdFromBranch, getCompanyBranchIds } from "../../finance/services/companyScope.service";
 
 export const apPaymentService = {
   // ─── READ ──────────────────────────────────────────────────────────────────
@@ -22,8 +22,14 @@ export const apPaymentService = {
   async getAll(query: any, user: any) {
     const { status, approval_status, allocation_status, supplier_id } = query;
 
-    const where: any = { branch_id: user.branch_id };
-
+    const companyBranchIds = await getCompanyBranchIds(user);
+    const where: any = {};
+    if (user.role === "ADMIN" || user.role === "CEO") {
+      where.branch_id = { [Op.in]: companyBranchIds };
+    } else {
+      where.branch_id = user.branch_id;
+    }
+ 
     if (user.role === Role.ACCOUNT) {
       where.created_by = user.id;
     }
@@ -63,8 +69,14 @@ export const apPaymentService = {
   },
 
   async getById(id: number, user: any) {
-    const where: any = { id, branch_id: user.branch_id };
-
+    const companyBranchIds = await getCompanyBranchIds(user);
+    const where: any = { id };
+    if (user.role === "ADMIN" || user.role === "CEO") {
+      where.branch_id = { [Op.in]: companyBranchIds };
+    } else {
+      where.branch_id = user.branch_id;
+    }
+ 
     if (user.role === Role.ACCOUNT) {
       where.created_by = user.id;
     }
@@ -100,8 +112,15 @@ export const apPaymentService = {
   // ─── AUDIT LOG ─────────────────────────────────────────────────────────────
 
   async getAuditLogs(paymentId: number, user: any) {
+    const companyBranchIds = await getCompanyBranchIds(user);
+    const where: any = { id: paymentId };
+    if (user.role === "ADMIN" || user.role === "CEO") {
+      where.branch_id = { [Op.in]: companyBranchIds };
+    } else {
+      where.branch_id = user.branch_id;
+    }
     const payment = await ApPayment.findOne({
-      where: { id: paymentId, branch_id: user.branch_id },
+      where,
     });
 
     if (!payment) throw new Error("AP Payment not found");
@@ -122,7 +141,7 @@ export const apPaymentService = {
   // ─── CREATE ────────────────────────────────────────────────────────────────
 
   async create(payload: any, user: any) {
-    if (user.role !== Role.ACCOUNT) {
+    if (user.role !== Role.ACCOUNT && user.role !== Role.CHACC && user.role !== "ADMIN" && user.role !== "CEO") {
       throw {
         status: 403,
         message: "You do not have permission to create AP Payment",
@@ -225,16 +244,19 @@ export const apPaymentService = {
   // ─── APPROVE ───────────────────────────────────────────────────────────────
 
   async approve(id: number, user: any, app?: any) {
-    if (user.role !== Role.CHACC)
+    if (user.role !== Role.CHACC && user.role !== "ADMIN" && user.role !== "CEO")
       throw new Error("Only Chief Accountant can approve");
-
+ 
     const t: Transaction = await sequelize.transaction();
     try {
       const payment = await ApPayment.findByPk(id, { transaction: t });
       if (!payment) throw new Error("AP Payment not found");
-
-      if (payment.branch_id !== user.branch_id)
+ 
+      const companyBranchIds = await getCompanyBranchIds(user);
+      if (user.role !== "ADMIN" && user.role !== "CEO" && payment.branch_id !== user.branch_id)
         throw new Error("You cannot approve payment from another branch");
+      if (!companyBranchIds.includes(payment.branch_id))
+        throw new Error("You cannot approve payment for a different company");
 
 
       const companyId = await getCompanyIdFromBranch(payment.branch_id, t);
@@ -354,15 +376,19 @@ export const apPaymentService = {
   // ─── REJECT ────────────────────────────────────────────────────────────────
 
   async reject(id: number, reason: string, user: any, app?: any) {
-    if (user.role !== Role.CHACC) {
+    if (user.role !== Role.CHACC && user.role !== "ADMIN" && user.role !== "CEO") {
       throw new Error("Only Chief Accountant can reject");
     }
-
+ 
     const payment = await ApPayment.findByPk(id);
     if (!payment) throw new Error("AP Payment not found");
-
-    if (payment.branch_id !== user.branch_id) {
+ 
+    const companyBranchIds = await getCompanyBranchIds(user);
+    if (user.role !== "ADMIN" && user.role !== "CEO" && payment.branch_id !== user.branch_id) {
       throw new Error("You cannot reject payment from another branch");
+    }
+    if (!companyBranchIds.includes(payment.branch_id)) {
+      throw new Error("You cannot reject payment for a different company");
     }
 
     if (payment.approval_status !== "waiting_approval") {

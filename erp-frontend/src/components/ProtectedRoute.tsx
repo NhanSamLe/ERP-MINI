@@ -20,8 +20,8 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-  // Nếu có allowedRoles mà user không nằm trong đó → redirect /unauthorized
-  if (allowedRoles && user && !allowedRoles.includes(user.role.code)) {
+  // Nếu có allowedRoles mà user không nằm trong đó (và không phải ADMIN/CEO) → redirect /unauthorized
+  if (allowedRoles && user && !allowedRoles.includes(user.role.code) && user.role.code !== "ADMIN" && user.role.code !== "CEO") {
     return <Navigate to="/unauthorized" replace />;
   }
   // Nếu hợp lệ → render children

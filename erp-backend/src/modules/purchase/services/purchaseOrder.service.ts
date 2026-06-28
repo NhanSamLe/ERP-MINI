@@ -228,7 +228,7 @@ export const purchaseOrderService = {
   },
 
   async create(data: any, user: any) {
-    const allowedRoles = ["PURCHASE"];
+    const allowedRoles = ["PURCHASE", "ADMIN", "CEO"];
     if (!allowedRoles.includes(user.role)) {
       throw new Error("Bạn không có quyền tạo đơn mua hàng.");
     }
@@ -374,7 +374,7 @@ export const purchaseOrderService = {
   },
 
   async update(id: number, data: PurchaseOrderUpdateDto, user: any) {
-    const allowedRoles = ["PURCHASE"];
+    const allowedRoles = ["PURCHASE", "ADMIN", "CEO"];
     if (!allowedRoles.includes(user.role)) {
       throw new Error("Bạn không có quyền chỉnh sửa đơn mua hàng.");
     }
@@ -551,7 +551,7 @@ export const purchaseOrderService = {
 
   async delete(id: number, user: any) {
     const po = await PurchaseOrder.findByPk(id);
-    const allowedRoles = ["PURCHASE"];
+    const allowedRoles = ["PURCHASE", "ADMIN", "CEO"];
 
     if (!allowedRoles.includes(user.role)) {
       throw new Error("Bạn không có quyền xóa đơn mua hàng.");
@@ -576,10 +576,10 @@ export const purchaseOrderService = {
     const po = await this.getPOById(id);
     if (!po) throw new Error("Không tìm thấy đơn mua hàng");
 
-    if (user.role !== Role.PURCHASEMANAGER) {
+    if (user.role !== Role.PURCHASEMANAGER && user.role !== "ADMIN" && user.role !== "CEO") {
       throw new Error("Bạn không có quyền phê duyệt đơn mua hàng.");
     }
-    if (po.branch_id !== user.branch_id) {
+    if (user.role !== "ADMIN" && user.role !== "CEO" && po.branch_id !== user.branch_id) {
       throw new Error(
         "Bạn không thể phê duyệt đơn mua hàng của chi nhánh khác.",
       );
@@ -618,11 +618,11 @@ export const purchaseOrderService = {
     const po = await this.getPOById(id);
     if (!po) throw new Error("Không tìm thấy đơn mua hàng");
 
-    if (user.role !== Role.PURCHASEMANAGER) {
+    if (user.role !== Role.PURCHASEMANAGER && user.role !== "ADMIN" && user.role !== "CEO") {
       throw new Error("Bạn không có quyền hủy đơn mua hàng.");
     }
 
-    if (po.branch_id !== user.branch_id) {
+    if (user.role !== "ADMIN" && user.role !== "CEO" && po.branch_id !== user.branch_id) {
       throw new Error("Bạn không thể hủy đơn mua hàng của chi nhánh khác.");
     }
 
