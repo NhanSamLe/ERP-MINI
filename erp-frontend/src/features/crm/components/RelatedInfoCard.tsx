@@ -22,6 +22,13 @@ interface Props {
   customer?: Partner | null;
 }
 
+const OPPORTUNITY_STAGE_LABELS: Record<string, string> = {
+  prospecting: "Tiếp cận",
+  negotiation: "Đàm phán",
+  won: "Đã thắng",
+  lost: "Đã thất bại",
+};
+
 export function RelatedInfoCard({ relatedType, lead, opportunity, customer }: Props) {
   // -------------------------------------------------------
   // CASE 1: LEAD
@@ -30,7 +37,7 @@ export function RelatedInfoCard({ relatedType, lead, opportunity, customer }: Pr
     return (
       <Card className="border border-gray-200 shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between py-3">
-          <CardTitle className="text-lg font-semibold">Lead</CardTitle>
+          <CardTitle className="text-lg font-semibold">Khách hàng tiềm năng</CardTitle>
           <User className="w-5 h-5 text-gray-500" />
         </CardHeader>
 
@@ -67,7 +74,7 @@ export function RelatedInfoCard({ relatedType, lead, opportunity, customer }: Pr
     return (
       <Card className="border border-gray-200 shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between py-3">
-          <CardTitle className="text-lg font-semibold">Customer</CardTitle>
+          <CardTitle className="text-lg font-semibold">Khách hàng</CardTitle>
           <Building2 className="w-5 h-5 text-gray-500" />
         </CardHeader>
 
@@ -75,7 +82,7 @@ export function RelatedInfoCard({ relatedType, lead, opportunity, customer }: Pr
 
         <CardContent className="pt-4 space-y-3 text-sm text-gray-700">
           <Link
-            to={`/crm/customers/${customer.id}`}
+            to={`/partners/${customer.id}`}
             className="font-medium text-base text-blue-600 hover:underline"
           >
             {customer.name}
@@ -108,7 +115,7 @@ export function RelatedInfoCard({ relatedType, lead, opportunity, customer }: Pr
       <Card className="border border-gray-200 shadow-sm">
         {/* ----------------- HEADER ------------------- */}
         <CardHeader className="flex flex-row items-center justify-between py-3">
-          <CardTitle className="text-lg font-semibold">Opportunity</CardTitle>
+          <CardTitle className="text-lg font-semibold">Cơ hội kinh doanh</CardTitle>
           <Briefcase className="w-5 h-5 text-gray-500" />
         </CardHeader>
 
@@ -122,14 +129,14 @@ export function RelatedInfoCard({ relatedType, lead, opportunity, customer }: Pr
             to={`/crm/opportunities/${opp.id}`}
             className="font-medium text-base text-blue-600 hover:underline"
           >
-            {opp.name || "Opportunity"}
+            {opp.name || "Cơ hội kinh doanh"}
           </Link>
 
           {/* Stage */}
           {opp.stage && (
             <div className="flex items-center gap-2">
               <BadgeDollarSign className="w-4 h-4" />
-              Stage: <span className="font-medium">{opp.stage}</span>
+              Giai đoạn: <span className="font-medium">{OPPORTUNITY_STAGE_LABELS[opp.stage] || opp.stage}</span>
             </div>
           )}
 
@@ -137,7 +144,11 @@ export function RelatedInfoCard({ relatedType, lead, opportunity, customer }: Pr
           {opp.expected_value && (
             <div className="flex items-center gap-2">
               <BadgeDollarSign className="w-4 h-4" />
-              Value: <span className="font-medium">${opp.expected_value}</span>
+              Giá trị:{" "}
+              <span className="font-medium">
+                {Number(opp.expected_value).toLocaleString("vi-VN")}{" "}
+                {opp.currency?.symbol || opp.currency?.code || ""}
+              </span>
             </div>
           )}
 
@@ -145,8 +156,10 @@ export function RelatedInfoCard({ relatedType, lead, opportunity, customer }: Pr
           {opp.closing_date && (
             <div className="flex items-center gap-2">
               <CalendarDays className="w-4 h-4" />
-              Close date:{" "}
-              <span className="font-medium">{opp.closing_date}</span>
+              Ngày dự kiến chốt:{" "}
+              <span className="font-medium">
+                {new Date(opp.closing_date).toLocaleDateString("vi-VN")}
+              </span>
             </div>
           )}
 
@@ -154,7 +167,7 @@ export function RelatedInfoCard({ relatedType, lead, opportunity, customer }: Pr
           {opp.probability != null && (
             <div className="flex items-center gap-2">
               <Percent className="w-4 h-4" />
-              Probability:{" "}
+              Xác suất:{" "}
               <span className="font-medium">{Math.round(opp.probability)}%</span>
             </div>
           )}
@@ -165,10 +178,10 @@ export function RelatedInfoCard({ relatedType, lead, opportunity, customer }: Pr
 
           {customerObj && (
             <div className="space-y-2">
-              <p className="text-xs text-gray-500 uppercase">Customer</p>
+              <p className="text-xs text-gray-500 uppercase">Khách hàng</p>
               <Link
                 className="font-medium text-blue-600 hover:underline"
-                to={`/crm/customers/${customerObj.id}`}
+                to={`/partners/${customerObj.id}`}
               >
                 {customerObj.name}
               </Link>
@@ -190,7 +203,7 @@ export function RelatedInfoCard({ relatedType, lead, opportunity, customer }: Pr
 
           {leadObj && (
             <div className="space-y-2">
-              <p className="text-xs text-gray-500 uppercase">Lead</p>
+              <p className="text-xs text-gray-500 uppercase">Khách hàng tiềm năng</p>
               <Link
                 className="font-medium text-blue-600 hover:underline"
                 to={`/crm/leads/${leadObj.id}`}

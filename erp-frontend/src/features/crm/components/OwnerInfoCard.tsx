@@ -14,7 +14,7 @@ export function OwnerInfoCard({ fullName, email, phone }: Props) {
   return (
     <Card className="border border-gray-200 shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between py-3">
-        <CardTitle className="text-lg font-semibold">Owner</CardTitle>
+        <CardTitle className="text-lg font-semibold">Người phụ trách</CardTitle>
         <User className="w-5 h-5 text-gray-500" />
       </CardHeader>
 
@@ -24,7 +24,7 @@ export function OwnerInfoCard({ fullName, email, phone }: Props) {
 
         {/* NAME */}
         <div className="font-medium text-base">
-          {fullName || "Unknown owner"}
+          {fullName || "Chưa phân công"}
         </div>
 
         {/* EMAIL */}

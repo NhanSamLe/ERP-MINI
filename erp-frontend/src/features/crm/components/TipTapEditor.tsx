@@ -116,26 +116,26 @@ export default function TipTapEditor({ value, onChange, minHeight = 220 }: Props
       <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 bg-gray-50 border-b border-gray-200">
 
         {/* Undo / Redo */}
-        <ToolBtn onClick={() => editor.chain().focus().undo().run()} title="Undo (Ctrl+Z)">
+        <ToolBtn onClick={() => editor.chain().focus().undo().run()} title="Hoàn tác (Ctrl+Z)">
           <Undo className="w-3.5 h-3.5" />
         </ToolBtn>
-        <ToolBtn onClick={() => editor.chain().focus().redo().run()} title="Redo (Ctrl+Y)">
+        <ToolBtn onClick={() => editor.chain().focus().redo().run()} title="Làm lại (Ctrl+Y)">
           <Redo className="w-3.5 h-3.5" />
         </ToolBtn>
 
         <Divider />
 
         {/* B / I / U / S */}
-        <ToolBtn onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive("bold")} title="Bold (Ctrl+B)">
+        <ToolBtn onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive("bold")} title="In đậm (Ctrl+B)">
           <Bold className="w-3.5 h-3.5" />
         </ToolBtn>
-        <ToolBtn onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive("italic")} title="Italic (Ctrl+I)">
+        <ToolBtn onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive("italic")} title="In nghiêng (Ctrl+I)">
           <Italic className="w-3.5 h-3.5" />
         </ToolBtn>
-        <ToolBtn onClick={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive("underline")} title="Underline (Ctrl+U)">
+        <ToolBtn onClick={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive("underline")} title="Gạch chân (Ctrl+U)">
           <UnderlineIcon className="w-3.5 h-3.5" />
         </ToolBtn>
-        <ToolBtn onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive("strike")} title="Strikethrough">
+        <ToolBtn onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive("strike")} title="Gạch ngang">
           <Strikethrough className="w-3.5 h-3.5" />
         </ToolBtn>
 
@@ -146,7 +146,7 @@ export default function TipTapEditor({ value, onChange, minHeight = 220 }: Props
           <button
             type="button"
             onMouseDown={(e) => { e.preventDefault(); setShowTextColors(v => !v); setShowHighlightColors(false); }}
-            title="Text Color"
+            title="Màu chữ"
             className="flex flex-col items-center p-1.5 rounded hover:bg-gray-100 transition-colors"
           >
             <span className="text-xs font-bold text-gray-700 leading-none" style={{ fontFamily: "serif" }}>A</span>
@@ -154,7 +154,7 @@ export default function TipTapEditor({ value, onChange, minHeight = 220 }: Props
           </button>
           {showTextColors && (
             <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-xl p-2 w-56">
-              <p className="text-xs text-gray-500 mb-1.5 font-medium">Text color</p>
+              <p className="text-xs text-gray-500 mb-1.5 font-medium">Màu chữ</p>
               <div className="grid grid-cols-8 gap-0.5">
                 {TEXT_COLORS.map(c => (
                   <button
@@ -183,14 +183,14 @@ export default function TipTapEditor({ value, onChange, minHeight = 220 }: Props
           <button
             type="button"
             onMouseDown={(e) => { e.preventDefault(); setShowHighlightColors(v => !v); setShowTextColors(false); }}
-            title="Highlight Color"
+            title="Màu đánh dấu"
             className="p-1.5 rounded hover:bg-gray-100 transition-colors"
           >
             <Highlighter className="w-3.5 h-3.5 text-gray-600" />
           </button>
           {showHighlightColors && (
             <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-xl p-2">
-              <p className="text-xs text-gray-500 mb-1.5 font-medium">Highlight</p>
+              <p className="text-xs text-gray-500 mb-1.5 font-medium">Màu đánh dấu</p>
               <div className="flex gap-1">
                 {HIGHLIGHT_COLORS.map(c => (
                   <button
@@ -210,33 +210,33 @@ export default function TipTapEditor({ value, onChange, minHeight = 220 }: Props
         <Divider />
 
         {/* Align */}
-        <ToolBtn onClick={() => editor.chain().focus().setTextAlign("left").run()} active={editor.isActive({ textAlign: "left" })} title="Align Left">
+        <ToolBtn onClick={() => editor.chain().focus().setTextAlign("left").run()} active={editor.isActive({ textAlign: "left" })} title="Căn trái">
           <AlignLeft className="w-3.5 h-3.5" />
         </ToolBtn>
-        <ToolBtn onClick={() => editor.chain().focus().setTextAlign("center").run()} active={editor.isActive({ textAlign: "center" })} title="Align Center">
+        <ToolBtn onClick={() => editor.chain().focus().setTextAlign("center").run()} active={editor.isActive({ textAlign: "center" })} title="Căn giữa">
           <AlignCenter className="w-3.5 h-3.5" />
         </ToolBtn>
-        <ToolBtn onClick={() => editor.chain().focus().setTextAlign("right").run()} active={editor.isActive({ textAlign: "right" })} title="Align Right">
+        <ToolBtn onClick={() => editor.chain().focus().setTextAlign("right").run()} active={editor.isActive({ textAlign: "right" })} title="Căn phải">
           <AlignRight className="w-3.5 h-3.5" />
         </ToolBtn>
 
         <Divider />
 
         {/* Lists */}
-        <ToolBtn onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive("bulletList")} title="Bullet List">
+        <ToolBtn onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive("bulletList")} title="Danh sách dấu đầu dòng">
           <List className="w-3.5 h-3.5" />
         </ToolBtn>
-        <ToolBtn onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive("orderedList")} title="Numbered List">
+        <ToolBtn onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive("orderedList")} title="Danh sách đánh số">
           <ListOrdered className="w-3.5 h-3.5" />
         </ToolBtn>
 
         <Divider />
 
         {/* Blockquote & HR */}
-        <ToolBtn onClick={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive("blockquote")} title="Blockquote">
+        <ToolBtn onClick={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive("blockquote")} title="Trích dẫn">
           <Quote className="w-3.5 h-3.5" />
         </ToolBtn>
-        <ToolBtn onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Horizontal Rule">
+        <ToolBtn onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Đường phân cách">
           <Minus className="w-3.5 h-3.5" />
         </ToolBtn>
 
@@ -244,7 +244,7 @@ export default function TipTapEditor({ value, onChange, minHeight = 220 }: Props
 
         {/* Link */}
         <div className="relative">
-          <ToolBtn onClick={() => setLinkPopover(v => !v)} active={editor.isActive("link") || linkPopover} title="Insert Link">
+          <ToolBtn onClick={() => setLinkPopover(v => !v)} active={editor.isActive("link") || linkPopover} title="Chèn liên kết">
             <LinkIcon className="w-3.5 h-3.5" />
           </ToolBtn>
           {linkPopover && (

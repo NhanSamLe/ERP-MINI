@@ -164,7 +164,7 @@ export async function getTimeline(type: string, id: number) {
   return res.data.data as TimelineEvent[];
 }
 
-export async function fetchDashboard(): Promise<SalesDashboardData> {
-  const res = await api.getSalesDashboard();
+export async function fetchDashboard(params?: any): Promise<SalesDashboardData> {
+  const res = await api.getSalesDashboard(params);
   return res.data.data as SalesDashboardData;
 }

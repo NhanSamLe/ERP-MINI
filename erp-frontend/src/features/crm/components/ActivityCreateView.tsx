@@ -12,7 +12,7 @@ import {
   Video,
 } from "lucide-react";
 import { RootState } from "@/store/store";
-import { Alert } from "@/components/ui/Alert";
+import { toast } from "react-toastify";
 import { Button } from "@/components/ui/Button";
 import { FormInput } from "@/components/ui/FormInput";
 import { ActivityType } from "@/types/enum";
@@ -66,7 +66,7 @@ function getTitle(type: ActivityType) {
 
 function getDescription(type: ActivityType) {
   if (type === "call") return "Lưu lịch sử gọi đến/gọi đi và bước xử lý tiếp theo.";
-  if (type === "email") return "Ghi nhận email gửi/nhận gắn với Lead, Opportunity hoặc Customer.";
+  if (type === "email") return "Ghi nhận email gửi/nhận gắn với khách hàng tiềm năng, cơ hội hoặc khách hàng.";
   if (type === "meeting") return "Lên lịch demo, tư vấn hoặc trao đổi với khách hàng.";
   return "Tạo việc cần làm để chăm sóc hoặc đẩy tiến độ bán hàng.";
 }
@@ -139,7 +139,7 @@ export function ActivityCreateView({ type }: { type: ActivityType }) {
   const [customers, setCustomers] = useState<RelatedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [alert, setAlert] = useState<{ type: "success" | "error" | "warning"; message: string } | null>(null);
+
 
   const [form, setForm] = useState({
     subject: "",
@@ -203,7 +203,7 @@ export function ActivityCreateView({ type }: { type: ActivityType }) {
           }))
         );
       } catch (err: any) {
-        setAlert({ type: "error", message: err?.response?.data?.message || err?.message || "Không thể tải dữ liệu liên quan" });
+      toast.error(err?.response?.data?.message || err?.message || "Không thể tải dữ liệu liên quan");
       } finally {
         setLoading(false);
       }
@@ -268,7 +268,7 @@ export function ActivityCreateView({ type }: { type: ActivityType }) {
   };
 
   const validate = () => {
-    if (!form.subject.trim()) return "Vui lòng nhập tiêu đề activity.";
+    if (!form.subject.trim()) return "Vui lòng nhập tiêu đề hoạt động.";
     if (!form.related_id) return "Vui lòng chọn đối tượng liên quan.";
 
     if (type === "meeting") {
@@ -278,8 +278,8 @@ export function ActivityCreateView({ type }: { type: ActivityType }) {
     }
 
     if (type === "task") {
-      if (!form.due_at) return "Vui lòng chọn hạn xử lý task.";
-      if (new Date(form.due_at) < new Date()) return "Hạn xử lý task phải lớn hơn thời điểm hiện tại.";
+      if (!form.due_at) return "Vui lòng chọn hạn xử lý công việc.";
+      if (new Date(form.due_at) < new Date()) return "Hạn xử lý công việc phải lớn hơn thời điểm hiện tại.";
       if (form.reminder_at && new Date(form.reminder_at) > new Date(form.due_at)) {
         return "Thời gian nhắc nhở không được sau hạn xử lý.";
       }
@@ -294,7 +294,7 @@ export function ActivityCreateView({ type }: { type: ActivityType }) {
   const handleCreate = async () => {
     const validationMessage = validate();
     if (validationMessage) {
-      setAlert({ type: "warning", message: validationMessage });
+      toast.warning(validationMessage);
       return;
     }
 
@@ -340,10 +340,10 @@ export function ActivityCreateView({ type }: { type: ActivityType }) {
         });
       }
 
-      setAlert({ type: "success", message: "Tạo activity thành công." });
+      toast.success("Tạo hoạt động thành công.");
       setTimeout(() => navigate(-1), 600);
     } catch (err: any) {
-      setAlert({ type: "error", message: err?.response?.data?.message || err?.message || "Không thể tạo activity" });
+      toast.error(err?.response?.data?.message || err?.message || "Không thể tạo hoạt động");
     } finally {
       setSubmitting(false);
     }
@@ -373,7 +373,7 @@ export function ActivityCreateView({ type }: { type: ActivityType }) {
         </div>
 
         <div className="space-y-6 p-5">
-          {alert && <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />}
+
 
           <section className="space-y-4">
             <SectionTitle icon={<UserRound className="h-4 w-4" />} title="Đối tượng liên quan" />
@@ -381,9 +381,9 @@ export function ActivityCreateView({ type }: { type: ActivityType }) {
               <div>
                 <FieldLabel>Loại đối tượng</FieldLabel>
                 <select className={inputClass} value={form.related_type} onChange={(event) => handleRelatedTypeChange(event.target.value as RelatedType)}>
-                  <option value="lead">Lead</option>
-                  <option value="opportunity">Opportunity</option>
-                  <option value="customer">Customer</option>
+                  <option value="lead">Khách hàng tiềm năng</option>
+                  <option value="opportunity">Cơ hội kinh doanh</option>
+                  <option value="customer">Khách hàng</option>
                 </select>
               </div>
               <div>
@@ -403,7 +403,7 @@ export function ActivityCreateView({ type }: { type: ActivityType }) {
           </section>
 
           <section className="space-y-4 border-t border-gray-100 pt-5">
-            <SectionTitle icon={<Clock className="h-4 w-4" />} title="Thông tin activity" />
+            <SectionTitle icon={<Clock className="h-4 w-4" />} title="Thông tin hoạt động" />
             <div className="grid gap-4 md:grid-cols-2">
               <FormInput
                 label="Tiêu đề"
