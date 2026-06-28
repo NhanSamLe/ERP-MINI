@@ -110,6 +110,7 @@ router.get(
   "/:id",
   authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
   StockMoveController.getById
+);
 router.post(
   "/:id/receive",
   authMiddleware([Role.WHMANAGER, Role.WHSTAFF]),

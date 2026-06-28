@@ -189,6 +189,20 @@ export const updateUserInfo = async (req: Request, res: Response) => {
   }
 }
 
+export const changePassword = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const { oldPassword, newPassword } = req.body;
+    const result = await authService.changePassword(user.id, { oldPassword, newPassword });
+    res.status(200).json(result);
+  } catch (error: any) {
+    return res.status(400).json({ message: error.message || "Đổi mật khẩu thất bại" });
+  }
+};
+
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
     const userJwt = (req as any).user;

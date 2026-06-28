@@ -14,6 +14,7 @@ import { notificationService } from "../../../core/services/notification.service
 import { getMappedAccount } from "../../finance/services/glAccount.service";
 import { checkPeriodLocked } from "../../finance/services/glJournal.service";
 import { generatePaymentNo } from "../utils";
+import { getCompanyIdFromBranch } from "../../finance/services/companyScope.service";
 
 export const apPaymentService = {
   // ─── READ ──────────────────────────────────────────────────────────────────

@@ -25,6 +25,8 @@ import arReceiptRoutes from "../modules/sales/routes/arReceipt.routes";
 import quotationRoutes from "../modules/sales/routes/quotation.routes";
 import priceListRoutes from "../modules/sales/routes/priceList.routes";
 import salesReturnRoutes from "../modules/sales/routes/salesReturn.routes";
+import salesDashboardRoutes from "../modules/sales/routes/salesDashboard.routes";
+
 import payrollItemRoutes from "../modules/hrm/routes/payrollItem.routes";
 import payrollRunRoutes from "../modules/hrm/routes/payrollRun.routes";
 import payrollConfigRoutes from "../modules/hrm/routes/payrollConfig.routes";
@@ -88,6 +90,7 @@ router.use("/sales/orders", saleOrderRoutes);
 router.use("/sales/quotations", quotationRoutes);
 router.use("/sales/price-lists", priceListRoutes);
 router.use("/sales/returns", salesReturnRoutes);
+router.use("/sales/dashboard", salesDashboardRoutes);
 router.use("/ar/invoices", arInvoiceRoutes);
 router.use("/ar/receipts", arReceiptRoutes);
 router.use("/hrm/payroll-items", payrollItemRoutes);

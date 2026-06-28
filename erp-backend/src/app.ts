@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import routes from "./routes";
 import { errorHandler } from "./core/middleware/error";
+import { translationMiddleware } from "./core/middleware/translation";
 import "./modules/master-data/services/currency.cron";
 import "./modules/purchase/services/purchase.cron";
 import { startAgentScheduler } from "./modules/ai-agent/services/agentScheduler.service";
@@ -21,6 +22,7 @@ app.use(
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(translationMiddleware);
 app.use("/api", routes);
 app.use(errorHandler);
 

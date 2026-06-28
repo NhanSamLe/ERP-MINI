@@ -9,6 +9,7 @@ import { VendorRefund } from "../models/vendorRefund.model";
 import { GlEntry } from "../../finance/models/glEntry.model";
 import { GlEntryLine } from "../../finance/models/glEntryLine.model";
 import { GlJournal } from "../../finance/models/glJournal.model";
+import { GlAccount } from "../../finance/models/glAccount.model";
 import { requireGlAccounts } from "../../finance/services/glAccount.helper";
 import { getCompanyIdFromBranch } from "../../finance/services/companyScope.service";
 import { Partner, StockMove, Warehouse } from "../../../models";

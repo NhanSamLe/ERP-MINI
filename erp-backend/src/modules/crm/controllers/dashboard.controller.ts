@@ -3,17 +3,44 @@ import { Request, Response } from "express";
 import { Lead } from "../models/lead.model";
 import { Activity } from "../models/activity.model";
 import { Opportunity } from "../models/opportunity.model";
-import { TimelineEvent } from "../models/timelineEvent.model";
-import { MeetingActivity } from "../models/meetingActivity.model";
-import { TaskActivity } from "../models/taskActivity.model";
-interface SumValue {
-  total: number | string | null;
-}
-// helper for created_at BETWEEN
-function betweenCreatedAt(start: Date, end: Date) {
-  return Sequelize.where(Sequelize.col("created_at"), {
-    [Op.between]: [start, end]
-  });
+import { User, LeadSource, Branch } from "../../../models";
+
+// helper parse date range
+function parseDateRange(query: any) {
+  let startDate = new Date();
+  let endDate = new Date();
+
+  if (query.date_from && query.date_to) {
+    startDate = new Date(query.date_from);
+    startDate.setHours(0, 0, 0, 0);
+    endDate = new Date(query.date_to);
+    endDate.setHours(23, 59, 59, 999);
+    return { startDate, endDate };
+  }
+
+  const period = query.period || "last_30_days";
+  endDate = new Date();
+
+  switch (period) {
+    case "today":
+      startDate.setHours(0, 0, 0, 0);
+      break;
+    case "last_7_days":
+      startDate.setDate(startDate.getDate() - 7);
+      startDate.setHours(0, 0, 0, 0);
+      break;
+    case "last_30_days":
+      startDate.setDate(startDate.getDate() - 30);
+      startDate.setHours(0, 0, 0, 0);
+      break;
+    case "ytd":
+      startDate = new Date(startDate.getFullYear(), 0, 1, 0, 0, 0, 0);
+      break;
+    default:
+      startDate.setDate(startDate.getDate() - 30);
+      startDate.setHours(0, 0, 0, 0);
+  }
+  return { startDate, endDate };
 }
 
 // helper X days ago
@@ -26,216 +53,285 @@ function daysAgo(days: number) {
 
 export async function getSalesDashboard(req: Request, res: Response) {
   try {
-    const userId = (req as any).user.id;
+    const user = (req as any).user;
+    const userId = user.id;
+    const userRole = user.role;
+    const userBranchId = user.branch_id;
 
-    const todayStart = daysAgo(0);
-    const todayEnd = new Date();
+    // 1. Parse date filter
+    const { startDate, endDate } = parseDateRange(req.query);
+    const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    // 2. Set scoping filters
+    const leadWhere: any = { is_deleted: false };
+    const oppWhere: any = { is_deleted: false };
+    const actWhere: any = { is_deleted: false };
+
+    if (userRole === "SALES") {
+      leadWhere.assigned_to = userId;
+      oppWhere.owner_id = userId;
+      actWhere.owner_id = userId;
+      if (userBranchId) {
+        leadWhere.branch_id = userBranchId;
+        oppWhere.branch_id = userBranchId;
+      }
+    } else if (userRole === "SALESMANAGER" || userRole === "BRANCH_MANAGER") {
+      if (userBranchId) {
+        leadWhere.branch_id = userBranchId;
+        oppWhere.branch_id = userBranchId;
+        
+        const branchUsers = await User.findAll({
+          where: { branch_id: userBranchId },
+          attributes: ["id"]
+        });
+        const userIds = branchUsers.map(u => u.id);
+        actWhere.owner_id = { [Op.in]: userIds };
+      }
+    } else if (userRole === "CEO" || userRole === "ADMIN") {
+      if (req.query.branch_id) {
+        const queryBranchId = Number(req.query.branch_id);
+        leadWhere.branch_id = queryBranchId;
+        oppWhere.branch_id = queryBranchId;
+        
+        const branchUsers = await User.findAll({
+          where: { branch_id: queryBranchId },
+          attributes: ["id"]
+        });
+        const userIds = branchUsers.map(u => u.id);
+        actWhere.owner_id = { [Op.in]: userIds };
+      }
+    }
 
     // ===============================================================
-    // 1. SUMMARY (NHỮNG CON SỐ HỒI NẪY BẠN MUỐN GIỮ)
+    // 3. CUMULATIVE & PERIOD SUMMARY METRICS
     // ===============================================================
 
-    // Leads
-    const totalLeads = await Lead.count({
-      where: { assigned_to: userId, is_deleted: false }
-    });
+    // Total Leads (Cumulative)
+    const totalLeads = await Lead.count({ where: leadWhere });
 
+    // Contacted Leads (Cumulative)
     const contactedLeads = await Lead.count({
+      where: { ...leadWhere, contacted_at: { [Op.not]: null as any } }
+    });
+
+    // New Leads in period
+    const newLeadsInPeriod = await Lead.count({
       where: {
-        assigned_to: userId,
-        contacted_at: { [Op.not]: null as any },
-        is_deleted: false
+        ...leadWhere,
+        created_at: { [Op.between]: [startDate, endDate] }
       }
     });
 
-    const newLeadsToday = await Lead.count({
-      where: {
-        assigned_to: userId,
-        is_deleted: false,
-        [Op.and]: [betweenCreatedAt(todayStart, todayEnd)]
-      }
-    });
-
+    // Qualified Leads (Cumulative)
     const qualifiedLeads = await Lead.count({
-      where: { assigned_to: userId, stage: "qualified", is_deleted: false }
+      where: { ...leadWhere, stage: "qualified" }
     });
 
-    // Opportunities
-    const totalOpp = await Opportunity.count({
-      where: { owner_id: userId, is_deleted: false }
+    // Opportunities (Cumulative)
+    const totalOpp = await Opportunity.count({ where: oppWhere });
+
+    // Opps in period
+    const wonOppInPeriod = await Opportunity.count({
+      where: {
+        ...oppWhere,
+        stage: "won",
+        actual_close_date: { [Op.between]: [startDate, endDate] }
+      }
     });
 
-    const wonOpp = await Opportunity.count({
-      where: { owner_id: userId, stage: "won", is_deleted: false }
+    const lostOppInPeriod = await Opportunity.count({
+      where: {
+        ...oppWhere,
+        stage: "lost",
+        actual_close_date: { [Op.between]: [startDate, endDate] }
+      }
     });
 
-    const lostOpp = await Opportunity.count({
-      where: { owner_id: userId, stage: "lost", is_deleted: false }
-    });
+    const winRateInPeriod =
+      (wonOppInPeriod + lostOppInPeriod) > 0
+        ? Math.round((wonOppInPeriod / (wonOppInPeriod + lostOppInPeriod)) * 100)
+        : 0;
 
-    const winRate =
-      totalOpp > 0 ? Math.round((wonOpp / totalOpp) * 100) : 0;
-
+    // Revenue in period
     const revenueRes = await Opportunity.findOne({
       attributes: [[fn("SUM", col("expected_value")), "total"]],
-      where: { owner_id: userId, stage: "won", is_deleted: false },
+      where: {
+        ...oppWhere,
+        stage: "won",
+        actual_close_date: { [Op.between]: [startDate, endDate] }
+      },
       raw: true
     }) as unknown as { total: number | null };
 
-    const totalRevenue = Number(revenueRes.total ?? 0);
+    const totalRevenueInPeriod = Number(revenueRes?.total ?? 0);
 
-    // Activities today (call/email/meeting/task)
-    const totalActivitiesToday = await Activity.count({
+    // Activities in period
+    const totalActivitiesInPeriod = await Activity.count({
       where: {
-        owner_id: userId,
-        is_deleted: false,
-        [Op.and]: [betweenCreatedAt(todayStart, todayEnd)]
+        ...actWhere,
+        created_at: { [Op.between]: [startDate, endDate] }
       }
     });
 
-    const callsToday = await Activity.count({
+    const callsInPeriod = await Activity.count({
       where: {
-        owner_id: userId,
+        ...actWhere,
         activity_type: "call",
-        is_deleted: false,
-        [Op.and]: [betweenCreatedAt(todayStart, todayEnd)]
+        created_at: { [Op.between]: [startDate, endDate] }
       }
     });
 
-    const emailsToday = await Activity.count({
+    const emailsInPeriod = await Activity.count({
       where: {
-        owner_id: userId,
+        ...actWhere,
         activity_type: "email",
-        is_deleted: false,
-        [Op.and]: [betweenCreatedAt(todayStart, todayEnd)]
+        created_at: { [Op.between]: [startDate, endDate] }
       }
     });
 
-    const meetingsToday = await Activity.count({
+    const meetingsInPeriod = await Activity.count({
       where: {
-        owner_id: userId,
+        ...actWhere,
         activity_type: "meeting",
-        is_deleted: false,
-        [Op.and]: [betweenCreatedAt(todayStart, todayEnd)]
+        created_at: { [Op.between]: [startDate, endDate] }
       }
     });
 
-    const tasksToday = await Activity.count({
+    const tasksInPeriod = await Activity.count({
       where: {
-        owner_id: userId,
+        ...actWhere,
         activity_type: "task",
-        is_deleted: false,
-        [Op.and]: [betweenCreatedAt(todayStart, todayEnd)]
+        created_at: { [Op.between]: [startDate, endDate] }
       }
     });
 
     // ===============================================================
-    // 2. PIPELINE FUNNEL
+    // 4. PIPELINE FUNNEL (CUMULATIVE ACTIVE DEALS)
     // ===============================================================
-
     const pipelineStages = ["prospecting", "negotiation", "won", "lost"];
-
     const pipeline = await Promise.all(
       pipelineStages.map(async (s) => ({
         stage: s,
         count: await Opportunity.count({
-          where: { owner_id: userId, stage: s, is_deleted: false }
+          where: { ...oppWhere, stage: s }
         })
       }))
     );
 
     // ===============================================================
-    // 3. CHART: ACTIVITIES LAST 7 DAYS
+    // 5. TREND CHARTS (DYNAMIC DATE RANGE)
     // ===============================================================
+    const charts = await getChartTrends(startDate, endDate, diffDays, leadWhere, oppWhere, actWhere);
 
-    const activity7d: { date: string; count: number }[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const start = daysAgo(i);
-      const end = daysAgo(i - 1);
-
-      const count = await Activity.count({
+    // ===============================================================
+    // 6. LEADERBOARD (XẾP HẠNG SALES - FOR MGR / CEO)
+    // ===============================================================
+    let leaderboard: any[] = [];
+    if (userRole !== "SALES") {
+      const leaderboardData = await Opportunity.findAll({
+        attributes: [
+          "owner_id",
+          [fn("SUM", col("expected_value")), "total_revenue"],
+          [fn("COUNT", col("id")), "won_deals_count"]
+        ],
         where: {
-          owner_id: userId,
-          is_deleted: false,
-          [Op.and]: [betweenCreatedAt(start, end)]
-        }
+          ...oppWhere,
+          stage: "won",
+          actual_close_date: { [Op.between]: [startDate, endDate] }
+        },
+        group: ["owner_id"],
+        include: [{
+          model: User,
+          as: "owner",
+          attributes: ["id", "full_name", "username"]
+        }],
+        order: [[literal("total_revenue"), "DESC"]],
+        limit: 10
       });
 
-      activity7d.push({
-        date: start.toISOString().substring(0, 10),
-        count
-      });
+      leaderboard = leaderboardData.map((item: any) => ({
+        salespersonId: item.owner_id,
+        salespersonName: item.owner?.full_name || item.owner?.username || `Salesperson #${item.owner_id}`,
+        revenue: Number(item.getDataValue("total_revenue") || 0),
+        wonDeals: Number(item.getDataValue("won_deals_count") || 0)
+      }));
     }
 
     // ===============================================================
-    // 4. CHART: LEADS LAST 7 DAYS
+    // 7. LEAD SOURCE RATIO (PHÂN BỔ NGUỒN LEAD)
     // ===============================================================
+    const leadSourceData = await Lead.findAll({
+      attributes: [
+        "source_id",
+        [fn("COUNT", col("Lead.id")), "count"]
+      ],
+      where: {
+        ...leadWhere,
+        created_at: { [Op.between]: [startDate, endDate] }
+      },
+      group: ["source_id"],
+      include: [{
+        model: LeadSource,
+        as: "leadSource",
+        attributes: ["id", "name"]
+      }]
+    });
 
-    const leads7d: { date: string; count: number }[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const start = daysAgo(i);
-      const end = daysAgo(i - 1);
+    const leadSources = leadSourceData.map((item: any) => ({
+      sourceId: item.source_id,
+      sourceName: item.leadSource?.name || "Khác / Trực tiếp",
+      count: Number(item.getDataValue("count") || 0)
+    }));
 
-      const count = await Lead.count({
+    // ===============================================================
+    // 8. BRANCH SALES CONTRIBUTION (TỶ LỆ ĐÓNG GÓP DOANH THU - FOR CEO / ADMIN)
+    // ===============================================================
+    let branchComparison: any[] = [];
+    if (userRole === "CEO" || userRole === "ADMIN") {
+      const branches = await Branch.findAll({ attributes: ["id", "name"] });
+      const branchMap = new Map(branches.map((b: any) => [Number(b.id), b.name]));
+
+      const branchesData = await Opportunity.findAll({
+        attributes: [
+          "branch_id",
+          [fn("SUM", col("expected_value")), "total_revenue"]
+        ],
         where: {
-          assigned_to: userId,
-          is_deleted: false,
-          [Op.and]: [betweenCreatedAt(start, end)]
-        }
-      });
-
-      leads7d.push({
-        date: start.toISOString().substring(0, 10),
-        count
-      });
-    }
-
-    // ===============================================================
-    // 5. CHART: REVENUE 30 DAYS
-    // ===============================================================
-
-    const revenue30d: { date: string; total: number }[] = [];
-    for (let i = 30; i >= 1; i--) {
-      const d = daysAgo(i);
-
-      const next = new Date(d);
-      next.setDate(d.getDate() + 1);
-
-      const result = await Opportunity.findOne({
-        attributes: [[fn("SUM", col("expected_value")), "total"]],
-        where: {
-          owner_id: userId,
           stage: "won",
           is_deleted: false,
-          [Op.and]: [betweenCreatedAt(d, next)]
+          actual_close_date: { [Op.between]: [startDate, endDate] }
         },
-        raw: true
-      }) as unknown as { total: number | null };
+        group: ["branch_id"]
+      });
 
-      revenue30d.push({
-        date: d.toISOString().substring(0, 10),
-        total: Number(result.total ?? 0)
+      branchComparison = branchesData.map((b: any) => {
+        const bId = Number(b.branch_id);
+        return {
+          branchId: bId,
+          branchName: branchMap.get(bId) || `Chi nhánh #${bId}`,
+          revenue: Number(b.getDataValue("total_revenue") || 0)
+        };
       });
     }
 
     // ===============================================================
-    // 6. RECENT ITEMS
+    // 9. RECENT ITEMS
     // ===============================================================
-
     const recentActivities = await Activity.findAll({
-      where: { owner_id: userId, is_deleted: false },
+      where: actWhere,
       limit: 10,
       order: [["created_at", "DESC"]]
     });
 
     const recentLeads = await Lead.findAll({
-      where: { assigned_to: userId, is_deleted: false },
+      where: leadWhere,
       limit: 10,
       order: [["created_at", "DESC"]]
     });
 
     const recentOpps = await Opportunity.findAll({
-      where: { owner_id: userId, is_deleted: false },
+      where: oppWhere,
       limit: 10,
       order: [["created_at", "DESC"]]
     });
@@ -243,37 +339,35 @@ export async function getSalesDashboard(req: Request, res: Response) {
     // ===============================================================
     // RETURN FULL DASHBOARD DATA
     // ===============================================================
-
     return res.json({
       success: true,
       data: {
+        role: userRole,
+        startDate,
+        endDate,
         summary: {
           totalLeads,
           contactedLeads,
-          newLeadsToday,
+          newLeadsInPeriod,
           qualifiedLeads,
           totalOpp,
-          wonOpp,
-          lostOpp,
-          winRate,
-          totalRevenue,
-          activitiesToday: {
-            totalActivitiesToday,
-            callsToday,
-            emailsToday,
-            meetingsToday,
-            tasksToday
+          wonOppInPeriod,
+          lostOppInPeriod,
+          winRateInPeriod,
+          totalRevenueInPeriod,
+          activitiesInPeriod: {
+            totalActivitiesInPeriod,
+            callsInPeriod,
+            emailsInPeriod,
+            meetingsInPeriod,
+            tasksInPeriod
           }
         },
-
         pipeline,
-
-        charts: {
-          activity7d,
-          leads7d,
-          revenue30d
-        },
-
+        charts,
+        leaderboard,
+        leadSources,
+        branchComparison,
         recent: {
           leads: recentLeads,
           opportunities: recentOpps,
@@ -284,6 +378,100 @@ export async function getSalesDashboard(req: Request, res: Response) {
 
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Server error";
+    console.error("CRM Dashboard Error:", err);
     return res.status(500).json({ success: false, message: msg });
   }
+}
+
+// Helper function to query trends over dynamic date ranges
+async function getChartTrends(
+  startDate: Date,
+  endDate: Date,
+  diffDays: number,
+  leadWhere: any,
+  oppWhere: any,
+  actWhere: any
+) {
+  const activity7d: { date: string; count: number }[] = [];
+  const leads7d: { date: string; count: number }[] = [];
+  const revenue30d: { date: string; total: number }[] = [];
+
+  if (diffDays <= 31) {
+    // Loop day by day
+    const current = new Date(startDate);
+    while (current <= endDate) {
+      const start = new Date(current);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(current);
+      end.setHours(23, 59, 59, 999);
+
+      const dateStr = start.toISOString().substring(0, 10);
+
+      const actCount = await Activity.count({
+        where: { ...actWhere, created_at: { [Op.between]: [start, end] } }
+      });
+
+      const leadCount = await Lead.count({
+        where: { ...leadWhere, created_at: { [Op.between]: [start, end] } }
+      });
+
+      const revSum = await Opportunity.findOne({
+        attributes: [[fn("SUM", col("expected_value")), "total"]],
+        where: {
+          ...oppWhere,
+          stage: "won",
+          actual_close_date: { [Op.between]: [start, end] }
+        },
+        raw: true
+      }) as any;
+
+      activity7d.push({ date: dateStr, count: actCount });
+      leads7d.push({ date: dateStr, count: leadCount });
+      revenue30d.push({ date: dateStr, total: Number(revSum?.total ?? 0) });
+
+      current.setDate(current.getDate() + 1);
+    }
+  } else {
+    // Loop month by month
+    const current = new Date(startDate);
+    current.setDate(1); // Set to first day of month
+    while (current <= endDate) {
+      const year = current.getFullYear();
+      const month = current.getMonth();
+      const start = new Date(year, month, 1, 0, 0, 0, 0);
+      const end = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+      const dateStr = `${year}-${String(month + 1).padStart(2, "0")}`;
+
+      const actCount = await Activity.count({
+        where: { ...actWhere, created_at: { [Op.between]: [start, end] } }
+      });
+
+      const leadCount = await Lead.count({
+        where: { ...leadWhere, created_at: { [Op.between]: [start, end] } }
+      });
+
+      const revSum = await Opportunity.findOne({
+        attributes: [[fn("SUM", col("expected_value")), "total"]],
+        where: {
+          ...oppWhere,
+          stage: "won",
+          actual_close_date: { [Op.between]: [start, end] }
+        },
+        raw: true
+      }) as any;
+
+      activity7d.push({ date: dateStr, count: actCount });
+      leads7d.push({ date: dateStr, count: leadCount });
+      revenue30d.push({ date: dateStr, total: Number(revSum?.total ?? 0) });
+
+      current.setMonth(current.getMonth() + 1);
+    }
+  }
+
+  return {
+    activity7d,
+    leads7d,
+    revenue30d
+  };
 }
