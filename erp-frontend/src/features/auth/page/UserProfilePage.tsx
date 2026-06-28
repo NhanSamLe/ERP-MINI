@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Briefcase, User, Key, Mail, Phone, Lock, Save, Globe, Camera } from "lucide-react"; 
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../../store/store";
@@ -11,6 +11,7 @@ import { ImageUpload } from "../../../components/ui/ImageUpload";
 export default function UserProfile() {
   const { user } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch<AppDispatch>();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [activeTab, setActiveTab] = useState<"info" | "password">("info");
   const [imagePreview, setImagePreview] = useState(
@@ -124,7 +125,11 @@ export default function UserProfile() {
           <div className="relative flex flex-col md:flex-row items-center gap-8 z-10">
             {/* Avatar Click-to-Upload Container */}
             <div className="relative shrink-0 group">
-              <label htmlFor="avatar-file-input" className="cursor-pointer group relative block">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="cursor-pointer group relative block focus:outline-none"
+              >
                 <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-white shadow-lg group-hover:border-orange-100 transition duration-300">
                   <img
                     src={imagePreview}
@@ -135,11 +140,14 @@ export default function UserProfile() {
                     <Camera className="w-5 h-5 text-white" />
                   </div>
                 </div>
-              </label>
+              </button>
               <input
-                id="avatar-file-input"
+                ref={fileInputRef}
                 type="file"
                 accept="image/jpeg,image/png"
+                onClick={(e) => {
+                  (e.target as HTMLInputElement).value = "";
+                }}
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) handleImageChange(file);
