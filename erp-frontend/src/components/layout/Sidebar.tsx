@@ -522,9 +522,9 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
   const isSubItemActive = (path: string) => path && location.pathname === path;
 
   return (
-    <aside className="w-64 h-full bg-white border-r border-gray-200 flex flex-col overflow-hidden">
+    <aside className="w-64 h-full bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 flex flex-col overflow-hidden">
       {/* Brand logo block */}
-      <div className="px-4 py-3 border-b border-gray-100">
+      <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-800">
         <img
           src="/assets/banner-lgoo.png"
           alt="ERP Mini"
@@ -556,7 +556,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
                     "text-sm font-bold transition-colors duration-100 select-none",
                     moduleActive
                       ? "text-orange-600 bg-orange-50/50"
-                      : "text-gray-700 hover:bg-gray-50 hover:text-gray-900",
+                      : "text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-white",
                   ].join(" ")}
                 >
                   {item.path ? (
@@ -582,7 +582,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
 
                 {/* Sub-items */}
                 {filteredSubs && filteredSubs.length > 0 && (
-                  <div className="mt-0.5 ml-3 pl-4 border-l border-gray-150 space-y-0.5">
+                  <div className="mt-0.5 ml-3 pl-4 border-l border-gray-150 dark:border-slate-700 space-y-0.5">
                     {filteredSubs.map((sub) => {
                       const targetPath =
                         sub.name === "Chart"
@@ -602,7 +602,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
                             "block px-3 py-1.5 rounded-md text-sm transition-colors duration-100",
                             active
                               ? "bg-orange-50 text-orange-600 font-semibold"
-                              : "text-gray-500 hover:text-gray-800 hover:bg-gray-50",
+                              : "text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800",
                           ].join(" ")}
                         >
                           {sub.name}
@@ -617,7 +617,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t border-gray-100">
+      <div className="px-4 py-3 border-t border-gray-100 dark:border-slate-800">
         <p className="text-[10px] text-gray-400 font-medium">ERP Mini · v1.0</p>
       </div>
     </aside>

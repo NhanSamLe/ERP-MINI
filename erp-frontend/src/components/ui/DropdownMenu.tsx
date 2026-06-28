@@ -20,7 +20,7 @@ export function BasicDropdownMenu({
       <DropdownMenuContent
         align="end"
         sideOffset={5}
-        className="min-w-[180px] bg-white shadow-md rounded-md border p-1 z-50"
+        className="min-w-[180px] bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 shadow-md rounded-md border border-gray-200 dark:border-slate-700 p-1 z-50"
       >
         {items.map((item, index) => (
           <DropdownMenuItem

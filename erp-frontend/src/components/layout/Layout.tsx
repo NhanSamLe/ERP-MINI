@@ -17,7 +17,7 @@ export default function Layout() {
   }, [sidebarOpen]);
 
   return (
-    <div className="flex h-screen bg-gray-50/80 overflow-hidden">
+    <div className="flex h-screen bg-gray-50/80 dark:bg-slate-950 text-gray-900 dark:text-slate-100 overflow-hidden">
       <div className="hidden lg:block shrink-0">
         <Sidebar />
       </div>
@@ -30,11 +30,11 @@ export default function Layout() {
             className="absolute inset-0 bg-gray-900/45"
             onClick={() => setSidebarOpen(false)}
           />
-          <div className="relative h-full w-[18rem] max-w-[calc(100vw-3rem)] bg-white shadow-xl">
+          <div className="relative h-full w-[18rem] max-w-[calc(100vw-3rem)] bg-white dark:bg-slate-900 shadow-xl">
             <button
               type="button"
               onClick={() => setSidebarOpen(false)}
-              className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-1"
+              className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-1"
               aria-label="Close navigation"
             >
               <X className="h-5 w-5" />

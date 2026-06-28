@@ -5,11 +5,14 @@ import { Provider } from "react-redux";
 import { store } from "./store/store";
 import App from './App.tsx'
 import AppInitializer from './AppInitializer.tsx';
+import { ThemeProvider } from "./contexts/ThemeContext";
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <Provider store={store}>
-      <AppInitializer />
-      <App />
-    </Provider>
+    <ThemeProvider>
+      <Provider store={store}>
+        <AppInitializer />
+        <App />
+      </Provider>
+    </ThemeProvider>
   </StrictMode>,
 )

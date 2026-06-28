@@ -65,7 +65,7 @@ export const SelectTrigger = forwardRef<
     <div
       ref={ref}
       onClick={() => setOpen(!open)}
-      className={`flex h-10 w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm cursor-pointer transition-all select-none ${className}`}
+      className={`flex h-10 w-full items-center justify-between rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 px-3 py-2 text-sm cursor-pointer transition-all select-none ${className}`}
     >
       <span className={!hasValue ? "text-gray-400" : ""}>
         {hasValue ? selectedLabel : children}
@@ -106,7 +106,7 @@ export const SelectContent = ({
 
   return (
     <div
-      className={`absolute left-0 right-0 top-full mt-1 z-50 rounded-md border border-gray-200 bg-white shadow-lg overflow-hidden ${className}`}
+      className={`absolute left-0 right-0 top-full mt-1 z-50 rounded-md border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 shadow-lg overflow-hidden ${className}`}
       onClick={(e) => e.stopPropagation()}
     >
       <div className="max-h-60 overflow-auto py-1">{children}</div>

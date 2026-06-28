@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Globe, Palette, Bell, Sun, Moon, Save, Volume2 } from "lucide-react";
 import { Button } from "../../../components/ui/Button";
 import { toast } from "react-toastify";
+import { useTheme } from "../../../contexts/ThemeContext";
 
 export default function SettingsPage() {
+  const { resolvedTheme, toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<"general" | "appearance" | "notifications">("general");
 
   // General settings state
@@ -12,26 +14,12 @@ export default function SettingsPage() {
   const [dateFormat, setDateFormat] = useState("DD/MM/YYYY");
 
   // Appearance settings state
-  const [darkMode, setDarkMode] = useState(() => {
-    return document.documentElement.classList.contains("dark") || localStorage.getItem("erp_theme") === "dark";
-  });
-  const [primaryColor, setPrimaryColor] = useState("orange");
+  const darkMode = resolvedTheme === "dark";
 
   // Notifications state
   const [notifyEmail, setNotifyEmail] = useState(true);
   const [notifyPush, setNotifyPush] = useState(true);
   const [notifySound, setNotifySound] = useState(false);
-
-  // Sync dark mode class
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("erp_theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("erp_theme", "light");
-    }
-  }, [darkMode]);
 
   const handleSaveGeneral = () => {
     localStorage.setItem("erp_lang", language);
@@ -166,7 +154,7 @@ export default function SettingsPage() {
                     <p className="text-xs text-gray-400">Giảm mỏi mắt trong môi trường thiếu sáng.</p>
                   </div>
                   <button
-                    onClick={() => setDarkMode(!darkMode)}
+                    onClick={toggleTheme}
                     className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                       darkMode ? "bg-orange-500" : "bg-gray-200"
                     }`}
@@ -188,27 +176,10 @@ export default function SettingsPage() {
                     <p className="text-xs text-gray-400">Chọn tông màu điểm nhấn của hệ thống.</p>
                   </div>
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => setPrimaryColor("orange")}
-                      className={`w-6 h-6 rounded-full bg-orange-500 border-2 ${
-                        primaryColor === "orange" ? "border-black dark:border-white scale-110" : "border-transparent"
-                      }`}
+                    <span
+                      className="h-7 w-7 rounded-full border-2 border-gray-900 bg-orange-500 shadow-sm dark:border-white"
                       title="Màu cam thương hiệu"
-                    ></button>
-                    <button
-                      onClick={() => setPrimaryColor("blue")}
-                      className={`w-6 h-6 rounded-full bg-blue-500 border-2 ${
-                        primaryColor === "blue" ? "border-black dark:border-white scale-110" : "border-transparent"
-                      }`}
-                      title="Màu xanh dương"
-                    ></button>
-                    <button
-                      onClick={() => setPrimaryColor("emerald")}
-                      className={`w-6 h-6 rounded-full bg-emerald-500 border-2 ${
-                        primaryColor === "emerald" ? "border-black dark:border-white scale-110" : "border-transparent"
-                      }`}
-                      title="Màu xanh ngọc"
-                    ></button>
+                    />
                   </div>
                 </div>
               </div>

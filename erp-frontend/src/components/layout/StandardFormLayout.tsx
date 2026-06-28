@@ -25,8 +25,8 @@ const actionStyles: Record<ActionVariant, string> = {
   primary: "bg-orange-500 hover:bg-orange-600 text-white shadow-sm",
   success: "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm",
   danger: "bg-red-600 hover:bg-red-700 text-white shadow-sm",
-  secondary: "bg-gray-700 hover:bg-gray-800 text-white shadow-sm",
-  outline: "border border-gray-300 bg-white hover:bg-gray-50 text-gray-700",
+  secondary: "bg-gray-700 dark:bg-slate-700 hover:bg-gray-800 dark:hover:bg-slate-600 text-white shadow-sm",
+  outline: "border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-200",
 };
 
 export function StandardFormLayout({
@@ -39,7 +39,7 @@ export function StandardFormLayout({
 }: Props) {
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-950 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-gray-400">
           <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
           <span className="text-sm font-medium">Đang tải...</span>
@@ -49,13 +49,13 @@ export function StandardFormLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/60">
+    <div className="min-h-screen bg-gray-50/60 dark:bg-slate-950">
       {/* Sticky page header bar */}
-      <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm border-t-2 border-t-orange-500">
+      <div className="sticky top-0 z-20 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 shadow-sm border-t-2 border-t-orange-500">
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 min-h-14 py-2 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           {/* Left: title */}
           <div className="min-w-0 flex flex-wrap items-center gap-2">
-            <h1 className="text-base font-semibold text-gray-900 break-words">
+            <h1 className="text-base font-semibold text-gray-900 dark:text-white break-words">
               {title}
             </h1>
             {statusBadge}

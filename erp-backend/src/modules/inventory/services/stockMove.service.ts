@@ -23,6 +23,7 @@ import { UomConversion } from "../../master-data/models/uomConversion.model";
 import { warehouseService } from "./warehouse.service";
 import { sequelize } from "../../../config/db";
 import { checkPeriodLocked } from "../../finance/services/glJournal.service";
+import { getCompanyBranchIds } from "../../finance/services/companyScope.service";
 
 /**
  * Convert quantity từ line.uom_id sang product.uom_id (đơn vị lưu kho).
@@ -39,24 +40,18 @@ async function convertToStockUom(
   if (!lineUomId || !productUomId || lineUomId === productUomId) {
     return quantity;
   }
-
-  // Step 1: Forward product-specific
-  if (productId) {
-    const conversion = await UomConversion.findOne({
-      where: {
-        product_id: productId,
-        from_uom_id: lineUomId,
-        to_uom_id: productUomId,
-      },
-      transaction: transaction ?? null,
-    });
-    if (conversion) {
-      return quantity * parseFloat(String(conversion.factor));
-    }
+  const factor = await UomConversion.findOne({
+    where: {
+      product_id: productId,
+      from_uom_id: lineUomId,
+      to_uom_id: productUomId,
+    },
+    transaction: transaction ?? null,
+  });
+  if (factor) {
+    return quantity * parseFloat(String(factor.factor));
   }
-
-  // Step 2: Forward generic
-  const genericConversion = await UomConversion.findOne({
+  const generic = await UomConversion.findOne({
     where: {
       product_id: null,
       from_uom_id: lineUomId,
@@ -64,26 +59,20 @@ async function convertToStockUom(
     },
     transaction: transaction ?? null,
   });
-  if (genericConversion) {
-    return quantity * parseFloat(String(genericConversion.factor));
+  if (generic) {
+    return quantity * parseFloat(String(generic.factor));
   }
-
-  // Step 3: Reverse product-specific
-  if (productId) {
-    const reverseProductSpecific = await UomConversion.findOne({
-      where: {
-        product_id: productId,
-        from_uom_id: productUomId,
-        to_uom_id: lineUomId,
-      },
-      transaction: transaction ?? null,
-    });
-    if (reverseProductSpecific) {
-      return quantity / parseFloat(String(reverseProductSpecific.factor));
-    }
+  const reverseFactor = await UomConversion.findOne({
+    where: {
+      product_id: productId,
+      from_uom_id: productUomId,
+      to_uom_id: lineUomId,
+    },
+    transaction: transaction ?? null,
+  });
+  if (reverseFactor) {
+    return quantity / parseFloat(String(reverseFactor.factor));
   }
-
-  // Step 4: Reverse generic
   const reverseGeneric = await UomConversion.findOne({
     where: {
       product_id: null,
@@ -125,9 +114,14 @@ import { SaleOrder } from "../../sales/models/saleOrder.model";
 import { SaleOrderLine } from "../../sales/models/saleOrderLine.model";
 
 export const stockMoveService = {
-  async getAll(user: JwtPayload) {
+  async getAll(user: any) {
+    const companyBranchIds = await getCompanyBranchIds(user);
+    const branchFilter = (user.role === "ADMIN")
+      ? { [Op.in]: companyBranchIds }
+      : user.branch_id;
+
     const warehouses = await Warehouse.findAll({
-      where: { branch_id: user.branch_id },
+      where: { branch_id: branchFilter },
       attributes: ["id"],
       raw: true,
     });
