@@ -123,6 +123,7 @@ export async function updateActivity(dto: UpdateActivityDto) {
     subject: dto.subject ?? activity.subject ?? '',
     due_at: dto.due_at ?? activity.due_at ?? null,
     notes: dto.notes ?? activity.notes ?? null,
+    priority: dto.priority ?? activity.priority ?? null,
   });
 
   const changes: string[] = [];
