@@ -16,7 +16,7 @@ import { approveRma, getRmas, submitRma } from "../service/salesReturn.service";
 import { SalesReturnAuthorizationDto } from "../dto/salesReturn.dto";
 
 const RETURN_TYPE_LABEL: Record<string, string> = {
-  credit_note: "Credit Note",
+  credit_note: "Chứng từ ghi có",
   refund: "Hoàn tiền",
   replacement: "Đổi hàng",
 };

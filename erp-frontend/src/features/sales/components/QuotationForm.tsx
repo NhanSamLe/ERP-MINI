@@ -48,13 +48,22 @@ export default function QuotationForm({
   const [validUntil, setValidUntil]       = useState(
     toDateInputValue(defaultValue?.valid_until)
   );
-  const [discountPercent, setDiscountPercent] = useState<number>(defaultValue?.discount_percent ?? 0);
+  const [discountPercent, setDiscountPercent] = useState<number>(Number(defaultValue?.discount_percent ?? 0));
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [currencyId, setCurrencyId] = useState<number | null>(defaultValue?.currency_id ?? null);
-  const [exchangeRate, setExchangeRate] = useState<number>(defaultValue?.exchange_rate ?? 1);
+  const [exchangeRate, setExchangeRate] = useState<number>(Number(defaultValue?.exchange_rate ?? 1));
   const [customerNotes, setCustomerNotes] = useState(defaultValue?.customer_notes ?? "");
   const [internalNotes, setInternalNotes] = useState(defaultValue?.internal_notes ?? "");
-  const [lines, setLines]                 = useState<QuotationLineDto[]>(defaultValue?.lines ?? []);
+  const [lines, setLines]                 = useState<QuotationLineDto[]>(() => {
+    const defaultLines = defaultValue?.lines ?? [];
+    return defaultLines.map((line: any) => ({
+      ...line,
+      quantity: Number(line.quantity ?? 1),
+      unit_price: Number(line.unit_price ?? 0),
+      discount_percent: Number(line.discount_percent ?? 0),
+      discount_amount: Number(line.discount_amount ?? 0),
+    }));
+  });
   const [deletedLineIds, setDeletedLineIds] = useState<number[]>([]);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [discardOpen, setDiscardOpen]     = useState(false);
@@ -74,9 +83,21 @@ export default function QuotationForm({
   }, [defaultValue?.customer_id]);
 
   useEffect(() => {
-    setCurrencyId(defaultValue?.currency_id ?? null);
-    setExchangeRate(defaultValue?.exchange_rate ?? 1);
-  }, [defaultValue?.currency_id, defaultValue?.exchange_rate]);
+    if (defaultValue) {
+      setCurrencyId(defaultValue.currency_id ?? null);
+      setExchangeRate(Number(defaultValue.exchange_rate ?? 1));
+      setDiscountPercent(Number(defaultValue.discount_percent ?? 0));
+      if (defaultValue.lines) {
+        setLines(defaultValue.lines.map((l: any) => ({
+          ...l,
+          quantity: Number(l.quantity ?? 1),
+          unit_price: Number(l.unit_price ?? 0),
+          discount_percent: Number(l.discount_percent ?? 0),
+          discount_amount: Number(l.discount_amount ?? 0),
+        })));
+      }
+    }
+  }, [defaultValue]);
 
   useEffect(() => {
     currencyService.getCurrencies()

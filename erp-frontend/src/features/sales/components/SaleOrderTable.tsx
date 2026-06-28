@@ -89,7 +89,7 @@ export default function SaleOrderTable({ items }: Props) {
                   <div className="flex items-center justify-end gap-1">
                     <Link
                       to={`/sales/orders/${item.id}`}
-                      title="View"
+                      title="Xem"
                       className="p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
                     >
                       <Eye className="w-3.5 h-3.5" />
@@ -98,7 +98,7 @@ export default function SaleOrderTable({ items }: Props) {
                     {canEdit(item) && (
                       <Link
                         to={`/sales/orders/${item.id}/edit`}
-                        title="Edit"
+                        title="Sửa"
                         className="p-1.5 rounded text-gray-400 hover:text-orange-600 hover:bg-orange-50 transition-colors"
                       >
                         <Edit className="w-3.5 h-3.5" />
@@ -107,7 +107,7 @@ export default function SaleOrderTable({ items }: Props) {
 
                     {canSubmit(item) && (
                       <button
-                        title="Submit for Approval"
+                        title="Gửi phê duyệt"
                         onClick={() =>
                           dispatch(submitSaleOrder(item.id)).then(refresh)
                         }
@@ -119,7 +119,7 @@ export default function SaleOrderTable({ items }: Props) {
 
                     {canApprove(item) && (
                       <button
-                        title="Approve"
+                        title="Phê duyệt"
                         onClick={() =>
                           dispatch(approveSaleOrder(item.id)).then(refresh)
                         }
@@ -131,7 +131,7 @@ export default function SaleOrderTable({ items }: Props) {
 
                     {canReject(item) && (
                       <button
-                        title="Reject"
+                        title="Từ chối"
                         onClick={() => setRejectModal({ open: true, orderId: item.id })}
                         className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                       >

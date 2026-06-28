@@ -37,12 +37,12 @@ export default function SaleOrderLinesTable({
       <table className="w-full text-sm">
         <thead className="bg-gray-50 text-gray-700">
           <tr>
-            <th className="p-3">Image</th>
-            <th className="p-3 text-left">Product</th>
-            <th className="p-3 text-left">Qty</th>
-            <th className="p-3 text-left">Unit Price</th>
-            <th className="p-3 text-left">Total</th>
-            <th className="p-3 text-right">Actions</th>
+            <th className="p-3">Hình ảnh</th>
+            <th className="p-3 text-left">Sản phẩm</th>
+            <th className="p-3 text-left">Số lượng</th>
+            <th className="p-3 text-left">Đơn giá</th>
+            <th className="p-3 text-left">Thành tiền</th>
+            <th className="p-3 text-right">Thao tác</th>
           </tr>
         </thead>
 
@@ -76,7 +76,7 @@ export default function SaleOrderLinesTable({
                     }
                     className="border rounded px-2 py-1 w-full"
                   >
-                    <option value={0}>Select product…</option>
+                    <option value={0}>Chọn sản phẩm…</option>
                     {products.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.name}

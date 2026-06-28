@@ -37,7 +37,7 @@ export default function SaleOrderActionButtons({
   return (
     <div className="flex gap-3">
       <button className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-900 rounded-lg font-medium transition flex items-center gap-2">
-        <Download size={18} /> Export PDF
+        <Download size={18} /> Xuất PDF
       </button>
 
       {allowEdit && (
@@ -45,7 +45,7 @@ export default function SaleOrderActionButtons({
           onClick={onEdit}
           className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition flex items-center gap-2"
         >
-          <Edit2 size={18} /> Edit Order
+          <Edit2 size={18} /> Sửa đơn hàng
         </button>
       )}
 
@@ -54,7 +54,7 @@ export default function SaleOrderActionButtons({
           onClick={onSubmit}
           className="px-6 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition"
         >
-          Submit for Approval
+          Gửi phê duyệt
         </button>
       )}
 

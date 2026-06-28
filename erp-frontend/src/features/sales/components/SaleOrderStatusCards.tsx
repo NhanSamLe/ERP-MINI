@@ -16,7 +16,7 @@ export default function SaleOrderStatusCards({ order }: Props) {
       <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm transition">
         <div className="flex items-center gap-3 mb-2">
           <FileText size={20} className="text-blue-600" />
-          <span className="text-gray-500 text-sm">Status</span>
+          <span className="text-gray-500 text-sm">Trạng thái</span>
         </div>
         <p className="text-gray-900 font-semibold text-lg capitalize">
           {order.status}
@@ -26,7 +26,7 @@ export default function SaleOrderStatusCards({ order }: Props) {
       <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm transition">
         <div className="flex items-center gap-3 mb-2">
           <Clock size={20} className="text-yellow-600" />
-          <span className="text-gray-500 text-sm">Approval</span>
+          <span className="text-gray-500 text-sm">Phê duyệt</span>
         </div>
         <SaleOrderStatusBadge status={order.approval_status} />
       </div>
@@ -34,7 +34,7 @@ export default function SaleOrderStatusCards({ order }: Props) {
       <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm transition">
         <div className="flex items-center gap-3 mb-2">
           <CheckCircle size={20} className="text-gray-400" />
-          <span className="text-gray-500 text-sm">Order Date</span>
+          <span className="text-gray-500 text-sm">Ngày đặt hàng</span>
         </div>
         <p className="text-gray-900 font-semibold">{formatDate(order.order_date)}</p>
       </div>
@@ -42,7 +42,7 @@ export default function SaleOrderStatusCards({ order }: Props) {
       <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm transition">
         <div className="flex items-center gap-3 mb-2">
           <Building2 size={20} className="text-gray-400" />
-          <span className="text-gray-500 text-sm">Branch</span>
+          <span className="text-gray-500 text-sm">Chi nhánh</span>
         </div>
         <p className="text-gray-900 font-semibold">{order.branch?.name}</p>
       </div>

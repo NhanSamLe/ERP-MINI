@@ -22,13 +22,13 @@ export default function SaleOrderGeneralForm({
     <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6 bg-white p-5 border rounded-lg">
       {/* CUSTOMER */}
       <div>
-        <label className="text-sm font-medium block mb-1">Customer</label>
+        <label className="text-sm font-medium block mb-1">Khách hàng</label>
         <select
           value={customerId}
           onChange={(e) => onCustomerChange(Number(e.target.value))}
           className="w-full border rounded-lg px-3 py-2"
         >
-          <option value="">Select customer…</option>
+          <option value="">Chọn khách hàng…</option>
           {customers.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -39,7 +39,7 @@ export default function SaleOrderGeneralForm({
 
       {/* ORDER DATE */}
       <div>
-        <label className="text-sm font-medium block mb-1">Order Date</label>
+        <label className="text-sm font-medium block mb-1">Ngày đặt hàng</label>
         <input
           type="date"
           value={toDateInputValue(orderDate)}
