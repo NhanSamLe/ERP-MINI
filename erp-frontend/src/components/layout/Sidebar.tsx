@@ -505,7 +505,10 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
   const defaultBranchId = branches[0]?.id;
 
   const canAccess = (roles?: string[]) =>
-    !roles || roles.includes(user?.role.code ?? "");
+    !roles ||
+    user?.role.code === "ADMIN" ||
+    user?.role.code === "CEO" ||
+    roles.includes(user?.role.code ?? "");
 
   const isModuleActive = (item: MenuItem) => {
     if (item.path && location.pathname.startsWith(item.path)) return true;
