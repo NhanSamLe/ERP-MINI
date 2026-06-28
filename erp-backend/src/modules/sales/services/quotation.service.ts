@@ -309,7 +309,142 @@ export const quotationService = {
   },
 
   async update(id: number, data: any, user: any) {
-    throw new Error("Update quotation logic pending");
+    return await sequelize.transaction(async (t) => {
+      const q = await Quotation.findByPk(id, { transaction: t });
+      if (!q) throw new Error("Quotation not found");
+
+      // Permission Checks
+      if (q.approval_status !== "draft" && q.status !== "draft") {
+        throw new Error("Chỉ báo giá nháp mới có thể cập nhật.");
+      }
+
+      if (user.role !== "ADMIN" && q.branch_id !== user.branch_id) {
+        throw new Error("Access denied (cross-branch)");
+      }
+
+      if (user.role === "SALES" && q.sales_person_id !== user.id) {
+        throw new Error("Access denied: bạn không phụ trách báo giá này");
+      }
+
+      // Calculate exchange rate if currency is updated
+      let exchangeRate = Number(data.exchange_rate || 0);
+      if (data.currency_id && (!exchangeRate || exchangeRate <= 0)) {
+        exchangeRate = await getCurrencyRateToVnd(data.currency_id, null);
+      } else if (!exchangeRate || exchangeRate <= 0) {
+        exchangeRate = Number(q.exchange_rate || 1);
+      }
+
+      // Update quotation header
+      await q.update({
+        customer_id: data.customer_id,
+        opportunity_id: data.opportunity_id || null,
+        sales_person_id: data.sales_person_id || user.id,
+        quotation_date: data.quotation_date || q.quotation_date,
+        valid_until: data.valid_until,
+        currency_id: data.currency_id ?? null,
+        exchange_rate: exchangeRate,
+        payment_term_id: data.payment_term_id,
+        discount_percent: data.discount_percent || 0,
+        discount_amount: data.discount_amount || 0,
+        customer_notes: data.customer_notes,
+        internal_notes: data.internal_notes,
+      }, { transaction: t });
+
+      // Delete removed lines
+      if (data.deletedLineIds?.length) {
+        await QuotationLine.destroy({
+          where: { id: data.deletedLineIds, quotation_id: q.id },
+          transaction: t,
+        });
+      }
+
+      // Update / Add lines
+      const updatedLines = [];
+      let totalBeforeTax = 0;
+      let totalTax = 0;
+
+      const lines = data.lines || [];
+      for (const line of lines) {
+        const qty = Number(line.quantity || 0);
+        let price = Number(line.unit_price || 0);
+        if (qty < 0 || price < 0) throw new Error("Invalid price/qty");
+
+        const discPercent = Number(line.discount_percent || 0);
+        const discAmount = Number(line.discount_amount || 0);
+
+        let lineSub = qty * price;
+        if (discPercent > 0) lineSub = lineSub * (1 - discPercent / 100);
+        else if (discAmount > 0) lineSub = lineSub - discAmount;
+
+        // Auto tax rate lookup
+        let taxRateId = line.tax_rate_id;
+        if (!taxRateId) {
+          const product = await Product.findByPk(line.product_id, { transaction: t });
+          taxRateId = product?.tax_rate_id;
+        }
+
+        let lineTaxAmt = 0;
+        if (taxRateId) {
+          const tax = await TaxRate.findByPk(taxRateId, { transaction: t });
+          if (tax) lineTaxAmt = (lineSub * Number(tax.rate)) / 100;
+        }
+
+        const lineData = {
+          product_id: line.product_id,
+          uom_id: line.uom_id ?? null,
+          description: line.description,
+          quantity: qty,
+          unit_price: price,
+          discount_percent: discPercent,
+          discount_amount: discAmount,
+          tax_rate_id: taxRateId,
+          line_total: lineSub,
+          line_tax: lineTaxAmt,
+          line_total_after_tax: lineSub + lineTaxAmt,
+        };
+
+        if (line.id) {
+          const existingLine = await QuotationLine.findByPk(line.id, { transaction: t });
+          if (!existingLine || existingLine.quotation_id !== q.id) {
+            throw new Error("Invalid quotation line");
+          }
+          await existingLine.update(lineData, { transaction: t });
+          updatedLines.push(existingLine);
+        } else {
+          const newLine = await QuotationLine.create({
+            quotation_id: q.id,
+            ...lineData,
+          }, { transaction: t });
+          updatedLines.push(newLine);
+        }
+
+        totalBeforeTax += lineSub;
+        totalTax += lineTaxAmt;
+      }
+
+      // Order-level discount recalculation
+      let discountFactor = 1;
+      const discount_percent = Number(data.discount_percent || 0);
+      const discount_amount = Number(data.discount_amount || 0);
+
+      if (discount_percent > 0) {
+        discountFactor = 1 - discount_percent / 100;
+      } else if (discount_amount > 0 && totalBeforeTax > 0) {
+        discountFactor = Math.max(0, 1 - discount_amount / totalBeforeTax);
+      }
+
+      totalBeforeTax = totalBeforeTax * discountFactor;
+      totalTax = totalTax * discountFactor;
+      const totalAftertax = totalBeforeTax + totalTax;
+
+      await q.update({
+        total_before_tax: totalBeforeTax,
+        total_tax: totalTax,
+        total_after_tax: totalAftertax,
+      }, { transaction: t });
+
+      return q;
+    });
   },
 
   async submit(id: number, user: any) {
@@ -351,8 +486,12 @@ export const quotationService = {
 
   async markAccepted(id: number, user: any) {
     const q = await this.getById(id, user);
-    if (q.valid_until && new Date() > new Date(q.valid_until)) {
-      throw new Error("Báo giá đã hết hạn. Không thể chấp nhận.");
+    if (q.valid_until) {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const validUntilStr = new Date(q.valid_until).toISOString().slice(0, 10);
+      if (todayStr > validUntilStr) {
+        throw new Error("Báo giá đã hết hạn. Không thể chấp nhận.");
+      }
     }
     await q.update({ status: "accepted" });
     return q;
