@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Briefcase, User, Key, Mail, Phone, Lock, Save, Globe } from "lucide-react"; 
+import { Briefcase, User, Key, Mail, Phone, Lock, Save, Globe, Camera } from "lucide-react"; 
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../../store/store";
 import { updateUserAvatarThunk, updateUserInfoThunk, changePasswordThunk } from "../store";
@@ -113,18 +113,35 @@ export default function UserProfile() {
       {/* Upper Profile Banner (Double Bezel) - Clean Layout (No Cover Image) */}
       <div className="relative overflow-hidden bg-slate-900/[0.02] dark:bg-white/[0.01] ring-1 ring-slate-900/[0.04] dark:ring-white/[0.06] p-2 rounded-[2.5rem] shadow-sm">
         <div className="bg-white dark:bg-slate-900 rounded-[calc(2.5rem-0.5rem)] p-8 border border-slate-200/40 dark:border-slate-800/40 shadow-[0_8px_30px_rgba(0,0,0,0.015)]">
-          <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
-            {/* Avatar Upload Container */}
-            <div className="relative shrink-0 group p-1 bg-slate-100 dark:bg-slate-800/50 rounded-[2rem] border border-slate-200/50 dark:border-slate-700/50 shadow-sm transition hover:shadow-md">
-              <ImageUpload
-                preview={imagePreview}
-                onImageChange={handleImageChange}
-                onRemove={handleRemoveImage}
+          <div className="flex flex-col md:flex-row items-center gap-8">
+            {/* Avatar Click-to-Upload Container */}
+            <div className="relative shrink-0 group">
+              <label htmlFor="avatar-file-input" className="cursor-pointer group relative block">
+                <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-orange-500/20 dark:border-orange-500/40 shadow-sm group-hover:border-orange-500 transition duration-300">
+                  <img
+                    src={imagePreview}
+                    alt="Avatar"
+                    className="w-full h-full object-cover transition duration-300 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition duration-300 rounded-full">
+                    <Camera className="w-5 h-5 text-white" />
+                  </div>
+                </div>
+              </label>
+              <input
+                id="avatar-file-input"
+                type="file"
+                accept="image/jpeg,image/png"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleImageChange(file);
+                }}
+                className="hidden"
               />
             </div>
             
             {/* User Title & Info */}
-            <div className="flex-1 text-center md:text-left pt-2 space-y-3.5">
+            <div className="flex-1 text-center md:text-left pt-2 space-y-2">
               <div className="flex flex-col md:flex-row md:items-center gap-3">
                 <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
                   {user?.full_name}
@@ -134,15 +151,6 @@ export default function UserProfile() {
                     {user?.role?.name || "Thành viên"}
                   </span>
                 </div>
-              </div>
-              
-              <div className="flex flex-wrap justify-center md:justify-start gap-x-6 gap-y-2 text-xs font-medium text-slate-500 dark:text-slate-400">
-                <span className="flex items-center gap-1.5">
-                  Tên đăng nhập: <strong className="text-slate-700 dark:text-slate-200">@{user?.username}</strong>
-                </span>
-                <span className="flex items-center gap-1.5">
-                  Trạng thái: <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> <strong className="text-slate-700 dark:text-slate-200">Đang hoạt động</strong></span>
-                </span>
               </div>
             </div>
           </div>
@@ -316,6 +324,5 @@ export default function UserProfile() {
           </div>
         </div>
       </div>
-    </div>
   );
 }
