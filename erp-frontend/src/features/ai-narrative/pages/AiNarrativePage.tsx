@@ -274,7 +274,7 @@ export default function AiNarrativePage() {
                 {/* Metrics */}
                 <div className="grid grid-cols-3 gap-3">
                   <div className="bg-orange-50 rounded-lg p-3 text-center">
-                    <div className="text-xs text-gray-500 mb-1">Tokens</div>
+                    <div className="text-xs text-gray-500 mb-1">Mã thông báo</div>
                     <div className="font-semibold text-orange-600">
                       {result.tokensUsed}
                     </div>
@@ -332,8 +332,8 @@ export default function AiNarrativePage() {
                 <tr>
                   <th className="px-6 py-3 text-left">Loại</th>
                   <th className="px-6 py-3 text-left">Kỳ</th>
-                  <th className="px-6 py-3 text-center">Cache</th>
-                  <th className="px-6 py-3 text-right">Tokens</th>
+                  <th className="px-6 py-3 text-center">Bộ nhớ đệm</th>
+                  <th className="px-6 py-3 text-right">Mã thông báo</th>
                   <th className="px-6 py-3 text-right">Chi Phí</th>
                   <th className="px-6 py-3 text-right">Thời Gian</th>
                   <th className="px-6 py-3 text-center">Trạng Thái</th>
@@ -492,19 +492,19 @@ export default function AiNarrativePage() {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="space-y-3">
                   <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-gray-500">Cache Hits</span>
+                    <span className="text-gray-500">Lượt dùng bộ nhớ đệm</span>
                     <span className="font-medium text-green-600">
                       {cacheStats.cacheHits}
                     </span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-gray-500">Cache Misses</span>
+                    <span className="text-gray-500">Lượt không dùng bộ nhớ đệm</span>
                     <span className="font-medium text-blue-600">
                       {cacheStats.cacheMisses}
                     </span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-gray-500">Hit Rate</span>
+                    <span className="text-gray-500">Tỷ lệ sử dụng</span>
                     <span className="font-medium text-orange-600">
                       {cacheStats.hitRate}%
                     </span>
@@ -548,7 +548,7 @@ export default function AiNarrativePage() {
             {cacheStats && (
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs text-gray-500">
-                  <span>Cache Hit Rate</span>
+                  <span>Tỷ lệ sử dụng bộ nhớ đệm</span>
                   <span>{cacheStats.hitRate}%</span>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-2">

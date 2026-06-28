@@ -291,7 +291,7 @@ function HighRiskTab() {
                           )
                         }
                         className="p-1.5 rounded text-gray-400 hover:text-orange-600 hover:bg-orange-50 transition-colors"
-                        title="View document"
+                        title="Xem chứng từ"
                       >
                         <BarChart2 className="w-3.5 h-3.5" />
                       </button>

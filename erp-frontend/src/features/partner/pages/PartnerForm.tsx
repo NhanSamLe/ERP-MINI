@@ -189,11 +189,11 @@ const PartnerForm: FC = () => {
     const newErrors: Record<string, string> = {};
     
     if (!form.name?.trim()) {
-      newErrors.name = "Please enter partner name";
+      newErrors.name = "Vui lòng nhập tên đối tác";
     }
     
     if (!form.type) {
-      newErrors.type = "Please select partner type";
+      newErrors.type = "Vui lòng chọn loại đối tác";
     }
 
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
@@ -201,7 +201,7 @@ const PartnerForm: FC = () => {
     }
 
     if (form.phone && !/^[0-9]{10,11}$/.test(form.phone.replace(/\s/g, ""))) {
-      newErrors.phone = "Invalid phone number";
+      newErrors.phone = "Số điện thoại không hợp lệ";
     }
 
     setErrors(newErrors);
@@ -240,7 +240,7 @@ const PartnerForm: FC = () => {
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span className="font-medium">Back to list</span>
+            <span className="font-medium">Quay lại danh sách</span>
           </button>
           
           <div className="flex items-center gap-3">
@@ -249,7 +249,7 @@ const PartnerForm: FC = () => {
             </div>
             <div>
               <h2 className="text-3xl font-bold text-gray-800">
-                {isEdit ? "Update Partner" : "Add New Partner"}
+                {isEdit ? "Cập nhật đối tác" : "Thêm đối tác mới"}
               </h2>
               <p className="text-sm text-gray-500 mt-1">
                 {isEdit 
@@ -272,7 +272,7 @@ const PartnerForm: FC = () => {
               {/* Loại đối tác */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Partner Type <span className="text-red-500">*</span>
+                  Loại đối tác <span className="text-red-500">*</span>
                 </label>
                 <select
                   name="type"
@@ -282,9 +282,9 @@ const PartnerForm: FC = () => {
                   value={form.type as PartnerType}
                   onChange={handleChange}
                 >
-                  <option value="customer">Customer</option>
-                  <option value="supplier">Supplier</option>
-                  <option value="internal">Internal</option>
+                  <option value="customer">Khách hàng</option>
+                  <option value="supplier">Nhà cung cấp</option>
+                  <option value="internal">Nội bộ</option>
                 </select>
                 {errors.type && (
                   <p className="mt-1 text-xs text-red-500">{errors.type}</p>
@@ -294,7 +294,7 @@ const PartnerForm: FC = () => {
               {/* Trạng thái */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status <span className="text-red-500">*</span>
+                  Trạng thái <span className="text-red-500">*</span>
                 </label>
                 <select
                   name="status"
@@ -302,15 +302,15 @@ const PartnerForm: FC = () => {
                   value={form.status as PartnerStatus}
                   onChange={handleChange}
                 >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
+                  <option value="active">Đang hoạt động</option>
+                  <option value="inactive">Ngừng hoạt động</option>
                 </select>
               </div>
 
               {/* Tên đối tác */}
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Partner Name <span className="text-red-500">*</span>
+                  Tên đối tác <span className="text-red-500">*</span>
                 </label>
                 <input
                   name="name"
@@ -319,7 +319,7 @@ const PartnerForm: FC = () => {
                   }`}
                   value={form.name || ""}
                   onChange={handleChange}
-                  placeholder="e.g. ABC Co. Ltd, John Doe..."
+                  placeholder="Ví dụ: Công ty TNHH ABC, Nguyễn Văn A..."
                 />
                 {errors.name && (
                   <p className="mt-1 text-xs text-red-500">{errors.name}</p>
@@ -330,14 +330,14 @@ const PartnerForm: FC = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                   <FileText className="w-4 h-4 text-gray-500" />
-                  Tax Code
+                  Mã số thuế
                 </label>
                 <input
                   name="tax_code"
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
                   value={form.tax_code || ""}
                   onChange={handleChange}
-                  placeholder="e.g. 0312xxxxxx"
+                  placeholder="Ví dụ: 0312xxxxxx"
                 />
               </div>
 
@@ -352,7 +352,7 @@ const PartnerForm: FC = () => {
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
                   value={form.cccd || ""}
                   onChange={handleChange}
-                  placeholder="e.g. 001234567890"
+                  placeholder="Ví dụ: 001234567890"
                 />
               </div>
             </div>
@@ -362,21 +362,21 @@ const PartnerForm: FC = () => {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <Phone className="w-5 h-5 text-orange-600" />
-              Contact Information
+              Thông tin liên hệ
             </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Người liên hệ */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Contact Person
+                  Người liên hệ
                 </label>
                 <input
                   name="contact_person"
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
                   value={form.contact_person || ""}
                   onChange={handleChange}
-                  placeholder="e.g. Jane Doe"
+                  placeholder="Ví dụ: Nguyễn Văn A"
                 />
               </div>
 
@@ -384,7 +384,7 @@ const PartnerForm: FC = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                   <Phone className="w-4 h-4 text-gray-500" />
-                  Phone Number
+                  Số điện thoại
                 </label>
                 <input
                   name="phone"
@@ -393,7 +393,7 @@ const PartnerForm: FC = () => {
                   }`}
                   value={form.phone || ""}
                   onChange={handleChange}
-                  placeholder="e.g. 0909123456"
+                  placeholder="Ví dụ: 0909123456"
                 />
                 {errors.phone && (
                   <p className="mt-1 text-xs text-red-500">{errors.phone}</p>
@@ -414,7 +414,7 @@ const PartnerForm: FC = () => {
                   }`}
                   value={form.email || ""}
                   onChange={handleChange}
-                  placeholder="e.g. contact@company.com"
+                  placeholder="Ví dụ: contact@company.com"
                 />
                 {errors.email && (
                   <p className="mt-1 text-xs text-red-500">{errors.email}</p>
@@ -427,21 +427,21 @@ const PartnerForm: FC = () => {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <MapPin className="w-5 h-5 text-orange-600" />
-              Address
+              Địa chỉ
             </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Tỉnh */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Province / City
+                  Tỉnh / Thành phố
                 </label>
                 <select
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
                   value={selectedProvinceCode || ""}
                   onChange={handleProvinceChange}
                 >
-                  <option value="">Select province / city</option>
+                  <option value="">Chọn tỉnh / thành phố</option>
                   {provinces.map((p) => (
                     <option key={p.code} value={p.code}>
                       {p.name}
@@ -453,7 +453,7 @@ const PartnerForm: FC = () => {
               {/* Quận */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  District
+                  Quận / Huyện
                 </label>
                 <select
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
@@ -461,7 +461,7 @@ const PartnerForm: FC = () => {
                   onChange={handleDistrictChange}
                   disabled={!selectedProvinceCode}
                 >
-                  <option value="">Select district</option>
+                  <option value="">Chọn quận / huyện</option>
                   {districts.map((d) => (
                     <option key={d.code} value={d.code}>
                       {d.name}
@@ -473,7 +473,7 @@ const PartnerForm: FC = () => {
               {/* Phường */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ward / Commune
+                  Phường / Xã
                 </label>
                 <select
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
@@ -483,7 +483,7 @@ const PartnerForm: FC = () => {
                   onChange={handleWardChange}
                   disabled={!selectedDistrictCode}
                 >
-                  <option value="">Select ward / commune</option>
+                  <option value="">Chọn phường / xã</option>
                   {wards.map((w) => (
                     <option key={w.code} value={w.code}>
                       {w.name}
@@ -495,14 +495,14 @@ const PartnerForm: FC = () => {
               {/* Địa chỉ chi tiết */}
               <div className="md:col-span-3">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Detailed Address (Street name, house number)
+                  Địa chỉ chi tiết (tên đường, số nhà)
                 </label>
                 <input
                   name="address"
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
                   value={form.address || ""}
                   onChange={handleChange}
-                  placeholder="e.g. 123 Wall Street"
+                  placeholder="Ví dụ: 123 đường Nguyễn Huệ"
                 />
               </div>
             </div>
@@ -512,7 +512,7 @@ const PartnerForm: FC = () => {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <CreditCard className="w-5 h-5 text-orange-600" />
-              Bank Details
+              Thông tin ngân hàng
             </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -526,14 +526,14 @@ const PartnerForm: FC = () => {
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
                   value={form.bank_account || ""}
                   onChange={handleChange}
-                  placeholder="e.g. 1234567890"
+                  placeholder="Ví dụ: 1234567890"
                 />
               </div>
 
               {/* Ngân hàng */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Bank
+                  Ngân hàng
                 </label>
                 <select
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
@@ -542,7 +542,7 @@ const PartnerForm: FC = () => {
                   }
                   onChange={handleBankChange}
                 >
-                  <option value="">Select bank</option>
+                  <option value="">Chọn ngân hàng</option>
                   {banks.map((b) => (
                     <option key={b.id} value={String(b.id)}>
                       {b.shortName || b.name}
@@ -561,7 +561,7 @@ const PartnerForm: FC = () => {
               onClick={() => navigate("/partners")}
               disabled={saving}
             >
-              Cancel
+              Hủy
             </button>
             <button
               type="submit"
@@ -576,7 +576,7 @@ const PartnerForm: FC = () => {
               ) : (
                 <>
                   <Save className="w-4 h-4" />
-                  {isEdit ? "Update" : "Save Partner"}
+                  {isEdit ? "Cập nhật" : "Lưu đối tác"}
                 </>
               )}
             </button>

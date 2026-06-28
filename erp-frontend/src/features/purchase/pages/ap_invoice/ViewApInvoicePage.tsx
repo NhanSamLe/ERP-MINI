@@ -1396,7 +1396,7 @@ function MatchingDetailsPanel({ details }: { details: MatchingDetails }) {
           <p className="text-xl font-bold text-green-600">
             {summary.matched_lines}
           </p>
-          <p className="text-xs text-gray-500">Matched</p>
+          <p className="text-xs text-gray-500">Đã đối chiếu</p>
         </div>
         <div className="bg-white rounded-lg p-3 text-center">
           <p className="text-xl font-bold text-red-600">
