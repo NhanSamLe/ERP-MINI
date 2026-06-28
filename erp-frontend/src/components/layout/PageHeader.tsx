@@ -15,10 +15,10 @@ interface Props {
 
 export default function PageHeader({ title, description, action, count }: Props) {
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-5 py-4 border-b border-gray-200 bg-white">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-5 py-4 border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900">
       <div className="min-w-0">
         <div className="flex items-center gap-2 min-w-0">
-          <h1 className="text-base font-semibold text-gray-900 break-words">{title}</h1>
+          <h1 className="text-base font-semibold text-gray-900 dark:text-white break-words">{title}</h1>
           {count !== undefined && (
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-600">
               {count}

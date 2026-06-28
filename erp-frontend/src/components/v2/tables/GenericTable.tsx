@@ -208,13 +208,13 @@ export function GenericTable<T extends Record<string, any>>({
   };
 
   return (
-    <div className={`bg-white rounded-lg shadow-sm border border-gray-200 min-w-0 ${className}`}>
+    <div className={`bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-gray-200 dark:border-slate-800 min-w-0 ${className}`}>
       {/* Header */}
       {(title || description || config.searchable || toolbarActions) && (
         <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
           <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              {title && <h2 className="text-xl font-bold text-gray-900 break-words">{title}</h2>}
+              {title && <h2 className="text-xl font-bold text-gray-900 dark:text-white break-words">{title}</h2>}
               {description && <p className="text-sm text-gray-600 mt-1 break-words">{description}</p>}
             </div>
             {toolbarActions && <div className="flex flex-wrap items-center gap-2">{toolbarActions}</div>}
@@ -346,7 +346,7 @@ export function GenericTable<T extends Record<string, any>>({
             </tr>
           </thead>
           
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white dark:bg-slate-900 divide-y divide-gray-200 dark:divide-slate-800">
             {loading ? (
               <tr>
                 <td

@@ -100,15 +100,16 @@
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    @apply bg-gray-100;
+    background-color: #f3f4f6;
   }
   ::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 rounded-full;
+    background-color: #d1d5db;
+    border-radius: 9999px;
   }
 }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-orange-400;
+    background-color: #fb923c;
   }
 
 @layer components {
@@ -527,7 +528,7 @@ html {
   [class~="bg-white/70"],
   [class~="bg-white/60"],
   [class~="bg-white/50"]
-) {
+):not([class*="dark:bg-"]) {
   background-color: #0f172a !important;
 }
 
@@ -541,48 +542,56 @@ html {
   [class~="bg-slate-50/70"],
   [class~="bg-slate-50/60"],
   [class~="bg-slate-50/50"]
-) {
+):not([class*="dark:bg-"]) {
   background-color: #020617 !important;
 }
 
-.dark :is(.bg-gray-100, .bg-slate-100) {
+.dark :is(
+  [class*="bg-gray-50/"],
+  [class*="bg-slate-50/"],
+  [class~="bg-[#f6f8fc]"]
+):not([class*="dark:bg-"]) {
+  background-color: #020617 !important;
+}
+
+.dark :is(.bg-gray-100, .bg-slate-100):not([class*="dark:bg-"]) {
   background-color: #1e293b !important;
 }
 
-.dark :is(.bg-gray-200, .bg-slate-200) {
+.dark :is(.bg-gray-200, .bg-slate-200):not([class*="dark:bg-"]) {
   background-color: #334155 !important;
 }
 
-.dark :is(.bg-gray-300, .bg-slate-300) {
+.dark :is(.bg-gray-300, .bg-slate-300):not([class*="dark:bg-"]) {
   background-color: #475569 !important;
 }
 
 /* Neutral text */
-.dark :is(.text-black, .text-gray-950, .text-gray-900, .text-slate-950, .text-slate-900) {
+.dark :is(.text-black, .text-gray-950, .text-gray-900, .text-slate-950, .text-slate-900):not([class*="dark:text-"]) {
   color: #f8fafc !important;
 }
 
-.dark :is(.text-gray-800, .text-slate-800) {
+.dark :is(.text-gray-800, .text-slate-800):not([class*="dark:text-"]) {
   color: #f1f5f9 !important;
 }
 
-.dark :is(.text-gray-700, .text-slate-700) {
+.dark :is(.text-gray-700, .text-slate-700):not([class*="dark:text-"]) {
   color: #e2e8f0 !important;
 }
 
-.dark :is(.text-gray-600, .text-slate-600) {
+.dark :is(.text-gray-600, .text-slate-600):not([class*="dark:text-"]) {
   color: #cbd5e1 !important;
 }
 
-.dark :is(.text-gray-500, .text-slate-500) {
+.dark :is(.text-gray-500, .text-slate-500):not([class*="dark:text-"]) {
   color: #94a3b8 !important;
 }
 
-.dark :is(.text-gray-400, .text-slate-400) {
+.dark :is(.text-gray-400, .text-slate-400):not([class*="dark:text-"]) {
   color: #94a3b8 !important;
 }
 
-.dark :is(.text-gray-300, .text-slate-300) {
+.dark :is(.text-gray-300, .text-slate-300):not([class*="dark:text-"]) {
   color: #cbd5e1 !important;
 }
 
@@ -595,11 +604,11 @@ html {
   .border-gray-200,
   .border-slate-100,
   .border-slate-200
-) {
+):not([class*="dark:border-"]) {
   border-color: #263244 !important;
 }
 
-.dark :is(.border-gray-300, .border-gray-400, .border-slate-300, .border-slate-400) {
+.dark :is(.border-gray-300, .border-gray-400, .border-slate-300, .border-slate-400):not([class*="dark:border-"]) {
   border-color: #475569 !important;
 }
 
@@ -664,28 +673,121 @@ html {
 }
 
 /* Soft semantic colors keep their meaning without glowing on dark surfaces */
-.dark :is(.bg-orange-50, .bg-orange-100) {
+.dark :is(.bg-orange-50, .bg-orange-100):not([class*="dark:bg-"]) {
   background-color: rgb(249 115 22 / 0.14) !important;
 }
 
-.dark :is(.bg-red-50, .bg-red-100, .bg-rose-50, .bg-rose-100) {
+.dark :is(.bg-red-50, .bg-red-100, .bg-rose-50, .bg-rose-100):not([class*="dark:bg-"]) {
   background-color: rgb(239 68 68 / 0.14) !important;
 }
 
-.dark :is(.bg-green-50, .bg-green-100, .bg-emerald-50, .bg-emerald-100) {
+.dark :is(.bg-green-50, .bg-green-100, .bg-emerald-50, .bg-emerald-100):not([class*="dark:bg-"]) {
   background-color: rgb(16 185 129 / 0.14) !important;
 }
 
-.dark :is(.bg-blue-50, .bg-blue-100, .bg-sky-50, .bg-sky-100, .bg-cyan-50, .bg-cyan-100) {
+.dark :is(.bg-blue-50, .bg-blue-100, .bg-sky-50, .bg-sky-100, .bg-cyan-50, .bg-cyan-100):not([class*="dark:bg-"]) {
   background-color: rgb(14 165 233 / 0.14) !important;
 }
 
-.dark :is(.bg-yellow-50, .bg-yellow-100, .bg-amber-50, .bg-amber-100) {
+.dark :is(.bg-yellow-50, .bg-yellow-100, .bg-amber-50, .bg-amber-100):not([class*="dark:bg-"]) {
   background-color: rgb(245 158 11 / 0.14) !important;
 }
 
-.dark :is(.bg-indigo-50, .bg-indigo-100, .bg-purple-50, .bg-purple-100) {
+.dark :is(.bg-indigo-50, .bg-indigo-100, .bg-purple-50, .bg-purple-100):not([class*="dark:bg-"]) {
   background-color: rgb(99 102 241 / 0.15) !important;
+}
+
+.dark :is(.text-orange-600, .text-orange-700, .text-orange-800, .text-amber-600, .text-amber-700, .text-amber-800) {
+  color: #fb923c !important;
+}
+
+.dark :is(.text-red-600, .text-red-700, .text-red-800, .text-rose-600, .text-rose-700, .text-rose-800) {
+  color: #f87171 !important;
+}
+
+.dark :is(.text-green-600, .text-green-700, .text-green-800, .text-emerald-600, .text-emerald-700, .text-emerald-800) {
+  color: #34d399 !important;
+}
+
+.dark :is(.text-blue-600, .text-blue-700, .text-blue-800, .text-sky-600, .text-sky-700, .text-cyan-700) {
+  color: #60a5fa !important;
+}
+
+.dark :is(.text-indigo-600, .text-indigo-700, .text-purple-600, .text-purple-700) {
+  color: #a5b4fc !important;
+}
+
+.dark :is(
+  .border-orange-100,
+  .border-orange-200,
+  .border-orange-300,
+  .border-amber-100,
+  .border-amber-200,
+  .border-amber-300
+) {
+  border-color: rgb(249 115 22 / 0.35) !important;
+}
+
+.dark :is(.border-red-100, .border-red-200, .border-red-300, .border-rose-100, .border-rose-200) {
+  border-color: rgb(239 68 68 / 0.35) !important;
+}
+
+.dark :is(.border-green-100, .border-green-200, .border-green-300, .border-emerald-100, .border-emerald-200) {
+  border-color: rgb(16 185 129 / 0.35) !important;
+}
+
+.dark :is(.border-blue-100, .border-blue-200, .border-blue-300, .border-sky-100, .border-sky-200) {
+  border-color: rgb(59 130 246 / 0.35) !important;
+}
+
+.dark * {
+  --tw-ring-offset-color: #0f172a;
+}
+
+/* Legacy light gradients */
+.dark :is(
+  [class*="from-white"],
+  [class*="from-gray-50"],
+  [class*="from-gray-100"],
+  [class*="from-slate-50"],
+  [class*="from-slate-100"]
+):not([class*="dark:from-"]) {
+  --tw-gradient-from: #0f172a var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgb(15 23 42 / 0) var(--tw-gradient-to-position) !important;
+}
+
+.dark :is(
+  [class*="via-white"],
+  [class*="via-gray-50"],
+  [class*="via-slate-50"]
+):not([class*="dark:via-"]) {
+  --tw-gradient-to: rgb(15 23 42 / 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops:
+    var(--tw-gradient-from),
+    #111c2f var(--tw-gradient-via-position),
+    var(--tw-gradient-to) !important;
+}
+
+.dark :is(
+  [class*="to-white"],
+  [class*="to-gray-50"],
+  [class*="to-gray-100"],
+  [class*="to-slate-50"],
+  [class*="to-slate-100"]
+):not([class*="dark:to-"]) {
+  --tw-gradient-to: #111827 var(--tw-gradient-to-position) !important;
+}
+
+.dark [class*="from-orange-50"]:not([class*="dark:from-"]) {
+  --tw-gradient-from: rgb(249 115 22 / 0.14) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgb(249 115 22 / 0) var(--tw-gradient-to-position) !important;
+}
+
+.dark [class*="via-blue-50"]:not([class*="dark:via-"]) {
+  --tw-gradient-stops:
+    var(--tw-gradient-from),
+    rgb(59 130 246 / 0.1) var(--tw-gradient-via-position),
+    var(--tw-gradient-to) !important;
 }
 
 /* Tables */
@@ -790,12 +892,68 @@ html {
 }
 
 .dark :is(pre, code) {
+  background-color: #020617 !important;
   border-color: #334155;
+  color: #e2e8f0;
 }
 
 /* Dark shadows should not look like pale halos */
 .dark :is(.shadow-sm, .shadow, .shadow-md, .shadow-lg, .shadow-xl, .shadow-2xl) {
   --tw-shadow-color: rgb(0 0 0 / 0.45);
+}
+
+/* Legacy HR modal with component-scoped CSS */
+.dark .resign-modal {
+  background: #0f172a !important;
+  color: #e5e7eb;
+  box-shadow:
+    0 0 0 1px rgb(71 85 105 / 0.55),
+    0 20px 48px rgb(0 0 0 / 0.45) !important;
+}
+
+.dark :is(.resign-header, .resign-footer) {
+  border-color: #263244 !important;
+}
+
+.dark .resign-footer {
+  background: #111c2f !important;
+}
+
+.dark :is(.resign-title, .resign-label, .resign-employee-name) {
+  color: #f1f5f9 !important;
+}
+
+.dark :is(.resign-subtitle, .resign-optional) {
+  color: #94a3b8 !important;
+}
+
+.dark .resign-employee {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+.dark :is(.resign-input, .resign-textarea, .resign-btn--cancel) {
+  background: #0f172a !important;
+  border-color: #475569 !important;
+  color: #f8fafc !important;
+}
+
+.dark .resign-close:hover,
+.dark .resign-btn--cancel:hover:not(:disabled) {
+  background: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+.dark .resign-warning {
+  background: rgb(245 158 11 / 0.12) !important;
+  border-color: rgb(245 158 11 / 0.35) !important;
+  color: #fcd34d !important;
+}
+
+.dark .resign-submit-error {
+  background: rgb(239 68 68 / 0.12) !important;
+  border-color: rgb(239 68 68 / 0.35) !important;
+  color: #fca5a5 !important;
 }
 
 @media print {
