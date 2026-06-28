@@ -110,29 +110,40 @@ export default function UserProfile() {
 
   return (
     <div className="page-container max-w-7xl mx-auto py-12 px-6 lg:px-12 space-y-8">
-      {/* Upper Profile Banner (Double Bezel) */}
-      <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-900/[0.02] dark:bg-white/[0.01] ring-1 ring-slate-900/[0.04] dark:ring-white/[0.06] p-2 shadow-sm">
-        <div className="relative overflow-hidden rounded-[calc(2.5rem-0.5rem)] bg-white dark:bg-slate-900 border border-slate-200/40 dark:border-slate-800/40 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.02)]">
-          {/* Banner Cover with Vibrant Gradient */}
-          <div className="h-40 bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500 opacity-90 relative">
-            <div className="absolute inset-0 bg-black/10 backdrop-blur-[1px]"></div>
-          </div>
-          
-          {/* Profile Header Details */}
-          <div className="px-8 pb-8 relative flex flex-col md:flex-row items-center md:items-end gap-6 -mt-16">
-            <div className="relative shrink-0 group p-1.5 bg-white dark:bg-slate-900 rounded-[2rem] shadow-lg border border-slate-105 dark:border-slate-800">
+      {/* Upper Profile Banner (Double Bezel) - Clean Layout (No Cover Image) */}
+      <div className="relative overflow-hidden bg-slate-900/[0.02] dark:bg-white/[0.01] ring-1 ring-slate-900/[0.04] dark:ring-white/[0.06] p-2 rounded-[2.5rem] shadow-sm">
+        <div className="bg-white dark:bg-slate-900 rounded-[calc(2.5rem-0.5rem)] p-8 border border-slate-200/40 dark:border-slate-800/40 shadow-[0_8px_30px_rgba(0,0,0,0.015)]">
+          <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
+            {/* Avatar Upload Container */}
+            <div className="relative shrink-0 group p-1 bg-slate-100 dark:bg-slate-800/50 rounded-[2rem] border border-slate-200/50 dark:border-slate-700/50 shadow-sm transition hover:shadow-md">
               <ImageUpload
                 preview={imagePreview}
                 onImageChange={handleImageChange}
                 onRemove={handleRemoveImage}
               />
             </div>
-            <div className="flex-1 text-center md:text-left pb-2 space-y-2">
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] uppercase tracking-[0.2em] font-semibold bg-orange-500/10 text-orange-600 border border-orange-500/20">
-                {user?.role?.name || "Thành viên"}
-              </span>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-800 dark:text-white">{user?.full_name}</h1>
-              <p className="text-sm font-medium text-slate-400">@{user?.username}</p>
+            
+            {/* User Title & Info */}
+            <div className="flex-1 text-center md:text-left pt-2 space-y-3.5">
+              <div className="flex flex-col md:flex-row md:items-center gap-3">
+                <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                  {user?.full_name}
+                </h1>
+                <div className="flex justify-center md:justify-start">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] uppercase tracking-widest font-extrabold bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-200/50 dark:border-orange-500/20">
+                    {user?.role?.name || "Thành viên"}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="flex flex-wrap justify-center md:justify-start gap-x-6 gap-y-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                <span className="flex items-center gap-1.5">
+                  Tên đăng nhập: <strong className="text-slate-700 dark:text-slate-200">@{user?.username}</strong>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  Trạng thái: <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> <strong className="text-slate-700 dark:text-slate-200">Đang hoạt động</strong></span>
+                </span>
+              </div>
             </div>
           </div>
         </div>
