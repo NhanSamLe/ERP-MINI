@@ -251,19 +251,19 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 flex flex-col pt-24 pb-12">
       
       {/* ─── Floating Glass Header ─── */}
-      <div className="fixed top-6 left-6 right-6 max-w-6xl mx-auto bg-white/75 dark:bg-slate-900/75 backdrop-blur-lg border border-slate-200/50 dark:border-slate-800/50 rounded-full z-50 shadow-[0_8px_30px_rgba(0,0,0,0.03)] px-8 py-3.5 flex justify-between items-center h-14 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]">
-        <Link to="/" className="flex items-center gap-2 select-none hover:opacity-90 transition-opacity">
-          <img src="/assets/logo.png" alt="Logo" className="h-8 w-8 object-contain" />
-          <span className="text-lg font-bold tracking-tight">
+      <div className="fixed top-6 left-6 right-6 max-w-6xl mx-auto bg-white/75 dark:bg-slate-900/75 backdrop-blur-lg border border-slate-200/50 dark:border-slate-800/50 rounded-full z-50 shadow-[0_8px_30px_rgba(0,0,0,0.03)] px-8 py-3 flex justify-between items-center h-16 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]">
+        <Link to="/" className="flex items-center gap-2.5 select-none hover:opacity-90 transition-opacity">
+          <img src="/assets/logo.png" alt="Logo" className="h-9 w-9 object-contain" />
+          <span className="text-xl font-bold tracking-tight">
             <span className="text-slate-900 dark:text-white">ERP</span>
             <span className="text-orange-500"> Mini</span>
           </span>
         </Link>
-        <span className="text-xs text-slate-500 font-medium">
+        <span className="text-sm text-slate-500 font-medium">
           Đã có tài khoản?{' '}
           <Link
             to="/login"
-            className="text-orange-500 hover:text-orange-600 font-semibold uppercase tracking-wider text-[11px] ml-1.5"
+            className="text-orange-500 hover:text-orange-600 font-semibold uppercase tracking-wider text-xs ml-1.5"
           >
             Đăng nhập
           </Link>
@@ -278,35 +278,28 @@ export default function RegisterPage() {
             {/* Left Pane: Form (7 Columns) */}
             <div className="lg:col-span-7 p-8 sm:p-10 flex flex-col justify-between">
               <div>
-                {/* Step indicator inside form header */}
-                <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100 dark:border-slate-800/60">
-                  <div className="flex flex-col text-left">
-                    <span className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">
-                      Đăng ký tài khoản
-                    </span>
-                    <span className="text-xs text-slate-400 font-medium mt-0.5">
-                      {step === 1 ? 'Bước 1: Thông tin doanh nghiệp' : 'Bước 2: Tài khoản quản trị'}
-                    </span>
+                {/* Clean, Semantic Title Header with highest priority */}
+                <div className="text-left mb-8 pb-4 border-b border-slate-100 dark:border-slate-800/60">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                      {step === 1 ? 'Thông tin doanh nghiệp' : 'Tài khoản quản trị'}
+                    </h2>
+                    {/* Modern pill step progress indicator */}
+                    <div className="flex items-center gap-2 bg-orange-50 dark:bg-orange-500/10 border border-orange-200/50 dark:border-orange-500/20 px-3 py-1 rounded-full flex-shrink-0">
+                      <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400 uppercase tracking-widest">
+                        Bước {step}/2
+                      </span>
+                    </div>
                   </div>
-                  
-                  {/* Modern mini dots indicator */}
-                  <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/60 px-3 py-1.5 rounded-full">
-                    <div className={`w-2 h-2 rounded-full transition-colors duration-300 ${step === 1 ? 'bg-orange-500' : 'bg-slate-300 dark:bg-slate-650'}`} />
-                    <div className={`w-2 h-2 rounded-full transition-colors duration-300 ${step === 2 ? 'bg-orange-500' : 'bg-slate-300 dark:bg-slate-650'}`} />
-                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2.5">
+                    {step === 1 
+                      ? 'Nhập các thông tin cơ bản để chúng tôi khởi tạo không gian làm việc riêng cho bạn.'
+                      : 'Tài khoản này dùng để đăng nhập và thiết lập cấu hình hệ thống ban đầu.'}
+                  </p>
                 </div>
 
                 {step === 1 ? (
                   <>
-                    <div className="text-left mb-6 space-y-1">
-                      <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
-                        Thông tin doanh nghiệp
-                      </h2>
-                      <p className="text-xs text-slate-400">
-                        Nhập các thông tin cơ bản để chúng tôi khởi tạo không gian làm việc riêng cho bạn.
-                      </p>
-                    </div>
-
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div className="sm:col-span-2">
                         <Field
@@ -412,15 +405,6 @@ export default function RegisterPage() {
                   </>
                 ) : (
                   <form onSubmit={handleSubmit}>
-                    <div className="text-left mb-6 space-y-1">
-                      <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
-                        Tài khoản quản trị
-                      </h2>
-                      <p className="text-xs text-slate-400">
-                        Tài khoản này dùng để đăng nhập và thiết lập cấu hình hệ thống ban đầu.
-                      </p>
-                    </div>
-
                     <div className="flex flex-col gap-4">
                       <Field
                         label="Họ tên người đại diện"
@@ -503,40 +487,40 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Right Pane: Marketing Info (5 Columns) */}
-            <div className="lg:col-span-5 bg-slate-950 text-white p-8 sm:p-10 flex flex-col justify-between relative overflow-hidden border-l border-slate-200/10 dark:border-slate-800/50">
+            {/* Right Pane: Marketing Info (5 Columns) - Cam Trắng (Orange/White) */}
+            <div className="lg:col-span-5 bg-gradient-to-br from-orange-500 to-orange-600 text-white p-8 sm:p-10 flex flex-col justify-between relative overflow-hidden border-l border-orange-500/10">
               {/* Background ambient lighting effects */}
-              <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/10 rounded-full blur-[80px] pointer-events-none" />
-              <div className="absolute bottom-0 left-0 w-64 h-64 bg-amber-500/5 rounded-full blur-[85px] pointer-events-none" />
+              <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-[80px] pointer-events-none" />
+              <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/5 rounded-full blur-[85px] pointer-events-none" />
 
               <div className="relative z-10 space-y-8 flex-1 flex flex-col justify-center">
                 <div className="space-y-2 text-left">
-                  <h3 className="text-lg font-bold tracking-tight text-white">
+                  <h3 className="text-xl font-extrabold tracking-tight text-white sm:text-2xl">
                     Trải nghiệm ERP toàn diện
                   </h3>
-                  <p className="text-slate-400 text-xs leading-relaxed">
+                  <p className="text-orange-100 text-xs leading-relaxed">
                     Hệ thống quản trị hợp nhất dành riêng cho doanh nghiệp SME và Startups tại Việt Nam.
                   </p>
                 </div>
 
-                {/* Key Benefits List */}
+                {/* Key Benefits List with Orange/White Branding */}
                 <div className="space-y-5">
                   {BENEFITS.map(({ icon: Icon, text }) => (
                     <div key={text} className="flex items-start gap-3 text-left">
-                      <div className="w-7 h-7 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <Icon className="w-3.5 h-3.5 text-orange-400" />
+                      <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <Icon className="w-4 h-4 text-white" />
                       </div>
-                      <p className="text-xs font-medium text-slate-300 leading-normal">{text}</p>
+                      <p className="text-xs font-semibold text-white leading-normal">{text}</p>
                     </div>
                   ))}
                 </div>
 
                 {/* Divider */}
-                <div className="border-t border-slate-800/80 my-2" />
+                <div className="border-t border-white/20 my-2" />
 
                 {/* Trial features details */}
                 <div className="text-left space-y-3">
-                  <span className="text-[10px] font-bold text-orange-400 uppercase tracking-widest block">
+                  <span className="text-[10px] font-bold text-orange-100 uppercase tracking-widest block">
                     Gói dùng thử chuyên nghiệp bao gồm:
                   </span>
                   <ul className="space-y-2">
@@ -546,8 +530,8 @@ export default function RegisterPage() {
                       'Onboarding và hướng dẫn cài đặt 1-1 miễn phí',
                       'Tự động import nhanh dữ liệu từ file Excel',
                     ].map((item) => (
-                      <li key={item} className="flex items-start gap-2 text-xs text-slate-400">
-                        <CheckCircle className="w-3.5 h-3.5 text-orange-500 mt-0.5 flex-shrink-0" />
+                      <li key={item} className="flex items-start gap-2 text-xs text-orange-50">
+                        <CheckCircle className="w-3.5 h-3.5 text-white mt-0.5 flex-shrink-0" />
                         <span className="leading-tight">{item}</span>
                       </li>
                     ))}
