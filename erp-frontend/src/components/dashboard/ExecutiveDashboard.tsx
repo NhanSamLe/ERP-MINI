@@ -69,17 +69,25 @@ export function DashboardHeader({
   highlights = [],
 }: DashboardHeaderProps) {
   return (
-    <section className="relative overflow-hidden rounded-[2rem] bg-[linear-gradient(135deg,#292524_0%,#431407_55%,#1c1917_100%)] px-6 py-6 text-white shadow-[0_24px_70px_-30px_rgba(67,20,7,0.65)] sm:px-8 sm:py-7 print:bg-white print:p-0 print:text-slate-950 print:shadow-none">
-      <div className="absolute -right-16 -top-24 h-72 w-72 rounded-full bg-orange-500/20 blur-3xl print:hidden" />
-      <div className="absolute -bottom-24 left-1/3 h-52 w-52 rounded-full bg-amber-400/10 blur-3xl print:hidden" />
-
-      <div className="relative flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4 print:border-none">
-        <div className="inline-flex items-center gap-2 rounded-full border border-orange-300/20 bg-orange-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-orange-100 print:hidden">
-          <Sparkles className="h-3.5 w-3.5" />
-          {eyebrow}
+    <section className="relative text-slate-800 dark:text-white pb-2 print:pb-0">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-200/60 dark:border-slate-800/60">
+        
+        {/* Title and Description */}
+        <div className="text-left space-y-2.5">
+          <div className="inline-flex items-center gap-2 rounded-full border border-orange-200 dark:border-orange-500/25 bg-orange-50 dark:bg-orange-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400 print:hidden">
+            <Sparkles className="h-3.5 w-3.5" />
+            {eyebrow}
+          </div>
+          <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl text-slate-900 dark:text-white">
+            {title}
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-2xl leading-relaxed">
+            {description}
+          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 print:hidden">
+        {/* Action Controls */}
+        <div className="flex flex-wrap items-center gap-2 shrink-0 justify-start md:justify-end print:hidden">
           {branches.length > 0 && onBranchChange && (
             <ControlSelect
               value={branchId}
@@ -97,7 +105,7 @@ export function DashboardHeader({
           <ControlSelect
             value={period}
             onChange={(value) => onPeriodChange(value as DashboardPeriod)}
-            icon={<CalendarDays className="h-4 w-4 text-slate-400" />}
+            icon={<CalendarDays className="h-4 w-4 text-slate-400 dark:text-slate-500" />}
             options={[
               { value: "today", label: "Hôm nay" },
               { value: "last_7_days", label: "7 ngày qua" },
@@ -110,15 +118,16 @@ export function DashboardHeader({
           <button
             type="button"
             onClick={onExport}
-            className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/10 hover:bg-white/15 px-3.5 text-xs font-semibold uppercase tracking-wider text-white transition"
+            className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 px-3.5 text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 shadow-sm transition"
           >
             <Download className="h-4 w-4" />
             <span className="hidden sm:inline">Xuất báo cáo</span>
           </button>
+          
           <button
             type="button"
             onClick={onPrint}
-            className="inline-flex h-10 items-center gap-2 rounded-xl bg-orange-500 hover:bg-orange-600 px-3.5 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-orange-950/30 transition active:scale-[0.98]"
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-orange-500 hover:bg-orange-600 px-3.5 text-xs font-bold uppercase tracking-wider text-white shadow-md shadow-orange-500/10 transition active:scale-[0.98]"
           >
             <Printer className="h-4 w-4" />
             <span className="hidden sm:inline">In PDF</span>
@@ -126,46 +135,37 @@ export function DashboardHeader({
         </div>
       </div>
 
-      <div className="relative grid gap-5 pt-5 lg:grid-cols-[minmax(320px,0.9fr)_minmax(520px,1.1fr)] lg:items-center">
-        <div className="text-left">
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            {title}
-          </h1>
-          <p className="mt-2 max-w-xl text-xs leading-relaxed text-slate-300 print:text-slate-650">
-            {description}
-          </p>
-        </div>
-
-        {highlights.length > 0 && (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {/* Highlights Strip and Custom Date Range Controls */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-6">
+        {highlights.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-4 md:gap-8 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/60 shadow-sm flex-1 max-w-4xl text-left">
             {highlights.slice(0, 3).map((item) => (
-              <div
-                key={item.label}
-                className="rounded-2xl border border-white/10 bg-white/[0.07] p-4 backdrop-blur-sm text-left transition hover:border-orange-300/25 hover:bg-white/10"
-              >
-                <p className="text-[10px] font-bold uppercase tracking-widest text-orange-200/80">
+              <div key={item.label} className="min-w-[140px] flex-1">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-450 dark:text-slate-500">
                   {item.label}
                 </p>
-                <p className="mt-1.5 text-lg font-bold tracking-tight text-white sm:text-xl">
+                <p className="mt-1 text-lg font-extrabold text-slate-900 dark:text-white tracking-tight sm:text-xl">
                   {item.value}
                 </p>
-                <p className="mt-1 truncate text-[10px] text-slate-350">
+                <p className="mt-0.5 text-[10px] text-slate-400 dark:text-slate-500 truncate font-medium">
                   {item.helper}
                 </p>
               </div>
             ))}
           </div>
+        ) : (
+          <div className="flex-1" />
+        )}
+
+        {period === "custom" && (
+          <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/60 p-3 rounded-2xl shadow-sm print:hidden shrink-0 self-start sm:self-center">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mr-1">Từ ngày</span>
+            <DateInput value={dateFrom} onChange={onDateFromChange} />
+            <span className="text-slate-400 font-bold">→</span>
+            <DateInput value={dateTo} onChange={onDateToChange} />
+          </div>
         )}
       </div>
-
-      {period === "custom" && (
-        <div className="relative mt-5 flex flex-wrap items-center gap-2 border-t border-white/10 pt-4 print:hidden">
-          <span className="mr-1 text-xs font-medium text-slate-300">Khoảng báo cáo</span>
-          <DateInput value={dateFrom} onChange={onDateFromChange} />
-          <span className="text-slate-400">→</span>
-          <DateInput value={dateTo} onChange={onDateToChange} />
-        </div>
-      )}
     </section>
   );
 }
@@ -188,11 +188,11 @@ function ControlSelect({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="flex h-10 min-w-[142px] items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 text-xs font-semibold uppercase tracking-wider text-white backdrop-blur transition hover:bg-white/15 data-[state=open]:border-orange-400/40"
+          className="flex h-10 min-w-[142px] items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 shadow-sm transition hover:bg-slate-50 dark:hover:bg-slate-850 data-[state=open]:border-orange-500/40"
         >
           {icon}
           <span className="truncate">{selected?.label}</span>
-          <ChevronDown className="ml-auto h-4 w-4 text-orange-200 transition duration-200 [[data-state=open]_&]:rotate-180" />
+          <ChevronDown className="ml-auto h-4 w-4 text-orange-500 transition duration-200 [[data-state=open]_&]:rotate-180" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -234,7 +234,7 @@ function DateInput({
       type="date"
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className="h-9 rounded-lg border border-white/10 bg-white/10 px-3 text-xs text-white outline-none [color-scheme:dark] focus:border-white/30"
+      className="h-9 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 text-xs text-slate-800 dark:text-white outline-none focus:border-orange-500/50"
     />
   );
 }
