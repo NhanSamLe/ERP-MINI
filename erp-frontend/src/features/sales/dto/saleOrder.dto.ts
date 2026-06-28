@@ -85,6 +85,8 @@ export interface SaleOrderDto {
   total_before_tax: number;
   total_tax: number;
   total_after_tax: number;
+  discount_percent?: number | string | null;
+  discount_amount?: number | string | null;
   currency_id?: number | null;
   exchange_rate?: number;
   currency?: {
