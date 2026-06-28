@@ -163,8 +163,8 @@ export function StatusBadge({
     ? (approvalDotColor[key] ?? "bg-gray-400")
     : (dotColor[key] ?? "bg-gray-400");
   const label = isApproval
-    ? (approvalLabelMap[key] ?? status?.replace(/_/g, " ") ?? "Unknown")
-    : (labelMap[key] ?? status?.replace(/_/g, " ") ?? "Unknown");
+    ? (approvalLabelMap[key] ?? status?.replace(/_/g, " ") ?? "Không xác định")
+    : (labelMap[key] ?? status?.replace(/_/g, " ") ?? "Không xác định");
 
   return (
     <span
