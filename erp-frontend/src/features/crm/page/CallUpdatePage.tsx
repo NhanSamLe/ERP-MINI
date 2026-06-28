@@ -7,6 +7,7 @@ import { ResultType } from "@/types/enum";
 import { StandardFormLayout, FormSection } from "@/components/layout";
 import { StatusBadge } from "@/components/common";
 import { Phone, Clock, Mic, FileText, PhoneCall } from "lucide-react";
+import { ActivityRelatedSummary } from "../components/ActivityRelatedSummary";
 
 const RESULT_OPTIONS: { value: ResultType; label: string }[] = [
   { value: "connected",    label: "Đã kết nối" },
@@ -110,8 +111,8 @@ export default function CallUpdatePage() {
                 <StatusBadge status={detail.status ?? "pending"} />
               </div>
               <div>
-                <p className="text-xs text-gray-500 mb-0.5">Liên kết</p>
-                <p className="font-medium text-gray-800 capitalize">{detail.related_type} #{detail.related_id}</p>
+                <p className="text-xs text-gray-500 mb-1.5">Thông tin liên kết</p>
+                <ActivityRelatedSummary activity={detail} />
               </div>
             </div>
           </FormSection>

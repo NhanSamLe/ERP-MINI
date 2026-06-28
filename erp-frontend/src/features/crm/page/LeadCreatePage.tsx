@@ -4,7 +4,7 @@ import { useAppDispatch } from "@/store/hooks";
 import { createLead } from "../store/lead/lead.thunks";
 import { CreateLeadDto } from "../dto/lead.dto";
 import { Button } from "@/components/ui/Button";
-import { Alert } from "@/components/ui/Alert";
+import { toast } from "react-toastify";
 import { ActionConfirmModal } from "@/components/common";
 import {
   ArrowLeft, Target, User, Mail, Phone,
@@ -57,7 +57,7 @@ export default function LeadCreatePage() {
   });
 
   const [loading, setLoading]       = useState(false);
-  const [alert, setAlert]           = useState<{ type: "success" | "error"; message: string } | null>(null);
+
   const [errors, setErrors]         = useState<Record<string, string>>({});
   const [showDiscard, setShowDiscard] = useState(false);
   const [sourceOptions, setSourceOptions] = useState<{ id: number; label: string }[]>([]);
@@ -93,10 +93,10 @@ export default function LeadCreatePage() {
     setLoading(true);
     try {
       const result = await dispatch(createLead(form)).unwrap();
-      setAlert({ type: "success", message: "Tạo Lead thành công!" });
+      toast.success("Tạo Lead thành công!");
       setTimeout(() => navigate(`/crm/leads/${result.id}`), 800);
     } catch (err: any) {
-      setAlert({ type: "error", message: typeof err === "string" ? err : "Tạo Lead thất bại" });
+      toast.error(typeof err === "string" ? err : "Tạo Lead thất bại");
       setLoading(false);
     }
   };
@@ -141,10 +141,6 @@ export default function LeadCreatePage() {
           </div>
 
           <div className="p-6 space-y-6">
-            {alert && (
-              <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />
-            )}
-
             {/* ── Section: Thông tin liên hệ ── */}
             <section>
               <div className="flex items-center gap-2 mb-4">

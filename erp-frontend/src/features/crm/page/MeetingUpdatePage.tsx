@@ -6,6 +6,7 @@ import { Activity } from "../dto/activity.dto";
 import { StandardFormLayout, FormSection } from "@/components/layout";
 import { StatusBadge } from "@/components/common";
 import { Calendar, MapPin, Users, Link2, FileText, Clock } from "lucide-react";
+import { ActivityRelatedSummary } from "../components/ActivityRelatedSummary";
 
 export default function MeetingUpdatePage() {
   const navigate = useNavigate();
@@ -116,8 +117,8 @@ export default function MeetingUpdatePage() {
                 <p className="font-medium text-gray-800">{detail.owner?.full_name || "—"}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 mb-0.5">Liên kết</p>
-                <p className="font-medium text-gray-800 capitalize">{detail.related_type} #{detail.related_id}</p>
+                <p className="text-xs text-gray-500 mb-1.5">Thông tin liên kết</p>
+                <ActivityRelatedSummary activity={detail} />
               </div>
             </div>
           </FormSection>

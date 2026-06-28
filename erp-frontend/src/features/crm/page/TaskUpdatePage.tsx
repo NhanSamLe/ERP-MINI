@@ -7,6 +7,7 @@ import { TaskStatus } from "@/types/enum";
 import { StandardFormLayout, FormSection } from "@/components/layout";
 import { StatusBadge } from "@/components/common";
 import { CheckSquare, Calendar, Bell, Circle, PlayCircle, CheckCircle2 } from "lucide-react";
+import { ActivityRelatedSummary } from "../components/ActivityRelatedSummary";
 
 type Priority = "low" | "medium" | "high";
 type Status = "Not Started" | "In Progress" | "Completed";
@@ -115,12 +116,8 @@ export default function TaskUpdatePage() {
                 <p className="font-medium text-gray-800">{detail.owner?.full_name || "—"}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 mb-0.5">Liên kết</p>
-                <p className="font-medium text-gray-800 capitalize">{detail.related_type} #{detail.related_id}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-0.5">Activity ID</p>
-                <p className="font-medium text-gray-800">{activityId}</p>
+                <p className="text-xs text-gray-500 mb-1.5">Thông tin liên kết</p>
+                <ActivityRelatedSummary activity={detail} />
               </div>
             </div>
           </FormSection>

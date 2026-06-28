@@ -200,7 +200,7 @@ export default function OpportunityBoardPage() {
               <GitBranch className="w-4 h-4 text-orange-500" />
             </span>
             <div>
-              <h1 className="text-base font-semibold text-gray-900">Deals Pipeline</h1>
+              <h1 className="text-base font-semibold text-gray-900">Quy trình cơ hội kinh doanh</h1>
               <p className="text-xs text-gray-400 mt-0.5">Kéo thả Deal để chuyển đổi giai đoạn kinh doanh</p>
             </div>
             <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-600">
@@ -435,7 +435,7 @@ export default function OpportunityBoardPage() {
 
                       <p className="text-sm font-semibold text-gray-800 pr-6 truncate flex items-center gap-1.5">
                         {opp.name}
-                        {isWon && <span className="text-[9px] font-bold bg-emerald-100 text-emerald-700 px-1 py-0.5 rounded">LOCKED</span>}
+                        {isWon && <span className="text-[9px] font-bold bg-emerald-100 text-emerald-700 px-1 py-0.5 rounded">ĐÃ KHÓA</span>}
                       </p>
                       <p className="text-xs text-gray-500 mt-0.5 truncate">{opp.customer?.name || opp.lead?.name || "-"}</p>
 

@@ -5,7 +5,7 @@ import { fetchAllLeads, fetchTodayLeads, deleteLead } from "../store/lead/lead.t
 import { importLeads } from "../api/lead.api";
 import { DataTable } from "@/components/ui/DataTable";
 import { ActionConfirmModal } from "@/components/common";
-import { Alert } from "@/components/ui/Alert";
+import { toast } from "react-toastify";
 import { Button } from "@/components/ui/Button";
 import { Column } from "@/types/common";
 import { Lead } from "../dto/lead.dto";
@@ -43,7 +43,7 @@ export default function LeadDashboard() {
   const { allLeads, loading, error } = useAppSelector((s) => s.lead);
   const user = useAppSelector((s) => s.auth.user);
 
-  const [alert, setAlert] = useState<{ type: "success" | "error" | "warning" | "info"; message: string } | null>(null);
+
   const [stageFilter, setStageFilter] = useState("");
   const [search, setSearch] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null);
@@ -87,11 +87,11 @@ export default function LeadDashboard() {
     if (!file) return;
     try {
       await importLeads(file);
-      setAlert({ type: "success", message: "Import Leads thành công!" });
+      toast.success("Import Leads thành công!");
       dispatch(fetchAllLeads());
       dispatch(fetchTodayLeads());
     } catch (err: any) {
-      setAlert({ type: "error", message: err.message || "Lỗi khi import leads" });
+      toast.error(err.message || "Lỗi khi import leads");
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
@@ -129,9 +129,9 @@ export default function LeadDashboard() {
         fileName: `Bao_Cao_Leads_${Date.now()}.xlsx`,
         footer: { creator: user?.full_name || "Admin" },
       });
-      setAlert({ type: "success", message: "Xuất báo cáo thành công" });
+      toast.success("Xuất báo cáo thành công");
     } catch {
-      setAlert({ type: "error", message: "Lỗi xuất báo cáo" });
+      toast.error("Lỗi xuất báo cáo");
     }
   };
 
@@ -139,9 +139,9 @@ export default function LeadDashboard() {
     if (!deleteTarget) return;
     try {
       await dispatch(deleteLead(deleteTarget.id)).unwrap();
-      setAlert({ type: "success", message: `Đã xóa Lead "${deleteTarget.name}"` });
+      toast.success(`Đã xóa Lead "${deleteTarget.name}"`);
     } catch {
-      setAlert({ type: "error", message: "Không thể xóa Lead" });
+      toast.error("Không thể xóa Lead");
     } finally {
       setDeleteTarget(null);
     }
@@ -283,10 +283,7 @@ export default function LeadDashboard() {
 
   return (
     <div className="page-container">
-      {/* Alert */}
-      {alert && (
-        <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />
-      )}
+
 
       {/* Error */}
       {error && (
@@ -408,7 +405,7 @@ export default function LeadDashboard() {
       <ActionConfirmModal
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
-        title="Xóa Lead"
+        title="Xóa khách hàng tiềm năng"
         description={deleteTarget ? `Bạn có chắc chắn muốn xóa lead "${deleteTarget.name}"? Hành động này không thể hoàn tác.` : ""}
         confirmText="Xóa"
         variant="danger"

@@ -4,7 +4,7 @@ import { toast } from "react-toastify";
 import { ArrowLeft, BadgeCheck, Briefcase, Building2, CalendarDays, DollarSign, GitBranch, Hash, Mail, MapPin, Phone, Target, UserRound } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { Button } from "@/components/ui/Button";
-import { Alert } from "@/components/ui/Alert";
+
 import { FormInput } from "@/components/ui/FormInput";
 import { NumberField } from "@/components/ui/NumberField";
 import { UiAlert } from "@/types/ui";
@@ -108,7 +108,7 @@ export default function OpportunityCreatePage() {
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [currencyId, setCurrencyId] = useState<number | null>(null);
   const [exchangeRate, setExchangeRate] = useState<number>(1);
-  const [alert, setAlert] = useState<UiAlert | null>(null);
+
 
   const initialRelatedType = searchParams.get("related_type") === "customer" ? "customer" : "lead";
   const initialRelatedId = searchParams.get("related_id") || "";
@@ -222,7 +222,7 @@ export default function OpportunityCreatePage() {
 
   const handleCreate = async () => {
     if (!form.name || !form.related_id) {
-      toast.warning("Hãy chọn Lead/Customer và nhập tên Opportunity.");
+      toast.warning("Hãy chọn khách hàng tiềm năng/khách hàng và nhập tên cơ hội.");
       return;
     }
 
@@ -258,13 +258,13 @@ export default function OpportunityCreatePage() {
 
     try {
       const result = await dispatch(createOpportunity(payload)).unwrap();
-      toast.success("Tạo Opportunity thành công!");
+      toast.success("Tạo cơ hội kinh doanh thành công!");
       setTimeout(() => {
         navigate(`/crm/opportunities/${result.id}`);
       }, 700);
     } catch (error: any) {
       // error giờ là string message từ thunk (rejectWithValue) — hiển thị lý do thật
-      toast.error(typeof error === "string" ? error : "Không thể tạo Opportunity");
+      toast.error(typeof error === "string" ? error : "Không thể tạo cơ hội kinh doanh");
     }
   };
 
@@ -285,20 +285,20 @@ export default function OpportunityCreatePage() {
               <Target className="h-4 w-4 text-orange-500" />
             </span>
             <div>
-              <h1 className="text-base font-semibold text-gray-900">Tạo Opportunity mới</h1>
+              <h1 className="text-base font-semibold text-gray-900">Tạo cơ hội kinh doanh mới</h1>
               <p className="text-xs text-gray-500">Khởi tạo cơ hội bán hàng với pipeline, giá trị và lịch chăm sóc.</p>
             </div>
           </div>
         </div>
 
         <div className="space-y-6 p-5">
-          {alert && <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />}
+
 
           <section className="space-y-4">
             <SectionTitle
               icon={<UserRound className="h-4 w-4" />}
               title="Đối tượng liên quan"
-              description="Chọn Lead còn mới hoặc Customer đã chuyển đổi."
+              description="Chọn khách hàng tiềm năng còn mới hoặc khách hàng đã chuyển đổi."
             />
 
             <div className="grid gap-4 md:grid-cols-[220px_1fr]">
@@ -315,7 +315,7 @@ export default function OpportunityCreatePage() {
                       updateField("related_id", "");
                     }}
                   >
-                    Lead
+                    Khách hàng tiềm năng
                   </button>
                   <button
                     type="button"
@@ -327,19 +327,19 @@ export default function OpportunityCreatePage() {
                       updateField("related_id", "");
                     }}
                   >
-                    Customer
+                    Khách hàng
                   </button>
                 </div>
               </div>
 
               <div>
-                <FieldLabel required>{mode === "lead" ? "Chọn Lead" : "Chọn Customer"}</FieldLabel>
+                <FieldLabel required>{mode === "lead" ? "Chọn khách hàng tiềm năng" : "Chọn khách hàng"}</FieldLabel>
                 <select className={inputClass} value={form.related_id} onChange={(e) => updateField("related_id", e.target.value)}>
-                  <option value="">-- {mode === "lead" ? "Chọn Lead" : "Chọn Customer"} --</option>
+                  <option value="">-- {mode === "lead" ? "Chọn khách hàng tiềm năng" : "Chọn khách hàng"} --</option>
                   {mode === "lead"
                     ? availableLeads.map((lead: Lead) => (
                         <option key={lead.id} value={lead.id}>
-                          {lead.name} - {lead.email ?? "no email"}
+                          {lead.name} - {lead.email ?? "chưa có email"}
                         </option>
                       ))
                     : partners.map((partner) => (
@@ -357,7 +357,7 @@ export default function OpportunityCreatePage() {
                   <div className="space-y-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <p className="text-xs font-medium uppercase text-gray-500">Lead đang chọn</p>
+                        <p className="text-xs font-medium uppercase text-gray-500">Khách hàng tiềm năng đang chọn</p>
                         <h3 className="truncate text-base font-semibold text-gray-900">{selectedLead.name}</h3>
                       </div>
                       <span className="rounded-full bg-orange-100 px-2.5 py-1 text-xs font-medium text-orange-700">
@@ -384,7 +384,7 @@ export default function OpportunityCreatePage() {
                   <div className="space-y-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <p className="text-xs font-medium uppercase text-gray-500">Customer đang chọn</p>
+                        <p className="text-xs font-medium uppercase text-gray-500">Khách hàng đang chọn</p>
                         <h3 className="truncate text-base font-semibold text-gray-900">{selectedCustomer.name}</h3>
                       </div>
                       <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">
@@ -409,7 +409,7 @@ export default function OpportunityCreatePage() {
               </div>
             ) : (
               <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500">
-                Chọn {mode === "lead" ? "Lead" : "Customer"} để xem nhanh thông tin liên quan trước khi tạo Opportunity.
+                Chọn {mode === "lead" ? "khách hàng tiềm năng" : "khách hàng"} để xem nhanh thông tin liên quan trước khi tạo cơ hội.
               </div>
             )}
           </section>
@@ -417,13 +417,13 @@ export default function OpportunityCreatePage() {
           <section className="space-y-4 border-t border-gray-100 pt-5">
             <SectionTitle
               icon={<GitBranch className="h-4 w-4" />}
-              title="Pipeline"
-              description="Chọn pipeline và giai đoạn bắt đầu cho Opportunity."
+              title="Quy trình bán hàng"
+              description="Chọn quy trình và giai đoạn bắt đầu cho cơ hội kinh doanh."
             />
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <FieldLabel>Pipeline</FieldLabel>
+                <FieldLabel>Quy trình bán hàng</FieldLabel>
                 <select className={inputClass} value={pipelineId || ""} onChange={(e) => handlePipelineChange(Number(e.target.value))}>
                   {pipelines.map((pipeline) => (
                     <option key={pipeline.id} value={pipeline.id}>
@@ -438,9 +438,9 @@ export default function OpportunityCreatePage() {
                 <select className={inputClass} value={stageId || ""} onChange={(e) => setStageId(Number(e.target.value))}>
                   {stages.map((stage) => (
                     <option key={stage.id} value={stage.id}>
-                      {stage.name} (sequence: {stage.sequence}{formatStageProbability(stage.probability) ? `, prob: ${formatStageProbability(stage.probability)}` : ""})
-                      {stage.is_won ? " - WON" : ""}
-                      {stage.is_lost ? " - LOST" : ""}
+                      {stage.name} (thứ tự: {stage.sequence}{formatStageProbability(stage.probability) ? `, xác suất: ${formatStageProbability(stage.probability)}` : ""})
+                      {stage.is_won ? " - THẮNG" : ""}
+                      {stage.is_lost ? " - THUA" : ""}
                     </option>
                   ))}
                 </select>
@@ -457,7 +457,7 @@ export default function OpportunityCreatePage() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <FormInput
-                label="Tên Opportunity"
+                label="Tên cơ hội kinh doanh"
                 value={form.name}
                 onChange={(value) => updateField("name", value)}
                 required
@@ -483,7 +483,7 @@ export default function OpportunityCreatePage() {
               <div>
                 <FieldLabel>Tiền tệ</FieldLabel>
                 <select className={inputClass} value={currencyId || ""} onChange={(e) => handleCurrencyChange(e.target.value)}>
-                  <option value="">{BASE_CURRENCY_CODE} - Base currency</option>
+                  <option value="">{BASE_CURRENCY_CODE} - Tiền tệ cơ sở</option>
                   {foreignCurrencies.map((currency) => (
                     <option key={currency.id} value={currency.id}>
                       {currency.code} - {currency.name} ({currency.symbol})
@@ -551,7 +551,7 @@ export default function OpportunityCreatePage() {
               Hủy
             </Button>
             <Button variant="primary" onClick={handleCreate}>
-              Tạo Opportunity
+              Tạo cơ hội kinh doanh
             </Button>
           </div>
         </div>
