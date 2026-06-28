@@ -23,7 +23,7 @@ import { GlJournal } from "../../finance/models/glJournal.model";
 import { GlEntry } from "../../finance/models/glEntry.model";
 import { GlEntryLine } from "../../finance/models/glEntryLine.model";
 import { requireGlAccounts } from "../../finance/services/glAccount.helper";
-import { getCompanyIdFromBranch } from "../../finance/services/companyScope.service";
+import { getCompanyIdFromBranch, getCompanyBranchIds } from "../../finance/services/companyScope.service";
 import {
   generateCreditNoteNo,
   generateRefundNo,
@@ -33,6 +33,7 @@ import {
 import { Role } from "../../../core/types/enum";
 
 async function withBranchContext(user: any) {
+  if (user.role === "CEO" || user.role === "ADMIN") return user;
   if (user?.branch_id) return user;
   const dbUser = await User.findByPk(user.id, { attributes: ["id", "branch_id"] });
   const branchId = (dbUser as any)?.branch_id;
@@ -92,7 +93,9 @@ async function getOrderForReturn(orderId: number, user: any) {
     include: [{ model: SaleOrderLine, as: "lines" }],
   });
   if (!order) throw new Error("Sale order not found");
-  if (order.branch_id !== user.branch_id) throw new Error("Cross-branch return is not allowed");
+  if (user.role !== "CEO" && user.role !== "ADMIN") {
+    if (order.branch_id !== user.branch_id) throw new Error("Cross-branch return is not allowed");
+  }
   if (user.role === Role.SALES && order.created_by !== user.id) {
     throw new Error("Sales can only create return requests for their own sale orders");
   }
@@ -259,8 +262,14 @@ async function resolveReturnDeliveryStatus(
 export const salesReturnService = {
   async getRmas(user: any) {
     user = await withBranchContext(user);
-    const where: any = { branch_id: user.branch_id };
-    if (user.role === Role.SALES) where.created_by = user.id;
+    const companyBranchIds = await getCompanyBranchIds(user);
+    const where: any = {};
+    if (user.role === Role.CEO || user.role === Role.ADMIN) {
+      where.branch_id = { [Op.in]: companyBranchIds };
+    } else {
+      where.branch_id = user.branch_id;
+      if (user.role === Role.SALES) where.created_by = user.id;
+    }
     return SalesReturnAuthorization.findAll({
       where,
       include: RMA_INCLUDE,
@@ -272,7 +281,13 @@ export const salesReturnService = {
     user = await withBranchContext(user);
     const rma = await SalesReturnAuthorization.findByPk(id, { include: RMA_INCLUDE });
     if (!rma) throw new Error("Return request not found");
-    if (rma.branch_id !== user.branch_id) throw new Error("Cross-branch access denied");
+    const companyBranchIds = await getCompanyBranchIds(user);
+    if (!companyBranchIds.includes(Number(rma.branch_id))) {
+      throw new Error("Access denied (cross-company)");
+    }
+    if (user.role !== Role.CEO && user.role !== Role.ADMIN) {
+      if (rma.branch_id !== user.branch_id) throw new Error("Cross-branch access denied");
+    }
     if (user.role === Role.SALES && rma.created_by !== user.id) {
       throw new Error("Sales can only access return requests they created");
     }
@@ -347,13 +362,19 @@ export const salesReturnService = {
 
   async getReturns(user: any) {
     user = await withBranchContext(user);
-    const where: any = { branch_id: user.branch_id };
-    if (user.role === Role.SALES) {
-      const orders = await SaleOrder.findAll({
-        where: { branch_id: user.branch_id, created_by: user.id },
-        attributes: ["id"],
-      });
-      where.sale_order_id = { [Op.in]: orders.map((order: any) => order.id) };
+    const companyBranchIds = await getCompanyBranchIds(user);
+    const where: any = {};
+    if (user.role === Role.CEO || user.role === Role.ADMIN) {
+      where.branch_id = { [Op.in]: companyBranchIds };
+    } else {
+      where.branch_id = user.branch_id;
+      if (user.role === Role.SALES) {
+        const orders = await SaleOrder.findAll({
+          where: { branch_id: user.branch_id, created_by: user.id },
+          attributes: ["id"],
+        });
+        where.sale_order_id = { [Op.in]: orders.map((order: any) => order.id) };
+      }
     }
     return SalesReturn.findAll({
       where,
@@ -366,7 +387,13 @@ export const salesReturnService = {
     user = await withBranchContext(user);
     const ret = await SalesReturn.findByPk(id, { include: RETURN_INCLUDE });
     if (!ret) throw new Error("Sales return not found");
-    if (ret.branch_id !== user.branch_id) throw new Error("Cross-branch access denied");
+    const companyBranchIds = await getCompanyBranchIds(user);
+    if (!companyBranchIds.includes(Number(ret.branch_id))) {
+      throw new Error("Access denied (cross-company)");
+    }
+    if (user.role !== Role.CEO && user.role !== Role.ADMIN) {
+      if (ret.branch_id !== user.branch_id) throw new Error("Cross-branch access denied");
+    }
     if (user.role === Role.SALES) {
       const order = await SaleOrder.findByPk(ret.sale_order_id || undefined, { attributes: ["id", "created_by"] });
       if (!order || (order as any).created_by !== user.id) {
@@ -378,8 +405,15 @@ export const salesReturnService = {
 
   async getReturnByRmaId(rmaId: number, user: any) {
     user = await withBranchContext(user);
+    const companyBranchIds = await getCompanyBranchIds(user);
+    const where: any = { rma_id: rmaId };
+    if (user.role === Role.CEO || user.role === Role.ADMIN) {
+      where.branch_id = { [Op.in]: companyBranchIds };
+    } else {
+      where.branch_id = user.branch_id;
+    }
     const ret = await SalesReturn.findOne({
-      where: { rma_id: rmaId, branch_id: user.branch_id },
+      where,
       include: RETURN_INCLUDE,
       order: [["id", "DESC"]],
     });
@@ -625,8 +659,15 @@ export const salesReturnService = {
 
   async getCreditNotes(user: any) {
     user = await withBranchContext(user);
+    const companyBranchIds = await getCompanyBranchIds(user);
+    const where: any = {};
+    if (user.role === Role.CEO || user.role === Role.ADMIN) {
+      where.branch_id = { [Op.in]: companyBranchIds };
+    } else {
+      where.branch_id = user.branch_id;
+    }
     return ArCreditNote.findAll({
-      where: { branch_id: user.branch_id },
+      where,
       include: [
         { model: ArCreditNoteLine, as: "lines", include: [{ model: Product, as: "product", attributes: ["id", "sku", "name"] }] },
         { model: Partner, as: "customer", attributes: ["id", "name", "email", "phone"] },
@@ -646,7 +687,13 @@ export const salesReturnService = {
       ],
     });
     if (!note) throw new Error("Credit note not found");
-    if (note.branch_id !== user.branch_id) throw new Error("Cross-branch access denied");
+    const companyBranchIds = await getCompanyBranchIds(user);
+    if (!companyBranchIds.includes(Number(note.branch_id))) {
+      throw new Error("Access denied (cross-company)");
+    }
+    if (user.role !== Role.CEO && user.role !== Role.ADMIN) {
+      if (note.branch_id !== user.branch_id) throw new Error("Cross-branch access denied");
+    }
     return note;
   },
 
@@ -758,14 +805,27 @@ export const salesReturnService = {
       ],
     });
     if (!refund) throw new Error("Refund not found");
-    if (refund.branch_id !== user.branch_id) throw new Error("Cross-branch access denied");
+    const companyBranchIds = await getCompanyBranchIds(user);
+    if (!companyBranchIds.includes(Number(refund.branch_id))) {
+      throw new Error("Access denied (cross-company)");
+    }
+    if (user.role !== Role.CEO && user.role !== Role.ADMIN) {
+      if (refund.branch_id !== user.branch_id) throw new Error("Cross-branch access denied");
+    }
     return refund;
   },
 
   async getRefunds(user: any) {
     user = await withBranchContext(user);
+    const companyBranchIds = await getCompanyBranchIds(user);
+    const where: any = {};
+    if (user.role === Role.CEO || user.role === Role.ADMIN) {
+      where.branch_id = { [Op.in]: companyBranchIds };
+    } else {
+      where.branch_id = user.branch_id;
+    }
     return ArRefund.findAll({
-      where: { branch_id: user.branch_id },
+      where,
       include: [
         { model: ArCreditNote, as: "creditNote", attributes: ["id", "credit_note_no", "total_after_tax"] },
         { model: Partner, as: "customer", attributes: ["id", "name", "email", "phone"] },

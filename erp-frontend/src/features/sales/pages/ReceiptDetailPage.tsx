@@ -75,8 +75,8 @@ export default function ReceiptDetailPage() {
   const fmtMoney = (v: number | null | undefined) =>
     `${Number(v || 0).toLocaleString("vi-VN", { maximumFractionDigits: 2 })} ${currencySymbol}`;
 
-  const isAccountant = user?.role?.code === "ACCOUNT";
-  const isChiefAcc = user?.role?.code === "CHACC";
+  const isAccountant = ["ACCOUNT", "BRANCH_MANAGER", "CEO", "ADMIN"].includes(user?.role?.code ?? "");
+  const isChiefAcc = ["CHACC", "BRANCH_MANAGER", "CEO", "ADMIN"].includes(user?.role?.code ?? "");
   const isOwner = receipt.created_by === user.id;
   const isRejected = receipt.approval_status === "rejected";
   const isPosted = receipt.status === "posted";
@@ -94,7 +94,7 @@ export default function ReceiptDetailPage() {
 
   // CHACC tạo phiếu thu sẽ được tự duyệt + ghi sổ ngay (backend), nên không cần
   // hiện nút "Gửi duyệt" cho CHACC ở phiếu nháp.
-  const canSubmit = isDraft && isAccountant && isOwner;
+  const canSubmit = isDraft && isAccountant && (isOwner || ["CEO", "ADMIN", "BRANCH_MANAGER"].includes(user?.role?.code ?? ""));
   const canApprove = isWaiting && isChiefAcc;
   const canReject = canApprove;
   // Cho phép cả kế toán (ACCOUNT) lẫn kế toán trưởng (CHACC) phân bổ phiếu đã ghi sổ.

@@ -24,15 +24,19 @@ export default function SaleOrderActionButtons({
   const role = user.role.code;
 
   const allowEdit =
-    role === "SALES" &&
-    order.created_by === user.id &&
-    order.approval_status === "draft";
+    order.approval_status === "draft" &&
+    (order.created_by === user.id || ["ADMIN", "CEO", "BRANCH_MANAGER", "SALESMANAGER"].includes(role));
 
   const allowSubmit = allowEdit;
 
   const allowApprove =
-    ["SALESMANAGER", "BRMN", "CEO"].includes(role) &&
+    ["SALESMANAGER", "BRANCH_MANAGER", "CEO", "ADMIN"].includes(role) &&
     order.approval_status === "waiting_approval";
+
+  const allowCreateInvoice =
+    ["ACCOUNT", "CHACC", "BRANCH_MANAGER", "CEO", "ADMIN"].includes(role) &&
+    order.approval_status === "approved" &&
+    order.status === "confirmed";
 
   return (
     <div className="flex gap-3">
@@ -74,15 +78,14 @@ export default function SaleOrderActionButtons({
           </button>
         </>
       )}
-      {role === "ACCOUNT" &&
-        order.approval_status === "approved" &&
-        order.status === "confirmed" && (
-          <button
-            onClick={onCreateInvoice}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-          >
-            Tạo hóa đơn
-          </button>
+
+      {allowCreateInvoice && (
+        <button
+          onClick={onCreateInvoice}
+          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition"
+        >
+          Tạo hóa đơn
+        </button>
       )}
     </div>
   );

@@ -12,6 +12,7 @@ import {
   Quotation
 } from "../../../models";
 import * as XLSX from "xlsx";
+import { getCompanyBranchIds } from "../../finance/services/companyScope.service";
 
 // helper parse date range
 function parseDateRange(query: any) {
@@ -63,6 +64,8 @@ async function buildSalesScopes(user: any, reqBranchId: any) {
   const returnWhere: any = {};
   const invoiceInclude: any[] = [];
 
+  const companyBranchIds = await getCompanyBranchIds(user);
+
   if (userRole === "SALES") {
     orderWhere.sales_person_id = userId;
     invoiceWhere["$order.sales_person_id$"] = userId;
@@ -70,26 +73,48 @@ async function buildSalesScopes(user: any, reqBranchId: any) {
     receiptWhere.customer_id = { [Op.in]: literal(`(SELECT id FROM partners WHERE sales_person_id = ${userId})`) };
     returnWhere.customer_id = { [Op.in]: literal(`(SELECT id FROM partners WHERE sales_person_id = ${userId})`) };
 
-    if (userBranchId) {
+    if (userBranchId && companyBranchIds.includes(Number(userBranchId))) {
       orderWhere.branch_id = userBranchId;
       invoiceWhere.branch_id = userBranchId;
       receiptWhere.branch_id = userBranchId;
       returnWhere.branch_id = userBranchId;
+    } else {
+      orderWhere.branch_id = { [Op.in]: companyBranchIds };
+      invoiceWhere.branch_id = { [Op.in]: companyBranchIds };
+      receiptWhere.branch_id = { [Op.in]: companyBranchIds };
+      returnWhere.branch_id = { [Op.in]: companyBranchIds };
     }
   } else if (userRole === "SALESMANAGER" || userRole === "BRANCH_MANAGER") {
-    if (userBranchId) {
+    if (userBranchId && companyBranchIds.includes(Number(userBranchId))) {
       orderWhere.branch_id = userBranchId;
       invoiceWhere.branch_id = userBranchId;
       receiptWhere.branch_id = userBranchId;
       returnWhere.branch_id = userBranchId;
+    } else {
+      orderWhere.branch_id = { [Op.in]: companyBranchIds };
+      invoiceWhere.branch_id = { [Op.in]: companyBranchIds };
+      receiptWhere.branch_id = { [Op.in]: companyBranchIds };
+      returnWhere.branch_id = { [Op.in]: companyBranchIds };
     }
   } else if (userRole === "CEO" || userRole === "ADMIN") {
     if (reqBranchId) {
       const qbId = Number(reqBranchId);
-      orderWhere.branch_id = qbId;
-      invoiceWhere.branch_id = qbId;
-      receiptWhere.branch_id = qbId;
-      returnWhere.branch_id = qbId;
+      if (companyBranchIds.includes(qbId)) {
+        orderWhere.branch_id = qbId;
+        invoiceWhere.branch_id = qbId;
+        receiptWhere.branch_id = qbId;
+        returnWhere.branch_id = qbId;
+      } else {
+        orderWhere.branch_id = { [Op.in]: companyBranchIds };
+        invoiceWhere.branch_id = { [Op.in]: companyBranchIds };
+        receiptWhere.branch_id = { [Op.in]: companyBranchIds };
+        returnWhere.branch_id = { [Op.in]: companyBranchIds };
+      }
+    } else {
+      orderWhere.branch_id = { [Op.in]: companyBranchIds };
+      invoiceWhere.branch_id = { [Op.in]: companyBranchIds };
+      receiptWhere.branch_id = { [Op.in]: companyBranchIds };
+      returnWhere.branch_id = { [Op.in]: companyBranchIds };
     }
   }
 

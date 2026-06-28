@@ -41,9 +41,10 @@ export const arReceiptService = {
     const limit = pageSize;
 
     // Default filter
-    const where: any = {
-      branch_id: user.branch_id
-    };
+    const where: any = {};
+    if (user.role !== "CEO" && user.role !== "ADMIN") {
+      where.branch_id = user.branch_id;
+    }
     if (user.role === "ACCOUNT") {
       where.created_by = user.id;
     }
@@ -133,8 +134,10 @@ export const arReceiptService = {
     });
 
     if (!receipt) throw new Error("Receipt not found");
-    if (receipt.branch_id !== user.branch_id)
-      throw new Error("Cross-branch denied");
+    if (user.role !== "CEO" && user.role !== "ADMIN") {
+      if (receipt.branch_id !== user.branch_id)
+        throw new Error("Cross-branch denied");
+    }
 
     if (user.role === "ACCOUNT" && receipt.created_by !== user.id)
       throw new Error("You can only view your own receipts");

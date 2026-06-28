@@ -16,8 +16,8 @@ export default function InvoiceActionButtons({
   onApprove,
   onReject,
 }: Props) {
-  const isAccountRole = user?.role?.code === "ACCOUNT";
-  const isApprovalRole = user?.role?.code === "CHACC";
+  const isAccountRole = ["ACCOUNT", "CHACC", "BRANCH_MANAGER", "CEO", "ADMIN"].includes(user?.role?.code ?? "");
+  const isApprovalRole = ["CHACC", "BRANCH_MANAGER", "CEO", "ADMIN"].includes(user?.role?.code ?? "");
 
   const canSubmit =
     isAccountRole &&

@@ -24,10 +24,10 @@ export default function SaleOrderTable({ items }: Props) {
     open: false, orderId: null,
   });
 
-  const canEdit   = (o: SaleOrderDto) => user?.role?.code === "SALES" && o.approval_status === "draft" && o.created_by === user.id;
-  const canSubmit = (o: SaleOrderDto) => user?.role?.code === "SALES" && o.approval_status === "draft" && o.created_by === user.id;
-  const canApprove= (o: SaleOrderDto) => user?.role?.code === "SALESMANAGER" && o.approval_status === "waiting_approval";
-  const canReject = (o: SaleOrderDto) => user?.role?.code === "SALESMANAGER" && o.approval_status === "waiting_approval";
+  const canEdit   = (o: SaleOrderDto) => o.approval_status === "draft" && (o.created_by === user?.id || ["ADMIN", "CEO", "BRANCH_MANAGER", "SALESMANAGER"].includes(user?.role?.code ?? ""));
+  const canSubmit = (o: SaleOrderDto) => o.approval_status === "draft" && (o.created_by === user?.id || ["ADMIN", "CEO", "BRANCH_MANAGER", "SALESMANAGER"].includes(user?.role?.code ?? ""));
+  const canApprove= (o: SaleOrderDto) => ["SALESMANAGER", "BRANCH_MANAGER", "CEO", "ADMIN"].includes(user?.role?.code ?? "") && o.approval_status === "waiting_approval";
+  const canReject = (o: SaleOrderDto) => ["SALESMANAGER", "BRANCH_MANAGER", "CEO", "ADMIN"].includes(user?.role?.code ?? "") && o.approval_status === "waiting_approval";
 
   const refresh = () => dispatch(fetchSaleOrders());
   const formatOrderMoney = (item: SaleOrderDto) =>

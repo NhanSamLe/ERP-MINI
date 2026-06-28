@@ -76,7 +76,7 @@ export default function QuotationDetailPage() {
   const isRejected = q.approval_status === "rejected";
   const roleCode = user.role?.code;
   const isSalesOwner = roleCode === "SALES" && q.created_by === user.id;
-  const isSalesManager = roleCode === "SALESMANAGER" || roleCode === "ADMIN";
+  const isSalesManager = ["SALESMANAGER", "BRANCH_MANAGER", "CEO", "ADMIN"].includes(roleCode ?? "");
   const canEdit = q.approval_status === "draft" && (isSalesOwner || isSalesManager);
   const canSubmit = q.approval_status === "draft" && (isSalesOwner || isSalesManager);
   const canApprove = q.approval_status === "waiting_approval" &&

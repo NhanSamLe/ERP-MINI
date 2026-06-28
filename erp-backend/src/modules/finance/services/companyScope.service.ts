@@ -31,3 +31,12 @@ export async function getCompanyIdFromUserBranch(
   if (user?.company_id) return Number(user.company_id);
   return getCompanyIdFromBranch(user?.branch_id, transaction);
 }
+
+export async function getCompanyBranchIds(user: any): Promise<number[]> {
+  const companyId = await getCompanyIdFromUserBranch(user);
+  const branches = await Branch.findAll({
+    where: { company_id: companyId },
+    attributes: ["id"]
+  });
+  return branches.map((b: any) => Number(b.id));
+}

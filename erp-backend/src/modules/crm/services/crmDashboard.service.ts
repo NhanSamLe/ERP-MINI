@@ -3,6 +3,7 @@ import { Lead } from "../models/lead.model";
 import { Activity } from "../models/activity.model";
 import { Opportunity } from "../models/opportunity.model";
 import { User, LeadSource, Branch } from "../../../models";
+import { getCompanyBranchIds } from "../../finance/services/companyScope.service";
 
 // helper parse date range
 function parseDateRange(query: any) {
@@ -151,16 +152,21 @@ export const crmDashboardService = {
     const oppWhere: any = { is_deleted: false };
     const actWhere: any = { is_deleted: false };
 
+    const companyBranchIds = await getCompanyBranchIds(user);
+
     if (userRole === "SALES") {
       leadWhere.assigned_to = userId;
       oppWhere.owner_id = userId;
       actWhere.owner_id = userId;
-      if (userBranchId) {
+      if (userBranchId && companyBranchIds.includes(Number(userBranchId))) {
         leadWhere.branch_id = userBranchId;
         oppWhere.branch_id = userBranchId;
+      } else {
+        leadWhere.branch_id = { [Op.in]: companyBranchIds };
+        oppWhere.branch_id = { [Op.in]: companyBranchIds };
       }
     } else if (userRole === "SALESMANAGER" || userRole === "BRANCH_MANAGER") {
-      if (userBranchId) {
+      if (userBranchId && companyBranchIds.includes(Number(userBranchId))) {
         leadWhere.branch_id = userBranchId;
         oppWhere.branch_id = userBranchId;
         
@@ -170,15 +176,47 @@ export const crmDashboardService = {
         });
         const userIds = branchUsers.map(u => u.id);
         actWhere.owner_id = { [Op.in]: userIds };
+      } else {
+        leadWhere.branch_id = { [Op.in]: companyBranchIds };
+        oppWhere.branch_id = { [Op.in]: companyBranchIds };
+        
+        const branchUsers = await User.findAll({
+          where: { branch_id: { [Op.in]: companyBranchIds } },
+          attributes: ["id"]
+        });
+        const userIds = branchUsers.map(u => u.id);
+        actWhere.owner_id = { [Op.in]: userIds };
       }
     } else if (userRole === "CEO" || userRole === "ADMIN") {
       if (query.branch_id) {
         const queryBranchId = Number(query.branch_id);
-        leadWhere.branch_id = queryBranchId;
-        oppWhere.branch_id = queryBranchId;
+        if (companyBranchIds.includes(queryBranchId)) {
+          leadWhere.branch_id = queryBranchId;
+          oppWhere.branch_id = queryBranchId;
+          
+          const branchUsers = await User.findAll({
+            where: { branch_id: queryBranchId },
+            attributes: ["id"]
+          });
+          const userIds = branchUsers.map(u => u.id);
+          actWhere.owner_id = { [Op.in]: userIds };
+        } else {
+          leadWhere.branch_id = { [Op.in]: companyBranchIds };
+          oppWhere.branch_id = { [Op.in]: companyBranchIds };
+          
+          const branchUsers = await User.findAll({
+            where: { branch_id: { [Op.in]: companyBranchIds } },
+            attributes: ["id"]
+          });
+          const userIds = branchUsers.map(u => u.id);
+          actWhere.owner_id = { [Op.in]: userIds };
+        }
+      } else {
+        leadWhere.branch_id = { [Op.in]: companyBranchIds };
+        oppWhere.branch_id = { [Op.in]: companyBranchIds };
         
         const branchUsers = await User.findAll({
-          where: { branch_id: queryBranchId },
+          where: { branch_id: { [Op.in]: companyBranchIds } },
           attributes: ["id"]
         });
         const userIds = branchUsers.map(u => u.id);

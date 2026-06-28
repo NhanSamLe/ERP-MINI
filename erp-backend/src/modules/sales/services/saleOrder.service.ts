@@ -16,6 +16,7 @@ import { Role } from "../../../core/types/enum";
 import { notificationService } from "../../../core/services/notification.service";
 
 async function withBranchContext(user: any) {
+  if (user.role === "CEO" || user.role === "ADMIN") return user;
   if (user?.branch_id) return user;
   const dbUser = await User.findByPk(user.id, { attributes: ["id", "branch_id"] });
   const branchId = (dbUser as any)?.branch_id;
@@ -24,7 +25,7 @@ async function withBranchContext(user: any) {
 }
 
 function canAutoApproveSaleOrder(user: any) {
-  return [Role.SALESMANAGER, Role.ADMIN].includes(user?.role);
+  return [Role.SALESMANAGER, Role.ADMIN, Role.CEO].includes(user?.role);
 }
 
 async function assertCreditLimit(order: any, transaction: any) {
@@ -236,7 +237,10 @@ export const saleOrderService = {
    * ---------------------------------------------------- */
   async getAll(user: JwtPayload) {
     user = await withBranchContext(user);
-    const where: any = { branch_id: user.branch_id };
+    const where: any = {};
+    if (user.role !== "CEO" && user.role !== "ADMIN") {
+      where.branch_id = user.branch_id;
+    }
 
     if (user.role === "SALES") {
       where.created_by = user.id;
@@ -330,7 +334,9 @@ export const saleOrderService = {
       ],
     });
     if (!order) throw new Error("Sale order not found");
-    if (order.branch_id !== user.branch_id) throw new Error("Cross-branch access denied");
+    if (user.role !== "CEO" && user.role !== "ADMIN") {
+      if (order.branch_id !== user.branch_id) throw new Error("Cross-branch access denied");
+    }
     if (user.role === "SALES" && order.created_by !== user.id)
       throw new Error("You can only view your own sale orders");
 
@@ -339,9 +345,11 @@ export const saleOrderService = {
 
   async getByStatus(status: string, user: any) {
     const where: any = {
-      branch_id: user.branch_id,
       status: status,
     };
+    if (user.role !== "CEO" && user.role !== "ADMIN") {
+      where.branch_id = user.branch_id;
+    }
     if (user.role === Role.SALES) {
       where.created_by = user.id;
     }
@@ -489,7 +497,9 @@ export const saleOrderService = {
       // Permission Checks
       if (order.approval_status !== "draft") throw new Error("Only draft orders can be updated");
 
-      if (order.branch_id !== user.branch_id) throw new Error("Cross-branch denied");
+      if (user.role !== "CEO" && user.role !== "ADMIN") {
+        if (order.branch_id !== user.branch_id) throw new Error("Cross-branch denied");
+      }
 
       if (user.role === "SALES" && order.created_by !== user.id) throw new Error("You can only modify your own orders");
 
@@ -609,8 +619,10 @@ export const saleOrderService = {
 
       if (!order) throw new Error("Order not found");
       if (order.approval_status !== "draft") throw new Error("Order already submitted");
-      if (order.branch_id !== user.branch_id) throw new Error("Cross-branch denied");
-      if (order.created_by !== user.id) throw new Error("Only the creator can submit");
+      if (user.role !== "CEO" && user.role !== "ADMIN") {
+        if (order.branch_id !== user.branch_id) throw new Error("Cross-branch denied");
+      }
+      if (order.created_by !== user.id && user.role !== "CEO" && user.role !== "ADMIN") throw new Error("Only the creator can submit");
 
       await order.update(
         {
@@ -656,7 +668,9 @@ export const saleOrderService = {
       if (!order) throw new Error("Order not found");
       if (order.approval_status !== "waiting_approval") throw new Error("Order not in approval stage");
 
-      if (order.branch_id !== manager.branch_id) throw new Error("Cross-branch denied");
+      if (manager.role !== "CEO" && manager.role !== "ADMIN") {
+        if (order.branch_id !== manager.branch_id) throw new Error("Cross-branch denied");
+      }
 
       // KIỂM TRA CREDIT LIMIT
       const partner = await Partner.findByPk(order.customer_id, { transaction: t });
@@ -804,7 +818,9 @@ export const saleOrderService = {
       if (!order) throw new Error("Order not found");
       if (order.approval_status !== "waiting_approval") throw new Error("Invalid stage");
 
-      if (order.branch_id !== manager.branch_id) throw new Error("Cross-branch denied");
+      if (manager.role !== "CEO" && manager.role !== "ADMIN") {
+        if (order.branch_id !== manager.branch_id) throw new Error("Cross-branch denied");
+      }
 
       await order.update(
         {

@@ -9,6 +9,7 @@ import { StockMoveLine } from "../../inventory/models/stockMoveLine.model";
 import { Currency, ExchangeRate, Opportunity, PriceList, PriceListItem, Product, TaxRate, Uom, Partner, User, Branch } from "../../../models";
 import { Op } from "sequelize";
 import { Role } from "../../../core/types/enum";
+import { getCompanyBranchIds } from "../../finance/services/companyScope.service";
 
 async function getCurrencyRateToVnd(currencyId?: number | null, fallbackRate?: number | null) {
   if (!currencyId) return Number(fallbackRate || 1);
@@ -46,14 +47,22 @@ function canAutoApproveSaleOrder(user: any) {
 export const quotationService = {
   async getAll(user: any) {
     const where: any = {};
-    if (user.role === "ADMIN") {
-      // ADMIN: xem tất cả mọi branch
-    } else if (user.role === "SALESMANAGER") {
-      // SALESMANAGER: xem toàn bộ trong branch của mình
-      where.branch_id = user.branch_id;
+    const companyBranchIds = await getCompanyBranchIds(user);
+
+    if (user.role === "ADMIN" || user.role === "CEO") {
+      where.branch_id = { [Op.in]: companyBranchIds };
+    } else if (user.role === "SALESMANAGER" || user.role === "BRANCH_MANAGER") {
+      if (user.branch_id && companyBranchIds.includes(Number(user.branch_id))) {
+        where.branch_id = user.branch_id;
+      } else {
+        where.branch_id = { [Op.in]: companyBranchIds };
+      }
     } else {
-      // SALES và các role khác: chỉ xem báo giá do mình phụ trách
-      where.branch_id = user.branch_id;
+      if (user.branch_id && companyBranchIds.includes(Number(user.branch_id))) {
+        where.branch_id = user.branch_id;
+      } else {
+        where.branch_id = { [Op.in]: companyBranchIds };
+      }
       where.sales_person_id = user.id;
     }
     return await Quotation.findAll({
@@ -71,12 +80,22 @@ export const quotationService = {
 
   async getByOpportunity(opportunityId: number, user: any) {
     const where: any = { opportunity_id: opportunityId };
-    if (user.role === "ADMIN") {
-      // ADMIN: không filter branch
-    } else if (user.role === "SALESMANAGER") {
-      where.branch_id = user.branch_id;
+    const companyBranchIds = await getCompanyBranchIds(user);
+
+    if (user.role === "ADMIN" || user.role === "CEO") {
+      where.branch_id = { [Op.in]: companyBranchIds };
+    } else if (user.role === "SALESMANAGER" || user.role === "BRANCH_MANAGER") {
+      if (user.branch_id && companyBranchIds.includes(Number(user.branch_id))) {
+        where.branch_id = user.branch_id;
+      } else {
+        where.branch_id = { [Op.in]: companyBranchIds };
+      }
     } else {
-      where.branch_id = user.branch_id;
+      if (user.branch_id && companyBranchIds.includes(Number(user.branch_id))) {
+        where.branch_id = user.branch_id;
+      } else {
+        where.branch_id = { [Op.in]: companyBranchIds };
+      }
       where.sales_person_id = user.id;
     }
     return await Quotation.findAll({
@@ -112,8 +131,12 @@ export const quotationService = {
       ],
     });
     if (!q) throw new Error("Quotation not found");
-    // Branch check: non-ADMIN chỉ được xem trong branch mình
-    if (user.role !== "ADMIN" && q.branch_id !== user.branch_id)
+    const companyBranchIds = await getCompanyBranchIds(user);
+    if (!companyBranchIds.includes(Number(q.branch_id))) {
+      throw new Error("Access denied (cross-company)");
+    }
+    // Branch check: non-ADMIN/CEO chỉ được xem trong branch mình
+    if (user.role !== "ADMIN" && user.role !== "CEO" && q.branch_id !== user.branch_id)
       throw new Error("Access denied (cross-branch)");
     // SALES chỉ xem báo giá của mình
     if (user.role === "SALES" && q.sales_person_id !== user.id)
@@ -123,15 +146,26 @@ export const quotationService = {
 
   /** SALESMANAGER chuyển báo giá sang sales khác trong cùng branch */
   async reassign(id: number, newSalesId: number, manager: any) {
-    if (!["SALESMANAGER", "ADMIN"].includes(manager.role))
-      throw new Error("Chỉ Sales Manager hoặc Admin mới có thể chuyển đổi báo giá");
+    if (!["SALESMANAGER", "BRANCH_MANAGER", "ADMIN", "CEO"].includes(manager.role))
+      throw new Error("Chỉ Sales Manager, Branch Manager, CEO hoặc Admin mới có thể chuyển đổi báo giá");
     const q = await Quotation.findByPk(id);
     if (!q) throw new Error("Quotation not found");
-    if (manager.role !== "ADMIN" && q.branch_id !== manager.branch_id)
+
+    const companyBranchIds = await getCompanyBranchIds(manager);
+    if (!companyBranchIds.includes(Number(q.branch_id))) {
+      throw new Error("Access denied (cross-company)");
+    }
+
+    if (manager.role !== "ADMIN" && manager.role !== "CEO" && q.branch_id !== manager.branch_id)
       throw new Error("Cross-branch denied");
     const targetUser = await User.findByPk(newSalesId);
     if (!targetUser) throw new Error("Sales user không tồn tại");
-    if (manager.role !== "ADMIN" && (targetUser as any).branch_id !== manager.branch_id)
+
+    if (!companyBranchIds.includes(Number((targetUser as any).branch_id))) {
+      throw new Error("Không thể chuyển cho sales ở công ty khác");
+    }
+
+    if (manager.role !== "ADMIN" && manager.role !== "CEO" && (targetUser as any).branch_id !== manager.branch_id)
       throw new Error("Không thể chuyển cho sales ở branch khác");
     const old = q.sales_person_id;
     await q.update({ sales_person_id: newSalesId });
@@ -318,7 +352,12 @@ export const quotationService = {
         throw new Error("Chỉ báo giá nháp mới có thể cập nhật.");
       }
 
-      if (user.role !== "ADMIN" && q.branch_id !== user.branch_id) {
+      const companyBranchIds = await getCompanyBranchIds(user);
+      if (!companyBranchIds.includes(Number(q.branch_id))) {
+        throw new Error("Access denied (cross-company)");
+      }
+
+      if (user.role !== "ADMIN" && user.role !== "CEO" && q.branch_id !== user.branch_id) {
         throw new Error("Access denied (cross-branch)");
       }
 

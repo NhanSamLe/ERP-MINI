@@ -68,12 +68,15 @@ export const arInvoiceService = {
   /** GET ALL — lọc theo branch và quyền */
   async getAll(user: any) {
     // Chỉ các role được phép xem danh sách hóa đơn
-    const viewableRoles = ["ACCOUNT", "CHACC", "BRMN", "SALESMANAGER", "SALES_MANAGER"];
+    const viewableRoles = ["ACCOUNT", "CHACC", "BRANCH_MANAGER", "SALESMANAGER", "SALES_MANAGER", "SALES", "CEO", "ADMIN"];
     if (!viewableRoles.includes(user.role)) {
       throw new Error("Permission denied");
     }
 
-    const where: any = { branch_id: user.branch_id };
+    const where: any = {};
+    if (user.role !== "CEO" && user.role !== "ADMIN") {
+      where.branch_id = user.branch_id;
+    }
 
     return ArInvoice.findAll({
       where,
@@ -159,10 +162,12 @@ export const arInvoiceService = {
     });
 
     if (!inv) throw new Error("Invoice not found");
-    if (inv.branch_id !== user.branch_id) throw new Error("Cross-branch denied");
+    if (user.role !== "CEO" && user.role !== "ADMIN") {
+      if (inv.branch_id !== user.branch_id) throw new Error("Cross-branch denied");
+    }
 
     // Các role được phép xem: kế toán, kế toán trưởng, quản lý chi nhánh, quản lý bán hàng
-    const viewableRoles = ["ACCOUNT", "CHACC", "BRMN", "SALESMANAGER", "SALES_MANAGER"];
+    const viewableRoles = ["ACCOUNT", "CHACC", "BRANCH_MANAGER", "SALESMANAGER", "SALES_MANAGER", "SALES", "CEO", "ADMIN"];
     if (!viewableRoles.includes(user.role)) {
       throw new Error("Permission denied");
     }

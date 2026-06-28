@@ -24,7 +24,7 @@ export default function SaleOrderListPage() {
   useEffect(() => { dispatch(fetchSaleOrders()); }, [dispatch]);
   useEffect(() => { setCurrentPage(1); }, [search, status]);
 
-  const canCreate = user?.role?.code === "SALES" || user?.role?.code === "SALESMANAGER";
+  const canCreate = ["SALES", "SALESMANAGER", "BRANCH_MANAGER", "CEO", "ADMIN"].includes(user?.role?.code ?? "");
 
   const filteredItems = useMemo(() =>
     items.filter((item) => {
