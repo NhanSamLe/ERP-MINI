@@ -364,33 +364,35 @@ export default function CRMDashboardPage() {
           </ChartPanel>
         </div>
 
-        <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_16px_45px_-30px_rgba(15,23,42,0.5)]">
-          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900">Sức khỏe pipeline</h2>
-              <p className="mt-1 text-xs text-slate-500">Phân bổ cơ hội theo từng giai đoạn bán hàng</p>
+        <div className="bg-slate-900/[0.01] dark:bg-white/[0.01] ring-1 ring-slate-900/[0.03] dark:ring-white/[0.05] p-2 rounded-[2rem]">
+          <section className="overflow-hidden rounded-[calc(2rem-0.5rem)] border border-slate-200/40 dark:border-slate-800/40 bg-white dark:bg-slate-900 shadow-[0_8px_30px_rgba(0,0,0,0.02)]">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 px-5 py-4">
+              <div className="text-left">
+                <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Sức khỏe pipeline</h2>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Phân bổ cơ hội theo từng giai đoạn bán hàng</p>
+              </div>
+              <ArrowUpRight className="h-4 w-4 text-slate-400 dark:text-slate-500" />
             </div>
-            <ArrowUpRight className="h-4 w-4 text-slate-400" />
-          </div>
-          <div className="grid grid-cols-2 gap-px bg-slate-100 lg:grid-cols-4">
-            {pipeline.map((item) => {
-              const total = pipeline.reduce((sum, stage) => sum + stage.count, 0);
-              const share = total ? Math.round((item.count / total) * 100) : 0;
-              return (
-                <div key={item.stage} className="bg-white p-5">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${STAGE_STYLES[item.stage] || "border-slate-200 bg-slate-50 text-slate-600"}`}>
-                      {STAGE_LABELS[item.stage] || item.stage}
-                    </span>
-                    <span className="text-xs font-medium text-slate-400">{share}%</span>
+            <div className="grid grid-cols-2 gap-px bg-slate-100 dark:bg-slate-800 lg:grid-cols-4">
+              {pipeline.map((item) => {
+                const total = pipeline.reduce((sum, stage) => sum + stage.count, 0);
+                const share = total ? Math.round((item.count / total) * 100) : 0;
+                return (
+                  <div key={item.stage} className="bg-white dark:bg-slate-900 p-5 transition duration-300 hover:bg-slate-50/50 dark:hover:bg-slate-850/50 text-left">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${STAGE_STYLES[item.stage] || "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-350"}`}>
+                        {STAGE_LABELS[item.stage] || item.stage}
+                      </span>
+                      <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">{share}%</span>
+                    </div>
+                    <p className="mt-5 text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">{item.count}</p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">cơ hội đang ghi nhận</p>
                   </div>
-                  <p className="mt-5 text-3xl font-semibold tracking-tight text-slate-950">{item.count}</p>
-                  <p className="mt-1 text-xs text-slate-500">cơ hội đang ghi nhận</p>
-                </div>
-              );
-            })}
-          </div>
-        </section>
+                );
+              })}
+            </div>
+          </section>
+        </div>
 
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
           <ChartPanel
@@ -490,24 +492,26 @@ function RecentPanel({
   rows: Array<{ id: number; title: string; subtitle: string; badge: string }>;
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
-      <header className="flex items-center gap-2 border-b border-slate-100 px-5 py-4">
-        {icon}
-        <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
-      </header>
-      <div className="divide-y divide-slate-100">
-        {rows.length ? rows.map((row) => (
-          <div key={row.id} className="flex items-center justify-between gap-4 px-5 py-3.5 transition hover:bg-slate-50/70">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-slate-800">{row.title}</p>
-              <p className="mt-1 truncate text-xs text-slate-400">{row.subtitle}</p>
+    <div className="bg-slate-900/[0.01] dark:bg-white/[0.01] ring-1 ring-slate-900/[0.03] dark:ring-white/[0.05] p-2 rounded-[2rem] w-full text-left">
+      <section className="overflow-hidden rounded-[calc(2rem-0.5rem)] border border-slate-200/40 dark:border-slate-800/40 bg-white dark:bg-slate-900 shadow-[0_8px_30px_rgba(0,0,0,0.02)]">
+        <header className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800/60 px-5 py-4 text-left">
+          {icon}
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{title}</h2>
+        </header>
+        <div className="divide-y divide-slate-100 dark:divide-slate-800/60 text-left">
+          {rows.length ? rows.map((row) => (
+            <div key={row.id} className="flex items-center justify-between gap-4 px-5 py-3.5 transition hover:bg-slate-50/50 dark:hover:bg-slate-850/30">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">{row.title}</p>
+                <p className="mt-1 truncate text-xs text-slate-450 dark:text-slate-400">{row.subtitle}</p>
+              </div>
+              <span className="shrink-0 rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold uppercase text-slate-600 dark:text-slate-300">
+                {row.badge}
+              </span>
             </div>
-            <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold uppercase text-slate-600">
-              {row.badge}
-            </span>
-          </div>
-        )) : <p className="p-8 text-center text-sm text-slate-400">Chưa có dữ liệu gần đây</p>}
-      </div>
-    </section>
+          )) : <p className="p-8 text-center text-sm text-slate-400 dark:text-slate-500">Chưa có dữ liệu gần đây</p>}
+        </div>
+      </section>
+    </div>
   );
 }
