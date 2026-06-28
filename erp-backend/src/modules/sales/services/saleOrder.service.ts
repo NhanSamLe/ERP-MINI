@@ -2,7 +2,7 @@
 import { SaleOrder } from "../models/saleOrder.model";
 import { SaleOrderLine } from "../models/saleOrderLine.model";
 import { TaxRate } from "../../master-data/models/taxRate.model";
-import { Branch, Currency, Partner, Product, User, Uom, Warehouse, sequelize } from "../../../models";
+import { Branch, Currency, Partner, Product, User, Uom, Warehouse, ArInvoice, sequelize } from "../../../models";
 import { stockReservationService } from "../../inventory/services/stockReservation.service";
 import { Quotation } from "../models/quotation.model";
 import { Opportunity } from "../../crm/models/opportunity.model";
@@ -31,18 +31,37 @@ async function assertCreditLimit(order: any, transaction: any) {
   const partner = await Partner.findByPk(order.customer_id, { transaction });
   if (!partner || !partner.credit_limit || Number(partner.credit_limit) <= 0) return;
 
-  const confirmedOrders = await SaleOrder.findAll({
-    where: { customer_id: partner.id, status: { [Op.in]: ["confirmed"] } },
+  // 1. Outstanding unpaid/partially paid AR Invoices (Công nợ thực tế đã xuất hóa đơn)
+  const outstandingInvoices = await ArInvoice.findAll({
+    where: { customer_id: partner.id, status: { [Op.in]: ["posted", "partially_paid"] } },
     transaction,
   });
-  const totalDebt = confirmedOrders.reduce(
+  const totalArDebt = outstandingInvoices.reduce(
+    (sum, item) => sum + (Number(item.total_after_tax || 0) - Number(item.paid_amount || 0)) * Number(item.exchange_rate || 1),
+    0
+  );
+
+  // 2. Confirmed & Shipped Sales Orders that are not fully invoiced yet (Công nợ dự kiến từ đơn hàng chưa xuất hóa đơn hết)
+  const activeOrders = await SaleOrder.findAll({
+    where: {
+      customer_id: partner.id,
+      status: { [Op.in]: ["confirmed", "shipped"] },
+      invoice_status: { [Op.ne]: "invoiced" }
+    },
+    transaction,
+  });
+  const totalPendingOrdersValue = activeOrders.reduce(
     (sum, item) => sum + Number(item.total_after_tax || 0) * Number(item.exchange_rate || 1),
     0
   );
-  const currentDebt = totalDebt + Number(order.total_after_tax || 0) * Number(order.exchange_rate || 1);
-  if (currentDebt > Number(partner.credit_limit)) {
+
+  const totalCurrentDebt = totalArDebt + totalPendingOrdersValue;
+  const newOrderValue = Number(order.total_after_tax || 0) * Number(order.exchange_rate || 1);
+  const totalExposure = totalCurrentDebt + newOrderValue;
+
+  if (totalExposure > Number(partner.credit_limit)) {
     throw new Error(
-      `Don hang vuot qua han muc cong no toi da cua khach hang. (Muc no du kien: ${currentDebt} > Han muc: ${partner.credit_limit})`
+      `Đơn hàng vượt quá hạn mức công nợ tối đa của khách hàng. (Nợ hiện tại: ${Math.round(totalCurrentDebt).toLocaleString("vi-VN")} ₫ + Đơn mới: ${Math.round(newOrderValue).toLocaleString("vi-VN")} ₫ = Tổng nợ: ${Math.round(totalExposure).toLocaleString("vi-VN")} ₫ > Hạn mức: ${Math.round(Number(partner.credit_limit)).toLocaleString("vi-VN")} ₫)`
     );
   }
 }
