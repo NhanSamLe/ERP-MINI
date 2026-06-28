@@ -14,7 +14,6 @@ import {
   UserCog,
   UserCheck,
   Handshake,
-  ChevronRight,
   Building2,
   BrainCircuit,
 } from "lucide-react";
@@ -499,7 +498,6 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ onNavigate }: SidebarProps) {
-  const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useSelector((s: RootState) => s.auth);
@@ -508,11 +506,6 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
 
   const canAccess = (roles?: string[]) =>
     !roles || roles.includes(user?.role.code ?? "");
-
-  const toggleExpand = (name: string) =>
-    setExpandedItems((prev) =>
-      prev.includes(name) ? prev.filter((i) => i !== name) : [...prev, name],
-    );
 
   const isModuleActive = (item: MenuItem) => {
     if (item.path && location.pathname.startsWith(item.path)) return true;
@@ -545,26 +538,22 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
               canAccess(sub.allowedRoles),
             );
             const moduleActive = isModuleActive(item);
-            const expanded = expandedItems.includes(item.name);
 
             return (
-              <div key={item.name}>
+              <div key={item.name} className="mb-2">
                 {/* Module row */}
                 <div
                   onClick={() => {
                     if (item.path) {
                       navigate(item.path);
                     }
-                    if (filteredSubs?.length) {
-                      toggleExpand(item.name);
-                    }
                   }}
                   className={[
                     "flex items-center justify-between px-3 py-2 rounded-md cursor-pointer",
-                    "text-sm font-medium transition-colors duration-100 select-none",
+                    "text-sm font-bold transition-colors duration-100 select-none",
                     moduleActive
-                      ? "bg-orange-50 text-orange-600"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                      ? "text-orange-600 bg-orange-50/50"
+                      : "text-gray-700 hover:bg-gray-50 hover:text-gray-900",
                   ].join(" ")}
                 >
                   {item.path ? (
@@ -586,17 +575,11 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
                       <span className="truncate">{item.name}</span>
                     </div>
                   )}
-
-                  {filteredSubs && filteredSubs.length > 0 && (
-                    <ChevronRight
-                      className={`w-3.5 h-3.5 shrink-0 text-gray-400 transition-transform duration-150 ${expanded ? "rotate-90" : ""}`}
-                    />
-                  )}
                 </div>
 
                 {/* Sub-items */}
-                {filteredSubs && expanded && (
-                  <div className="mt-0.5 ml-3 pl-4 border-l border-gray-100 space-y-0.5">
+                {filteredSubs && filteredSubs.length > 0 && (
+                  <div className="mt-0.5 ml-3 pl-4 border-l border-gray-150 space-y-0.5">
                     {filteredSubs.map((sub) => {
                       const targetPath =
                         sub.name === "Chart"
