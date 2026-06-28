@@ -69,6 +69,11 @@ interface LowStockItem {
   minStockQty: number;
 }
 
+interface StatusCount {
+  status: string;
+  count: number;
+}
+
 interface SalesDashboardData {
   startDate: string;
   endDate: string;
@@ -77,6 +82,12 @@ interface SalesDashboardData {
     cashCollected: number;
     outstandingAr: number;
     returnRate: number;
+    ordersCount: number;
+    ordersValue: number;
+    quotesCount: number;
+    quotesValue: number;
+    ordersByStatus: StatusCount[];
+    quotesByStatus: StatusCount[];
   };
   charts: {
     revenueVsCollection: RevenuePoint[];
@@ -242,6 +253,38 @@ export default function SalesDashboard() {
           />
         </div>
 
+        {/* Row 2: Sales Performance KPIs (Đơn hàng & Báo giá) */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <MetricCard
+            label="Tổng giá trị đơn hàng"
+            value={`${compactCurrency(summary.ordersValue || 0)} ₫`}
+            helper={`${summary.ordersCount || 0} đơn hàng đã lập trong kỳ`}
+            icon={CircleDollarSign}
+            tone="orange"
+          />
+          <MetricCard
+            label="Giá trị báo giá nháp/gửi"
+            value={`${compactCurrency(summary.quotesValue || 0)} ₫`}
+            helper={`${summary.quotesCount || 0} báo giá đã tạo trong kỳ`}
+            icon={TrendingUp}
+            tone="orange"
+          />
+          <MetricCard
+            label="Đơn đã xác nhận"
+            value={String(summary.ordersByStatus?.find(s => s.status === "confirmed")?.count || 0)}
+            helper={`${summary.ordersByStatus?.find(s => s.status === "completed")?.count || 0} đơn hoàn thành`}
+            icon={PackageCheck}
+            tone="emerald"
+          />
+          <MetricCard
+            label="Báo giá đã duyệt"
+            value={String(summary.quotesByStatus?.find(s => s.status === "accepted")?.count || 0)}
+            helper={`${summary.quotesByStatus?.find(s => s.status === "sent")?.count || 0} báo giá đang gửi khách`}
+            icon={BadgePercent}
+            tone="rose"
+          />
+        </div>
+
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
           <ChartPanel
             title="Doanh thu và dòng tiền"
@@ -366,6 +409,63 @@ export default function SalesDashboard() {
               )) : <EmptyState icon={PackageCheck} text="Không có hóa đơn quá hạn" />}
             </div>
           </ChartPanel>
+        </div>
+
+        {/* Sales Order & Quotation Status Breakdown Bento Panel */}
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          {/* Order Status Breakdown */}
+          <div className="bg-slate-900/[0.01] dark:bg-white/[0.01] ring-1 ring-slate-900/[0.03] dark:ring-white/[0.05] p-2 rounded-[2rem]">
+            <section className="overflow-hidden rounded-[calc(2rem-0.5rem)] border border-slate-200/40 dark:border-slate-800/40 bg-white dark:bg-slate-900 shadow-[0_8px_30px_rgba(0,0,0,0.02)]">
+              <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 px-5 py-4">
+                <div className="text-left">
+                  <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Trạng thái Đơn bán hàng (Sale Orders)</h2>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Phân bố đơn hàng theo trạng thái vận hành trong kỳ</p>
+                </div>
+              </header>
+              <div className="grid grid-cols-2 gap-px bg-slate-100 dark:bg-slate-800 sm:grid-cols-5">
+                {(summary.ordersByStatus || []).map((item) => (
+                  <div key={item.status} className="bg-white dark:bg-slate-900 p-5 transition duration-300 hover:bg-slate-50/50 dark:hover:bg-slate-850/50 text-left">
+                    <span className="inline-block rounded-full bg-slate-150 dark:bg-slate-850 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      {item.status === "draft" ? "Nháp" :
+                       item.status === "confirmed" ? "Xác nhận" :
+                       item.status === "shipped" ? "Giao hàng" :
+                       item.status === "completed" ? "Xong" : "Đã hủy"}
+                    </span>
+                    <p className="mt-4 text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">{item.count}</p>
+                    <p className="mt-1 text-[10px] text-slate-400 dark:text-slate-550">đơn</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+
+          {/* Quotation Status Breakdown */}
+          <div className="bg-slate-900/[0.01] dark:bg-white/[0.01] ring-1 ring-slate-900/[0.03] dark:ring-white/[0.05] p-2 rounded-[2rem]">
+            <section className="overflow-hidden rounded-[calc(2rem-0.5rem)] border border-slate-200/40 dark:border-slate-800/40 bg-white dark:bg-slate-900 shadow-[0_8px_30px_rgba(0,0,0,0.02)]">
+              <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 px-5 py-4">
+                <div className="text-left">
+                  <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Trạng thái Báo giá (Quotations)</h2>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Tỷ lệ duyệt và tiến độ gửi báo cáo trong kỳ</p>
+                </div>
+              </header>
+              <div className="grid grid-cols-2 gap-px bg-slate-100 dark:bg-slate-800 sm:grid-cols-7">
+                {(summary.quotesByStatus || []).map((item) => (
+                  <div key={item.status} className="bg-white dark:bg-slate-900 p-4 transition duration-300 hover:bg-slate-50/50 dark:hover:bg-slate-850/50 text-left">
+                    <span className="inline-block rounded-full bg-slate-150 dark:bg-slate-850 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate max-w-full">
+                      {item.status === "draft" ? "Nháp" :
+                       item.status === "sent" ? "Đã gửi" :
+                       item.status === "accepted" ? "Duyệt" :
+                       item.status === "rejected" ? "Từ chối" :
+                       item.status === "expired" ? "Hết hạn" :
+                       item.status === "cancelled" ? "Hủy" : "Đã chuyển"}
+                    </span>
+                    <p className="mt-4 text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">{item.count}</p>
+                    <p className="mt-1 text-[10px] text-slate-400 dark:text-slate-550">bản</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
         </div>
 
         <div className="bg-slate-900/[0.01] dark:bg-white/[0.01] ring-1 ring-slate-900/[0.03] dark:ring-white/[0.05] p-2 rounded-[2rem] print:hidden">

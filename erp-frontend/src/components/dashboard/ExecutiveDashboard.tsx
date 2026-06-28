@@ -6,8 +6,10 @@ import {
   Download,
   Printer,
   Sparkles,
+  Filter,
+  X,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -68,6 +70,11 @@ export function DashboardHeader({
   onPrint,
   highlights = [],
 }: DashboardHeaderProps) {
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [tempBranchId, setTempBranchId] = useState(branchId);
+  const [tempPeriod, setTempPeriod] = useState<DashboardPeriod>(period);
+  const [tempDateFrom, setTempDateFrom] = useState(dateFrom);
+  const [tempDateTo, setTempDateTo] = useState(dateTo);
   return (
     <section className="relative text-slate-800 dark:text-white pb-2 print:pb-0">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-200/60 dark:border-slate-800/60">
@@ -88,32 +95,132 @@ export function DashboardHeader({
 
         {/* Action Controls */}
         <div className="flex flex-wrap items-center gap-2 shrink-0 justify-start md:justify-end print:hidden">
-          {branches.length > 0 && onBranchChange && (
-            <ControlSelect
-              value={branchId}
-              onChange={onBranchChange}
-              options={[
-                { value: "", label: "Tất cả chi nhánh" },
-                ...branches.map((branch) => ({
-                  value: String(branch.id),
-                  label: branch.name,
-                })),
-              ]}
-            />
-          )}
+          
+          {/* Unified Filter Dropdown */}
+          <div className="relative inline-block text-left print:hidden">
+            <button
+              type="button"
+              onClick={() => {
+                setTempBranchId(branchId);
+                setTempPeriod(period);
+                setTempDateFrom(dateFrom);
+                setTempDateTo(dateTo);
+                setIsFilterOpen(!isFilterOpen);
+              }}
+              className={`inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-xs font-bold uppercase tracking-wider shadow-sm transition ${
+                isFilterOpen
+                  ? "border-orange-500 bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400"
+                  : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-700 dark:text-slate-200"
+              }`}
+            >
+              <Filter className="h-4 w-4 text-orange-500" />
+              <span>Bộ lọc báo cáo</span>
+              {(branchId !== "" || period !== "last_30_days") && (
+                <span className="flex h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
+              )}
+            </button>
 
-          <ControlSelect
-            value={period}
-            onChange={(value) => onPeriodChange(value as DashboardPeriod)}
-            icon={<CalendarDays className="h-4 w-4 text-slate-400 dark:text-slate-500" />}
-            options={[
-              { value: "today", label: "Hôm nay" },
-              { value: "last_7_days", label: "7 ngày qua" },
-              { value: "last_30_days", label: "30 ngày qua" },
-              { value: "ytd", label: "Năm nay" },
-              { value: "custom", label: "Tùy chọn" },
-            ]}
-          />
+            {isFilterOpen && (
+              <>
+                {/* Overlay to handle click outside */}
+                <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setIsFilterOpen(false)} />
+                
+                {/* Popover Content */}
+                <div className="absolute right-0 mt-2 z-50 w-80 origin-top-right rounded-2xl border border-slate-250 dark:border-slate-800 bg-white dark:bg-slate-950 p-5 shadow-2xl ring-1 ring-black/5 focus:outline-none animate-in fade-in-50 slide-in-from-top-1 duration-150 text-left">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 pb-3">
+                      <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-900 dark:text-white">Bộ lọc nâng cao</h3>
+                      <button type="button" onClick={() => setIsFilterOpen(false)} className="text-slate-400 hover:text-slate-650 dark:hover:text-slate-300 transition">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    {/* Branch Selection */}
+                    {branches.length > 0 && onBranchChange && (
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-450 dark:text-slate-500">Chi nhánh</label>
+                        <select
+                          value={tempBranchId}
+                          onChange={(e) => setTempBranchId(e.target.value)}
+                          className="w-full h-10 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 text-xs text-slate-700 dark:text-slate-200 outline-none focus:border-orange-500/50"
+                        >
+                          <option value="">Tất cả chi nhánh</option>
+                          {branches.map((b) => (
+                            <option key={b.id} value={String(b.id)}>{b.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Period Selection */}
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-450 dark:text-slate-500">Thời gian</label>
+                      <select
+                        value={tempPeriod}
+                        onChange={(e) => setTempPeriod(e.target.value as DashboardPeriod)}
+                        className="w-full h-10 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 text-xs text-slate-700 dark:text-slate-200 outline-none focus:border-orange-500/50"
+                      >
+                        <option value="today">Hôm nay</option>
+                        <option value="last_7_days">7 ngày qua</option>
+                        <option value="last_30_days">30 ngày qua</option>
+                        <option value="ytd">Năm nay</option>
+                        <option value="custom">Tùy chọn ngày</option>
+                      </select>
+                    </div>
+
+                    {/* Date Inputs if Custom */}
+                    {tempPeriod === "custom" && (
+                      <div className="grid grid-cols-2 gap-3 pt-1">
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Từ ngày</label>
+                          <input
+                            type="date"
+                            value={tempDateFrom}
+                            onChange={(e) => setTempDateFrom(e.target.value)}
+                            className="w-full h-9 rounded-lg border border-slate-250 dark:border-slate-800 bg-white dark:bg-slate-900 px-2.5 text-xs text-slate-750 dark:text-slate-200 outline-none focus:border-orange-500/50"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Đến ngày</label>
+                          <input
+                            type="date"
+                            value={tempDateTo}
+                            onChange={(e) => setTempDateTo(e.target.value)}
+                            className="w-full h-9 rounded-lg border border-slate-250 dark:border-slate-800 bg-white dark:bg-slate-900 px-2.5 text-xs text-slate-750 dark:text-slate-200 outline-none focus:border-orange-500/50"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800/60 pt-4 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsFilterOpen(false)}
+                        className="h-9 px-4 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-850 dark:text-slate-400 transition"
+                      >
+                        Hủy
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onPeriodChange(tempPeriod);
+                          if (onBranchChange) onBranchChange(tempBranchId);
+                          onDateFromChange(tempDateFrom);
+                          onDateToChange(tempDateTo);
+                          setIsFilterOpen(false);
+                        }}
+                        className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 px-4 text-xs font-bold text-white shadow-md shadow-orange-500/10 transition active:scale-[0.98]"
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                        Áp dụng
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
 
           <button
             type="button"
@@ -157,14 +264,22 @@ export function DashboardHeader({
           <div className="flex-1" />
         )}
 
-        {period === "custom" && (
-          <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/60 p-3 rounded-2xl shadow-sm print:hidden shrink-0 self-start sm:self-center">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mr-1">Từ ngày</span>
-            <DateInput value={dateFrom} onChange={onDateFromChange} />
-            <span className="text-slate-400 font-bold">→</span>
-            <DateInput value={dateTo} onChange={onDateToChange} />
-          </div>
-        )}
+        {/* Current Active Filter Badge */}
+        <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/60 px-4 py-2.5 rounded-2xl shadow-sm print:hidden shrink-0 self-start sm:self-center text-xs font-semibold text-slate-650 dark:text-slate-350 text-left">
+          <CalendarDays className="h-4 w-4 text-orange-500 shrink-0" />
+          <span className="text-slate-400 dark:text-slate-500 font-normal">Đang lọc theo:</span>
+          <span className="text-slate-900 dark:text-white font-extrabold">
+            {period === "today" ? "Hôm nay" :
+             period === "last_7_days" ? "7 ngày qua" :
+             period === "last_30_days" ? "30 ngày qua" :
+             period === "ytd" ? "Năm nay" : "Tùy chọn ngày"}
+          </span>
+          {(dateFrom || dateTo) && (
+            <span className="text-orange-600 dark:text-orange-400 font-bold ml-1">
+              ({dateFrom ? new Date(dateFrom).toLocaleDateString("vi-VN") : "..."} - {dateTo ? new Date(dateTo).toLocaleDateString("vi-VN") : "..."})
+            </span>
+          )}
+        </div>
       </div>
     </section>
   );
