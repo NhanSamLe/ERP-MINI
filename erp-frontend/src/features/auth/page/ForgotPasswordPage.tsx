@@ -38,7 +38,7 @@ export default function ForgotPasswordPage() {
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Username/Email Input */}
          <FormInput
-          label="Username"
+          label="Tên đăng nhập"
           value={username}
           onChange={setUsername}
           placeholder="Nhập username"

@@ -72,7 +72,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
 
           {/* Footer */}
           <p className="text-center text-xs text-white/60 mt-6">
-            © 2025 ERP Mini. All rights reserved.
+            © 2025 ERP Mini. Đã đăng ký bản quyền.
           </p>
         </div>
       </div>

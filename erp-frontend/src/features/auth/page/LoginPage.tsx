@@ -20,6 +20,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const location = useLocation();
   const message = (location.state as { message?: string })?.message;
   const dispatch = useDispatch();
@@ -28,7 +29,7 @@ export default function LoginPage() {
   // check  auth neu co chuyen trang k vao login 
   const { isAuthenticated, user , loading} = useSelector((state: RootState) => state.auth);
   if (loading) {
-    return <div>Loading...</div>;
+    return <div>Đang tải...</div>;
   }
   if (isAuthenticated && user) {
     const rolePath = roleRoutes[user.role.code] || "/profile";
@@ -37,6 +38,7 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSubmitting(true);
 
     try {
       // 1. gọi API login → lấy access token
@@ -54,7 +56,9 @@ export default function LoginPage() {
       navigate(rolePath);
     } catch (err) {
       const axiosErr = err as AxiosError<{ message: string }>;
-      setError(axiosErr.response?.data?.message || "Login failed");
+      setError(axiosErr.response?.data?.message || "Đăng nhập thất bại");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -107,8 +111,8 @@ export default function LoginPage() {
 
        {error && <Alert type="error" message={error} />}
 
-       <Button type="submit" fullWidth>
-          Đăng nhập
+        <Button type="submit" fullWidth loading={submitting}>
+           Đăng nhập
         </Button>
       </form>
 

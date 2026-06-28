@@ -41,3 +41,8 @@ export async function updateUserInfo(data: { full_name?: string; email?: string;
   const res =await api.updateUserInfo(data);
   return res.data;
 }
+export async function changePassword(data: { oldPassword?: string; newPassword?: string })
+{
+  const res = await api.changePassword(data);
+  return res.data;
+}

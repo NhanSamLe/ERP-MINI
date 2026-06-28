@@ -72,3 +72,6 @@ export async function updateUserAvatar(formData: FormData) {
 export function updateUserInfo(data: { full_name?: string; email?: string; phone?: string }){
   return axiosClient.put("/auth/update-me",data)
 }
+export function changePassword(data: { oldPassword?: string; newPassword?: string }){
+  return axiosClient.put("/auth/change-password", data)
+}
