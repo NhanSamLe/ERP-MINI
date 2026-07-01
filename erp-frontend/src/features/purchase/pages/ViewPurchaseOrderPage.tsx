@@ -57,6 +57,7 @@ interface LineItem {
   uom_id?: number | null;
   discount_percent?: number | null;
   discount_amount?: number | null;
+  discount_type?: "percentage" | "fixed" | null;
   tax_rate_id?: number;
   tax_type: string;
   tax_rate: number;

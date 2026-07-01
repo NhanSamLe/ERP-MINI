@@ -251,9 +251,9 @@ export default function RfqComparePage() {
                                 <div className="font-semibold text-gray-900">
                                   {formatVND(lineData.unit_price)}
                                 </div>
-                                {(lineData.discount_type === "fixed" && lineData.discount_amount > 0) ? (
+                                {(lineData.discount_type === "fixed" && (lineData.discount_amount ?? 0) > 0) ? (
                                   <div className="text-xs text-red-600">
-                                    -{formatVND(lineData.discount_amount)}
+                                    -{formatVND(lineData.discount_amount ?? 0)}
                                   </div>
                                 ) : lineData.discount_percent > 0 ? (
                                   <div className="text-xs text-red-600">

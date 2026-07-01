@@ -1,5 +1,11 @@
 require("dotenv").config();
 
+// RDS trên AWS bắt buộc kết nối SSL. Bật khi DB_SSL=true.
+const sslOptions =
+  process.env.DB_SSL === "true"
+    ? { ssl: { require: true, rejectUnauthorized: false } }
+    : {};
+
 module.exports = {
   development: {
     username: process.env.DB_USER,
@@ -8,6 +14,7 @@ module.exports = {
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
     dialect: "mysql",
+    dialectOptions: sslOptions,
   },
   test: {
     username: "root",
@@ -21,6 +28,8 @@ module.exports = {
     password: process.env.DB_PASS,
     database: process.env.DB_NAME,
     host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
     dialect: "mysql",
+    dialectOptions: sslOptions,
   },
 };

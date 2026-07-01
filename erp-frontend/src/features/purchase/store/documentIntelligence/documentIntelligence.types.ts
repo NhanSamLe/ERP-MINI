@@ -12,6 +12,8 @@ export interface OcrLineItem {
   amount: number;
   confidence: number;
   needsReview?: boolean;
+  discount_percent?: number;
+  discount_amount?: number;
 }
 
 // =====================
