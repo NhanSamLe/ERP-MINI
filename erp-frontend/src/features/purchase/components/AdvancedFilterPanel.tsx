@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Button,
   Card,
@@ -13,6 +13,8 @@ import {
 } from "antd";
 import { SearchOutlined, ClearOutlined } from "@ant-design/icons";
 import { SearchQuery } from "../store/purchaseOrder.types";
+import { fetchPartners } from "../../partner/partner.service";
+import { Partner } from "../../partner/store/partner.types";
 
 interface AdvancedFilterPanelProps {
   onSearch: (filters: SearchQuery) => void;
@@ -48,6 +50,23 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
 }) => {
   const [form] = Form.useForm();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [suppliers, setSuppliers] = useState<Partner[]>([]);
+  const [suppliersLoading, setSuppliersLoading] = useState(false);
+
+  useEffect(() => {
+    const loadSuppliers = async () => {
+      setSuppliersLoading(true);
+      try {
+        const data = await fetchPartners({ type: "supplier", status: "active" });
+        setSuppliers(data);
+      } catch (err) {
+        console.error("Failed to load suppliers:", err);
+      } finally {
+        setSuppliersLoading(false);
+      }
+    };
+    loadSuppliers();
+  }, []);
 
   const handleSearch = async () => {
     try {
@@ -105,9 +124,16 @@ export const AdvancedFilterPanel: React.FC<AdvancedFilterPanelProps> = ({
               name="supplier_id"
               tooltip="Chọn nhà cung cấp"
             >
-              <InputNumber
-                placeholder="Nhập ID nhà cung cấp"
-                style={{ width: "100%" }}
+              <Select
+                showSearch
+                placeholder="Chọn nhà cung cấp"
+                loading={suppliersLoading}
+                optionFilterProp="label"
+                options={suppliers.map((s) => ({
+                  label: s.name,
+                  value: s.id,
+                }))}
+                allowClear
               />
             </Form.Item>
           </Col>
