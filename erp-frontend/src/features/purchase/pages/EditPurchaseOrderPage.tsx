@@ -422,7 +422,7 @@ export default function EditPurchaseOrderPage() {
 
           const lineDiscountPct = Number((l as any).discount_percent ?? 0);
           const lineDiscountAmt = Number((l as any).discount_amount ?? 0);
-          const lineDiscountType = (lineDiscountAmt > 0 && !lineDiscountPct) ? "fixed" : "percentage";
+          const lineDiscountType: "percentage" | "fixed" = (lineDiscountAmt > 0 && !lineDiscountPct) ? "fixed" : "percentage";
 
           return {
             id: l.id ?? undefined,

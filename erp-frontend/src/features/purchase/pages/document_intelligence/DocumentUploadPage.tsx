@@ -23,6 +23,7 @@ import {
   getDocumentResultThunk,
   confirmDocumentThunk,
   resetDocumentState,
+  setCurrentDocumentId,
 } from "../../store/documentIntelligence";
 import {
   OcrLineItem,

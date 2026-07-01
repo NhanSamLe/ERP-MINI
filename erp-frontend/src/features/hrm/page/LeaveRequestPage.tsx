@@ -10,7 +10,7 @@ const LeaveRequestPage: React.FC = () => {
   const branches = useAppSelector((state) => state.branch.branches || []);
   const authUser = useAppSelector((state) => state.auth.user);
 
-  const userRole = authUser?.role?.code || authUser?.role_code || "";
+  const userRole = authUser?.role?.code || "";
   const canApproveReject = ["HRMANAGER", "ADMIN"].includes(userRole);
 
   // Filters State

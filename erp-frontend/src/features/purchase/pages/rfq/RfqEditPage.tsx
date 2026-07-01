@@ -319,8 +319,6 @@ export default function RfqEditPage() {
         uom_id: purchaseUomId,
         quantity: 1,
         unit_price: price,
-        discount_percent: 0,
-        discount_amount: 0,
         discount_type: "percentage",
         tax_rate_id: product.tax_rate_id ?? null,
         tax_rate: taxRate,
