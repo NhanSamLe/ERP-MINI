@@ -29,7 +29,7 @@ export default function SaleOrderDetailLines({ order }: Props) {
                   Quantity
                 </th>
                 <th className="px-6 py-4 text-right text-gray-700 font-semibold">
-                  Unit Price
+                  Đơn giá
                 </th>
                 <th className="px-6 py-4 text-center text-gray-700 font-semibold">
                   Tax

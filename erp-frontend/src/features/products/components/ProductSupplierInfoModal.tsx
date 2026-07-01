@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { X } from "lucide-react";
 import { Button } from "../../../components/ui/Button";
@@ -96,7 +96,7 @@ export function ProductSupplierInfoModal({
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-xl font-semibold text-gray-800">
-            {supplierInfo ? "Edit Supplier Info" : "Add Supplier"}
+            {supplierInfo ? "Chỉnh sửa Thông tin NCC" : "Thêm Nhà Cung Cấp"}
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition">
             <X className="w-5 h-5" />
@@ -104,10 +104,9 @@ export function ProductSupplierInfoModal({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Supplier */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Supplier <span className="text-red-500">*</span>
+              Nhà cung cấp <span className="text-red-500">*</span>
             </label>
             <select
               value={formData.supplier_id}
@@ -116,7 +115,7 @@ export function ProductSupplierInfoModal({
               required
               disabled={!!supplierInfo}
             >
-              <option value={0}>-- Select Supplier --</option>
+              <option value={0}>-- Chọn nhà cung cấp --</option>
               {suppliers.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
@@ -124,35 +123,35 @@ export function ProductSupplierInfoModal({
           </div>
 
           <FormInput
-            label="Supplier Product Code"
+            label="Mã sản phẩm của nhà cung cấp"
             value={formData.supplier_product_code || ""}
             onChange={(v) => setFormData({ ...formData, supplier_product_code: v })}
-            placeholder="Enter supplier product code"
+            placeholder="Nhập mã sản phẩm của NCC"
           />
 
           <FormInput
-            label="Supplier Product Name"
+            label="Tên sản phẩm của nhà cung cấp"
             value={formData.supplier_product_name || ""}
             onChange={(v) => setFormData({ ...formData, supplier_product_name: v })}
-            placeholder="Enter supplier product name"
+            placeholder="Nhập tên sản phẩm của NCC"
           />
 
           {/* Price & Currency */}
           <div className="grid grid-cols-2 gap-4">
             <PriceInput
-              label="Price"
+              label="Giá mua"
               value={formData.price}
               onChange={(v) => setFormData({ ...formData, price: v || undefined })}
               currency={selectedCurrency?.code || "VND"}
             />
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Tiền tệ</label>
               <select
                 value={formData.currency_id || ""}
                 onChange={(e) => setFormData({ ...formData, currency_id: e.target.value ? Number(e.target.value) : undefined })}
                 className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-orange-400"
               >
-                <option value="">-- Select Currency --</option>
+                <option value="">-- Chọn tiền tệ --</option>
                 {currencies.map((c) => (
                   <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
                 ))}
@@ -163,7 +162,7 @@ export function ProductSupplierInfoModal({
           {/* MOQ & Lead Time */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Minimum Order Quantity</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Số lượng tối thiểu (MOQ)</label>
               <input
                 type="text"
                 value={formData.min_order_qty != null ? String(formData.min_order_qty) : ""}
@@ -173,7 +172,7 @@ export function ProductSupplierInfoModal({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Lead Time (days)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Thời gian giao hàng (ngày)</label>
               <input
                 type="text"
                 value={formData.lead_time_days != null ? String(formData.lead_time_days) : ""}
@@ -194,16 +193,16 @@ export function ProductSupplierInfoModal({
               className="w-4 h-4 text-orange-500 border-gray-300 rounded focus:ring-orange-400"
             />
             <label htmlFor="is_preferred" className="text-sm text-gray-700">
-              Set as preferred supplier
+              Đặt làm nhà cung cấp ưu tiên
             </label>
           </div>
 
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" onClick={onClose} className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-2 rounded-lg">
-              Cancel
+              Hủy
             </Button>
             <Button type="submit" disabled={isSubmitting} className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg">
-              {isSubmitting ? "Saving..." : supplierInfo ? "Update" : "Add"}
+              {isSubmitting ? "Đang lưu..." : supplierInfo ? "Cập nhật" : "Thêm"}
             </Button>
           </div>
         </form>

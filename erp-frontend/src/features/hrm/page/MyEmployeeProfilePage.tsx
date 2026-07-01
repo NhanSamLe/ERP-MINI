@@ -32,7 +32,7 @@ export default function MyEmployeeProfilePage({ employeeId }: Props) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-6">
         <p className="text-red-600">
-          Your account is not linked to any employee profile (employee_id).
+          Tài khoản của bạn chưa được liên kết với hồ sơ nhân viên nào (thiếu employee_id).
         </p>
       </div>
     );
@@ -41,64 +41,81 @@ export default function MyEmployeeProfilePage({ employeeId }: Props) {
   if (loading || !employee) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-6">
-        <p className="text-gray-500">Loading employee profile...</p>
+        <p className="text-gray-500">Đang tải hồ sơ nhân viên...</p>
       </div>
     );
   }
 
+  const getGenderLabel = (g: string) => {
+    const map: Record<string, string> = {
+      male: "Nam",
+      female: "Nữ",
+      other: "Khác",
+    };
+    return map[String(g).toLowerCase()] || g;
+  };
+
+  const getStatusLabel = (s: string) => {
+    const map: Record<string, string> = {
+      active: "Hoạt động",
+      inactive: "Ngừng hoạt động",
+    };
+    return map[String(s).toLowerCase()] || s;
+  };
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
-      <h1 className="text-2xl font-bold mb-4">My Profile</h1>
+      <h1 className="text-2xl font-bold mb-4">Hồ sơ cá nhân</h1>
 
       <div className="bg-white border rounded-xl shadow-sm p-6 space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <div className="text-xs text-gray-500">Employee Code</div>
+            <div className="text-xs text-gray-500">Mã nhân viên</div>
             <div className="font-semibold">{employee.emp_code}</div>
           </div>
 
           <div>
-            <div className="text-xs text-gray-500">Full Name</div>
+            <div className="text-xs text-gray-500">Họ và tên</div>
             <div className="font-semibold">{employee.full_name}</div>
           </div>
 
           <div>
-            <div className="text-xs text-gray-500">Gender</div>
-            <div>{employee.gender}</div>
+            <div className="text-xs text-gray-500">Giới tính</div>
+            <div>{getGenderLabel(employee.gender)}</div>
           </div>
 
           <div>
-            <div className="text-xs text-gray-500">Branch</div>
+            <div className="text-xs text-gray-500">Chi nhánh</div>
             <div>{(employee as any).branch?.name || "-"}</div>
           </div>
 
           <div>
-            <div className="text-xs text-gray-500">Department</div>
+            <div className="text-xs text-gray-500">Phòng ban</div>
             <div>{(employee as any).department?.name || "-"}</div>
           </div>
 
           <div>
-            <div className="text-xs text-gray-500">Position</div>
+            <div className="text-xs text-gray-500">Chức vụ</div>
             <div>{(employee as any).position?.name || "-"}</div>
           </div>
 
           <div>
-            <div className="text-xs text-gray-500">Contract Type</div>
+            <div className="text-xs text-gray-500">Loại hợp đồng</div>
             <div>{employee.contract_type}</div>
           </div>
 
           <div>
-            <div className="text-xs text-gray-500">Status</div>
-            <div>{employee.status === "active" ? "Active" : "Inactive"}</div>
+            <div className="text-xs text-gray-500">Trạng thái</div>
+            <div>{getStatusLabel(employee.status)}</div>
           </div>
 
           <div>
-            <div className="text-xs text-gray-500">Bank Account Number</div>
+            <div className="text-xs text-gray-500">Số tài khoản ngân hàng</div>
             <div>{employee.bank_account || "-"}</div>
           </div>
 
           <div>
-            <div className="text-xs text-gray-500">Bank Name</div>
+            <div className="text-xs text-gray-500">Tên ngân hàng</div>
             <div>{employee.bank_name || "-"}</div>
           </div>
         </div>

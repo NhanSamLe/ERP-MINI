@@ -4,8 +4,12 @@ import { generateReceiptNo } from "../../../core/utils/receipt.util";
 import { sequelize } from "../../../config/db";
 import { SaleOrder } from "../models/saleOrder.model";
 import { SaleOrderLine } from "../models/saleOrderLine.model";
-import { Currency, ExchangeRate, Opportunity, PriceList, PriceListItem, Product, TaxRate, StockMove, StockMoveLine, Uom, Partner, User, Branch } from "../../../models";
+import { StockMove } from "../../inventory/models/stockMove.model";
+import { StockMoveLine } from "../../inventory/models/stockMoveLine.model";
+import { Currency, ExchangeRate, Opportunity, PriceList, PriceListItem, Product, TaxRate, Uom, Partner, User, Branch } from "../../../models";
 import { Op } from "sequelize";
+import { Role } from "../../../core/types/enum";
+import { getCompanyBranchIds } from "../../finance/services/companyScope.service";
 
 async function getCurrencyRateToVnd(currencyId?: number | null, fallbackRate?: number | null) {
   if (!currencyId) return Number(fallbackRate || 1);
@@ -36,17 +40,29 @@ async function convertBetweenCurrencies(
   return (amount * sourceRate) / targetRateToVnd;
 }
 
+function canAutoApproveSaleOrder(user: any) {
+  return [Role.SALESMANAGER, Role.ADMIN].includes(user?.role);
+}
+
 export const quotationService = {
   async getAll(user: any) {
     const where: any = {};
-    if (user.role === "ADMIN") {
-      // ADMIN: xem tất cả mọi branch
-    } else if (user.role === "SALESMANAGER") {
-      // SALESMANAGER: xem toàn bộ trong branch của mình
-      where.branch_id = user.branch_id;
+    const companyBranchIds = await getCompanyBranchIds(user);
+
+    if (user.role === "ADMIN" || user.role === "CEO") {
+      where.branch_id = { [Op.in]: companyBranchIds };
+    } else if (user.role === "SALESMANAGER" || user.role === "BRANCH_MANAGER") {
+      if (user.branch_id && companyBranchIds.includes(Number(user.branch_id))) {
+        where.branch_id = user.branch_id;
+      } else {
+        where.branch_id = { [Op.in]: companyBranchIds };
+      }
     } else {
-      // SALES và các role khác: chỉ xem báo giá do mình phụ trách
-      where.branch_id = user.branch_id;
+      if (user.branch_id && companyBranchIds.includes(Number(user.branch_id))) {
+        where.branch_id = user.branch_id;
+      } else {
+        where.branch_id = { [Op.in]: companyBranchIds };
+      }
       where.sales_person_id = user.id;
     }
     return await Quotation.findAll({
@@ -64,12 +80,22 @@ export const quotationService = {
 
   async getByOpportunity(opportunityId: number, user: any) {
     const where: any = { opportunity_id: opportunityId };
-    if (user.role === "ADMIN") {
-      // ADMIN: không filter branch
-    } else if (user.role === "SALESMANAGER") {
-      where.branch_id = user.branch_id;
+    const companyBranchIds = await getCompanyBranchIds(user);
+
+    if (user.role === "ADMIN" || user.role === "CEO") {
+      where.branch_id = { [Op.in]: companyBranchIds };
+    } else if (user.role === "SALESMANAGER" || user.role === "BRANCH_MANAGER") {
+      if (user.branch_id && companyBranchIds.includes(Number(user.branch_id))) {
+        where.branch_id = user.branch_id;
+      } else {
+        where.branch_id = { [Op.in]: companyBranchIds };
+      }
     } else {
-      where.branch_id = user.branch_id;
+      if (user.branch_id && companyBranchIds.includes(Number(user.branch_id))) {
+        where.branch_id = user.branch_id;
+      } else {
+        where.branch_id = { [Op.in]: companyBranchIds };
+      }
       where.sales_person_id = user.id;
     }
     return await Quotation.findAll({
@@ -105,8 +131,12 @@ export const quotationService = {
       ],
     });
     if (!q) throw new Error("Quotation not found");
-    // Branch check: non-ADMIN chỉ được xem trong branch mình
-    if (user.role !== "ADMIN" && q.branch_id !== user.branch_id)
+    const companyBranchIds = await getCompanyBranchIds(user);
+    if (!companyBranchIds.includes(Number(q.branch_id))) {
+      throw new Error("Access denied (cross-company)");
+    }
+    // Branch check: non-ADMIN/CEO chỉ được xem trong branch mình
+    if (user.role !== "ADMIN" && user.role !== "CEO" && q.branch_id !== user.branch_id)
       throw new Error("Access denied (cross-branch)");
     // SALES chỉ xem báo giá của mình
     if (user.role === "SALES" && q.sales_person_id !== user.id)
@@ -116,15 +146,26 @@ export const quotationService = {
 
   /** SALESMANAGER chuyển báo giá sang sales khác trong cùng branch */
   async reassign(id: number, newSalesId: number, manager: any) {
-    if (!["SALESMANAGER", "ADMIN"].includes(manager.role))
-      throw new Error("Chỉ Sales Manager hoặc Admin mới có thể chuyển đổi báo giá");
+    if (!["SALESMANAGER", "BRANCH_MANAGER", "ADMIN", "CEO"].includes(manager.role))
+      throw new Error("Chỉ Sales Manager, Branch Manager, CEO hoặc Admin mới có thể chuyển đổi báo giá");
     const q = await Quotation.findByPk(id);
     if (!q) throw new Error("Quotation not found");
-    if (manager.role !== "ADMIN" && q.branch_id !== manager.branch_id)
+
+    const companyBranchIds = await getCompanyBranchIds(manager);
+    if (!companyBranchIds.includes(Number(q.branch_id))) {
+      throw new Error("Access denied (cross-company)");
+    }
+
+    if (manager.role !== "ADMIN" && manager.role !== "CEO" && q.branch_id !== manager.branch_id)
       throw new Error("Cross-branch denied");
     const targetUser = await User.findByPk(newSalesId);
     if (!targetUser) throw new Error("Sales user không tồn tại");
-    if (manager.role !== "ADMIN" && (targetUser as any).branch_id !== manager.branch_id)
+
+    if (!companyBranchIds.includes(Number((targetUser as any).branch_id))) {
+      throw new Error("Không thể chuyển cho sales ở công ty khác");
+    }
+
+    if (manager.role !== "ADMIN" && manager.role !== "CEO" && (targetUser as any).branch_id !== manager.branch_id)
       throw new Error("Không thể chuyển cho sales ở branch khác");
     const old = q.sales_person_id;
     await q.update({ sales_person_id: newSalesId });
@@ -274,11 +315,17 @@ export const quotationService = {
         totalTax += lineTaxAmt;
       }
 
+      // Chiết khấu cấp đơn (order-level discount): giảm trừ vào doanh thu chịu thuế
+      // TRƯỚC khi tính VAT (chuẩn thuế GTGT VN). Áp dụng cùng hệ số lên cả base và
+      // tax (thuế tỉ lệ thuận với base) để thuế giảm theo, đồng thời tránh để tổng âm.
+      let discountFactor = 1;
       if (quotation.discount_percent > 0) {
-        totalBeforeTax = totalBeforeTax * (1 - quotation.discount_percent / 100);
-      } else if (quotation.discount_amount > 0) {
-        totalBeforeTax = totalBeforeTax - quotation.discount_amount;
+        discountFactor = 1 - quotation.discount_percent / 100;
+      } else if (quotation.discount_amount > 0 && totalBeforeTax > 0) {
+        discountFactor = Math.max(0, 1 - quotation.discount_amount / totalBeforeTax);
       }
+      totalBeforeTax = totalBeforeTax * discountFactor;
+      totalTax = totalTax * discountFactor;
       totalAftertax = totalBeforeTax + totalTax;
 
       await quotation.update({
@@ -296,7 +343,147 @@ export const quotationService = {
   },
 
   async update(id: number, data: any, user: any) {
-    throw new Error("Update quotation logic pending");
+    return await sequelize.transaction(async (t) => {
+      const q = await Quotation.findByPk(id, { transaction: t });
+      if (!q) throw new Error("Quotation not found");
+
+      // Permission Checks
+      if (q.approval_status !== "draft" && q.status !== "draft") {
+        throw new Error("Chỉ báo giá nháp mới có thể cập nhật.");
+      }
+
+      const companyBranchIds = await getCompanyBranchIds(user);
+      if (!companyBranchIds.includes(Number(q.branch_id))) {
+        throw new Error("Access denied (cross-company)");
+      }
+
+      if (user.role !== "ADMIN" && user.role !== "CEO" && q.branch_id !== user.branch_id) {
+        throw new Error("Access denied (cross-branch)");
+      }
+
+      if (user.role === "SALES" && q.sales_person_id !== user.id) {
+        throw new Error("Access denied: bạn không phụ trách báo giá này");
+      }
+
+      // Calculate exchange rate if currency is updated
+      let exchangeRate = Number(data.exchange_rate || 0);
+      if (data.currency_id && (!exchangeRate || exchangeRate <= 0)) {
+        exchangeRate = await getCurrencyRateToVnd(data.currency_id, null);
+      } else if (!exchangeRate || exchangeRate <= 0) {
+        exchangeRate = Number(q.exchange_rate || 1);
+      }
+
+      // Update quotation header
+      await q.update({
+        customer_id: data.customer_id,
+        opportunity_id: data.opportunity_id || null,
+        sales_person_id: data.sales_person_id || user.id,
+        quotation_date: data.quotation_date || q.quotation_date,
+        valid_until: data.valid_until,
+        currency_id: data.currency_id ?? null,
+        exchange_rate: exchangeRate,
+        payment_term_id: data.payment_term_id,
+        discount_percent: data.discount_percent || 0,
+        discount_amount: data.discount_amount || 0,
+        customer_notes: data.customer_notes,
+        internal_notes: data.internal_notes,
+      }, { transaction: t });
+
+      // Delete removed lines
+      if (data.deletedLineIds?.length) {
+        await QuotationLine.destroy({
+          where: { id: data.deletedLineIds, quotation_id: q.id },
+          transaction: t,
+        });
+      }
+
+      // Update / Add lines
+      const updatedLines = [];
+      let totalBeforeTax = 0;
+      let totalTax = 0;
+
+      const lines = data.lines || [];
+      for (const line of lines) {
+        const qty = Number(line.quantity || 0);
+        let price = Number(line.unit_price || 0);
+        if (qty < 0 || price < 0) throw new Error("Invalid price/qty");
+
+        const discPercent = Number(line.discount_percent || 0);
+        const discAmount = Number(line.discount_amount || 0);
+
+        let lineSub = qty * price;
+        if (discPercent > 0) lineSub = lineSub * (1 - discPercent / 100);
+        else if (discAmount > 0) lineSub = lineSub - discAmount;
+
+        // Auto tax rate lookup
+        let taxRateId = line.tax_rate_id;
+        if (!taxRateId) {
+          const product = await Product.findByPk(line.product_id, { transaction: t });
+          taxRateId = product?.tax_rate_id;
+        }
+
+        let lineTaxAmt = 0;
+        if (taxRateId) {
+          const tax = await TaxRate.findByPk(taxRateId, { transaction: t });
+          if (tax) lineTaxAmt = (lineSub * Number(tax.rate)) / 100;
+        }
+
+        const lineData = {
+          product_id: line.product_id,
+          uom_id: line.uom_id ?? null,
+          description: line.description,
+          quantity: qty,
+          unit_price: price,
+          discount_percent: discPercent,
+          discount_amount: discAmount,
+          tax_rate_id: taxRateId,
+          line_total: lineSub,
+          line_tax: lineTaxAmt,
+          line_total_after_tax: lineSub + lineTaxAmt,
+        };
+
+        if (line.id) {
+          const existingLine = await QuotationLine.findByPk(line.id, { transaction: t });
+          if (!existingLine || existingLine.quotation_id !== q.id) {
+            throw new Error("Invalid quotation line");
+          }
+          await existingLine.update(lineData, { transaction: t });
+          updatedLines.push(existingLine);
+        } else {
+          const newLine = await QuotationLine.create({
+            quotation_id: q.id,
+            ...lineData,
+          }, { transaction: t });
+          updatedLines.push(newLine);
+        }
+
+        totalBeforeTax += lineSub;
+        totalTax += lineTaxAmt;
+      }
+
+      // Order-level discount recalculation
+      let discountFactor = 1;
+      const discount_percent = Number(data.discount_percent || 0);
+      const discount_amount = Number(data.discount_amount || 0);
+
+      if (discount_percent > 0) {
+        discountFactor = 1 - discount_percent / 100;
+      } else if (discount_amount > 0 && totalBeforeTax > 0) {
+        discountFactor = Math.max(0, 1 - discount_amount / totalBeforeTax);
+      }
+
+      totalBeforeTax = totalBeforeTax * discountFactor;
+      totalTax = totalTax * discountFactor;
+      const totalAftertax = totalBeforeTax + totalTax;
+
+      await q.update({
+        total_before_tax: totalBeforeTax,
+        total_tax: totalTax,
+        total_after_tax: totalAftertax,
+      }, { transaction: t });
+
+      return q;
+    });
   },
 
   async submit(id: number, user: any) {
@@ -338,8 +525,12 @@ export const quotationService = {
 
   async markAccepted(id: number, user: any) {
     const q = await this.getById(id, user);
-    if (q.valid_until && new Date() > new Date(q.valid_until)) {
-      throw new Error("Báo giá đã hết hạn. Không thể chấp nhận.");
+    if (q.valid_until) {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const validUntilStr = new Date(q.valid_until).toISOString().slice(0, 10);
+      if (todayStr > validUntilStr) {
+        throw new Error("Báo giá đã hết hạn. Không thể chấp nhận.");
+      }
     }
     await q.update({ status: "accepted" });
     return q;
@@ -426,11 +617,43 @@ export const quotationService = {
     const t = await sequelize.transaction();
     try {
       const q = await Quotation.findByPk(id, {
-        include: [{ model: QuotationLine, as: "lines" }]
+        include: [{ model: QuotationLine, as: "lines" }],
+        lock: t.LOCK.UPDATE,
+        transaction: t,
       }) as any;
-      if (!q) throw new Error("Quotation not found");
+      if (!q) throw new Error("Không tìm thấy báo giá.");
+
+      // Chống tạo đơn trùng (kể cả khi 2 request đồng thời): nếu đã tồn tại đơn
+      // hàng gắn với báo giá này thì dừng ngay.
+      const dupOrder = await SaleOrder.findOne({
+        where: { quotation_id: q.id },
+        order: [["id", "DESC"]],
+        transaction: t,
+      });
+      if (dupOrder) {
+        throw new Error(
+          `Báo giá này đã được tạo đơn hàng trước đó (${dupOrder.order_no}). Không thể chuyển đổi lại.`,
+        );
+      }
+
+      // Đã chuyển đổi trước đó → báo rõ ràng thay vì để rơi vào lỗi trạng thái chung.
+      if (q.status === "converted") {
+        const existingOrder = await SaleOrder.findOne({
+          where: { quotation_id: q.id },
+          order: [["id", "DESC"]],
+        });
+        throw new Error(
+          existingOrder
+            ? `Báo giá này đã được tạo đơn hàng trước đó (${existingOrder.order_no}). Không thể chuyển đổi lại.`
+            : "Báo giá này đã được chuyển thành đơn hàng trước đó. Không thể chuyển đổi lại.",
+        );
+      }
+
       if (q.status !== "accepted") {
-        throw new Error("Chỉ được chuyển đổi Đơn hàng từ Báo giá đã được Khách hàng đồng ý.");
+        throw new Error("Chỉ được chuyển đổi đơn hàng từ báo giá đã được khách hàng đồng ý.");
+      }
+      if (q.approval_status !== "approved") {
+        throw new Error("Báo giá phải được duyệt trước khi chuyển thành đơn hàng.");
       }
       const now = new Date();
       const yyyy = now.getFullYear();
@@ -463,20 +686,16 @@ export const quotationService = {
         internal_notes: q.internal_notes,
         order_date: new Date(),
         created_by: user.id,
-        status: "draft", 
+        status: "draft",
         approval_status: "draft",
       }, { transaction: t });
 
-      // ... sau khi create Lines sẽ gọi submit/approve hoặc xử lý StockMove ở đây
-      // Để đạt chuẩn, ta bọc logic approve vào đây luôn:
-      const orderStatus: any = "confirmed";
-      const approvalStatus: any = "approved";
-      await order.update({ status: orderStatus, approval_status: approvalStatus }, { transaction: t });
-
+      const createdLines = [];
       for (const line of q.lines) {
-        await SaleOrderLine.create({
+        const createdLine = await SaleOrderLine.create({
           order_id: order.id,
           product_id: line.product_id,
+          uom_id: line.uom_id ?? null,
           description: line.description,
           quantity: line.quantity,
           unit_price: line.unit_price,
@@ -487,6 +706,7 @@ export const quotationService = {
           line_tax: line.line_tax,
           line_total_after_tax: line.line_total_after_tax,
         }, { transaction: t });
+        createdLines.push(createdLine);
       }
 
       await order.update({
@@ -495,36 +715,76 @@ export const quotationService = {
         total_after_tax: q.total_after_tax
       }, { transaction: t });
 
-      // GIAO HÀNG TỰ ĐỘNG (STOCK MOVE)
-      const nowSm = new Date();
-      const prefixSm = `SM-${nowSm.getFullYear()}${String(nowSm.getMonth() + 1).padStart(2, "0")}${String(nowSm.getDate()).padStart(2, "0")}`;
-      const latestSm = await StockMove.findOne({
-        where: { move_no: { [Op.like]: `${prefixSm}%` } },
-        order: [["id", "DESC"]],
-        transaction: t
-      });
-      let seqSm = 1;
-      if (latestSm && latestSm.move_no) seqSm = Number(latestSm.move_no.slice(-4)) + 1;
-      const moveNo = `${prefixSm}-${String(seqSm).padStart(4, "0")}`;
+      if (canAutoApproveSaleOrder(user)) {
+        const partner = await Partner.findByPk(order.customer_id, { transaction: t });
+        if (partner && partner.credit_limit && Number(partner.credit_limit) > 0) {
+          const confirmedOrders = await SaleOrder.findAll({
+            where: { customer_id: partner.id, status: { [Op.in]: ["confirmed"] } },
+            transaction: t,
+          });
+          const totalDebt = confirmedOrders.reduce(
+            (sum, item) => sum + Number(item.total_after_tax || 0) * Number(item.exchange_rate || 1),
+            0,
+          );
+          const currentDebt = totalDebt + Number(order.total_after_tax || 0) * Number(order.exchange_rate || 1);
+          if (currentDebt > Number(partner.credit_limit)) {
+            throw new Error(
+              `Don hang vuot qua han muc cong no toi da cua khach hang. (Muc no du kien: ${currentDebt} > Han muc: ${partner.credit_limit})`,
+            );
+          }
+        }
 
-      const newMove = await StockMove.create({
-        move_no: moveNo,
-        move_date: new Date(),
-        type: "issue",
-        reference_type: "sale_order",
-        reference_id: order.id,
-        branch_id: order.branch_id || null,
-        status: "waiting_approval",
-        created_by: user.id,
-        note: `Tự động tạo từ Báo giá: ${q.quotation_no}`,
-      }, { transaction: t });
-
-      for (const line of q.lines) {
-        await StockMoveLine.create({
-          move_id: newMove.id,
-          product_id: line.product_id,
-          quantity: line.quantity,
+        await order.update({
+          approval_status: "approved",
+          approved_at: new Date(),
+          approved_by: user.id,
+          status: "confirmed",
+          delivery_status: "pending",
         }, { transaction: t });
+
+        const moveDate = new Date();
+        const movePrefix = `SM-${moveDate.getFullYear()}${String(moveDate.getMonth() + 1).padStart(2, "0")}${String(moveDate.getDate()).padStart(2, "0")}`;
+        const latestMove = await StockMove.findOne({
+          where: { move_no: { [Op.like]: `${movePrefix}%` } },
+          order: [["id", "DESC"]],
+          transaction: t,
+        });
+        const moveSeq = latestMove?.move_no ? Number(latestMove.move_no.slice(-4)) + 1 : 1;
+        const stockMove = await StockMove.create({
+          move_no: `${movePrefix}-${String(moveSeq).padStart(4, "0")}`,
+          move_date: new Date(),
+          type: "issue",
+          reference_type: "sale_order",
+          reference_id: order.id,
+          branch_id: order.branch_id ?? null,
+          warehouse_from_id: null,
+          status: "draft",
+          created_by: user.id,
+          note: `Tu dong tao lenh xuat kho cho Sale Order: ${order.order_no}`,
+        }, { transaction: t });
+
+        if (createdLines.length) {
+          await StockMoveLine.bulkCreate(
+            createdLines.map((line: any) => ({
+              move_id: stockMove.id,
+              product_id: line.product_id,
+              quantity: line.quantity,
+            })),
+            { transaction: t },
+          );
+        }
+
+        if (q.opportunity_id) {
+          const opp = await Opportunity.findByPk(q.opportunity_id, { transaction: t });
+          if (opp && opp.stage !== "won") {
+            await opp.update({
+              stage: "won",
+              expected_value: order.total_after_tax || 0,
+              currency_id: order.currency_id ?? null,
+              exchange_rate: Number(order.exchange_rate || 1),
+            }, { transaction: t });
+          }
+        }
       }
 
       await q.update({ status: "converted" }, { transaction: t });

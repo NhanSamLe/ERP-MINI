@@ -14,7 +14,7 @@ const fmtDate = (value?: string | null) =>
 const RETURN_TYPE_OPTIONS: { value: ReturnType; label: string; desc: string }[] = [
   {
     value: "credit_note",
-    label: "Credit Note",
+    label: "Chứng từ ghi có",
     desc: "Ghi nhận công nợ cho đơn hàng tiếp theo",
   },
   {

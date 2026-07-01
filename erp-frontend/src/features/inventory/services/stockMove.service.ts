@@ -56,4 +56,9 @@ export const stockMoveService = {
     const res = await stockMoveApi.rejectStockMove(id, rejectReason);
     return res.data;
   },
+
+  receiveTransfer: async (id: number): Promise<StockMove> => {
+    const res = await stockMoveApi.receiveTransfer(id);
+    return res;
+  },
 };

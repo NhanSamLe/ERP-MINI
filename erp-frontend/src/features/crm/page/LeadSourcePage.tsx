@@ -105,7 +105,7 @@ export default function LeadSourcePage() {
               <Globe className="w-4 h-4 text-orange-500" />
             </span>
             <div>
-              <h1 className="text-base font-semibold text-gray-900">Lead Sources</h1>
+              <h1 className="text-base font-semibold text-gray-900">Nguồn khách hàng tiềm năng</h1>
               <p className="text-xs text-gray-400 mt-0.5">Quản lý danh mục nguồn khách hàng tiềm năng</p>
             </div>
             <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-600">
@@ -168,7 +168,11 @@ export default function LeadSourcePage() {
               }
               config={leadSourceFormConfig}
               mode={editItem ? "edit" : "create"}
-              onSubmit={editItem ? handleUpdate : handleCreate}
+              onSubmit={(values) =>
+                editItem
+                  ? handleUpdate(values as UpdateLeadSourceDto)
+                  : handleCreate(values as CreateLeadSourceDto)
+              }
               onCancel={() => { setShowModal(false); setEditItem(null); }}
             />
           </div>
@@ -179,7 +183,7 @@ export default function LeadSourcePage() {
       <ActionConfirmModal
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
-        title="Xóa nguồn Lead"
+        title="Xóa nguồn khách hàng tiềm năng"
         description={`Bạn có chắc chắn muốn xóa nguồn "${deleteTarget?.name}"? Hành động này không thể hoàn tác.`}
         confirmText="Xóa"
         variant="danger"

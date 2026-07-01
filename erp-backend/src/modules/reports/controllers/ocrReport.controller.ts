@@ -345,7 +345,8 @@ export const ocrReportController = {
           raw: true,
         });
         for (const v of vendors as any[]) {
-          if (vendorDupMap[v.id]) vendorDupMap[v.id].name = v.name;
+          const vendorDup = vendorDupMap[v.id];
+          if (vendorDup) vendorDup.name = v.name;
         }
       }
 

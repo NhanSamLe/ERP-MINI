@@ -6,6 +6,7 @@ import {
   submitApInvoiceThunk,
   approveApInvoiceThunk,
   rejectApInvoiceThunk,
+  overrideApInvoiceMismatchThunk,
   createApInvoiceFromPoThunk,
   createPartialApInvoiceFromPoThunk,
   createManualApInvoiceThunk,
@@ -100,7 +101,7 @@ const apInvoiceSlice = createSlice({
         state.error = action.payload;
       })
 
-      /* ===== SUBMIT / APPROVE / REJECT ===== */
+      /* ===== SUBMIT / APPROVE / REJECT / OVERRIDE ===== */
       .addCase(submitApInvoiceThunk.fulfilled, (state, action) => {
         updateInvoiceInState(state, action.payload);
       })
@@ -108,6 +109,9 @@ const apInvoiceSlice = createSlice({
         updateInvoiceInState(state, action.payload);
       })
       .addCase(rejectApInvoiceThunk.fulfilled, (state, action) => {
+        updateInvoiceInState(state, action.payload);
+      })
+      .addCase(overrideApInvoiceMismatchThunk.fulfilled, (state, action) => {
         updateInvoiceInState(state, action.payload);
       })
 

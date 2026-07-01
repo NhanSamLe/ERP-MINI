@@ -46,12 +46,12 @@ export function ActionConfirmModal({
   title,
   description,
   confirmText = "Confirm",
-  cancelText = "Cancel",
+  cancelText = "Hủy",
   variant = "primary",
   loading = false,
   requireReason = false,
   reasonLabel = "Reason",
-  reasonPlaceholder = "Please provide a reason...",
+  reasonPlaceholder = "Vui lòng nhập lý do...",
 }: Props) {
   const [reason, setReason] = useState("");
 
@@ -128,7 +128,7 @@ export function ActionConfirmModal({
             ].join(" ")}
           >
             {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-            {loading ? "Processing..." : confirmText}
+            {loading ? "Đang xử lý..." : confirmText}
           </button>
         </div>
       </div>

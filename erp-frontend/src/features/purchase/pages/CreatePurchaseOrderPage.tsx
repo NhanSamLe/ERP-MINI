@@ -1,5 +1,6 @@
-﻿import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "../../../components/ui/Button";
+import { NumberField } from "../../../components/ui/NumberField";
 import { Input } from "../../../components/ui/input";
 import { Textarea } from "../../../components/ui/textarea";
 import { useDispatch, useSelector } from "react-redux";
@@ -43,6 +44,7 @@ import {
 import { Uom } from "@/features/master-data/dto/uom.dto";
 import { formatVND } from "@/utils/currency.helper";
 import { purchasePriceListApi } from "../api/purchasePriceList.api";
+import axiosClient from "../../../api/axiosClient";
 
 interface LineItem {
   id: number;
@@ -61,6 +63,9 @@ interface LineItem {
   tax_type: string;
   tax_rate: number;
   tax_amount: number;
+  discount_percent?: number;
+  discount_amount?: number;
+  discount_type?: "percentage" | "fixed";
   line_total: number;
   price_source?: "price_list" | "supplier_info" | "cost_price" | "manual";
 }
@@ -77,6 +82,10 @@ export default function CreatePurchaseOrderPage() {
   const [totalAfterTax, setTotalAfterTax] = useState(0);
   const [description, setDescription] = useState("");
 
+  const [headerDiscountType, setHeaderDiscountType] = useState<"percentage" | "fixed">("percentage");
+  const [headerDiscountPercent, setHeaderDiscountPercent] = useState(0);
+  const [headerDiscountAmount, setHeaderDiscountAmount] = useState(0);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -87,6 +96,11 @@ export default function CreatePurchaseOrderPage() {
   const [productCache, setProductCache] = useState<Record<number, Product>>({});
   const [priceInputs, setPriceInputs] = useState<Record<number, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [paymentTerms, setPaymentTerms] = useState<any[]>([]);
+  const [paymentTermId, setPaymentTermId] = useState("");
+  const [currencies, setCurrencies] = useState<any[]>([]);
+  const [currencyId, setCurrencyId] = useState("");
+  const [exchangeRate, setExchangeRate] = useState("1.0");
 
   const user = useSelector((state: RootState) => state.auth.user);
   const partners = useSelector((state: RootState) => state.partners);
@@ -101,6 +115,20 @@ export default function CreatePurchaseOrderPage() {
     dispatch(loadPartners({ type: "supplier" }));
     dispatch(fetchAllUomsThunk());
     dispatch(fetchAllConversionsThunk());
+    axiosClient.get("/master-data/payment-terms")
+      .then((res) => setPaymentTerms(res.data || []))
+      .catch((err) => console.error("Error fetching payment terms:", err));
+    axiosClient.get("/master-data/currencies")
+      .then((res) => {
+        const list = res.data?.currencies || [];
+        setCurrencies(list);
+        const vnd = list.find((c: any) => c.code === "VND");
+        if (vnd) {
+          setCurrencyId(String(vnd.id));
+          setExchangeRate("1.0");
+        }
+      })
+      .catch((err) => console.error("Error fetching currencies:", err));
   }, [dispatch]);
 
   useEffect(() => {
@@ -108,7 +136,7 @@ export default function CreatePurchaseOrderPage() {
     const y = today.getFullYear();
     const m = String(today.getMonth() + 1).padStart(2, "0");
     const d = String(today.getDate()).padStart(2, "0");
-    const randomNumber = Math.floor(Math.random() * 900 + 100);
+    const randomNumber = Math.floor(Math.random() * 9000 + 1000); // 1000–9999
     setReference(`PO-${y}${m}${d}-${randomNumber}`);
   }, []);
 
@@ -161,7 +189,13 @@ export default function CreatePurchaseOrderPage() {
     const costPrice = Number(product.cost_price ?? 0);
     const purchaseUomId = product.purchase_uom_id ?? product.uom_id ?? null;
     const stockUomId = product.uom_id ?? null;
-    return convertPrice(costPrice, stockUomId, purchaseUomId, conversions, Number(product.id));
+    return convertPrice(
+      costPrice,
+      stockUomId,
+      purchaseUomId,
+      conversions,
+      Number(product.id),
+    );
   };
 
   const convertPriceToStockUom = (
@@ -180,17 +214,60 @@ export default function CreatePurchaseOrderPage() {
   ): number =>
     convertPrice(price, stockUomId, purchaseUomId, conversions, productId);
 
-  const recalcTotals = (updatedLines: LineItem[]) => {
-    const beforeTax = updatedLines.reduce(
-      (sum, l) =>
-        sum + (l.sale_price || 0) * (l.quantity_in_stock_uom || l.quantity),
+  const recalcTotals = (
+    updatedLines: LineItem[],
+    headDiscountType = headerDiscountType,
+    headDiscountPct = headerDiscountPercent,
+    headDiscountAmt = headerDiscountAmount
+  ) => {
+    const sumLineTotal = updatedLines.reduce(
+      (sum, l) => {
+        const qty = l.quantity_in_stock_uom || l.quantity;
+        const gross = (l.sale_price || 0) * qty;
+        let discountAmt = 0;
+        if (l.discount_type === "fixed") {
+          discountAmt = l.discount_amount || 0;
+        } else {
+          discountAmt = gross * ((l.discount_percent || 0) / 100);
+        }
+        return sum + (gross - discountAmt);
+      },
       0,
     );
-    const tax = updatedLines.reduce((sum, l) => sum + l.tax_amount, 0);
-    const afterTax = updatedLines.reduce((sum, l) => sum + l.line_total, 0);
-    setTotalBeforeTax(beforeTax);
-    setTotalOrderTax(tax);
-    setTotalAfterTax(afterTax);
+
+    let finalHeaderDiscountAmount = 0;
+    if (headDiscountType === "fixed") {
+      finalHeaderDiscountAmount = headDiscountAmt;
+    } else {
+      finalHeaderDiscountAmount = sumLineTotal * (headDiscountPct / 100);
+    }
+
+    updatedLines.forEach(l => {
+      const qty = l.quantity_in_stock_uom || l.quantity;
+      const gross = (l.sale_price || 0) * qty;
+      let discountAmt = 0;
+      if (l.discount_type === "fixed") {
+        discountAmt = l.discount_amount || 0;
+      } else {
+        discountAmt = gross * ((l.discount_percent || 0) / 100);
+      }
+      const lineTotalBeforeHeader = gross - discountAmt;
+      const weight = sumLineTotal > 0 ? (lineTotalBeforeHeader / sumLineTotal) : 0;
+      const distributedDiscount = finalHeaderDiscountAmount * weight;
+      const netLineTotal = lineTotalBeforeHeader - distributedDiscount;
+      const taxAmount = netLineTotal * (l.tax_rate / 100);
+      
+      l.tax_amount = taxAmount;
+      l.line_total = netLineTotal + taxAmount;
+    });
+
+    const finalBeforeTax = sumLineTotal - finalHeaderDiscountAmount;
+    const finalTax = updatedLines.reduce((sum, l) => sum + l.tax_amount, 0);
+    const finalAfterTax = finalBeforeTax + finalTax;
+
+    setTotalBeforeTax(finalBeforeTax);
+    setTotalOrderTax(finalTax);
+    setTotalAfterTax(finalAfterTax);
   };
 
   const handleSupplierChange = async (newSupplierId: string) => {
@@ -228,19 +305,22 @@ export default function CreatePurchaseOrderPage() {
         );
         const qtyForCalc = line.quantity_in_stock_uom || line.quantity;
         const baseTotal = qtyForCalc * newPriceInStockUom;
-        const discountedTotal = baseTotal * (1 - discountPercent / 100);
-        const taxAmount = discountedTotal * (line.tax_rate / 100);
-        const lineTotal = discountedTotal + taxAmount;
+        const discountAmt = baseTotal * (discountPercent / 100);
+        const taxAmount = (baseTotal - discountAmt) * (line.tax_rate / 100);
+        const lineTotal = baseTotal - discountAmt + taxAmount;
 
         return {
           ...line,
           price_in_purchase_uom: newPriceInPurchaseUom,
           sale_price: newPriceInStockUom,
+          discount_percent: discountPercent,
+          discount_amount: discountAmt,
+          discount_type: "percentage" as const,
           tax_amount: taxAmount,
           line_total: lineTotal,
           price_source: priceSource,
         };
-      })
+      }),
     );
     setLines(updatedLines);
     recalcTotals(updatedLines);
@@ -249,6 +329,30 @@ export default function CreatePurchaseOrderPage() {
       newPriceInputs[l.id] = String(l.price_in_purchase_uom ?? 0);
     });
     setPriceInputs(newPriceInputs);
+  };
+  
+  const handleCurrencyChange = async (newCurrencyId: string) => {
+    setCurrencyId(newCurrencyId);
+    const selected = currencies.find((c) => String(c.id) === newCurrencyId);
+    if (!selected || selected.code === "VND") {
+      setExchangeRate("1.0");
+      return;
+    }
+    try {
+      const res = await axiosClient.get("/master-data/currencies/rates");
+      const rates = res.data?.rates || [];
+      const rateObj = rates.find((r: any) => String(r.quote_currency_id) === newCurrencyId);
+      if (rateObj) {
+        const val = Number(rateObj.rate);
+        const rateToVnd = val > 0 ? (1 / val).toFixed(2) : "1.0";
+        setExchangeRate(rateToVnd);
+      } else {
+        setExchangeRate("1.0");
+      }
+    } catch (e) {
+      console.error("Failed to load exchange rate", e);
+      setExchangeRate("1.0");
+    }
   };
 
   const handleSelectProduct = async (product: Product) => {
@@ -261,7 +365,7 @@ export default function CreatePurchaseOrderPage() {
     ).unwrap();
     const rate = Number(tax?.rate || 0);
     const qty = 1;
-    
+
     setProductCache((prev) => ({ ...prev, [Number(product.id)]: product }));
 
     let priceInPurchaseUom = resolvePrice(product, supplierId);
@@ -302,9 +406,9 @@ export default function CreatePurchaseOrderPage() {
       Number(product.id),
     );
     const baseTotal = qtyInStockUom * priceInStockUom;
-    const discountedTotal = baseTotal * (1 - discountPercent / 100);
-    const taxAmount = discountedTotal * (rate / 100);
-    const lineTotal = discountedTotal + taxAmount;
+    const discountAmt = baseTotal * (discountPercent / 100);
+    const taxAmount = (baseTotal - discountAmt) * (rate / 100);
+    const lineTotal = baseTotal - discountAmt + taxAmount;
 
     const newLine: LineItem = {
       id: Date.now(),
@@ -323,6 +427,9 @@ export default function CreatePurchaseOrderPage() {
       tax_type: tax?.type ?? "VAT",
       tax_rate: rate,
       tax_amount: taxAmount,
+      discount_percent: discountPercent,
+      discount_amount: discountAmt,
+      discount_type: "percentage",
       line_total: lineTotal,
       price_source: priceSource,
     };
@@ -340,9 +447,9 @@ export default function CreatePurchaseOrderPage() {
   const updateLine = async (
     id: number,
     field: keyof LineItem,
-    value: number | null,
+    value: any,
   ) => {
-    if (field === "quantity" && value && value <= 0) {
+    if (field === "quantity" && value && Number(value) <= 0) {
       removeLine(id);
       return;
     }
@@ -351,7 +458,7 @@ export default function CreatePurchaseOrderPage() {
     if ((field === "quantity" || field === "uom_id") && supplierId) {
       const line = lines.find((l) => l.id === id);
       if (line) {
-        const newQty = field === "quantity" ? (value || 1) : line.quantity;
+        const newQty = field === "quantity" ? Number(value) || 1 : line.quantity;
         try {
           const pRes = await purchasePriceListApi.evaluatePrice({
             product_id: Number(line.product_id),
@@ -376,7 +483,7 @@ export default function CreatePurchaseOrderPage() {
           fetchedPrice.unit_price,
           updated.uom_id,
           updated.stock_uom_id,
-          Number(updated.product_id)
+          Number(updated.product_id),
         );
       }
 
@@ -395,7 +502,7 @@ export default function CreatePurchaseOrderPage() {
         updated.quantity_in_stock_uom = qtyInStockUom;
         const selectedUom = uoms.find((u: Uom) => u.id === newUomId);
         updated.uom_name = selectedUom?.name ?? "";
-        
+
         if (!fetchedPrice) {
           const newPriceInPurchaseUom = convertPriceFromStockUom(
             line.sale_price || 0,
@@ -408,7 +515,7 @@ export default function CreatePurchaseOrderPage() {
       }
       if (field === "price_in_purchase_uom") {
         updated.sale_price = convertPriceToStockUom(
-          value || 0,
+          Number(value) || 0,
           updated.uom_id,
           updated.stock_uom_id,
           Number(updated.product_id),
@@ -416,7 +523,7 @@ export default function CreatePurchaseOrderPage() {
         updated.price_source = "manual";
       }
       if (field === "quantity") {
-        const newQty = value || 1;
+        const newQty = Number(value) || 1;
         const qtyInStockUom =
           updated.uom_id &&
           updated.stock_uom_id &&
@@ -431,10 +538,26 @@ export default function CreatePurchaseOrderPage() {
             : newQty;
         updated.quantity_in_stock_uom = qtyInStockUom;
       }
+
       const qtyForCalc = updated.quantity_in_stock_uom || updated.quantity;
-      const taxAmount =
-        (updated.sale_price || 0) * qtyForCalc * (updated.tax_rate / 100);
-      const lineTotal = (updated.sale_price || 0) * qtyForCalc + taxAmount;
+      const grossAmount = (updated.sale_price || 0) * qtyForCalc;
+      let discountAmount = 0;
+      let discountPercent = 0;
+
+      if (updated.discount_type === "fixed") {
+        discountAmount = Number(updated.discount_amount || 0);
+        discountPercent = grossAmount > 0 ? (discountAmount / grossAmount) * 100 : 0;
+      } else {
+        discountPercent = Number(updated.discount_percent || 0);
+        discountAmount = grossAmount * (discountPercent / 100);
+      }
+
+      updated.discount_amount = discountAmount;
+      updated.discount_percent = discountPercent;
+
+      const netAmount = grossAmount - discountAmount;
+      const taxAmount = netAmount * (updated.tax_rate / 100);
+      const lineTotal = netAmount + taxAmount;
       return { ...updated, tax_amount: taxAmount, line_total: lineTotal };
     });
     setLines(updatedLines);
@@ -467,41 +590,53 @@ export default function CreatePurchaseOrderPage() {
     try {
       setIsSubmitting(true);
       const today = new Date().toISOString().split("T")[0];
-      if (date > today) return toast.error("Date cannot be in the future!");
-      if (!supplierId) return toast.error("Supplier is required");
-      if (!date) return toast.error("Order date is required");
+      if (date > today)
+        return toast.error("Ngày đặt hàng không thể ở tương lai!");
+      if (!supplierId) return toast.error("Vui lòng chọn nhà cung cấp!");
+      if (!date) return toast.error("Vui lòng nhập ngày đặt hàng!");
       if (lines.length === 0)
-        return toast.error("At least 1 product is required");
+        return toast.error("Vui lòng thêm ít nhất 1 sản phẩm!");
       const invalidLine = lines.find((l) => !l.quantity || l.quantity <= 0);
-      if (invalidLine) return toast.error("Quantity must be greater than 0");
+      if (invalidLine) return toast.error("Số lượng phải lớn hơn 0!");
       const requestBody: PurchaseOrderCreate = {
         branch_id: user?.branch.id ?? 0,
         po_no: reference,
         supplier_id: Number(supplierId),
         order_date: date,
+        payment_term_id: paymentTermId ? Number(paymentTermId) : null,
+        currency_id: currencyId ? Number(currencyId) : null,
+        exchange_rate: Number(exchangeRate) || 1.0,
         total_before_tax: totalBeforeTax,
         total_tax: totalOrderTax,
         total_after_tax: totalAfterTax,
+        discount_percent: headerDiscountPercent,
+        discount_amount: headerDiscountAmount,
+        discount_type: headerDiscountType,
         status: "draft",
         description,
-        lines: lines.map((l) => ({
-          product_id: Number(l.product_id),
-          quantity: Number(l.quantity),
-          qty_in_stock_uom: Number(l.quantity_in_stock_uom || l.quantity),
-          uom_id: l.uom_id ?? undefined,
-          unit_price: Number(l.price_in_purchase_uom ?? l.sale_price ?? 0),
-          tax_rate_id: Number(l.tax_rate_id),
-          line_total: Number(l.line_total),
-          line_tax: l.tax_amount ?? 0,
-          line_total_after_tax: l.line_total,
-        })),
+        lines: lines.map((l) => {
+          return {
+            product_id: Number(l.product_id),
+            quantity: Number(l.quantity),
+            qty_in_stock_uom: Number(l.quantity_in_stock_uom || l.quantity),
+            uom_id: l.uom_id ?? undefined,
+            unit_price: Number(l.price_in_purchase_uom ?? l.sale_price ?? 0),
+            discount_percent: Number(l.discount_percent ?? 0),
+            discount_amount: Number(l.discount_amount ?? 0),
+            discount_type: l.discount_type || "percentage",
+            tax_rate_id: Number(l.tax_rate_id),
+            line_total: Number(l.line_total),
+            line_tax: l.tax_amount ?? 0,
+            line_total_after_tax: l.line_total,
+          };
+        }),
       };
       await dispatch(createPurchaseOrderThunk(requestBody)).unwrap();
-      toast.success("Purchase Order created successfully!");
+      toast.success("Tạo đơn đặt hàng thành công!");
       navigate("/purchase/orders");
     } catch (error) {
       console.error("Failed to create Purchase Order:", error);
-      toast.error("Failed to create Purchase Order");
+      toast.error("Lỗi khi tạo đơn đặt hàng!");
     } finally {
       setIsSubmitting(false);
     }
@@ -514,28 +649,107 @@ export default function CreatePurchaseOrderPage() {
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            Order Summary
+            Tóm tắt đơn hàng
           </p>
         </div>
         <div className="p-4 space-y-3">
           <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-500">Items</span>
+            <span className="text-gray-500">Mặt hàng</span>
             <span className="font-semibold text-gray-900">{lines.length}</span>
           </div>
           <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-500">Subtotal</span>
+            <span className="text-gray-500">Tiền hàng (chưa CK)</span>
             <span className="font-medium text-gray-700">
+              {formatVND(lines.reduce((s, l) => {
+                const qty = l.quantity_in_stock_uom || l.quantity;
+                return s + (l.sale_price || 0) * qty;
+              }, 0))}
+            </span>
+          </div>
+          {lines.some(l => (l.discount_percent ?? 0) > 0 || (l.discount_amount ?? 0) > 0) && (
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-orange-500">Chiết khấu dòng</span>
+              <span className="font-medium text-orange-600">
+                -{formatVND(lines.reduce((s, l) => {
+                  const qty = l.quantity_in_stock_uom || l.quantity;
+                  const gross = (l.sale_price || 0) * qty;
+                  let discountAmt = 0;
+                  if (l.discount_type === "fixed") {
+                    discountAmt = l.discount_amount || 0;
+                  } else {
+                    discountAmt = gross * ((l.discount_percent || 0) / 100);
+                  }
+                  return s + discountAmt;
+                }, 0))}
+              </span>
+            </div>
+          )}
+
+          {/* Header Discount Input Section */}
+          <div className="pt-2 border-t border-gray-100 space-y-1.5">
+            <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+              Chiết khấu tổng đơn
+            </label>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="number"
+                min={0}
+                value={
+                  headerDiscountType === "fixed"
+                    ? (headerDiscountAmount || "")
+                    : (headerDiscountPercent || "")
+                }
+                onChange={(e) => {
+                  const val = e.target.value === "" ? 0 : Number(e.target.value);
+                  if (headerDiscountType === "fixed") {
+                    setHeaderDiscountAmount(val);
+                    recalcTotals(lines, headerDiscountType, headerDiscountPercent, val);
+                  } else {
+                    setHeaderDiscountPercent(val);
+                    recalcTotals(lines, headerDiscountType, val, headerDiscountAmount);
+                  }
+                }}
+                className="w-full h-8 text-right border border-gray-300 rounded-lg px-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono"
+                placeholder="0"
+              />
+              <select
+                value={headerDiscountType}
+                onChange={(e) => {
+                  const type = e.target.value as "percentage" | "fixed";
+                  setHeaderDiscountType(type);
+                  if (type === "fixed") {
+                    setHeaderDiscountPercent(0);
+                    recalcTotals(lines, type, 0, headerDiscountAmount);
+                  } else {
+                    setHeaderDiscountAmount(0);
+                    recalcTotals(lines, type, headerDiscountPercent, 0);
+                  }
+                }}
+                className="h-8 text-xs border border-gray-300 rounded-lg px-1 focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+              >
+                <option value="percentage">%</option>
+                <option value="fixed">đ</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center text-sm pt-2">
+            <span className="text-gray-500">Trước thuế</span>
+            <span className="font-semibold text-gray-900">
               {formatVND(totalBeforeTax)}
             </span>
           </div>
+
           <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-500">Tax</span>
+            <span className="text-gray-500">Thuế</span>
             <span className="font-medium text-blue-600">
               {formatVND(totalOrderTax)}
             </span>
           </div>
           <div className="pt-3 border-t border-dashed border-gray-200 flex justify-between items-center">
-            <span className="text-sm font-semibold text-gray-800">Total</span>
+            <span className="text-sm font-semibold text-gray-800">
+              Tổng cộng
+            </span>
             <span className="text-base font-bold text-orange-600">
               {formatVND(totalAfterTax)}
             </span>
@@ -548,14 +762,14 @@ export default function CreatePurchaseOrderPage() {
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Quick Info
+              Thông tin nhanh
             </p>
           </div>
           <div className="p-4 space-y-2.5">
             {reference && (
               <div className="flex items-center gap-2 text-sm">
                 <Hash className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                <span className="text-gray-500 w-16 flex-shrink-0">Ref</span>
+                <span className="text-gray-500 w-16 flex-shrink-0">Mã PO</span>
                 <span className="font-medium text-gray-900 truncate">
                   {reference}
                 </span>
@@ -565,7 +779,7 @@ export default function CreatePurchaseOrderPage() {
               <div className="flex items-center gap-2 text-sm">
                 <Truck className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                 <span className="text-gray-500 w-16 flex-shrink-0">
-                  Supplier
+                  Nhà cung cấp
                 </span>
                 <span className="font-medium text-gray-900 truncate">
                   {(partners as any)?.items?.find(
@@ -577,14 +791,18 @@ export default function CreatePurchaseOrderPage() {
             {date && (
               <div className="flex items-center gap-2 text-sm">
                 <CalendarDays className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                <span className="text-gray-500 w-16 flex-shrink-0">Date</span>
+                <span className="text-gray-500 w-16 flex-shrink-0">
+                  Ngày đặt
+                </span>
                 <span className="font-medium text-gray-900">{date}</span>
               </div>
             )}
             {user?.branch?.name && (
               <div className="flex items-center gap-2 text-sm">
                 <Building2 className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                <span className="text-gray-500 w-16 flex-shrink-0">Branch</span>
+                <span className="text-gray-500 w-16 flex-shrink-0">
+                  Chi nhánh
+                </span>
                 <span className="font-medium text-gray-900 truncate">
                   {user.branch.name}
                 </span>
@@ -598,7 +816,7 @@ export default function CreatePurchaseOrderPage() {
       {lines.length === 0 && (
         <div className="flex items-start gap-2.5 px-3.5 py-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
           <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-          <span>Add at least one product line before saving.</span>
+          <span>Vui lòng thêm ít nhất một sản phẩm trước khi lưu.</span>
         </div>
       )}
 
@@ -613,10 +831,10 @@ export default function CreatePurchaseOrderPage() {
           {isSubmitting ? (
             <>
               <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-              Saving…
+              Đang lưu…
             </>
           ) : (
-            <>Create Purchase Order</>
+            <>Tạo đơn đặt hàng</>
           )}
         </Button>
         <Button
@@ -624,7 +842,7 @@ export default function CreatePurchaseOrderPage() {
           onClick={() => navigate("/purchase/orders")}
           className="w-full py-2.5 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-50 font-medium text-sm transition-colors"
         >
-          Cancel
+          Hủy
         </Button>
       </div>
     </div>
@@ -636,12 +854,12 @@ export default function CreatePurchaseOrderPage() {
       <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm border-t-2 border-t-orange-500">
         <div className="max-w-screen-2xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-sm text-gray-500 min-w-0">
-            <span className="text-gray-400">Purchase</span>
+            <span className="text-gray-400">Mua hàng</span>
             <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
-            <span className="text-gray-400">Orders</span>
+            <span className="text-gray-400">Đơn hàng</span>
             <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
             <span className="font-semibold text-gray-900 truncate">
-              New Purchase Order
+              Đơn đặt hàng mới
             </span>
           </div>
           <span className="text-xs text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full font-mono">
@@ -660,25 +878,25 @@ export default function CreatePurchaseOrderPage() {
               <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-100 bg-gray-50/60 rounded-t-xl">
                 <Receipt className="w-4 h-4 text-orange-500" />
                 <h2 className="text-sm font-semibold text-gray-700">
-                  General Information
+                  Thông tin chung
                 </h2>
               </div>
               <div className="p-5">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="space-y-1.5">
                     <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      PO Reference
+                      Mã tham chiếu PO
                     </label>
                     <Input
                       value={reference}
                       onChange={(value) => setReference(value)}
-                      placeholder="PO-YYYYMMDD-XXX"
+                      placeholder="PO-YYYYMMDD-NNNN"
                       className="h-9 text-sm font-mono"
                     />
                   </div>
                   <div className="space-y-1.5">
                     <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Supplier{" "}
+                      Nhà cung cấp{" "}
                       <span className="text-red-400 normal-case font-normal">
                         *
                       </span>
@@ -688,7 +906,7 @@ export default function CreatePurchaseOrderPage() {
                       onValueChange={handleSupplierChange}
                     >
                       <SelectTrigger className="h-9 text-sm">
-                        <SelectValue placeholder="Select supplier…" />
+                        <SelectValue placeholder="Chọn nhà cung cấp…" />
                       </SelectTrigger>
                       <SelectContent>
                         {(partners as any)?.items?.map((p: any) => (
@@ -701,7 +919,7 @@ export default function CreatePurchaseOrderPage() {
                   </div>
                   <div className="space-y-1.5">
                     <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Order Date{" "}
+                      Ngày đặt hàng{" "}
                       <span className="text-red-400 normal-case font-normal">
                         *
                       </span>
@@ -715,12 +933,64 @@ export default function CreatePurchaseOrderPage() {
                   </div>
                   <div className="space-y-1.5">
                     <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Branch
+                      Chi nhánh
                     </label>
                     <Input
                       value={user?.branch?.name ?? ""}
                       disabled
                       className="h-9 text-sm bg-gray-50 text-gray-500"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Điều khoản thanh toán
+                    </label>
+                    <Select
+                      value={paymentTermId}
+                      onValueChange={setPaymentTermId}
+                    >
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder="Chọn điều khoản..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {paymentTerms.map((t) => (
+                          <SelectItem key={t.id} value={String(t.id)}>
+                            {`${t.name} (${t.days} ngày)`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Tiền tệ
+                    </label>
+                    <Select
+                      value={currencyId}
+                      onValueChange={handleCurrencyChange}
+                    >
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder="Chọn tiền tệ..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {currencies.map((c) => (
+                          <SelectItem key={c.id} value={String(c.id)}>
+                            {`${c.code} (${c.name})`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Tỷ giá (VND/Ngoại tệ)
+                    </label>
+                    <Input
+                      type="number"
+                      value={exchangeRate}
+                      onChange={(val) => setExchangeRate(val)}
+                      disabled={!currencyId || currencies.find(c => String(c.id) === currencyId)?.code === "VND"}
+                      className="h-9 text-sm"
                     />
                   </div>
                 </div>
@@ -732,10 +1002,10 @@ export default function CreatePurchaseOrderPage() {
               <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-100 bg-gray-50/60 rounded-t-xl">
                 <Search className="w-4 h-4 text-orange-500" />
                 <h2 className="text-sm font-semibold text-gray-700">
-                  Add Products
+                  Thêm sản phẩm
                 </h2>
                 <span className="text-xs text-gray-400 ml-auto">
-                  Type at least 2 characters to search
+                  Nhập ít nhất 2 ký tự để tìm kiếm
                 </span>
               </div>
               <div className="p-5">
@@ -746,7 +1016,7 @@ export default function CreatePurchaseOrderPage() {
                       type="text"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      placeholder="Search by product name or SKU…"
+                      placeholder="Tìm theo tên sản phẩm hoặc SKU…"
                       className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
                     />
                     {searchLoading && (
@@ -793,7 +1063,7 @@ export default function CreatePurchaseOrderPage() {
                     !searchLoading &&
                     searchTerm.length >= 2 && (
                       <div className="absolute z-20 mt-1.5 w-full bg-white border border-gray-200 rounded-xl shadow-xl px-4 py-6 text-center text-sm text-gray-400">
-                        No products found for "{searchTerm}"
+                        Không tìm thấy sản phẩm nào khớp với "{searchTerm}"
                       </div>
                     )}
                 </div>
@@ -805,7 +1075,7 @@ export default function CreatePurchaseOrderPage() {
               <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-100 bg-gray-50/60">
                 <Package className="w-4 h-4 text-orange-500" />
                 <h2 className="text-sm font-semibold text-gray-700">
-                  Order Lines
+                  Chi tiết dòng hàng
                 </h2>
                 {lines.length > 0 && (
                   <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-600">
@@ -820,10 +1090,10 @@ export default function CreatePurchaseOrderPage() {
                     <Package className="w-6 h-6 text-gray-400" />
                   </div>
                   <p className="text-sm font-medium text-gray-500">
-                    No products added
+                    Chưa có sản phẩm nào được thêm
                   </p>
                   <p className="text-xs text-gray-400 mt-1">
-                    Search and add products above
+                    Tìm kiếm và thêm sản phẩm ở phía trên
                   </p>
                 </div>
               ) : (
@@ -831,23 +1101,26 @@ export default function CreatePurchaseOrderPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-100">
-                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider w-[35%]">
-                          Product
+                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider w-[30%]">
+                          Sản phẩm
                         </th>
                         <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                          UOM
+                          Đơn vị tính
                         </th>
                         <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                          Unit Price
+                          Đơn giá
                         </th>
                         <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                          Qty
+                          Số lượng
                         </th>
                         <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                          Tax
+                          Chiết khấu
+                        </th>
+                        <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                          Thuế
                         </th>
                         <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                          Line Total
+                          Thành tiền
                         </th>
                         <th className="px-2 py-2.5 w-8"></th>
                       </tr>
@@ -922,43 +1195,37 @@ export default function CreatePurchaseOrderPage() {
                             {/* Unit Price */}
                             <td className="px-4 py-3 text-right">
                               <div className="flex flex-col items-end gap-1">
-                                <input
-                                  type="number"
-                                  min={0}
-                                  value={
-                                    priceInputs[line.id] ??
-                                    String(line.price_in_purchase_uom ?? 0)
-                                  }
-                                  onChange={(e) => {
-                                    setPriceInputs((prev) => ({
-                                      ...prev,
-                                      [line.id]: e.target.value,
-                                    }));
-                                    updateLine(
-                                      line.id,
-                                      "price_in_purchase_uom",
-                                      Number(e.target.value),
-                                    );
-                                  }}
-                                  className="w-32 text-right border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono"
-                                />
+                                <div className="w-32">
+                                  <NumberField
+                                    value={line.price_in_purchase_uom ?? 0}
+                                    onChange={(v) =>
+                                      updateLine(
+                                        line.id,
+                                        "price_in_purchase_uom",
+                                        v ?? 0,
+                                      )
+                                    }
+                                  />
+                                </div>
                                 {line.price_source && (
-                                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium border ${
-                                    line.price_source === "price_list"
-                                      ? "bg-emerald-50 text-emerald-600 border-emerald-100"
-                                      : line.price_source === "supplier_info"
-                                      ? "bg-blue-50 text-blue-600 border-blue-100"
-                                      : line.price_source === "cost_price"
-                                      ? "bg-amber-50 text-amber-600 border-amber-100"
-                                      : "bg-gray-100 text-gray-500 border-gray-200"
-                                  }`}>
+                                  <span
+                                    className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium border ${
+                                      line.price_source === "price_list"
+                                        ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                                        : line.price_source === "supplier_info"
+                                          ? "bg-blue-50 text-blue-600 border-blue-100"
+                                          : line.price_source === "cost_price"
+                                            ? "bg-amber-50 text-amber-600 border-amber-100"
+                                            : "bg-gray-100 text-gray-500 border-gray-200"
+                                    }`}
+                                  >
                                     {line.price_source === "price_list"
                                       ? "Bảng giá mua"
                                       : line.price_source === "supplier_info"
-                                      ? "Giá mặc định NCC"
-                                      : line.price_source === "cost_price"
-                                      ? "Giá vốn"
-                                      : "Nhập tay"}
+                                        ? "Giá mặc định NCC"
+                                        : line.price_source === "cost_price"
+                                          ? "Giá vốn"
+                                          : "Nhập tay"}
                                   </span>
                                 )}
                               </div>
@@ -979,6 +1246,41 @@ export default function CreatePurchaseOrderPage() {
                                 }
                                 className="w-20 text-center border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
                               />
+                            </td>
+
+                            {/* Discount */}
+                            <td className="px-4 py-3 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  value={
+                                    line.discount_type === "fixed"
+                                      ? (line.discount_amount ?? "")
+                                      : (line.discount_percent ?? "")
+                                  }
+                                  onChange={(e) => {
+                                    const val = e.target.value === "" ? 0 : Number(e.target.value);
+                                    if (line.discount_type === "fixed") {
+                                      updateLine(line.id, "discount_amount", val);
+                                    } else {
+                                      updateLine(line.id, "discount_percent", val);
+                                    }
+                                  }}
+                                  className="w-20 text-center border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                                  placeholder="0"
+                                />
+                                <select
+                                  value={line.discount_type || "percentage"}
+                                  onChange={(e) => {
+                                    updateLine(line.id, "discount_type", e.target.value);
+                                  }}
+                                  className="text-xs border border-gray-300 rounded-lg px-1 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+                                >
+                                  <option value="percentage">%</option>
+                                  <option value="fixed">đ</option>
+                                </select>
+                              </div>
                             </td>
 
                             {/* Tax */}
@@ -1016,14 +1318,14 @@ export default function CreatePurchaseOrderPage() {
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-100 bg-gray-50/60">
                 <StickyNote className="w-4 h-4 text-orange-500" />
-                <h2 className="text-sm font-semibold text-gray-700">Notes</h2>
-                <span className="text-xs text-gray-400 ml-auto">Optional</span>
+                <h2 className="text-sm font-semibold text-gray-700">Ghi chú</h2>
+                <span className="text-xs text-gray-400 ml-auto">Tùy chọn</span>
               </div>
               <div className="p-5">
                 <Textarea
                   value={description}
                   onChange={(value) => setDescription(value)}
-                  placeholder="Add any notes or instructions for this purchase order…"
+                  placeholder="Thêm ghi chú hoặc hướng dẫn cho đơn đặt hàng này..."
                   rows={3}
                   className="text-sm resize-none"
                 />
@@ -1040,4 +1342,3 @@ export default function CreatePurchaseOrderPage() {
     </div>
   );
 }
-

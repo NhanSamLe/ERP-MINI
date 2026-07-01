@@ -224,48 +224,72 @@ function ReturnReceiptTable({
             <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Ngày nhận</th>
             <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Giá trị</th>
             <th className="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">Trạng thái</th>
+            <th className="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">Phiếu kho</th>
             <th className="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">Thao tác</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
-          {items.map((item) => (
-            <tr key={item.id} className="transition-colors hover:bg-orange-50/30">
-              <td className="px-5 py-3.5 font-semibold text-orange-600">{item.return_no}</td>
-              <td className="px-5 py-3.5 text-sm text-gray-600">{item.rma?.rma_no || "-"}</td>
-              <td className="px-5 py-3.5">
-                <p className="font-medium text-gray-900">{item.customer?.name || "-"}</p>
-                {item.customer?.phone && <p className="mt-0.5 text-xs text-gray-400">{item.customer.phone}</p>}
-              </td>
-              <td className="px-5 py-3.5 text-sm text-gray-600">{fmtDate(item.return_date)}</td>
-              <td className="px-5 py-3.5 text-right font-semibold text-gray-900">{fmtMoney(item.total_return_amount)}</td>
-              <td className="px-5 py-3.5 text-center">
-                <StatusBadge status={item.status} />
-              </td>
-              <td className="px-5 py-3.5">
-                <div className="flex items-center justify-center gap-1">
-                  <Link
-                    to={`/inventory/sales-returns/returns/${item.id}`}
-                    className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100"
-                  >
-                    <Eye className="h-3 w-3" />
-                    Xem
-                  </Link>
-                  {item.status === "inspected" && (
-                    <button
-                      type="button"
-                      onClick={() => onComplete(item.id)}
-                      className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-green-600 transition-colors hover:bg-green-50"
+          {items.map((item) => {
+            const sm = (item as any).stockMove;
+            return (
+              <tr key={item.id} className="transition-colors hover:bg-orange-50/30">
+                <td className="px-5 py-3.5 font-semibold text-orange-600">{item.return_no}</td>
+                <td className="px-5 py-3.5 text-sm text-gray-600">{item.rma?.rma_no || "-"}</td>
+                <td className="px-5 py-3.5">
+                  <p className="font-medium text-gray-900">{item.customer?.name || "-"}</p>
+                  {item.customer?.phone && <p className="mt-0.5 text-xs text-gray-400">{item.customer.phone}</p>}
+                </td>
+                <td className="px-5 py-3.5 text-sm text-gray-600">{fmtDate(item.return_date)}</td>
+                <td className="px-5 py-3.5 text-right font-semibold text-gray-900">{fmtMoney(item.total_return_amount)}</td>
+                <td className="px-5 py-3.5 text-center">
+                  <StatusBadge status={item.status} />
+                </td>
+                <td className="px-5 py-3.5 text-center text-xs font-medium">
+                  {sm ? (
+                    <div className="flex flex-col items-center">
+                      <Link to={`/inventory/stock_move/view/${sm.id}`} className="text-orange-600 hover:underline">
+                        {sm.move_no}
+                      </Link>
+                      <span className={`text-[10px] mt-0.5 px-1.5 py-0.2 rounded-full font-bold ${
+                        sm.status === "posted" ? "bg-green-100 text-green-700" :
+                        sm.status === "waiting_approval" ? "bg-yellow-100 text-yellow-700" :
+                        "bg-gray-100 text-gray-600"
+                      }`}>
+                        {sm.status === "posted" ? "Đã duyệt" : sm.status === "waiting_approval" ? "Chờ duyệt" : "Nháp"}
+                      </span>
+                    </div>
+                  ) : "—"}
+                </td>
+                <td className="px-5 py-3.5">
+                  <div className="flex items-center justify-center gap-1">
+                    <Link
+                      to={`/inventory/sales-returns/returns/${item.id}`}
+                      className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100"
                     >
-                      <CheckCircle className="h-3 w-3" />
-                      Hoàn tất
-                    </button>
-                  )}
-                </div>
-              </td>
-            </tr>
-          ))}
+                      <Eye className="h-3 w-3" />
+                      Xem
+                    </Link>
+                    {item.status === "inspected" && (
+                      <button
+                        type="button"
+                        onClick={() => onComplete(item.id)}
+                        disabled={sm && sm.status !== "posted"}
+                        title={sm && sm.status !== "posted" ? "Yêu cầu Quản lý kho duyệt phiếu kho trước" : ""}
+                        className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-green-600 transition-colors hover:bg-green-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <CheckCircle className="h-3 w-3" />
+                        Hoàn tất
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
   );
 }
+
+

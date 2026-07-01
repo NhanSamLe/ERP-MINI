@@ -107,6 +107,13 @@ export interface FormFieldConfig<T = any> {
   
   /** Step value (for number) */
   step?: number;
+
+  /**
+   * Định dạng hiển thị cho ô number:
+   * - 'thousand': phân tách nghìn kiểu VN (1.000.000) — dùng cho tiền/số lượng.
+   * Khi bật, giá trị onChange vẫn trả về number thuần. Không dùng cho số điện thoại.
+   */
+  format?: 'thousand';
   
   /** Accept file types (for file/image) */
   accept?: string;
@@ -158,7 +165,7 @@ export interface FormConfig<T = any> {
   fields?: FormFieldConfig<T>[];
   
   /** Form-level validation */
-  validate?: (values: T) => Record<string, string>;
+  validate?: (values: T) => Partial<Record<keyof T | string, string>>;
   
   /** Submit button label */
   submitLabel?: string;

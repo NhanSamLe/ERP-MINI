@@ -15,14 +15,14 @@ export default function RfqComparePage() {
   useEffect(() => {
     const idsParam = searchParams.get("ids");
     if (!idsParam) {
-      toast.error("No RFQs selected for comparison");
+      toast.error("Không có yêu cầu báo giá (RFQ) nào được chọn để so sánh");
       navigate("/purchase/rfqs");
       return;
     }
 
     const ids = idsParam.split(",").map(Number);
     if (ids.length < 2) {
-      toast.error("Select at least 2 RFQs to compare");
+      toast.error("Vui lòng chọn ít nhất 2 yêu cầu báo giá (RFQ) để so sánh");
       navigate("/purchase/rfqs");
       return;
     }
@@ -36,7 +36,7 @@ export default function RfqComparePage() {
       const data = await rfqApi.compare(ids);
       setCompareData(data);
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to load comparison data");
+      toast.error(e?.message ?? "Không tải được dữ liệu so sánh");
       navigate("/purchase/rfqs");
     } finally {
       setLoading(false);
@@ -55,12 +55,12 @@ export default function RfqComparePage() {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-500">
         <Package className="w-10 h-10 text-gray-300" />
-        <p className="text-sm font-medium">No comparison data available</p>
+        <p className="text-sm font-medium">Không có dữ liệu so sánh</p>
         <button
           onClick={() => navigate("/purchase/rfqs")}
           className="text-sm text-orange-600 hover:underline"
         >
-          Back to RFQs
+          Quay lại danh sách RFQ
         </button>
       </div>
     );
@@ -109,10 +109,10 @@ export default function RfqComparePage() {
               </button>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">
-                  Compare RFQ Quotations
+                  So sánh Báo giá RFQ
                 </h1>
                 <p className="text-sm text-gray-500 mt-0.5">
-                  {rfqs.length} quotations • {products.length} products
+                  {rfqs.length} báo giá • {products.length} sản phẩm
                 </p>
               </div>
             </div>
@@ -132,7 +132,7 @@ export default function RfqComparePage() {
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
-                  <p className="text-xs text-gray-500 mb-1">RFQ No</p>
+                  <p className="text-xs text-gray-500 mb-1">Số RFQ</p>
                   <p className="font-semibold text-gray-900">{rfq.rfq_no}</p>
                 </div>
                 <span className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-700 rounded">
@@ -142,14 +142,14 @@ export default function RfqComparePage() {
 
               <div className="space-y-2 text-sm">
                 <div>
-                  <p className="text-xs text-gray-500">Supplier</p>
+                  <p className="text-xs text-gray-500">Nhà cung cấp</p>
                   <p className="text-gray-900 font-medium">
                     {rfq.supplier?.name ?? "—"}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-xs text-gray-500">Total</p>
+                  <p className="text-xs text-gray-500">Tổng tiền</p>
                   <p className="text-lg font-bold text-orange-600">
                     {formatVND(rfq.total_after_tax)}
                   </p>
@@ -157,7 +157,7 @@ export default function RfqComparePage() {
 
                 {rfq.valid_until && (
                   <div>
-                    <p className="text-xs text-gray-500">Valid Until</p>
+                    <p className="text-xs text-gray-500">Hiệu lực đến</p>
                     <p className="text-gray-900">
                       {new Date(rfq.valid_until).toLocaleDateString("vi-VN")}
                     </p>
@@ -171,10 +171,9 @@ export default function RfqComparePage() {
         {/* Info Box */}
         <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm text-blue-900">
-            <strong>📌 Note:</strong> Prices are normalized by stock unit of
-            measure (UOM) for accurate comparison. If RFQs have different
-            quantities, "Cost/unit" shows the price per standard unit for fair
-            comparison.
+            <strong>📌 Lưu ý:</strong> Giá cả được quy chuẩn theo đơn vị tính
+            (DVT) kho để so sánh chính xác. Nếu các RFQ có số lượng khác nhau,
+            "Chi phí/đơn vị" hiển thị giá trên mỗi đơn vị chuẩn để so sánh công bằng.
           </p>
         </div>
 
@@ -185,13 +184,13 @@ export default function RfqComparePage() {
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50">
                   <th className="px-6 py-3 text-left font-semibold text-gray-900 sticky left-0 bg-gray-50 z-10">
-                    Product
+                    Sản phẩm
                   </th>
                   <th className="px-6 py-3 text-left font-semibold text-gray-900">
-                    Qty Requested
+                    Số lượng yêu cầu
                   </th>
                   <th className="px-6 py-3 text-left font-semibold text-gray-900">
-                    UOM
+                    Đơn vị tính
                   </th>
                   {rfqs.map((rfq) => (
                     <th
@@ -209,7 +208,7 @@ export default function RfqComparePage() {
                   <th className="px-6 py-3 text-center font-semibold text-gray-900 bg-green-50">
                     <div className="flex items-center justify-center gap-1">
                       <TrendingDown className="w-4 h-4 text-green-600" />
-                      <span>Best Price</span>
+                      <span>Giá tốt nhất</span>
                     </div>
                   </th>
                 </tr>
@@ -234,7 +233,7 @@ export default function RfqComparePage() {
                         const lineData = product.by_rfq[rfq.id];
                         const isBest = bestPrice && bestPrice.rfqId === rfq.id;
                         const qtyInStockUom =
-                          lineData?.qty_in_stock_uom || lineData?.quantity;
+                          (lineData as any)?.qty_in_stock_uom || lineData?.quantity;
                         const costPerUnit =
                           qtyInStockUom > 0
                             ? lineData?.line_total_after_tax / qtyInStockUom
@@ -252,21 +251,25 @@ export default function RfqComparePage() {
                                 <div className="font-semibold text-gray-900">
                                   {formatVND(lineData.unit_price)}
                                 </div>
-                                {lineData.discount_percent > 0 && (
+                                {(lineData.discount_type === "fixed" && (lineData.discount_amount ?? 0) > 0) ? (
+                                  <div className="text-xs text-red-600">
+                                    -{formatVND(lineData.discount_amount ?? 0)}
+                                  </div>
+                                ) : lineData.discount_percent > 0 ? (
                                   <div className="text-xs text-red-600">
                                     -{lineData.discount_percent}%
                                   </div>
-                                )}
+                                ) : null}
                                 <div className="text-xs text-gray-500">
-                                  Cost/unit: {formatVND(costPerUnit)}
+                                  Chi phí/đơn vị: {formatVND(costPerUnit)}
                                 </div>
                                 <div className="text-xs text-gray-500">
-                                  Total:{" "}
+                                  Tổng:{" "}
                                   {formatVND(lineData.line_total_after_tax)}
                                 </div>
                                 {lineData.lead_time_days && (
                                   <div className="text-xs text-gray-500">
-                                    Lead: {lineData.lead_time_days}d
+                                    Thời gian giao: {lineData.lead_time_days} ngày
                                   </div>
                                 )}
                               </div>
@@ -278,7 +281,7 @@ export default function RfqComparePage() {
                       })}
 
                       <td className="px-6 py-4 text-center bg-green-50 font-bold text-green-700">
-                        {bestPrice ? `${formatVND(bestPrice.price)}/unit` : "—"}
+                        {bestPrice ? `${formatVND(bestPrice.price)}/đơn vị` : "—"}
                       </td>
                     </tr>
                   );
@@ -289,10 +292,10 @@ export default function RfqComparePage() {
               <tfoot className="border-t-2 border-gray-300 bg-gray-50">
                 <tr>
                   <td colSpan={2} className="px-6 py-4 font-bold text-gray-900">
-                    Total Amount
+                    Tổng cộng
                   </td>
                   <td className="px-6 py-4 text-xs text-gray-500 italic">
-                    (as quoted, not normalized)
+                    (theo báo giá, chưa quy chuẩn)
                   </td>
                   {rfqs.map((rfq) => (
                     <td
@@ -314,7 +317,7 @@ export default function RfqComparePage() {
         {/* Summary Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
           <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <p className="text-xs text-gray-500 mb-2">Cheapest Supplier</p>
+            <p className="text-xs text-gray-500 mb-2">Nhà cung cấp rẻ nhất</p>
             <p className="text-lg font-bold text-gray-900">
               {rfqs.reduce((prev, current) =>
                 prev.total_after_tax < current.total_after_tax ? prev : current,
@@ -326,7 +329,7 @@ export default function RfqComparePage() {
           </div>
 
           <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <p className="text-xs text-gray-500 mb-2">Most Expensive</p>
+            <p className="text-xs text-gray-500 mb-2">Nhà cung cấp đắt nhất</p>
             <p className="text-lg font-bold text-gray-900">
               {rfqs.reduce((prev, current) =>
                 prev.total_after_tax > current.total_after_tax ? prev : current,
@@ -338,7 +341,7 @@ export default function RfqComparePage() {
           </div>
 
           <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <p className="text-xs text-gray-500 mb-2">Potential Savings</p>
+            <p className="text-xs text-gray-500 mb-2">Mức tiết kiệm tiềm năng</p>
             <p className="text-lg font-bold text-green-600">
               {formatVND(
                 Math.max(...rfqs.map((r) => r.total_after_tax)) -
@@ -352,7 +355,7 @@ export default function RfqComparePage() {
                   Math.max(...rfqs.map((r) => r.total_after_tax))) *
                 100
               ).toFixed(1)}
-              % savings
+              % tiết kiệm
             </p>
           </div>
         </div>

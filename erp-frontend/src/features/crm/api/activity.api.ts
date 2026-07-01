@@ -112,6 +112,6 @@ export const sendEmailWithAttachments = (activityId: number, files: File[]) => {
   });
 };
 
-export const getSalesDashboard = () => {
-  return axiosClient.get("/crm/dashboard/sales");
+export const getSalesDashboard = (params?: any) => {
+  return axiosClient.get("/crm/dashboard/sales", { params });
 };

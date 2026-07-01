@@ -5,9 +5,9 @@ export default function Navbar() {
     <div className="h-14 bg-gray-50 border-b border-gray-200 px-6 flex items-center justify-between">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm">
-        <span className="text-gray-600 hover:text-gray-900 cursor-pointer">Dashboard</span>
+        <span className="text-gray-600 hover:text-gray-900 cursor-pointer">Tổng quan</span>
         <ChevronRight className="w-4 h-4 text-gray-400" />
-        <span className="text-gray-900 font-medium">Overview</span>
+        <span className="text-gray-900 font-medium">Bảng điều khiển</span>
       </div>
 
       {/* Actions */}

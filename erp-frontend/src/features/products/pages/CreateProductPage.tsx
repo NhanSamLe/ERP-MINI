@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { FormInput } from "../../../components/ui/FormInput";
 import { Button } from "../../../components/ui/Button";
 import { useSelector, useDispatch } from "react-redux";
@@ -124,7 +124,7 @@ export default function CreateProductPage() {
       } else {
         setActiveTab("general");
       }
-      toast.error("Please fix the errors before submitting.");
+      toast.error("Vui lòng sửa các lỗi trước khi gửi.");
       return;
     }
 
@@ -161,7 +161,7 @@ export default function CreateProductPage() {
         product.gallery.forEach((f) => formData.append("gallery", f));
 
       await dispatch(createProductThunk(formData)).unwrap();
-      toast.success("Product created successfully!");
+      toast.success("Đã thêm sản phẩm thành công!");
       setProduct({
         category_id: 0,
         sku: generateSKU(),
@@ -224,10 +224,10 @@ export default function CreateProductPage() {
       <div className="flex flex-wrap items-center justify-between bg-white px-6 py-4 rounded-xl border shadow-sm">
         <div>
           <h1 className="text-xl font-semibold text-gray-800">
-            Create Product
+            Thêm Sản Phẩm Mới
           </h1>
           <p className="text-sm text-gray-500">
-            Fill out product details to create a new one
+            Điền các thông tin chi tiết để thêm sản phẩm mới
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -241,7 +241,7 @@ export default function CreateProductPage() {
           </button>
           <Link to="/inventory/products">
             <Button className="flex items-center gap-1 bg-[#1a1d29] hover:bg-[#0f111a] text-white px-4 py-2 rounded-lg shadow text-sm font-medium transition">
-              <ArrowLeft className="w-4 h-4" /> Back to Product
+              <ArrowLeft className="w-4 h-4" /> Quay lại
             </Button>
           </Link>
         </div>
@@ -254,7 +254,7 @@ export default function CreateProductPage() {
             onClick={() => setActiveTab("general")}
             className={tabClass("general")}
           >
-            General Information
+            Thông tin chung
             {(errors.name ||
               errors.category_id ||
               errors.cost_price ||
@@ -267,7 +267,7 @@ export default function CreateProductPage() {
             onClick={() => setActiveTab("attributes")}
             className={tabClass("attributes")}
           >
-            Attributes
+            Thuộc tính
             {(errors.weight || errors.volume || errors.warranty_months) && (
               <span className="ml-1.5 w-2 h-2 rounded-full bg-red-500 inline-block" />
             )}
@@ -277,7 +277,7 @@ export default function CreateProductPage() {
             className={`${tabClass("suppliers")} ${product.source_type !== "purchased" ? "opacity-40 cursor-not-allowed" : ""}`}
             disabled={product.source_type !== "purchased"}
           >
-            Suppliers
+            Nhà cung cấp
           </button>
         </div>
 
@@ -289,10 +289,10 @@ export default function CreateProductPage() {
                 {/* Name */}
                 <div>
                   <FormInput
-                    label="Product Name"
+                    label="Tên sản phẩm"
                     value={product.name}
                     onChange={(v) => handleChange("name", v)}
-                    placeholder="Enter product name"
+                    placeholder="Nhập tên sản phẩm"
                     required
                     className={inputClass("name")}
                   />
@@ -300,26 +300,26 @@ export default function CreateProductPage() {
                 </div>
 
                 <FormInput
-                  label="SKU"
+                  label="Mã SKU"
                   value={product.sku}
                   onChange={(v) => handleChange("sku", v)}
                   readOnly
-                  placeholder="Auto-generated"
+                  placeholder="Tự động tạo"
                 />
 
                 {/* Category */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Category <span className="text-red-500">*</span>
+                    Danh mục <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={product.category_id}
                     onChange={(e) =>
-                      handleChange("category_id", Number(e.target.value))
+                       handleChange("category_id", Number(e.target.value))
                     }
                     className={`w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-orange-400 ${errors.category_id ? "border-red-400" : ""}`}
                   >
-                    <option value={0}>-- Select Category --</option>
+                    <option value={0}>-- Chọn danh mục --</option>
                     {categories.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name}
@@ -332,7 +332,7 @@ export default function CreateProductPage() {
                 {/* Product Type */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Product Type
+                    Loại sản phẩm
                   </label>
                   <select
                     value={product.product_type}
@@ -344,16 +344,16 @@ export default function CreateProductPage() {
                     }
                     className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-orange-400"
                   >
-                    <option value="storable">Storable</option>
-                    <option value="consumable">Consumable</option>
-                    <option value="service">Service</option>
+                    <option value="storable">Lưu kho</option>
+                    <option value="consumable">Tiêu dùng</option>
+                    <option value="service">Dịch vụ</option>
                   </select>
                 </div>
 
                 {/* Source Type */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Source Type
+                    Nguồn cung
                   </label>
                   <select
                     value={product.source_type}
@@ -366,12 +366,12 @@ export default function CreateProductPage() {
                     className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-orange-400"
                     disabled={product.product_type === "service"}
                   >
-                    <option value="purchased">Purchased</option>
-                    <option value="manufactured">Manufactured</option>
+                    <option value="purchased">Mua ngoài</option>
+                    <option value="manufactured">Tự sản xuất</option>
                   </select>
                   {product.product_type === "service" && (
                     <p className="text-xs text-gray-400 mt-1">
-                      Service products are always purchased.
+                      Sản phẩm dịch vụ luôn là mua ngoài.
                     </p>
                   )}
                 </div>
@@ -379,7 +379,7 @@ export default function CreateProductPage() {
                 {/* UOM */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Unit of Measure (UOM)
+                    Đơn vị tính (UoM)
                   </label>
                   <select
                     value={product.uom_id || ""}
@@ -391,7 +391,7 @@ export default function CreateProductPage() {
                     }
                     className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-orange-400"
                   >
-                    <option value="">-- Select UOM --</option>
+                    <option value="">-- Chọn đơn vị tính --</option>
                     {uoms.map((u) => (
                       <option key={u.id} value={u.id}>
                         {u.name} ({u.code})
@@ -403,7 +403,7 @@ export default function CreateProductPage() {
                 {/* Purchase UOM */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Purchase UOM
+                    Đơn vị mua hàng
                   </label>
                   <select
                     value={product.purchase_uom_id || ""}
@@ -415,7 +415,7 @@ export default function CreateProductPage() {
                     }
                     className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-orange-400"
                   >
-                    <option value="">-- Select Purchase UOM --</option>
+                    <option value="">-- Chọn đơn vị mua --</option>
                     {uoms.map((u) => (
                       <option key={u.id} value={u.id}>
                         {u.name} ({u.code})
@@ -427,7 +427,7 @@ export default function CreateProductPage() {
                 {/* Min Stock */}
                 <div>
                   <FormInput
-                    label="Minimum Stock Quantity"
+                    label="Tồn kho tối thiểu"
                     type="text"
                     value={
                       product.min_stock_qty != null && product.min_stock_qty > 0
@@ -448,23 +448,23 @@ export default function CreateProductPage() {
                   <ErrorMsg field="min_stock_qty" />
                   {product.product_type === "service" && (
                     <p className="text-xs text-gray-400 mt-1">
-                      Not applicable for service products.
+                      Không áp dụng cho sản phẩm dịch vụ.
                     </p>
                   )}
                 </div>
 
                 <FormInput
-                  label="Barcode"
+                  label="Mã vạch (Barcode)"
                   value={product.barcode?.toString() || ""}
                   onChange={(v) => handleChange("barcode", v)}
-                  placeholder="Auto-generated"
+                  placeholder="Tự động tạo"
                   disabled
                 />
 
                 {/* Cost Price */}
                 <div>
                   <PriceInput
-                    label="Cost Price"
+                    label="Giá mua"
                     value={product.cost_price}
                     onChange={(v) => handleChange("cost_price", v)}
                     error={errors.cost_price}
@@ -474,7 +474,7 @@ export default function CreateProductPage() {
                 {/* Sale Price */}
                 <div>
                   <PriceInput
-                    label="Sale Price"
+                    label="Giá bán"
                     value={product.sale_price}
                     onChange={(v) => handleChange("sale_price", v)}
                     error={errors.sale_price}
@@ -484,7 +484,7 @@ export default function CreateProductPage() {
                 {/* Tax Rate */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tax Rate
+                    Thuế suất
                   </label>
                   <select
                     value={product.tax_rate_id || ""}
@@ -496,7 +496,7 @@ export default function CreateProductPage() {
                     }
                     className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-orange-400"
                   >
-                    <option value="">-- Select Tax Rate --</option>
+                    <option value="">-- Chọn thuế suất --</option>
                     {taxRates.map((r) => (
                       <option key={r.id} value={r.id}>
                         {r.name} ({r.rate}%)
@@ -508,7 +508,7 @@ export default function CreateProductPage() {
                 {/* Status */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Status
+                    Trạng thái
                   </label>
                   <select
                     value={product.status}
@@ -520,20 +520,20 @@ export default function CreateProductPage() {
                     }
                     className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-orange-400"
                   >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
+                    <option value="active">Đang hoạt động</option>
+                    <option value="inactive">Ngừng hoạt động</option>
                   </select>
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description
+                  Mô tả sản phẩm
                 </label>
                 <textarea
                   value={product.description}
                   onChange={(e) => handleChange("description", e.target.value)}
-                  placeholder="Enter product description..."
+                  placeholder="Nhập mô tả sản phẩm..."
                   className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-orange-400"
                   rows={3}
                 />
@@ -541,10 +541,10 @@ export default function CreateProductPage() {
 
               {/* Images */}
               <div className="space-y-4">
-                <h4 className="font-medium text-gray-700">Product Images</h4>
+                <h4 className="font-medium text-gray-700">Hình ảnh sản phẩm</h4>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Thumbnail Image
+                    Ảnh đại diện
                   </label>
                   {product.thumbnail ? (
                     <ImageUpload
@@ -562,7 +562,7 @@ export default function CreateProductPage() {
                     <label className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-orange-400 hover:text-orange-500 cursor-pointer">
                       <Plus className="w-5 h-5 mb-1" />
                       <span className="text-xs font-medium">
-                        {uploadingThumbnail ? "Uploading..." : "Add Thumbnail"}
+                        {uploadingThumbnail ? "Đang tải lên..." : "Thêm ảnh đại diện"}
                       </span>
                       <input
                         type="file"
@@ -579,7 +579,7 @@ export default function CreateProductPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Gallery Images
+                    Bộ sưu tập ảnh
                   </label>
                   <div className="flex flex-wrap gap-4">
                     {product.gallery.map((file, i) => (
@@ -608,7 +608,7 @@ export default function CreateProductPage() {
                     <label className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-orange-400 hover:text-orange-500 cursor-pointer">
                       <Plus className="w-5 h-5 mb-1" />
                       <span className="text-xs font-medium">
-                        {uploadingGallery ? "Uploading..." : "Add Image"}
+                        {uploadingGallery ? "Đang tải lên..." : "Thêm ảnh"}
                       </span>
                       <input
                         type="file"
@@ -638,20 +638,20 @@ export default function CreateProductPage() {
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormInput
-                  label="Internal Reference"
+                  label="Mã tham chiếu nội bộ"
                   value={product.internal_ref || ""}
                   onChange={(v) => handleChange("internal_ref", v)}
-                  placeholder="Enter internal reference"
+                  placeholder="Nhập mã tham chiếu nội bộ"
                 />
                 <FormInput
-                  label="Origin"
+                  label="Xuất xứ"
                   value={product.origin || ""}
                   onChange={(v) => handleChange("origin", v)}
-                  placeholder="Enter origin"
+                  placeholder="Nhập xuất xứ"
                 />
                 <div>
                   <FormInput
-                    label="Weight (kg)"
+                    label="Trọng lượng (kg)"
                     type="number"
                     value={product.weight?.toString() || ""}
                     onChange={(v) =>
@@ -664,7 +664,7 @@ export default function CreateProductPage() {
                 </div>
                 <div>
                   <FormInput
-                    label="Volume (m³)"
+                    label="Thể tích (m³)"
                     type="number"
                     value={product.volume?.toString() || ""}
                     onChange={(v) =>
@@ -677,7 +677,7 @@ export default function CreateProductPage() {
                 </div>
                 <div>
                   <FormInput
-                    label="Warranty (months)"
+                    label="Bảo hành (tháng)"
                     type="number"
                     value={product.warranty_months?.toString() || ""}
                     onChange={(v) =>
@@ -691,12 +691,12 @@ export default function CreateProductPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Notes
+                  Ghi chú
                 </label>
                 <textarea
                   value={product.notes || ""}
                   onChange={(e) => handleChange("notes", e.target.value)}
-                  placeholder="Enter additional notes..."
+                  placeholder="Nhập ghi chú thêm..."
                   className="w-full border rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-orange-400"
                   rows={4}
                 />
@@ -709,8 +709,7 @@ export default function CreateProductPage() {
             <div className="space-y-4">
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                 <p className="text-sm text-yellow-800">
-                  ℹ️ Supplier information can be added after creating the
-                  product.
+                  ℹ️ Thông tin nhà cung cấp có thể được thêm sau khi sản phẩm đã được tạo.
                 </p>
               </div>
             </div>
@@ -725,7 +724,7 @@ export default function CreateProductPage() {
           disabled={isSubmitting}
           className={`bg-[#ff8c00] hover:bg-[#ff7700] text-white px-6 py-3 rounded-lg font-medium shadow-md ${isSubmitting ? "opacity-70 cursor-not-allowed" : ""}`}
         >
-          {isSubmitting ? "Creating..." : "Create Product"}
+          {isSubmitting ? "Đang tạo..." : "Thêm sản phẩm"}
         </Button>
       </div>
     </div>

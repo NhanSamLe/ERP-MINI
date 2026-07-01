@@ -28,6 +28,10 @@ export const apInvoiceService = {
     return apInvoiceApi.reject(id, reason);
   },
 
+  async overrideMismatch(id: number, reason: string) {
+    return apInvoiceApi.overrideMismatch(id, reason);
+  },
+
   async getPostedSummaryBySupplier(
     supplierId: number
   ): Promise<ApPostedSummary> {

@@ -1,17 +1,33 @@
 import { Request, Response } from "express";
 import * as glJournalService from "../services/glJournal.service";
+import { getCompanyIdFromUserBranch } from "../services/companyScope.service";
+
+type FinanceUser = { company_id?: number | null; branch_id?: number | null; role?: string };
+
+function getUser(req: Request) {
+  return (req as any).user as FinanceUser | undefined;
+}
+
+async function getCompanyId(req: Request) {
+  return getCompanyIdFromUserBranch(getUser(req) ?? {});
+}
 
 export async function getAll(req: Request, res: Response) {
   try {
-    const data = await glJournalService.getAllGlJournals();
-    return res.json(data); // trả về array đơn giản
+    const data = await glJournalService.getAllGlJournals(await getCompanyId(req));
+    return res.json(data);
   } catch (err: any) {
     return res.status(400).json({ message: err.message });
   }
 }
+
 export const listJournals = async (req: Request, res: Response) => {
-  const data = await glJournalService.listJournals();
-  return res.json(data);
+  try {
+    const data = await glJournalService.listJournals(await getCompanyId(req));
+    return res.json(data);
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message });
+  }
 };
 
 export const listEntriesByJournal = async (req: Request, res: Response) => {
@@ -19,16 +35,16 @@ export const listEntriesByJournal = async (req: Request, res: Response) => {
     const journalId = Number(req.params.journalId);
     const { from, to, status, search } = req.query;
 
-const filter: { from?: string; to?: string; status?: string; search?: string } = {};
+    const user = getUser(req);
+    const filter: { from?: string; to?: string; status?: string; search?: string; branch_id?: number } = {};
+    if (user?.branch_id) filter.branch_id = user.branch_id;
+    if (typeof from === "string") filter.from = from;
+    if (typeof to === "string") filter.to = to;
+    if (typeof status === "string") filter.status = status;
+    if (typeof search === "string") filter.search = search;
 
-if (typeof from === "string") filter.from = from;
-if (typeof to === "string") filter.to = to;
-if (typeof status === "string") filter.status = status;
-if (typeof search === "string") filter.search = search;
-
-const data = await glJournalService.listEntriesByJournal(journalId, filter);
-return res.json(data);
-
+    const data = await glJournalService.listEntriesByJournal(journalId, filter);
+    return res.json(data);
   } catch (e: any) {
     return res.status(400).json({ message: e.message });
   }
@@ -37,7 +53,11 @@ return res.json(data);
 export const getEntryDetail = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
+    const user = getUser(req);
     const row = await glJournalService.getEntryDetail(id);
+    if (user?.branch_id && (row as any).branch_id && (row as any).branch_id !== user.branch_id) {
+      return res.status(403).json({ message: "Khong co quyen truy cap but toan nay." });
+    }
     return res.json(row);
   } catch (e: any) {
     return res.status(404).json({ message: e.message });
@@ -46,12 +66,13 @@ export const getEntryDetail = async (req: Request, res: Response) => {
 
 export const createManualEntry = async (req: Request, res: Response) => {
   try {
-    const branchId = (req as any).user?.branch_id || null;
-    const data = await glJournalService.createManualEntry(req.body, branchId);
+    const user = getUser(req);
+    const branchId = user?.branch_id ?? null;
+    const companyId = await getCompanyId(req);
+    const data = await glJournalService.createManualEntry(req.body, branchId, companyId);
     return res.status(201).json(data);
   } catch (e: any) {
-    console.error("[glJournal.controller] createManualEntry error:", e);
-    return res.status(400).json({ message: e.message || "Lỗi tạo bút toán thủ công" });
+    return res.status(400).json({ message: e.message || "Loi tao but toan thu cong" });
   }
 };
 
@@ -63,41 +84,50 @@ export const updateEntryStatus = async (req: Request, res: Response) => {
     const data = await glJournalService.updateEntryStatus(id, status, user);
     return res.json(data);
   } catch (e: any) {
-    console.error("[glJournal.controller] updateEntryStatus error:", e);
-    return res.status(400).json({ message: e.message || "Lỗi cập nhật trạng thái bút toán" });
+    return res.status(400).json({ message: e.message || "Loi cap nhat trang thai but toan" });
   }
 };
 
 export const getTrialBalance = async (req: Request, res: Response) => {
   try {
     const { from, to } = req.query;
-    const branchId = (req as any).user?.branch_id || undefined;
-    
+    const user = getUser(req);
+
     if (typeof from !== "string" || typeof to !== "string") {
-      return res.status(400).json({ message: "Từ ngày và Đến ngày là bắt buộc." });
+      return res.status(400).json({ message: "Tu ngay va den ngay la bat buoc." });
     }
 
-    const data = await glJournalService.getTrialBalance({ from, to, branch_id: branchId });
+    const filter: { from: string; to: string; branch_id?: number; company_id?: number } = {
+      from,
+      to,
+      company_id: await getCompanyId(req),
+    };
+    if (user?.branch_id) filter.branch_id = user.branch_id;
+    const data = await glJournalService.getTrialBalance(filter);
     return res.json({ data });
   } catch (e: any) {
-    console.error("[glJournal.controller] getTrialBalance error:", e);
-    return res.status(400).json({ message: e.message || "Lỗi tải bảng cân đối phát sinh" });
+    return res.status(400).json({ message: e.message || "Loi tai bang can doi phat sinh" });
   }
 };
 
 export const getProfitLoss = async (req: Request, res: Response) => {
   try {
     const { from, to } = req.query;
-    const branchId = (req as any).user?.branch_id || undefined;
+    const user = getUser(req);
 
     if (typeof from !== "string" || typeof to !== "string") {
-      return res.status(400).json({ message: "Từ ngày và Đến ngày là bắt buộc." });
+      return res.status(400).json({ message: "Tu ngay va den ngay la bat buoc." });
     }
 
-    const data = await glJournalService.getProfitLoss({ from, to, branch_id: branchId });
+    const filter: { from: string; to: string; branch_id?: number; company_id?: number } = {
+      from,
+      to,
+      company_id: await getCompanyId(req),
+    };
+    if (user?.branch_id) filter.branch_id = user.branch_id;
+    const data = await glJournalService.getProfitLoss(filter);
     return res.json({ data });
   } catch (e: any) {
-    console.error("[glJournal.controller] getProfitLoss error:", e);
-    return res.status(400).json({ message: e.message || "Lỗi tải báo cáo kết quả kinh doanh" });
+    return res.status(400).json({ message: e.message || "Loi tai bao cao ket qua kinh doanh" });
   }
-};
+};

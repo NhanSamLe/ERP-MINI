@@ -29,6 +29,7 @@ export class PurchaseOrderAuditLog
   public changed_by!: number;
   public changed_at!: Date;
   public branch_id!: number;
+  public static associate?: (models: any) => void;
 }
 
 PurchaseOrderAuditLog.init(

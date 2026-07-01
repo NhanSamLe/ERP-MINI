@@ -5,6 +5,8 @@ import {
   Product,
   sequelize,
   TaxRate,
+  PaymentTerm,
+  Currency,
 } from "../../../models";
 import { User } from "../../auth/models/user.model";
 import { Branch } from "../../company/models/branch.model";
@@ -15,8 +17,11 @@ import { Transaction, Op } from "sequelize";
 import { GlJournal } from "../../finance/models/glJournal.model";
 import { GlEntry } from "../../finance/models/glEntry.model";
 import { GlEntryLine } from "../../finance/models/glEntryLine.model";
-import { GlAccount } from "../../finance/models/glAccount.model";
 import { notificationService } from "../../../core/services/notification.service";
+import { getMappedAccount } from "../../finance/services/glAccount.service";
+import { checkPeriodLocked } from "../../finance/services/glJournal.service";
+import { requireGlAccounts } from "../../finance/services/glAccount.helper";
+import { getCompanyIdFromBranch, getCompanyBranchIds } from "../../finance/services/companyScope.service";
 import { DuplicateDetectorService } from "../../document-intelligence/services/duplicateDetector.service";
 import { ThreeWayMatcherService } from "../../document-intelligence/services/threeWayMatcher.service";
 import { apInvoiceAuditLogService } from "./apInvoiceAuditLog.service";
@@ -56,6 +61,9 @@ export interface CreateAPInvoiceInput {
   total_tax?: number;
   total_after_tax?: number;
   lines: CreateAPInvoiceLineInput[];
+  payment_term_id?: number | null;
+  currency_id?: number | null;
+  exchange_rate?: number | null;
   // Cho phép ghi đè cảnh báo trùng lặp
   overrideDuplicate?: boolean;
   override_reason?: string;
@@ -85,8 +93,14 @@ export const apInvoiceService = {
   },
 
   async getById(id: number, user: any) {
-    const where: any = { id, branch_id: user.branch_id };
-
+    const companyBranchIds = await getCompanyBranchIds(user);
+    const where: any = { id };
+    if (user.role === "ADMIN" || user.role === "CEO") {
+      where.branch_id = { [Op.in]: companyBranchIds };
+    } else {
+      where.branch_id = user.branch_id;
+    }
+ 
     if (user.role === "ACCOUNT") {
       where.created_by = user.id;
     }
@@ -104,6 +118,16 @@ export const apInvoiceService = {
           model: User,
           as: "approver",
           attributes: ["id", "full_name", "email", "phone", "avatar_url"],
+        },
+        {
+          model: PaymentTerm,
+          as: "paymentTerm",
+          attributes: ["id", "name", "days", "code"],
+        },
+        {
+          model: Currency,
+          as: "currency",
+          attributes: ["id", "code", "symbol", "name"],
         },
         {
           model: ApInvoiceLine,
@@ -124,6 +148,10 @@ export const apInvoiceService = {
               model: Partner,
               as: "supplier",
               attributes: ["id", "name", "email", "phone"],
+            },
+            {
+              model: PurchaseOrderLine,
+              as: "lines",
             },
           ],
         },
@@ -349,7 +377,7 @@ export const apInvoiceService = {
    * Ví dụ: Kế toán nhấn "Tạo hóa đơn" từ màn hình chi tiết PO-2024-001
    */
   async createFromPO(poId: number, user: any) {
-    if (![Role.ACCOUNT].includes(user.role)) {
+    if (![Role.ACCOUNT, Role.CHACC, "ADMIN", "CEO"].includes(user.role)) {
       throw {
         status: 403,
         message: "You do not have permission to create AP Invoice",
@@ -430,66 +458,108 @@ export const apInvoiceService = {
       }
     }
 
-    // Build lines with remaining quantities only
-    const lines: CreateAPInvoiceLineInput[] = [];
+    // 1. Calculate each line's initial values (before header discount)
+    const calculatedLines = [];
+    let totalBeforeHeaderDiscount = 0;
+
     for (const line of poLines) {
       const invoicedQty = invoicedQtyByPoLine[line.id] ?? 0;
       const remainingQty = Number(line.quantity ?? 0) - invoicedQty;
       if (remainingQty <= 0) continue; // skip fully invoiced lines
 
       const unitPrice = Number(line.unit_price ?? 0);
-      const lineTotal = remainingQty * unitPrice;
-      const taxRate = line.tax_rate_id
-        ? await TaxRate.findByPk(line.tax_rate_id)
-        : null;
-      const taxRateValue = taxRate ? Number((taxRate as any).rate ?? 0) : 0;
-      const lineTax = (lineTotal * taxRateValue) / 100;
+      const gross = remainingQty * unitPrice;
+      const discountPercent = Number(line.discount_percent ?? 0);
+      const discountAmount = gross * (discountPercent / 100);
+      const lineTotalBeforeHeader = gross - discountAmount;
 
-      lines.push({
-        product_id: line.product_id ?? null,
-        description: po.description ?? "",
-        quantity: remainingQty,
-        unit_price: unitPrice,
-        uom_id: line.uom_id ?? null,
-        tax_rate_id: line.tax_rate_id ?? null,
-        line_total: lineTotal,
-        line_tax: lineTax,
-        line_total_after_tax: lineTotal + lineTax,
-        po_line_id: line.id,
+      totalBeforeHeaderDiscount += lineTotalBeforeHeader;
+
+      calculatedLines.push({
+        line,
+        remainingQty,
+        unitPrice,
+        discountPercent,
+        discountAmount,
+        lineTotalBeforeHeader,
       });
     }
 
-    if (lines.length === 0) {
+    if (calculatedLines.length === 0) {
       throw {
         status: 400,
         message: "All lines in this Purchase Order have already been invoiced.",
       };
     }
 
-    const totalBeforeTax = lines.reduce((s, l) => s + (l.line_total ?? 0), 0);
+    // 2. Determine Header Discount Amount
+    let headerDiscountAmount = 0;
+    let headerDiscountPercent = 0;
+
+    if (po.discount_percent && Number(po.discount_percent) > 0) {
+      headerDiscountPercent = Number(po.discount_percent);
+      headerDiscountAmount = totalBeforeHeaderDiscount * (headerDiscountPercent / 100);
+    } else if (po.discount_amount && Number(po.discount_amount) > 0) {
+      const poTotalBeforeHeaderDiscount = Number(po.total_before_tax ?? 0) + Number(po.discount_amount ?? 0);
+      const ratio = poTotalBeforeHeaderDiscount > 0 ? (totalBeforeHeaderDiscount / poTotalBeforeHeaderDiscount) : 0;
+      headerDiscountAmount = Number(po.discount_amount) * ratio;
+      headerDiscountPercent = totalBeforeHeaderDiscount > 0 ? (headerDiscountAmount / totalBeforeHeaderDiscount) * 100 : 0;
+    }
+
+    // 3. Pro-rata distribution of header discount to lines
+    const lines: CreateAPInvoiceLineInput[] = [];
+    for (const item of calculatedLines) {
+      const line = item.line;
+      const weight = totalBeforeHeaderDiscount > 0 ? (item.lineTotalBeforeHeader / totalBeforeHeaderDiscount) : 0;
+      const distributedDiscount = headerDiscountAmount * weight;
+
+      const netLineTotal = item.lineTotalBeforeHeader - distributedDiscount;
+      const taxRate = line.tax_rate_id
+        ? await TaxRate.findByPk(line.tax_rate_id)
+        : null;
+      const taxRateValue = taxRate ? Number((taxRate as any).rate ?? 0) : 0;
+      const netLineTax = (netLineTotal * taxRateValue) / 100;
+      const netLineTotalAfterTax = netLineTotal + netLineTax;
+
+      lines.push({
+        product_id: line.product_id ?? null,
+        description: line.description ?? po.description ?? "",
+        quantity: item.remainingQty,
+        unit_price: item.unitPrice,
+        uom_id: line.uom_id ?? null,
+        tax_rate_id: line.tax_rate_id ?? null,
+        line_total: netLineTotal,
+        line_tax: netLineTax,
+        line_total_after_tax: netLineTotalAfterTax,
+        po_line_id: line.id,
+      });
+    }
+
+    const totalBeforeTax = totalBeforeHeaderDiscount - headerDiscountAmount;
     const totalTax = lines.reduce((s, l) => s + (l.line_tax ?? 0), 0);
     const totalAfterTax = totalBeforeTax + totalTax;
 
     const invoiceNo = `AP-${new Date().getFullYear()}-${Date.now()}`;
     const invoiceDate = new Date();
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 30);
 
     const result = await this.createAPInvoice(
       {
         source: "manual",
         invoice_no: invoiceNo,
         invoice_date: invoiceDate,
-        due_date: dueDate,
+        // Không truyền due_date → createAPInvoice() tự tính từ payment_term_id
         supplier_id: po.supplier_id!,
         ...(po.id && { po_id: po.id }),
         branch_id: po.branch_id!,
         created_by: user.id,
+        ...(po.payment_term_id && { payment_term_id: po.payment_term_id }),
+        ...(po.currency_id && { currency_id: po.currency_id }),
+        exchange_rate: (po as any).exchange_rate ?? 1.0,
         ...(totalBeforeTax > 0 && { total_before_tax: totalBeforeTax }),
         ...(totalTax > 0 && { total_tax: totalTax }),
         ...(totalAfterTax > 0 && { total_after_tax: totalAfterTax }),
         lines,
-      },
+      } as any,
       user,
     );
 
@@ -519,7 +589,7 @@ export const apInvoiceService = {
       tax_code?: string;
     },
   ) {
-    if (![Role.ACCOUNT].includes(user.role)) {
+    if (![Role.ACCOUNT, Role.CHACC, "ADMIN", "CEO"].includes(user.role)) {
       throw {
         status: 403,
         message: "You do not have permission to create AP Invoice",
@@ -571,7 +641,9 @@ export const apInvoiceService = {
     }
 
     // Validate each selected line
-    const lines: CreateAPInvoiceLineInput[] = [];
+    const calculatedLines = [];
+    let totalBeforeHeaderDiscount = 0;
+
     for (const sel of selectedLines) {
       const poLine = poLineMap.get(sel.po_line_id);
       if (!poLine) {
@@ -596,28 +668,67 @@ export const apInvoiceService = {
       }
 
       const unitPrice = Number(poLine.unit_price ?? 0);
-      const lineTotal = sel.quantity * unitPrice;
+      const gross = sel.quantity * unitPrice;
+      const discountPercent = Number(poLine.discount_percent ?? 0);
+      const discountAmount = gross * (discountPercent / 100);
+      const lineTotalBeforeHeader = gross - discountAmount;
+
+      totalBeforeHeaderDiscount += lineTotalBeforeHeader;
+
+      calculatedLines.push({
+        poLine,
+        quantity: sel.quantity,
+        unitPrice,
+        discountPercent,
+        discountAmount,
+        lineTotalBeforeHeader,
+      });
+    }
+
+    // 2. Determine Header Discount Amount
+    let headerDiscountAmount = 0;
+    let headerDiscountPercent = 0;
+
+    if (po.discount_percent && Number(po.discount_percent) > 0) {
+      headerDiscountPercent = Number(po.discount_percent);
+      headerDiscountAmount = totalBeforeHeaderDiscount * (headerDiscountPercent / 100);
+    } else if (po.discount_amount && Number(po.discount_amount) > 0) {
+      const poTotalBeforeHeaderDiscount = Number(po.total_before_tax ?? 0) + Number(po.discount_amount ?? 0);
+      const ratio = poTotalBeforeHeaderDiscount > 0 ? (totalBeforeHeaderDiscount / poTotalBeforeHeaderDiscount) : 0;
+      headerDiscountAmount = Number(po.discount_amount) * ratio;
+      headerDiscountPercent = totalBeforeHeaderDiscount > 0 ? (headerDiscountAmount / totalBeforeHeaderDiscount) * 100 : 0;
+    }
+
+    // 3. Pro-rata distribution of header discount to lines
+    const lines: CreateAPInvoiceLineInput[] = [];
+    for (const item of calculatedLines) {
+      const poLine = item.poLine;
+      const weight = totalBeforeHeaderDiscount > 0 ? (item.lineTotalBeforeHeader / totalBeforeHeaderDiscount) : 0;
+      const distributedDiscount = headerDiscountAmount * weight;
+
+      const netLineTotal = item.lineTotalBeforeHeader - distributedDiscount;
       const taxRate = poLine.tax_rate_id
         ? await TaxRate.findByPk(poLine.tax_rate_id)
         : null;
       const taxRateValue = taxRate ? Number((taxRate as any).rate ?? 0) : 0;
-      const lineTax = (lineTotal * taxRateValue) / 100;
+      const netLineTax = (netLineTotal * taxRateValue) / 100;
+      const netLineTotalAfterTax = netLineTotal + netLineTax;
 
       lines.push({
         product_id: poLine.product_id ?? null,
-        description: po.description ?? "",
-        quantity: sel.quantity,
-        unit_price: unitPrice,
+        description: poLine.description ?? po.description ?? "",
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
         uom_id: poLine.uom_id ?? null,
         tax_rate_id: poLine.tax_rate_id ?? null,
-        line_total: lineTotal,
-        line_tax: lineTax,
-        line_total_after_tax: lineTotal + lineTax,
+        line_total: netLineTotal,
+        line_tax: netLineTax,
+        line_total_after_tax: netLineTotalAfterTax,
         po_line_id: poLine.id,
       });
     }
 
-    const totalBeforeTax = lines.reduce((s, l) => s + (l.line_total ?? 0), 0);
+    const totalBeforeTax = totalBeforeHeaderDiscount - headerDiscountAmount;
     const totalTax = lines.reduce((s, l) => s + (l.line_tax ?? 0), 0);
     const totalAfterTax = totalBeforeTax + totalTax;
 
@@ -633,24 +744,24 @@ export const apInvoiceService = {
     };
 
     const invoiceDate = parseDate(metadata?.invoice_date);
-    const dueDate = metadata?.due_date
+    // Nếu user cung cấp due_date thì dùng, ngược lại để createAPInvoice() tính từ payment_term_id
+    const explicitDueDate = metadata?.due_date
       ? parseDate(metadata.due_date)
-      : (() => {
-          const d = new Date(invoiceDate);
-          d.setDate(d.getDate() + 30);
-          return d;
-        })();
+      : undefined;
 
     const result = await this.createAPInvoice(
       {
         source: "manual",
         invoice_no: invoiceNo,
         invoice_date: invoiceDate,
-        due_date: dueDate,
+        ...(explicitDueDate && { due_date: explicitDueDate }),
         supplier_id: po.supplier_id!,
         ...(po.id && { po_id: po.id }),
         branch_id: po.branch_id!,
         created_by: user.id,
+        ...(po.payment_term_id && { payment_term_id: po.payment_term_id }),
+        ...(po.currency_id && { currency_id: po.currency_id }),
+        exchange_rate: (po as any).exchange_rate ?? 1.0,
         invoice_series: metadata?.invoice_series ?? null,
         invoice_template: metadata?.invoice_template ?? null,
         tax_code: metadata?.tax_code ?? null,
@@ -658,7 +769,7 @@ export const apInvoiceService = {
         ...(totalTax > 0 && { total_tax: totalTax }),
         ...(totalAfterTax > 0 && { total_after_tax: totalAfterTax }),
         lines,
-      },
+      } as any,
       user,
     );
 
@@ -674,6 +785,7 @@ export const apInvoiceService = {
     if (apInvoice.branch_id !== user.branch_id) {
       throw new Error("You cannot submit a invoice for another branch.");
     }
+
     if (apInvoice.status !== "draft") {
       throw new Error("Only draft invoice can be submitted.");
     }
@@ -703,7 +815,7 @@ export const apInvoiceService = {
   },
 
   async approve(id: number, user: any) {
-    if (user.role !== Role.CHACC)
+    if (user.role !== Role.CHACC && user.role !== "ADMIN" && user.role !== "CEO")
       throw new Error("Only Chief Accountant can approve");
 
     const t: Transaction = await sequelize.transaction();
@@ -723,6 +835,15 @@ export const apInvoiceService = {
       if (invoice.approval_status !== "waiting_approval")
         throw new Error("Invoice is not waiting for approval");
 
+      if (invoice.matching_status === "mismatch") {
+        throw {
+          status: 422,
+          code: "MISMATCH_REQUIRES_OVERRIDE",
+          message: "Hóa đơn có kết quả 3-Way Matching không khớp. Cần ghi đè mismatch trước khi duyệt.",
+          invoice_id: id,
+        };
+      }
+
       await invoice.update(
         {
           approval_status: "approved",
@@ -733,6 +854,9 @@ export const apInvoiceService = {
         },
         { transaction: t },
       );
+
+      // Kiểm tra kỳ kế toán đã khóa sổ hay chưa
+      await checkPeriodLocked(invoice.invoice_date ?? new Date(), t);
 
       const journal = await GlJournal.findOne({
         where: { code: "PURCHASE" },
@@ -749,23 +873,17 @@ export const apInvoiceService = {
           reference_id: invoice.id,
           memo: `Ghi nhận công nợ phải trả ${invoice.invoice_no}`,
           status: "posted",
-        },
+          branch_id: invoice.branch_id ?? null,
+        } as any,
         { transaction: t },
       );
 
-      const [invAcc, vatAcc, apAcc] = await Promise.all([
-        GlAccount.findOne({ where: { code: "156" }, transaction: t }),
-        GlAccount.findOne({ where: { code: "1331" }, transaction: t }),
-        GlAccount.findOne({ where: { code: "331" }, transaction: t }),
+      // Lấy các tài khoản 156, 1331, 331 qua mapping động
+      const [INVENTORY_ACC_ID, VAT_INPUT_ACC_ID, AP_ACC_ID] = await Promise.all([
+        getMappedAccount(invoice.branch_id, "AP_EXPENSE_INVENTORY", "156", t),
+        getMappedAccount(invoice.branch_id, "AP_VAT", "1331", t),
+        getMappedAccount(invoice.branch_id, "AP_PAYABLE", "331", t),
       ]);
-
-      if (!invAcc || !vatAcc || !apAcc) {
-        throw new Error("Missing GL Accounts 156 / 1331 / 331");
-      }
-
-      const INVENTORY_ACC_ID = invAcc.id;
-      const VAT_INPUT_ACC_ID = vatAcc.id;
-      const AP_ACC_ID = apAcc.id;
 
       const totalBeforeTax = Number(invoice.total_before_tax || 0);
       const totalTax = Number(invoice.total_tax || 0);
@@ -816,15 +934,19 @@ export const apInvoiceService = {
   },
 
   async reject(id: number, reason: string, user: any, app?: any) {
-    if (user.role !== Role.CHACC) {
+    if (user.role !== Role.CHACC && user.role !== "ADMIN" && user.role !== "CEO") {
       throw new Error("Only Chief Accountant can reject");
     }
-
+ 
     const invoice = await ApInvoice.findByPk(id);
     if (!invoice) throw new Error("AP Invoice not found");
-
-    if (invoice.branch_id !== user.branch_id) {
+ 
+    const companyBranchIds = await getCompanyBranchIds(user);
+    if (user.role !== "ADMIN" && user.role !== "CEO" && invoice.branch_id !== user.branch_id) {
       throw new Error("You cannot reject invoice from another branch");
+    }
+    if (!companyBranchIds.includes(invoice.branch_id)) {
+      throw new Error("You cannot reject invoice for a different company");
     }
     if (invoice.approval_status !== "waiting_approval") {
       throw new Error("Invoice is not waiting for approval");
@@ -979,8 +1101,14 @@ export const apInvoiceService = {
    *   ?date_from / date_to — filter theo invoice_date
    */
   async getAllWithFilters(query: any, user: any) {
-    const where: any = { branch_id: user.branch_id };
-
+    const companyBranchIds = await getCompanyBranchIds(user);
+    const where: any = {};
+    if (user.role === "ADMIN" || user.role === "CEO") {
+      where.branch_id = { [Op.in]: companyBranchIds };
+    } else {
+      where.branch_id = user.branch_id;
+    }
+ 
     if (user.role === "ACCOUNT") where.created_by = user.id;
 
     // Existing filters
@@ -988,6 +1116,13 @@ export const apInvoiceService = {
     if (query.approval_status) where.approval_status = query.approval_status;
     if (query.source) where.source = query.source;
     if (query.supplier_id) where.supplier_id = Number(query.supplier_id);
+
+    // Filter by supplierName if provided
+    if (query.supplierName) {
+      where["$invoiceSupplier.name$"] = {
+        [Op.like]: `%${query.supplierName}%`,
+      };
+    }
 
     // Date range on invoice_date
     if (query.date_from || query.date_to) {
@@ -1029,6 +1164,11 @@ export const apInvoiceService = {
           model: User,
           as: "approver",
           attributes: ["id", "full_name", "email", "phone", "avatar_url"],
+        },
+        {
+          model: Partner,
+          as: "invoiceSupplier",
+          attributes: ["id", "name", "email", "phone"],
         },
       ],
       order: [
@@ -1121,5 +1261,32 @@ export const apInvoiceService = {
     const d = new Date(invoiceDate);
     d.setDate(d.getDate() + days);
     return d;
+  },
+
+  async overrideMismatch(id: number, user: any, reason: string) {
+    if (user.role !== Role.CHACC && user.role !== "ADMIN" && user.role !== "CEO") {
+      throw { status: 403, message: "Chỉ Kế toán trưởng mới được ghi đè mismatch" };
+    }
+    const invoice = await ApInvoice.findByPk(id);
+    if (!invoice) throw { status: 404, message: "Không tìm thấy hóa đơn" };
+    if (invoice.matching_status !== "mismatch") {
+      throw { status: 400, message: "Hóa đơn không ở trạng thái mismatch" };
+    }
+    if (!reason?.trim()) {
+      throw { status: 400, message: "override_reason là bắt buộc" };
+    }
+
+    // Chuyển matching_status → "matched"
+    await invoice.update({ matching_status: "matched" });
+
+    // Ghi audit log
+    await apInvoiceAuditLogService.logOverride({
+      ap_invoice_id: id,
+      created_by: user.id,
+      override_type: "mismatch",
+      override_reason: reason,
+    });
+
+    return this.getById(id, user);
   },
 };

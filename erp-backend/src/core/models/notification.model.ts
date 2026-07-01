@@ -11,7 +11,10 @@ export type ReferenceType =
     | "PURCHASE_ORDER"
     | "AP_INVOICE"
     | "AP_PAYMENT"
-    | "LEAD";
+    | "LEAD"
+    | "PAYROLL_RUN"
+    | "EMPLOYEE"
+    | "LEAVE_REQUEST";
 
 interface NotificationAttributes {
     id: number;
@@ -82,7 +85,10 @@ Notification.init(
                 "PURCHASE_ORDER",
                 "AP_INVOICE",
                 "AP_PAYMENT",
-                "LEAD"
+                "LEAD",
+                "PAYROLL_RUN",
+                "EMPLOYEE",
+                "LEAVE_REQUEST"
             ),
             allowNull: false,
         },

@@ -2,6 +2,18 @@ import { Request, Response } from "express";
 import { stockBalanceService } from "../services/stockBalance.service";
 
 export const stockBalanceController = {
+  async getAvailableStock(req: Request, res: Response) {
+    try {
+      const user = (req as any).user;
+      const productId = req.query.product_id ? Number(req.query.product_id) : undefined;
+      const warehouseId = req.query.warehouse_id ? Number(req.query.warehouse_id) : undefined;
+      const data = await stockBalanceService.getAvailableStock(user, productId, warehouseId);
+      return res.json(data);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  },
+
   async getAll(req: Request, res: Response) {
     const user = (req as any).user;
     const data = await stockBalanceService.getAll(user);
@@ -63,6 +75,13 @@ export const stockBalanceController = {
   async findByProduct(req: Request, res: Response) {
     const productId = Number(req.params.productId);
     const data = await stockBalanceService.findByProduct(productId);
+    return res.json(data);
+  },
+
+  async search(req: Request, res: Response) {
+    const user = (req as any).user;
+    const keyword = String(req.query.q ?? "");
+    const data = await stockBalanceService.search(keyword, user);
     return res.json(data);
   },
 

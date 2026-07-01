@@ -37,13 +37,13 @@ import {
 
 // ─── Type badge ───────────────────────────────────────────────────────────────
 const TYPE_LABELS: Record<StockLocationType, string> = {
-  view: "View",
-  internal: "Internal",
-  input: "Input",
-  output: "Output",
-  customer: "Customer",
-  supplier: "Supplier",
-  transit: "Transit",
+  view: "Chỉ xem (View)",
+  internal: "Nội bộ",
+  input: "Đầu vào (Input)",
+  output: "Đầu ra (Output)",
+  customer: "Khách hàng",
+  supplier: "Nhà cung cấp",
+  transit: "Trung chuyển (Transit)",
 };
 const TYPE_COLORS: Record<StockLocationType, string> = {
   view: "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-50",
@@ -144,7 +144,7 @@ function TreeNode({
               onToggleActive(node);
             }}
             className="p-1 rounded-md hover:bg-slate-200/60 text-slate-500 transition-colors"
-            title={node.is_active ? "Deactivate" : "Activate"}
+            title={node.is_active ? "Vô hiệu hóa" : "Kích hoạt"}
           >
             {node.is_active ? (
               <ToggleRight className="w-4 h-4 text-emerald-500" />
@@ -158,7 +158,7 @@ function TreeNode({
               onEdit(node);
             }}
             className="p-1 rounded-md hover:bg-blue-50 border border-transparent hover:border-blue-100 text-blue-500 transition-colors"
-            title="Edit"
+            title="Sửa"
           >
             <Pencil className="w-3.5 h-3.5" />
           </button>
@@ -168,7 +168,7 @@ function TreeNode({
               onDelete(node);
             }}
             className="p-1 rounded-md hover:bg-rose-50 border border-transparent hover:border-rose-100 text-rose-500 transition-colors"
-            title="Delete"
+            title="Xóa"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -225,7 +225,7 @@ function LocationFormModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim() || !form.code.trim()) {
-      toast.error("Name and code are required");
+      toast.error("Vui lòng nhập tên và mã vị trí");
       return;
     }
     setSaving(true);
@@ -241,7 +241,7 @@ function LocationFormModal({
       onClose();
     } catch (err: any) {
       toast.error(
-        err?.response?.data?.message || err.message || "Failed to save",
+        err?.response?.data?.message || err.message || "Lưu vị trí thất bại",
       );
     } finally {
       setSaving(false);
@@ -259,10 +259,10 @@ function LocationFormModal({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>
-            {mode === "create" ? "Add Location" : "Edit Location"}
+            {mode === "create" ? "Thêm vị trí" : "Sửa vị trí"}
           </DialogTitle>
           <DialogDescription>
-            Configure properties and relationships for this storage location
+            Cấu hình thuộc tính và mối quan hệ cho vị trí lưu trữ này
           </DialogDescription>
         </DialogHeader>
 
@@ -270,29 +270,29 @@ function LocationFormModal({
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Name <span className="text-red-500">*</span>
+                Tên vị trí <span className="text-red-500">*</span>
               </label>
               <Input
                 value={form.name}
                 onChange={(val) => setForm({ ...form, name: val })}
                 className="border-slate-200 focus:ring-orange-400 focus:border-orange-400"
-                placeholder="e.g. Shelf A1"
+                placeholder="Ví dụ: Kệ A1"
               />
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Code <span className="text-red-500">*</span>
+                Mã vị trí <span className="text-red-500">*</span>
               </label>
               <Input
                 value={form.code}
                 onChange={(val) => setForm({ ...form, code: val.toUpperCase() })}
                 className="border-slate-200 focus:ring-orange-400 focus:border-orange-400 font-mono"
-                placeholder="e.g. SHELF-A1"
+                placeholder="Ví dụ: KE-A1"
                 disabled={mode === "edit"}
               />
               {mode === "edit" && (
                 <p className="text-[10px] text-gray-400">
-                  Code cannot be changed
+                  Không thể thay đổi mã vị trí
                 </p>
               )}
             </div>
@@ -300,7 +300,7 @@ function LocationFormModal({
 
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Type
+              Loại vị trí
             </label>
             <select
               value={form.type}
@@ -319,14 +319,14 @@ function LocationFormModal({
 
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Parent Location
+              Vị trí cha
             </label>
             <select
               value={form.parent_id}
               onChange={(e) => setForm({ ...form, parent_id: e.target.value })}
               className="w-full h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
             >
-              <option value="">— Root (no parent) —</option>
+              <option value="">— Vị trí gốc (Không có vị trí cha) —</option>
               {parentOptions.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.path} — {l.name}
@@ -346,7 +346,7 @@ function LocationFormModal({
               className="w-4.5 h-4.5 text-orange-500 rounded border-slate-200 focus:ring-orange-500 focus:ring-offset-0"
             />
             <label htmlFor="is_active" className="text-sm font-semibold text-slate-700">
-              Active / Visible
+              Hoạt động / Hiển thị
             </label>
           </div>
 
@@ -357,14 +357,14 @@ function LocationFormModal({
               onClick={onClose}
               disabled={saving}
             >
-              Cancel
+              Hủy
             </Button>
             <Button
               type="submit"
               variant="primary"
               loading={saving}
             >
-              {mode === "create" ? "Add Location" : "Save Changes"}
+              {mode === "create" ? "Thêm vị trí" : "Lưu thay đổi"}
             </Button>
           </DialogFooter>
         </form>
@@ -417,7 +417,7 @@ export default function StockLocationPage() {
     await dispatch(createLocationThunk(data)).unwrap();
     dispatch(fetchLocationTreeThunk(selectedWarehouseId!));
     dispatch(fetchLocationsThunk(selectedWarehouseId!));
-    toast.success("Location created!");
+    toast.success("Đã tạo vị trí mới!");
   };
 
   const handleUpdate = async (data: any) => {
@@ -427,7 +427,7 @@ export default function StockLocationPage() {
     ).unwrap();
     dispatch(fetchLocationTreeThunk(selectedWarehouseId!));
     dispatch(fetchLocationsThunk(selectedWarehouseId!));
-    toast.success("Location updated!");
+    toast.success("Đã cập nhật vị trí!");
     if (
       selectedLocation &&
       Number(selectedLocation.id) === Number(editTarget.id)
@@ -446,9 +446,9 @@ export default function StockLocationPage() {
       ).unwrap();
       dispatch(fetchLocationTreeThunk(selectedWarehouseId!));
       dispatch(fetchLocationsThunk(selectedWarehouseId!));
-      toast.success(`Location ${loc.is_active ? "deactivated" : "activated"}`);
+      toast.success(`Đã ${loc.is_active ? "vô hiệu hóa" : "kích hoạt"} vị trí`);
     } catch (err: any) {
-      toast.error(err?.message || "Failed to update");
+      toast.error(err?.message || "Cập nhật thất bại");
     }
   };
 
@@ -459,7 +459,7 @@ export default function StockLocationPage() {
       await dispatch(deleteLocationThunk(Number(deleteTarget.id))).unwrap();
       dispatch(fetchLocationTreeThunk(selectedWarehouseId!));
       dispatch(fetchLocationsThunk(selectedWarehouseId!));
-      toast.success("Location deleted!");
+      toast.success("Đã xóa vị trí!");
       if (
         selectedLocation &&
         Number(selectedLocation.id) === Number(deleteTarget.id)
@@ -468,7 +468,7 @@ export default function StockLocationPage() {
       }
     } catch (err: any) {
       toast.error(
-        err?.response?.data?.message || err.message || "Failed to delete",
+        err?.response?.data?.message || err.message || "Xóa thất bại",
       );
     } finally {
       setDeleting(false);
@@ -485,9 +485,9 @@ export default function StockLocationPage() {
             <MapPin className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Stock Locations</h1>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Vị trí kho</h1>
             <p className="text-gray-500 text-sm mt-0.5">
-              Organize and structure layout, shelving, and aisles inside your warehouses
+              Tổ chức và cấu trúc sơ đồ, kệ hàng, lối đi trong kho của bạn
             </p>
           </div>
         </div>
@@ -501,7 +501,7 @@ export default function StockLocationPage() {
               onChange={(e) => setSelectedWarehouseId(Number(e.target.value))}
               className="h-10 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
             >
-              <option value="">Select warehouse</option>
+              <option value="">Chọn kho hàng</option>
               {warehouses.map((w) => (
                 <option key={w.id} value={w.id}>
                   {w.name} ({w.code})
@@ -519,7 +519,7 @@ export default function StockLocationPage() {
             leftIcon={<Plus className="w-4 h-4" />}
             size="md"
           >
-            Add Location
+            Thêm vị trí
           </Button>
         </div>
       </div>
@@ -527,9 +527,9 @@ export default function StockLocationPage() {
       {!selectedWarehouseId ? (
         <Card className="border-slate-100 shadow-sm p-16 text-center bg-white/80 backdrop-blur-md">
           <Warehouse className="w-14 h-14 mx-auto mb-4 text-slate-300 opacity-60 animate-pulse" />
-          <h3 className="text-base font-bold text-slate-700">No Warehouse Selected</h3>
+          <h3 className="text-base font-bold text-slate-700">Chưa chọn kho hàng</h3>
           <p className="text-sm text-slate-400 mt-1 max-w-xs mx-auto">
-            Choose a warehouse from the dropdown menu to inspect and manage its physical layout structure.
+            Chọn một kho hàng từ danh sách thả xuống để xem và quản lý cấu trúc sơ đồ thực tế.
           </p>
         </Card>
       ) : (
@@ -539,27 +539,27 @@ export default function StockLocationPage() {
             <CardHeader className="pb-4 border-b border-slate-50 bg-slate-50/20 flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-base font-semibold text-slate-800">
-                  Location Structure Tree
+                  Sơ đồ cơ cấu vị trí
                 </CardTitle>
                 <CardDescription className="text-xs text-slate-400">
-                  Hierarchical physical representation
+                  Biểu diễn cấu trúc phân cấp thực tế
                 </CardDescription>
               </div>
               <Badge variant="outline" className="bg-slate-50 text-slate-600 font-bold border-slate-200 px-2.5 py-1 text-xs">
-                {flatList.length} locations
+                {flatList.length} vị trí
               </Badge>
             </CardHeader>
             <CardContent className="p-4 flex-1 min-h-[400px] max-h-[550px] overflow-y-auto">
               {loading ? (
                 <div className="flex flex-col items-center justify-center py-20 text-slate-450 gap-2">
                   <div className="w-8 h-8 border-3 border-orange-500 border-t-transparent rounded-full animate-spin" />
-                  <span className="text-xs font-semibold">Building tree structure...</span>
+                  <span className="text-xs font-semibold">Đang xây dựng cấu trúc sơ đồ...</span>
                 </div>
               ) : tree.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-gray-400">
                   <MapPin className="w-12 h-12 mb-3 opacity-30 text-orange-500 animate-bounce" />
-                  <h3 className="font-bold text-slate-700">Empty Layout</h3>
-                  <p className="text-sm text-slate-400 mt-1">This warehouse currently does not have any inventory locations set up.</p>
+                  <h3 className="font-bold text-slate-700">Sơ đồ trống</h3>
+                  <p className="text-sm text-slate-400 mt-1">Kho hàng này hiện tại chưa có vị trí lưu trữ nào được thiết lập.</p>
                   <Button
                     onClick={() => {
                       setEditTarget(null);
@@ -568,7 +568,7 @@ export default function StockLocationPage() {
                     variant="ghost"
                     className="mt-4 hover:bg-orange-50/50"
                   >
-                    Add First Location
+                    Thêm vị trí đầu tiên
                   </Button>
                 </div>
               ) : (
@@ -599,14 +599,14 @@ export default function StockLocationPage() {
           <Card className="border-slate-100 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md flex flex-col h-fit">
             <CardHeader className="pb-4 border-b border-slate-50 bg-slate-50/20">
               <CardTitle className="text-base font-semibold text-slate-800">
-                Location Details
+                Chi tiết vị trí
               </CardTitle>
             </CardHeader>
             <CardContent className="p-5">
               {selectedLocation ? (
                 <div className="space-y-5">
                   <div className="flex items-start justify-between gap-4">
-                    <div>
+                     <div>
                       <h3 className="font-bold text-slate-800 text-base">
                         {selectedLocation.name}
                       </h3>
@@ -625,13 +625,13 @@ export default function StockLocationPage() {
 
                   <div className="space-y-3.5 border-t border-b border-slate-50 py-4">
                     <div className="flex justify-between items-center text-xs">
-                      <span className="font-semibold text-slate-450 uppercase tracking-wide">Path URL</span>
+                      <span className="font-semibold text-slate-450 uppercase tracking-wide">Đường dẫn</span>
                       <span className="text-slate-800 font-mono font-bold bg-slate-50 px-2 py-0.5 rounded">
                         {selectedLocation.path}
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-xs">
-                      <span className="font-semibold text-slate-450 uppercase tracking-wide">Status</span>
+                      <span className="font-semibold text-slate-450 uppercase tracking-wide">Trạng thái</span>
                       <Badge
                         className={`shadow-none font-bold border text-[10px] ${
                           selectedLocation.is_active 
@@ -639,12 +639,12 @@ export default function StockLocationPage() {
                             : "bg-slate-50 text-slate-400 border-slate-100"
                         }`}
                       >
-                        {selectedLocation.is_active ? "Active" : "Inactive"}
+                        {selectedLocation.is_active ? "Hoạt động" : "Không hoạt động"}
                       </Badge>
                     </div>
                     {selectedLocation.parent && (
                       <div className="flex justify-between items-center text-xs">
-                        <span className="font-semibold text-slate-450 uppercase tracking-wide">Parent</span>
+                        <span className="font-semibold text-slate-450 uppercase tracking-wide">Vị trí cha</span>
                         <span className="text-slate-700 font-semibold bg-slate-50 px-2 py-0.5 rounded">
                           {selectedLocation.parent.name}
                         </span>
@@ -662,7 +662,7 @@ export default function StockLocationPage() {
                       leftIcon={<Pencil className="w-3.5 h-3.5" />}
                       className="flex-1"
                     >
-                      Edit
+                      Sửa
                     </Button>
                     <Button
                       variant="danger"
@@ -670,14 +670,14 @@ export default function StockLocationPage() {
                       leftIcon={<Trash2 className="w-3.5 h-3.5" />}
                       className="flex-1"
                     >
-                      Delete
+                      Xóa
                     </Button>
                   </div>
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-16 text-slate-350">
                   <MapPin className="w-12 h-12 mb-3 text-slate-300 animate-pulse" />
-                  <p className="text-xs font-semibold text-slate-450">Click on a tree branch to inspect detailed properties</p>
+                  <p className="text-xs font-semibold text-slate-450 text-center">Chọn một vị trí trên sơ đồ cây để xem thuộc tính chi tiết</p>
                 </div>
               )}
             </CardContent>
@@ -710,12 +710,12 @@ export default function StockLocationPage() {
                   <Trash2 className="h-6 w-6 text-red-600" />
                 </div>
                 <DialogTitle className="text-center text-lg font-bold text-gray-900">
-                  Delete Storage Location
+                  Xóa vị trí lưu trữ
                 </DialogTitle>
                 <DialogDescription className="text-center text-sm text-gray-500 space-y-1 mt-1">
-                  <p>Are you sure you want to delete the location <span className="font-semibold text-slate-800">{deleteTarget.name}</span>?</p>
+                  <p>Bạn có chắc chắn muốn xóa vị trí <span className="font-semibold text-slate-800">{deleteTarget.name}</span> không?</p>
                   <p className="text-xs font-mono text-slate-450 mt-1">({deleteTarget.path})</p>
-                  <p className="text-xs text-rose-500 font-semibold mt-2">This action is irreversible and might cause orphaned child locations!</p>
+                  <p className="text-xs text-rose-500 font-semibold mt-2">Hành động này không thể hoàn tác và có thể làm ảnh hưởng các vị trí con!</p>
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter className="flex-row justify-center gap-3 mt-4">
@@ -725,7 +725,7 @@ export default function StockLocationPage() {
                   disabled={deleting}
                   className="w-full sm:w-auto"
                 >
-                  Cancel
+                  Hủy
                 </Button>
                 <Button
                   variant="danger"
@@ -733,7 +733,7 @@ export default function StockLocationPage() {
                   loading={deleting}
                   className="w-full sm:w-auto"
                 >
-                  Yes, Delete
+                  Có, Xóa
                 </Button>
               </DialogFooter>
             </>

@@ -5,6 +5,7 @@ export interface StockBalance {
   location_id?: number | null;
   lot_id?: number | null;
   quantity: number;
+  reserved_qty?: number;
   unit_cost?: number | null;
   total_value?: number | null;
   created_at?: string;

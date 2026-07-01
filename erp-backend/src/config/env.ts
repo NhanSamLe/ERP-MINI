@@ -33,7 +33,10 @@ export const env = {
     secret: process.env.CLOUDINARY_API_SECRET!,
   },
   cors: {
-  origins: (process.env.CORS_ORIGINS || "").split(","),
+    origins: (process.env.CORS_ORIGINS || "")
+      .split(",")
+      .map((o) => o.trim())
+      .filter(Boolean),
   },
   frontend: {
     url: process.env.FRONTEND_URL || "http://localhost:3000",

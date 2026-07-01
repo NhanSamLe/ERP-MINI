@@ -3,6 +3,7 @@ import {
   loadPositions,
   addPosition,
   editPosition,
+  togglePositionStatus,
 } from "./position.thunks";
 import type { Position } from "./position.type";
 
@@ -46,6 +47,13 @@ const positionSlice = createSlice({
       .addCase(editPosition.fulfilled, (state, action) => {
         const idx = state.items.findIndex((x) => x.id === action.payload.id);
         if (idx >= 0) state.items[idx] = action.payload;
+      })
+
+      // Toggle status
+      .addCase(togglePositionStatus.fulfilled, (state, action) => {
+        const data = (action.payload as any)?.data ?? action.payload;
+        const idx = state.items.findIndex((x) => x.id === data?.id);
+        if (idx >= 0) state.items[idx] = data;
       });
   },
 });

@@ -58,6 +58,42 @@ export const validatePhysicalInventoryThunk = createAsyncThunk(
   },
 );
 
+export const submitPhysicalInventoryThunk = createAsyncThunk(
+  "physicalInventory/submit",
+  async (id: number, { rejectWithValue }) => {
+    try {
+      return await physicalInventoryService.submit(id);
+    } catch (e) {
+      return rejectWithValue(getErrorMessage(e));
+    }
+  },
+);
+
+export const approvePhysicalInventoryThunk = createAsyncThunk(
+  "physicalInventory/approve",
+  async (id: number, { rejectWithValue }) => {
+    try {
+      return await physicalInventoryService.approve(id);
+    } catch (e) {
+      return rejectWithValue(getErrorMessage(e));
+    }
+  },
+);
+
+export const rejectPhysicalInventoryThunk = createAsyncThunk(
+  "physicalInventory/reject",
+  async (
+    { id, reject_reason }: { id: number; reject_reason: string },
+    { rejectWithValue },
+  ) => {
+    try {
+      return await physicalInventoryService.reject(id, reject_reason);
+    } catch (e) {
+      return rejectWithValue(getErrorMessage(e));
+    }
+  },
+);
+
 export const cancelPhysicalInventoryThunk = createAsyncThunk(
   "physicalInventory/cancel",
   async (id: number, { rejectWithValue }) => {

@@ -59,7 +59,7 @@ export default function ReceiptListPage() {
     }
   };
 
-  const canCreate = ["ACCOUNT", "CHACC"].includes(user?.role?.code ?? "");
+  const canCreate = ["ACCOUNT", "CHACC", "BRANCH_MANAGER", "CEO", "ADMIN"].includes(user?.role?.code ?? "");
 
   // Compute display range
   const from = total === 0 ? 0 : ((page - 1) * (filters.page_size ?? 20)) + 1;

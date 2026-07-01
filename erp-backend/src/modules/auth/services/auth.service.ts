@@ -22,26 +22,48 @@ async function loadUserPermissions(roleId: number): Promise<string[]> {
     .map((rp: any) => rp.permission?.code)
     .filter(Boolean);
 }
-export async function createUser(data: {
-  branch_id: number;
-  username: string;
-  password: string;
-  full_name?: string;
-  email?: string;
-  phone?: string;
-  role_id: number;
-}) {
-  const [role, checkUser, checkPhone, checkEmail] = await Promise.all([
+export async function createUser(
+  data: {
+    branch_id: number;
+    username: string;
+    password: string;
+    full_name?: string;
+    email?: string;
+    phone?: string;
+    role_id: number;
+	employee_id?: number;
+  },
+  requestingUser?: { company_id?: number },
+) {
+  const checks: Promise<any>[] = [
     model.Role.findOne({ where: { id: data.role_id } }),
     model.User.findOne({ where: { username: data.username } }),
-    model.User.findOne({ where: { phone: data.phone } }),
-    model.User.findOne({ where: { email: data.email } }),
-  ]);
+    data.phone ? model.User.findOne({ where: { phone: data.phone } }) : Promise.resolve(null),
+    data.email ? model.User.findOne({ where: { email: data.email } }) : Promise.resolve(null),
+    model.Branch.findByPk(data.branch_id, { attributes: ["id", "company_id"] }),
+  ];
+  if (data.employee_id) {
+    checks.push(model.User.findOne({ where: { employee_id: data.employee_id } }));
+  }
+  const results = await Promise.all(checks);
+  const role = results[0];
+  const checkUser = results[1];
+  const checkPhone = results[2];
+  const checkEmail = results[3];
+  const branch = results[4];
+  const checkEmp = data.employee_id ? results[5] : null;
 
-  if (!role) throw new Error("Invalid role ID provided");
-  if (checkUser) throw new Error("Username already exists");
-  if (checkEmail) throw new Error("Email already exists");
-  if (checkPhone) throw new Error("Phone number already exists");
+  if (!role) throw new Error("Vai trò được cung cấp không hợp lệ.");
+  if (checkUser) throw new Error("Tên đăng nhập đã tồn tại.");
+  if (data.email && checkEmail) throw new Error("Email đã tồn tại.");
+  if (data.phone && checkPhone) throw new Error("Số điện thoại đã tồn tại.");
+  if (data.employee_id && checkEmp) throw new Error("Nhân viên này đã được liên kết với một tài khoản khác.");
+
+  // Bảo vệ multi-tenant: branch phải thuộc cùng company với người tạo
+  if (!branch) throw new Error("Không tìm thấy chi nhánh.");
+  if (requestingUser?.company_id && (branch as any).company_id !== requestingUser.company_id) {
+    throw new Error("Không thể tạo người dùng cho chi nhánh thuộc về công ty khác.");
+  }
 
   const hash = await hashPassword(data.password);
   const resetToken = crypto.randomBytes(32).toString("hex");
@@ -56,6 +78,7 @@ export async function createUser(data: {
     is_active: false,
     reset_token: resetToken,
     reset_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    employee_id: data.employee_id || null,
   });
   await user.save();
   if (user.email) {
@@ -91,23 +114,28 @@ export async function createUser(data: {
 });
   return user;
 }
-export async function getAllUsers() {
-  const users = await model.User.findAll({include: [
+export async function getAllUsers(companyId?: number) {
+  if (!companyId) return [];
+
+  const users = await model.User.findAll({
+    attributes: { exclude: ["password_hash", "reset_token", "reset_expires_at"] },
+    include: [
       {
         model: model.Role,
         as: "role",
         required: true,
-        where: {
-          name: { [Op.ne]: "ADMIN" }
-        },
-        attributes: ["id","code","name"], 
+        attributes: ["id", "code", "name"],
       },
       {
         model: model.Branch,
         as: "branch",
-        attributes: ["id","code","name","address"],
-      }
-    ]});
+        required: true,
+        where: { company_id: companyId },
+        attributes: ["id", "code", "name", "address"],
+      },
+    ],
+    order: [["id", "DESC"]],
+  });
   return users;
 }
 export async function getAllRoles(){
@@ -125,10 +153,10 @@ export async function updateUser(data: {
   is_active?: boolean;
 }){
   const user = await model.User.findOne({ where: { username: data.username } });
-  if (!user) throw new Error("User not found");
+  if (!user) throw new Error("Không tìm thấy người dùng.");
   if (data.role_id) {
     const role = await model.Role.findByPk(data.role_id);
-    if (!role) throw new Error("Invalid role ID provided");
+    if (!role) throw new Error("Vai trò được cung cấp không hợp lệ.");
   }
    if (data.phone || data.email) {
     const existing = await model.User.findOne({
@@ -142,8 +170,8 @@ export async function updateUser(data: {
     });
 
     if (existing) {
-      if (existing.phone === data.phone) throw new Error("Phone number already exists");
-      if (existing.email === data.email) throw new Error("Email already exists");
+      if (existing.phone === data.phone) throw new Error("Số điện thoại đã tồn tại.");
+      if (existing.email === data.email) throw new Error("Email đã tồn tại.");
     }
     await user.update({
     ...(data.branch_id ? { branch_id: data.branch_id } : {}),
@@ -201,18 +229,21 @@ async function hasUserLinkedData(userId: number) {
 export async function login(username: string, password: string) {
   const user = await model.User.findOne({ where: { username } , include: [{ model: model.Role, as: "role" }],})as UserWithRole; ;
   if (!user) {
-    throw new Error("User not found");
+    throw new Error("Không tìm thấy người dùng.");
   }
   const isValid = await comparePassword(password, user.password_hash);
   if (!isValid) {
-    throw new Error("Invalid password");
+    throw new Error("Mật khẩu không chính xác.");
   }
   if (!user.is_active) {
-    throw new Error("Account is not activated. Please set your password.");
+    throw new Error("Tài khoản chưa được kích hoạt. Vui lòng thiết lập mật khẩu của bạn.");
   }
 
-  // Load permissions từ DB cho role hiện tại
-  const permissions = user.role_id ? await loadUserPermissions(user.role_id) : [];
+  // Load permissions và company_id (từ branch) cho multi-tenant isolation
+  const [permissions, branch] = await Promise.all([
+    user.role_id ? loadUserPermissions(user.role_id) : Promise.resolve([]),
+    user.branch_id ? model.Branch.findByPk(user.branch_id, { attributes: ["id", "company_id"] }) : Promise.resolve(null),
+  ]);
 
   const payload: JwtPayload = {
     id: user.id,
@@ -222,19 +253,25 @@ export async function login(username: string, password: string) {
     ...(user.full_name ? { fullName: user.full_name } : {}),
     ...(user.email ? { email: user.email } : {}),
     ...(user.branch_id ? { branch_id: user.branch_id } : {}),
+    ...((branch as any)?.company_id ? { company_id: (branch as any).company_id } : {}),
   };
   const token = generateAccessToken(payload);
   const refreshToken = generateRefreshToken(payload);
-  return { token, refreshToken };
+
+  const isSetupDone = (branch as any)?.company_id
+    ? await model.Company.findByPk((branch as any).company_id, { attributes: ['is_setup_done'] }).then(c => c?.is_setup_done ?? false)
+    : true;
+
+  return { token, refreshToken, is_setup_done: isSetupDone };
 }
 // Tạo và gửi token để reset
 export async function requestPasswordReset(username: string) {
   const user = await model.User.findOne({
     where:  { username: username },
   });
-  if (!user) throw new Error("User not found");
+  if (!user) throw new Error("Không tìm thấy người dùng.");
   if (!user.is_active) {
-    throw new Error("Account is inactive or not activated");
+    throw new Error("Tài khoản chưa được kích hoạt hoặc đang tạm ngưng hoạt động.");
   }
   const token = crypto.randomBytes(32).toString("hex");
   user.reset_token = token;
@@ -243,14 +280,14 @@ export async function requestPasswordReset(username: string) {
   const resetLink = `${env.frontend.url}/reset-password?token=${token}`;
   const template = resetPasswordTemplate(user.username, resetLink);
   await sendEmail(user.email!, template.subject, template.text, template.html);
-  return { message: "Reset link sent to email" };
+  return { message: "Liên kết đặt lại mật khẩu đã được gửi đến email." };
 }
 
 // Validate token khi user click link
 export async function validateResetToken(token: string) {
   const user = await model.User.findOne({ where: { reset_token: token } });
   if (!user || !user.reset_expires_at || user.reset_expires_at < new Date()) {
-    throw new Error("Invalid or expired token");
+    throw new Error("Mã thông báo (token) không hợp lệ hoặc đã hết hạn.");
   }
   return { valid: true, userId: user.id };
 }
@@ -259,14 +296,14 @@ export async function validateResetToken(token: string) {
 export async function resetPassword(token: string, newPassword: string) {
   const user = await model.User.findOne({ where: { reset_token: token } });
   if (!user || !user.reset_expires_at || user.reset_expires_at < new Date()) {
-    throw new Error("Invalid or expired token");
+    throw new Error("Mã thông báo (token) không hợp lệ hoặc đã hết hạn.");
   }
   user.password_hash = await hashPassword(newPassword);
   user.reset_token = null;
   user.reset_expires_at = null;
   user.is_active = true;
   await user.save();
-  return { message: "Password updated successfully" };
+  return { message: "Cập nhật mật khẩu thành công." };
 }
 
 export async function getInforUser(userId: number) {
@@ -275,7 +312,7 @@ export async function getInforUser(userId: number) {
       attributes: ["id", "username", "full_name", "email", "phone","avatar_url", "is_active"],
     });
   if (!user) {
-    throw new Error("User not found");
+    throw new Error("Không tìm thấy người dùng.");
   }
   return user ; 
 }
@@ -283,7 +320,7 @@ export async function getInforUser(userId: number) {
 export async function updateUserAvatar(userId: number, buffer: Buffer) {
   const user = await model.User.findByPk(userId);
   if (!user) {
-    throw new Error("User not found");
+    throw new Error("Không tìm thấy người dùng.");
   }
   if (user.avatar_public_id) {
   try {
@@ -297,7 +334,7 @@ export async function updateUserAvatar(userId: number, buffer: Buffer) {
   user.avatar_public_id = result.public_id;
   await user.save();
 
-  return { message: "Avatar updated successfully", avatar_url: user.avatar_url };
+  return { message: "Cập nhật ảnh đại diện thành công.", avatar_url: user.avatar_url };
 }
 
 export async function updateUserInfo(
@@ -308,14 +345,33 @@ export async function updateUserInfo(
       include: [{ model: model.Role, as: "role" } ,{ model: model.Branch, as: "branch" ,attributes: ["id","code","name","address"],},],
       attributes: ["id", "username", "full_name", "email", "phone","avatar_url"],
     });
-  if (!user) throw new Error("User not found");
+  if (!user) throw new Error("Không tìm thấy người dùng.");
 
   if (data.full_name !== undefined) user.full_name = data.full_name;
   if (data.email !== undefined) user.email = data.email;
   if (data.phone !== undefined) user.phone = data.phone;
 
   await user.save();
-  return { message: "User info updated successfully", user };
+  return { message: "Cập nhật thông tin người dùng thành công.", user };
+}
+
+export async function changePassword(
+  userId: number,
+  data: { oldPassword?: string; newPassword?: string }
+) {
+  if (!data.oldPassword || !data.newPassword) {
+    throw new Error("Vui lòng cung cấp mật khẩu cũ và mật khẩu mới.");
+  }
+  const user = await model.User.findByPk(userId);
+  if (!user) throw new Error("Không tìm thấy người dùng.");
+
+  const isValid = await comparePassword(data.oldPassword, user.password_hash);
+  if (!isValid) throw new Error("Mật khẩu cũ không chính xác.");
+
+  user.password_hash = await hashPassword(data.newPassword);
+  await user.save();
+
+  return { message: "Đổi mật khẩu thành công." };
 }
 // ✅ DÙNG CHO CHẤM CÔNG 
 export async function getUserForAttendance(userId: number) {

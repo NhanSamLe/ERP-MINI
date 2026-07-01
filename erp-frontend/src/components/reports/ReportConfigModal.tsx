@@ -12,7 +12,7 @@ interface ReportConfigModalProps {
 
 export interface ReportConfig {
     reportType: "detailed" | "summary";
-    period: "day" | "month" | "year";
+    period: "day" | "week" | "month" | "year";
     startDate?: string;
     endDate?: string;
 }
@@ -21,7 +21,7 @@ export default function ReportConfigModal({
     open,
     onClose,
     onExport,
-    title = "Export Excel Data",
+    title = "Xuất dữ liệu Excel",
 }: ReportConfigModalProps) {
     const [config, setConfig] = useState<ReportConfig>({
         reportType: "detailed",
@@ -47,21 +47,21 @@ export default function ReportConfigModal({
                 <div className="grid gap-6 py-4">
                     {/* Report Type */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium leading-none">Report Type</label>
+                        <label className="text-sm font-medium leading-none">Loại báo cáo</label>
                         <div className="flex gap-4">
                             <div
                                 className={`flex-1 border rounded-lg p-3 cursor-pointer transition-all ${config.reportType === 'detailed' ? 'border-blue-500 bg-blue-50' : 'hover:bg-gray-50'}`}
                                 onClick={() => setConfig({ ...config, reportType: 'detailed' })}
                             >
-                                <div className="font-medium text-sm">Detailed List</div>
-                                <div className="text-xs text-gray-500 mt-1">Export full list of records with all details.</div>
+                                <div className="font-medium text-sm">Danh sách chi tiết</div>
+                                <div className="text-xs text-gray-500 mt-1">Xuất toàn bộ bản ghi cùng các thông tin chi tiết.</div>
                             </div>
                             <div
                                 className={`flex-1 border rounded-lg p-3 cursor-pointer transition-all ${config.reportType === 'summary' ? 'border-blue-500 bg-blue-50' : 'hover:bg-gray-50'}`}
                                 onClick={() => setConfig({ ...config, reportType: 'summary' })}
                             >
-                                <div className="font-medium text-sm">Summary Statistics</div>
-                                <div className="text-xs text-gray-500 mt-1">Aggregated totals grouped by period.</div>
+                                <div className="font-medium text-sm">Thống kê tổng hợp</div>
+                                <div className="text-xs text-gray-500 mt-1">Tổng hợp số liệu theo từng kỳ.</div>
                             </div>
                         </div>
                     </div>
@@ -69,7 +69,7 @@ export default function ReportConfigModal({
                     {/* Group By (Only for Summary) */}
                     {config.reportType === "summary" && (
                         <div className="space-y-2">
-                            <label className="text-sm font-medium leading-none">Group By</label>
+                            <label className="text-sm font-medium leading-none">Nhóm theo</label>
                             <select
                                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors"
                                 value={config.period}
@@ -77,9 +77,9 @@ export default function ReportConfigModal({
                                     setConfig({ ...config, period: e.target.value as any })
                                 }
                             >
-                                <option value="day">Day</option>
-                                <option value="month">Month</option>
-                                <option value="year">Year</option>
+                                <option value="day">Ngày</option>
+                                <option value="month">Tháng</option>
+                                <option value="year">Năm</option>
                             </select>
                         </div>
                     )}
@@ -87,7 +87,7 @@ export default function ReportConfigModal({
                     {/* Date Range */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium leading-none">From Date</label>
+                            <label className="text-sm font-medium leading-none">Từ ngày</label>
                             <input
                                 type="date"
                                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors"
@@ -98,7 +98,7 @@ export default function ReportConfigModal({
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium leading-none">To Date</label>
+                            <label className="text-sm font-medium leading-none">Đến ngày</label>
                             <input
                                 type="date"
                                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors"
@@ -113,11 +113,11 @@ export default function ReportConfigModal({
 
                 <div className="flex justify-end gap-3">
                     <Button variant="outline" onClick={onClose}>
-                        Cancel
+                        Hủy
                     </Button>
                     <Button onClick={handleExport} className="flex gap-2">
                         <Download className="w-4 h-4" />
-                        Export
+                        Xuất dữ liệu
                     </Button>
                 </div>
             </DialogContent>

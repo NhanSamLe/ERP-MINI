@@ -6,6 +6,7 @@ import { addTimeline } from "./timeLine.service"
 import * as XLSX from "xlsx";
 import { notificationService } from "../../../core/services/notification.service";
 import { calculateLeadScore } from "./scoringRule.service";
+import { getCompanyBranchIds } from "../../finance/services/companyScope.service";
 
 export function canManage(role: string, userId: number, ownerId: number) {
   const isManager = ["SALESMANAGER", "ADMIN"].includes(role);
@@ -16,14 +17,22 @@ export function canManage(role: string, userId: number, ownerId: number) {
 
 export async function getAllLeads(user: any) {
   const where: any = { is_deleted: false };
-  if (user.role === "ADMIN") {
-    // ADMIN: xem tất cả không giới hạn
-  } else if (user.role === "SALESMANAGER") {
-    // SALESMANAGER: xem tất cả lead trong branch của mình
-    where.branch_id = user.branch_id;
+  const companyBranchIds = await getCompanyBranchIds(user);
+
+  if (user.role === "ADMIN" || user.role === "CEO") {
+    where.branch_id = { [Op.in]: companyBranchIds };
+  } else if (user.role === "SALESMANAGER" || user.role === "BRANCH_MANAGER") {
+    if (user.branch_id && companyBranchIds.includes(Number(user.branch_id))) {
+      where.branch_id = user.branch_id;
+    } else {
+      where.branch_id = { [Op.in]: companyBranchIds };
+    }
   } else {
-    // SALES: chỉ xem lead được giao cho mình
-    where.branch_id = user.branch_id;
+    if (user.branch_id && companyBranchIds.includes(Number(user.branch_id))) {
+      where.branch_id = user.branch_id;
+    } else {
+      where.branch_id = { [Op.in]: companyBranchIds };
+    }
     where.assigned_to = user.id;
   }
   return Lead.findAll({
@@ -123,7 +132,11 @@ export async function getLeadById(leadId: number, user?: any) {
   if (!lead) throw new Error("Lead không tồn tại");
   // Kiểm tra quyền nếu có truyền user
   if (user) {
-    if (user.role !== "ADMIN" && lead.branch_id !== user.branch_id)
+    const companyBranchIds = await getCompanyBranchIds(user);
+    if (!companyBranchIds.includes(Number(lead.branch_id))) {
+      throw new Error("Access denied: cross-company");
+    }
+    if (user.role !== "ADMIN" && user.role !== "CEO" && lead.branch_id !== user.branch_id)
       throw new Error("Access denied: cross-branch");
     if (user.role === "SALES" && lead.assigned_to !== user.id)
       throw new Error("Access denied: bạn không quản lý lead này");
@@ -229,7 +242,7 @@ export async function updateLeadEvaluation(
 }
 
 
-export async function convertToCustomer(leadId: number, userId: number, role: string) {
+export async function convertToCustomer(leadId: number, userId: number, role: string, companyId?: number) {
   const lead = await Lead.findByPk(leadId);
   if (!lead || lead.is_deleted) throw new Error("Lead không tồn tại");
   if (lead.stage === LeadStage.LOST)
@@ -286,6 +299,10 @@ export async function convertToCustomer(leadId: number, userId: number, role: st
       industry: lead.industry ?? null,
       company_size: lead.company_size ?? null,
       sales_person_id: lead.assigned_to ?? userId,
+      // Gắn company_id để customer mới thuộc đúng công ty — nếu thiếu, danh sách
+      // partner (lọc theo company_id) sẽ không thấy customer này, khiến trang
+      // tạo Opportunity không preselect được customer vừa chuyển đổi.
+      company_id: companyId ?? null,
       status: PartnerStatus.ACTIVE,
     });
   }

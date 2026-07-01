@@ -23,10 +23,10 @@ import { toast } from "react-toastify";
 import { OcrStatus } from "../../constants/purchaseStatus.enum";
 
 const STATUS_LABELS: Record<OcrStatusType, string> = {
-  pending: "Pending",
-  processing: "Processing",
-  done: "Completed",
-  failed: "Failed",
+  pending: "Chờ xử lý",
+  processing: "Đang xử lý",
+  done: "Hoàn thành",
+  failed: "Thất bại",
 };
 
 const STATUS_BADGE: Record<OcrStatusType, string> = {
@@ -80,9 +80,9 @@ export default function DocumentHistoryPage() {
       dispatch(setCurrentDocumentId(id));
       dispatch(setStatus(statusRes));
       dispatch(setResult(resultRes));
-      navigate("/purchase/document-intelligence");
+      navigate(`/purchase/document-intelligence?doc=${id}`);
     } catch (err: any) {
-      toast.error(err?.message ?? "Unable to load OCR result");
+      toast.error(err?.message ?? "Không thể tải kết quả OCR");
     } finally {
       setLoadingResult(null);
     }
@@ -90,7 +90,7 @@ export default function DocumentHistoryPage() {
 
   const formatDate = (dateStr: string) => {
     try {
-      return new Date(dateStr).toLocaleString("en-US");
+      return new Date(dateStr).toLocaleString("vi-VN");
     } catch {
       return dateStr;
     }
@@ -121,7 +121,7 @@ export default function DocumentHistoryPage() {
             className="flex items-center gap-2 border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-lg font-medium transition-colors text-sm"
           >
             <ShieldAlert className="w-4 h-4 text-orange-500" />
-            Anomaly Dashboard
+            Bảng phát hiện bất thường
           </button>
         </div>
 

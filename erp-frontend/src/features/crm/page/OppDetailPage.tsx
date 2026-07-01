@@ -17,7 +17,7 @@ import { Currency } from "../../master-data/dto/currency.dto";
 import * as currencyService from "../../master-data/service/currency.service";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Separator } from "@/components/ui/separator";
-import { Alert } from "@/components/ui/Alert";
+import { toast } from "react-toastify";
 import { Button } from "@/components/ui/Button";
 import { ActionConfirmModal } from "@/components/common";
 import ActivityBoard from "../components/ActivityBoard";
@@ -38,7 +38,7 @@ export default function OppDetailPage() {
   const dispatch = useAppDispatch();
 
   const opp = useAppSelector((s: RootState) => s.opportunity.detail);
-  const [alert, setAlert] = useState<{ type: "success" | "error" | "warning" | "info"; message: string } | null>(null);
+
   const [activities, setActivities] = useState<Activity[]>([]);
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [stages, setStages] = useState<PipelineStage[]>([]);
@@ -120,30 +120,27 @@ export default function OppDetailPage() {
   const handleChangeStage = async (stageId: number) => {
     try {
       await dispatch(changePipelineStage({ oppId, newStageId: stageId })).unwrap();
-      dispatch(fetchOpportunityDetail(oppId));
-      setAlert({ type: "success", message: "Đã chuyển giai đoạn thành công" });
+      toast.success("Đã chuyển giai đoạn thành công");
     } catch {
-      setAlert({ type: "error", message: "Không thể chuyển giai đoạn" });
+      toast.error("Không thể chuyển giai đoạn");
     }
   };
 
   const handleWon = async () => {
     try {
       await dispatch(markWon(oppId)).unwrap();
-      dispatch(fetchOpportunityDetail(oppId));
-      setAlert({ type: "success", message: "Đã đánh dấu THẮNG" });
+      toast.success("Đã đánh dấu THẮNG");
     } catch {
-      setAlert({ type: "error", message: "Không thể đánh dấu Thắng" });
+      toast.error("Không thể đánh dấu Thắng");
     }
   };
 
   const handleLost = async (reason: string) => {
     try {
       await dispatch(markLost({ oppId, reason })).unwrap();
-      dispatch(fetchOpportunityDetail(oppId));
-      setAlert({ type: "success", message: "Đã đánh dấu THUA" });
+      toast.success("Đã đánh dấu THUA");
     } catch {
-      setAlert({ type: "error", message: "Không thể đánh dấu Thua" });
+      toast.error("Không thể đánh dấu Thua");
     }
   };
 
@@ -152,7 +149,7 @@ export default function OppDetailPage() {
       await dispatch(deleteOpportunity(oppId)).unwrap();
       navigate("/crm/opportunities");
     } catch {
-      setAlert({ type: "error", message: "Không thể xóa Opportunity" });
+      toast.error("Không thể xóa Opportunity");
     }
   };
 
@@ -175,8 +172,8 @@ export default function OppDetailPage() {
               <h1 className="text-base font-semibold text-gray-900">{opp.name}</h1>
               <p className="text-xs text-gray-500 mt-0.5">Opportunity #{oppId}</p>
             </div>
-            {isWon && <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">WON</span>}
-            {isLost && <span className="text-[10px] font-semibold bg-red-100 text-red-600 px-2 py-0.5 rounded-full">LOST</span>}
+            {isWon && <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">THẮNG</span>}
+            {isLost && <span className="text-[10px] font-semibold bg-red-100 text-red-600 px-2 py-0.5 rounded-full">THUA</span>}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -210,7 +207,7 @@ export default function OppDetailPage() {
         </div>
 
         <div className="space-y-6 p-5">
-          {alert && <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />}
+
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 columns */}
@@ -225,7 +222,7 @@ export default function OppDetailPage() {
               <CardContent className="pt-5">
                 <div className="flex items-center gap-6">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500">Pipeline:</span>
+                    <span className="text-xs text-gray-500">Quy trình:</span>
                     <span className="text-sm font-medium text-gray-800">
                       {stages.length > 0 ? (opp.pipeline_id ? "Pipeline #" + opp.pipeline_id : "-") : "-"}
                     </span>
@@ -373,19 +370,19 @@ export default function OppDetailPage() {
             <h2 className="text-sm font-semibold text-gray-900 px-1">Hoạt động</h2>
             <StatCards activities={activities} />
             <div className="grid grid-cols-2 gap-4">
-              <ActivityBoard title="Open Activities" activities={openActivities} onClick={(a) => navigate(getActivityUrl(a))} />
-              <ActivityBoard title="Active Tasks" activities={openActivities.filter((a) => a.activity_type === "task")} onClick={(a) => navigate(getActivityUrl(a))} />
+              <ActivityBoard title="Hoạt động đang mở" activities={openActivities} onClick={(a) => navigate(getActivityUrl(a))} />
+              <ActivityBoard title="Công việc đang thực hiện" activities={openActivities.filter((a) => a.activity_type === "task")} onClick={(a) => navigate(getActivityUrl(a))} />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <ActivityBoard title="Completed" activities={closedActivities.filter((a) => a.status === "completed")} onClick={(a) => navigate(getActivityUrl(a))} />
-              <ActivityBoard title="Cancelled" activities={closedActivities.filter((a) => a.status === "cancelled")} onClick={(a) => navigate(getActivityUrl(a))} />
+              <ActivityBoard title="Đã hoàn tất" activities={closedActivities.filter((a) => a.status === "completed")} onClick={(a) => navigate(getActivityUrl(a))} />
+              <ActivityBoard title="Đã hủy" activities={closedActivities.filter((a) => a.status === "cancelled")} onClick={(a) => navigate(getActivityUrl(a))} />
             </div>
           </div>
 
           {/* Timeline */}
           <Card>
             <CardHeader>
-              <h2 className="text-sm font-semibold text-gray-900">Timeline</h2>
+              <h2 className="text-sm font-semibold text-gray-900">Dòng thời gian</h2>
             </CardHeader>
             <Separator />
             <CardContent className="pt-5">
@@ -464,7 +461,7 @@ export default function OppDetailPage() {
       <ActionConfirmModal
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
-        title="Xóa Opportunity"
+        title="Xóa cơ hội kinh doanh"
         description={`Bạn có chắc chắn muốn xóa "${opp.name}"? Hành động này không thể hoàn tác.`}
         confirmText="Xóa"
         variant="danger"

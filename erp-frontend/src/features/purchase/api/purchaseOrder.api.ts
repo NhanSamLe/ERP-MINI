@@ -14,6 +14,8 @@ export interface PoInvoiceSummaryLine {
   unit_price: number;
   uom_id?: number | null;
   tax_rate_id?: number | null;
+  discount_percent?: number;
+  discount_amount?: number;
   line_total: number;
   line_tax: number;
   line_total_after_tax: number;

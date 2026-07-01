@@ -20,6 +20,21 @@ router.patch(
   physicalInventoryController.updateLine,
 );
 router.post(
+  "/:id/submit",
+  allRoles,
+  physicalInventoryController.submitForApproval,
+);
+router.post(
+  "/:id/approve",
+  managerRoles,
+  physicalInventoryController.approve,
+);
+router.post(
+  "/:id/reject",
+  managerRoles,
+  physicalInventoryController.reject,
+);
+router.post(
   "/:id/validate",
   managerRoles,
   physicalInventoryController.validate,

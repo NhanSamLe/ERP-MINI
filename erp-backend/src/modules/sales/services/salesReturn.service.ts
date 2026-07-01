@@ -13,11 +13,17 @@ import {
   SalesReturn,
   SalesReturnAuthorization,
   SalesReturnLine,
+  StockMove,
   TaxRate,
   User,
   Warehouse,
   sequelize,
 } from "../../../models";
+import { GlJournal } from "../../finance/models/glJournal.model";
+import { GlEntry } from "../../finance/models/glEntry.model";
+import { GlEntryLine } from "../../finance/models/glEntryLine.model";
+import { requireGlAccounts } from "../../finance/services/glAccount.helper";
+import { getCompanyIdFromBranch, getCompanyBranchIds } from "../../finance/services/companyScope.service";
 import {
   generateCreditNoteNo,
   generateRefundNo,
@@ -27,6 +33,7 @@ import {
 import { Role } from "../../../core/types/enum";
 
 async function withBranchContext(user: any) {
+  if (user.role === "CEO" || user.role === "ADMIN") return user;
   if (user?.branch_id) return user;
   const dbUser = await User.findByPk(user.id, { attributes: ["id", "branch_id"] });
   const branchId = (dbUser as any)?.branch_id;
@@ -40,6 +47,7 @@ const RETURN_INCLUDE = [
   { model: Partner, as: "customer", attributes: ["id", "name", "email", "phone"] },
   { model: Warehouse, as: "warehouse", attributes: ["id", "name", "code"] },
   { model: SaleOrder, as: "saleOrder", attributes: ["id", "order_no", "delivery_status", "invoice_status"] },
+  { model: StockMove, as: "stockMove" },
 ];
 
 const RMA_INCLUDE = [
@@ -85,7 +93,9 @@ async function getOrderForReturn(orderId: number, user: any) {
     include: [{ model: SaleOrderLine, as: "lines" }],
   });
   if (!order) throw new Error("Sale order not found");
-  if (order.branch_id !== user.branch_id) throw new Error("Cross-branch return is not allowed");
+  if (user.role !== "CEO" && user.role !== "ADMIN") {
+    if (order.branch_id !== user.branch_id) throw new Error("Cross-branch return is not allowed");
+  }
   if (user.role === Role.SALES && order.created_by !== user.id) {
     throw new Error("Sales can only create return requests for their own sale orders");
   }
@@ -252,8 +262,14 @@ async function resolveReturnDeliveryStatus(
 export const salesReturnService = {
   async getRmas(user: any) {
     user = await withBranchContext(user);
-    const where: any = { branch_id: user.branch_id };
-    if (user.role === Role.SALES) where.created_by = user.id;
+    const companyBranchIds = await getCompanyBranchIds(user);
+    const where: any = {};
+    if (user.role === Role.CEO || user.role === Role.ADMIN) {
+      where.branch_id = { [Op.in]: companyBranchIds };
+    } else {
+      where.branch_id = user.branch_id;
+      if (user.role === Role.SALES) where.created_by = user.id;
+    }
     return SalesReturnAuthorization.findAll({
       where,
       include: RMA_INCLUDE,
@@ -265,7 +281,13 @@ export const salesReturnService = {
     user = await withBranchContext(user);
     const rma = await SalesReturnAuthorization.findByPk(id, { include: RMA_INCLUDE });
     if (!rma) throw new Error("Return request not found");
-    if (rma.branch_id !== user.branch_id) throw new Error("Cross-branch access denied");
+    const companyBranchIds = await getCompanyBranchIds(user);
+    if (!companyBranchIds.includes(Number(rma.branch_id))) {
+      throw new Error("Access denied (cross-company)");
+    }
+    if (user.role !== Role.CEO && user.role !== Role.ADMIN) {
+      if (rma.branch_id !== user.branch_id) throw new Error("Cross-branch access denied");
+    }
     if (user.role === Role.SALES && rma.created_by !== user.id) {
       throw new Error("Sales can only access return requests they created");
     }
@@ -340,13 +362,19 @@ export const salesReturnService = {
 
   async getReturns(user: any) {
     user = await withBranchContext(user);
-    const where: any = { branch_id: user.branch_id };
-    if (user.role === Role.SALES) {
-      const orders = await SaleOrder.findAll({
-        where: { branch_id: user.branch_id, created_by: user.id },
-        attributes: ["id"],
-      });
-      where.sale_order_id = { [Op.in]: orders.map((order: any) => order.id) };
+    const companyBranchIds = await getCompanyBranchIds(user);
+    const where: any = {};
+    if (user.role === Role.CEO || user.role === Role.ADMIN) {
+      where.branch_id = { [Op.in]: companyBranchIds };
+    } else {
+      where.branch_id = user.branch_id;
+      if (user.role === Role.SALES) {
+        const orders = await SaleOrder.findAll({
+          where: { branch_id: user.branch_id, created_by: user.id },
+          attributes: ["id"],
+        });
+        where.sale_order_id = { [Op.in]: orders.map((order: any) => order.id) };
+      }
     }
     return SalesReturn.findAll({
       where,
@@ -359,7 +387,13 @@ export const salesReturnService = {
     user = await withBranchContext(user);
     const ret = await SalesReturn.findByPk(id, { include: RETURN_INCLUDE });
     if (!ret) throw new Error("Sales return not found");
-    if (ret.branch_id !== user.branch_id) throw new Error("Cross-branch access denied");
+    const companyBranchIds = await getCompanyBranchIds(user);
+    if (!companyBranchIds.includes(Number(ret.branch_id))) {
+      throw new Error("Access denied (cross-company)");
+    }
+    if (user.role !== Role.CEO && user.role !== Role.ADMIN) {
+      if (ret.branch_id !== user.branch_id) throw new Error("Cross-branch access denied");
+    }
     if (user.role === Role.SALES) {
       const order = await SaleOrder.findByPk(ret.sale_order_id || undefined, { attributes: ["id", "created_by"] });
       if (!order || (order as any).created_by !== user.id) {
@@ -371,8 +405,15 @@ export const salesReturnService = {
 
   async getReturnByRmaId(rmaId: number, user: any) {
     user = await withBranchContext(user);
+    const companyBranchIds = await getCompanyBranchIds(user);
+    const where: any = { rma_id: rmaId };
+    if (user.role === Role.CEO || user.role === Role.ADMIN) {
+      where.branch_id = { [Op.in]: companyBranchIds };
+    } else {
+      where.branch_id = user.branch_id;
+    }
     const ret = await SalesReturn.findOne({
-      where: { rma_id: rmaId, branch_id: user.branch_id },
+      where,
       include: RETURN_INCLUDE,
       order: [["id", "DESC"]],
     });
@@ -430,6 +471,33 @@ export const salesReturnService = {
         { transaction: t },
       );
 
+      const { StockMove } = await import("../../inventory/models/stockMove.model");
+      const { StockMoveLine } = await import("../../inventory/models/stockMoveLine.model");
+
+      const move = await StockMove.create({
+        move_no: `SM-SR-${ret.id}-${Date.now()}`,
+        move_date: new Date(),
+        type: "receipt",
+        warehouse_to_id: Number(data.warehouse_id),
+        reference_type: "sales_return",
+        reference_id: ret.id,
+        status: "draft",
+        created_by: user.id,
+        branch_id: rma.branch_id,
+      }, { transaction: t });
+
+      for (const line of lines) {
+        await StockMoveLine.create({
+          move_id: move.id,
+          product_id: line.product_id,
+          quantity: line.quantity_received,
+          uom_id: null,
+          lot_id: null,
+        }, { transaction: t });
+      }
+
+      await ret.update({ stock_move_id: move.id }, { transaction: t });
+
       await rma.update({ status: "processing", total_return_amount: total }, { transaction: t });
       return ret.id;
     });
@@ -460,6 +528,16 @@ export const salesReturnService = {
           },
           { transaction: t },
         );
+        if (ret.stock_move_id) {
+          const { StockMoveLine } = await import("../../inventory/models/stockMoveLine.model");
+          const moveLine = await StockMoveLine.findOne({
+            where: { move_id: ret.stock_move_id, product_id: row.product_id },
+            transaction: t,
+          });
+          if (moveLine) {
+            await moveLine.update({ quantity: quantityReceived }, { transaction: t });
+          }
+        }
       }
       await ret.update({ status: "inspected" }, { transaction: t });
     });
@@ -479,7 +557,13 @@ export const salesReturnService = {
       if (!lockedReturn) throw new Error("Sales return not found");
       if (lockedReturn.status !== "inspected") throw new Error("Return must be inspected before completion");
 
-      await increaseReturnStock(lockedReturn, t);
+      if (lockedReturn.stock_move_id) {
+        const { StockMove } = await import("../../inventory/models/stockMove.model");
+        const move = await StockMove.findByPk(lockedReturn.stock_move_id, { transaction: t });
+        if (!move || move.status !== "posted") {
+          throw new Error("Warehouse manager has not approved the stock receipt yet. Please have them approve the stock move first.");
+        }
+      }
       await lockedReturn.update({ status: "completed" }, { transaction: t });
       if (lockedReturn.sale_order_id) {
         const order = await SaleOrder.findByPk(lockedReturn.sale_order_id, {
@@ -575,8 +659,15 @@ export const salesReturnService = {
 
   async getCreditNotes(user: any) {
     user = await withBranchContext(user);
+    const companyBranchIds = await getCompanyBranchIds(user);
+    const where: any = {};
+    if (user.role === Role.CEO || user.role === Role.ADMIN) {
+      where.branch_id = { [Op.in]: companyBranchIds };
+    } else {
+      where.branch_id = user.branch_id;
+    }
     return ArCreditNote.findAll({
-      where: { branch_id: user.branch_id },
+      where,
       include: [
         { model: ArCreditNoteLine, as: "lines", include: [{ model: Product, as: "product", attributes: ["id", "sku", "name"] }] },
         { model: Partner, as: "customer", attributes: ["id", "name", "email", "phone"] },
@@ -596,15 +687,68 @@ export const salesReturnService = {
       ],
     });
     if (!note) throw new Error("Credit note not found");
-    if (note.branch_id !== user.branch_id) throw new Error("Cross-branch access denied");
+    const companyBranchIds = await getCompanyBranchIds(user);
+    if (!companyBranchIds.includes(Number(note.branch_id))) {
+      throw new Error("Access denied (cross-company)");
+    }
+    if (user.role !== Role.CEO && user.role !== Role.ADMIN) {
+      if (note.branch_id !== user.branch_id) throw new Error("Cross-branch access denied");
+    }
     return note;
   },
 
   async approveCreditNote(id: number, user: any) {
     requireChiefAccountant(user);
+
     const note = await this.getCreditNote(id, user);
     if (note.approval_status === "approved") return note;
-    await note.update({ approval_status: "approved", status: "posted", approved_by: user.id });
+    const companyId = await getCompanyIdFromBranch(note.branch_id);
+
+    await sequelize.transaction(async (t) => {
+      await note.update(
+        { approval_status: "approved", status: "posted", approved_by: user.id },
+        { transaction: t }
+      );
+
+      // GL Posting: Credit Note đảo ngược bút toán doanh thu
+      // Nợ 511, Nợ 3331, Có 131 — lấy tài khoản theo company
+      const salesJournal = await GlJournal.findOne({ where: { code: "SALES" }, transaction: t });
+      if (!salesJournal) throw new Error("GL Journal 'SALES' not found");
+
+      const accounts = await requireGlAccounts(companyId, ["131", "511", "3331"], t);
+      const arAcc = accounts["131"]!;
+      const revenueAcc = accounts["511"]!;
+      const vatAcc = accounts["3331"]!;
+
+      const rate = Number((note as any).exchange_rate || 1);
+      const totalBeforeTax = Number(note.total_before_tax || 0) * rate;
+      const totalTax = Number(note.total_tax || 0) * rate;
+      const totalAfterTax = Number(note.total_after_tax || 0) * rate;
+
+      const entry = await GlEntry.create(
+        {
+          journal_id: salesJournal.id,
+          entry_no: `CN-${(note as any).credit_note_no}`,
+          entry_date: new Date(),
+          reference_type: "AR_CREDIT_NOTE",
+          reference_id: note.id,
+          memo: `Credit Note ${(note as any).credit_note_no}`,
+          status: "posted",
+          branch_id: note.branch_id ?? null,
+        } as any,
+        { transaction: t }
+      );
+
+      await GlEntryLine.bulkCreate(
+        [
+          { entry_id: entry.id, account_id: revenueAcc.id, partner_id: note.customer_id ?? null, debit: totalBeforeTax, credit: 0 },
+          { entry_id: entry.id, account_id: vatAcc.id, debit: totalTax, credit: 0 },
+          { entry_id: entry.id, account_id: arAcc.id, partner_id: note.customer_id ?? null, debit: 0, credit: totalAfterTax },
+        ] as any,
+        { transaction: t }
+      );
+    });
+
     return this.getCreditNote(id, user);
   },
 
@@ -661,14 +805,27 @@ export const salesReturnService = {
       ],
     });
     if (!refund) throw new Error("Refund not found");
-    if (refund.branch_id !== user.branch_id) throw new Error("Cross-branch access denied");
+    const companyBranchIds = await getCompanyBranchIds(user);
+    if (!companyBranchIds.includes(Number(refund.branch_id))) {
+      throw new Error("Access denied (cross-company)");
+    }
+    if (user.role !== Role.CEO && user.role !== Role.ADMIN) {
+      if (refund.branch_id !== user.branch_id) throw new Error("Cross-branch access denied");
+    }
     return refund;
   },
 
   async getRefunds(user: any) {
     user = await withBranchContext(user);
+    const companyBranchIds = await getCompanyBranchIds(user);
+    const where: any = {};
+    if (user.role === Role.CEO || user.role === Role.ADMIN) {
+      where.branch_id = { [Op.in]: companyBranchIds };
+    } else {
+      where.branch_id = user.branch_id;
+    }
     return ArRefund.findAll({
-      where: { branch_id: user.branch_id },
+      where,
       include: [
         { model: ArCreditNote, as: "creditNote", attributes: ["id", "credit_note_no", "total_after_tax"] },
         { model: Partner, as: "customer", attributes: ["id", "name", "email", "phone"] },
@@ -680,17 +837,63 @@ export const salesReturnService = {
 
   async approveRefund(id: number, user: any) {
     requireChiefAccountant(user);
+
     const refund = await this.getRefund(id, user);
     if (refund.status === "posted" && refund.approval_status === "approved") return refund;
+    const companyId = await getCompanyIdFromBranch(refund.branch_id);
+
     await sequelize.transaction(async (t) => {
-      await refund.update({ status: "posted", approval_status: "approved", approved_by: user.id }, { transaction: t });
+      await refund.update(
+        { status: "posted", approval_status: "approved", approved_by: user.id },
+        { transaction: t }
+      );
+
       if (refund.credit_note_id) {
         await ArCreditNote.update(
           { status: "applied" },
           { where: { id: refund.credit_note_id }, transaction: t },
         );
       }
+
+      // GL Posting: hoàn tiền KH — Nợ 131, Có 111/112 — lấy tài khoản theo company
+      const journalCode = (refund as any).method === "cash" ? "CASH" : "BANK";
+      const cashAccCode = (refund as any).method === "cash" ? "111" : "112";
+
+      const journal = await GlJournal.findOne({ where: { code: journalCode }, transaction: t });
+      if (!journal) throw new Error(`GL Journal '${journalCode}' not found`);
+
+      const accounts = await requireGlAccounts(companyId, ["131", cashAccCode], t);
+      const arAcc = accounts["131"]!;
+      const cashAcc = accounts[cashAccCode]!;
+
+      const rate = Number((refund as any).exchange_rate || 1);
+      const amount = Number((refund as any).amount || 0) * rate;
+
+      const entry = await GlEntry.create(
+        {
+          journal_id: journal.id,
+          entry_no: `RF-${(refund as any).refund_no}`,
+          entry_date: new Date(),
+          reference_type: "AR_REFUND",
+          reference_id: refund.id,
+          memo: `AR Refund ${(refund as any).refund_no}`,
+          status: "posted",
+          branch_id: refund.branch_id ?? null,
+        } as any,
+        { transaction: t }
+      );
+
+      await GlEntryLine.bulkCreate(
+        [
+          { entry_id: entry.id, account_id: arAcc.id, partner_id: refund.customer_id ?? null, debit: amount, credit: 0 },
+          { entry_id: entry.id, account_id: cashAcc.id, debit: 0, credit: amount },
+        ] as any,
+        { transaction: t }
+      );
+
+      await refund.update({ gl_entry_id: entry.id } as any, { transaction: t });
     });
+
     return this.getRefund(id, user);
   },
 };

@@ -68,11 +68,15 @@ export default function QuotationDetailPage() {
   if (!q || !user) return null;
 
   /* ── derived ── */
-  const isExpired = Boolean(q.status !== "accepted" && q.valid_until && new Date(q.valid_until) < new Date());
+  const isExpired = Boolean(
+    q.status !== "accepted" &&
+    q.valid_until &&
+    new Date().toISOString().slice(0, 10) > new Date(q.valid_until).toISOString().slice(0, 10)
+  );
   const isRejected = q.approval_status === "rejected";
   const roleCode = user.role?.code;
   const isSalesOwner = roleCode === "SALES" && q.created_by === user.id;
-  const isSalesManager = roleCode === "SALESMANAGER" || roleCode === "ADMIN";
+  const isSalesManager = ["SALESMANAGER", "BRANCH_MANAGER", "CEO", "ADMIN"].includes(roleCode ?? "");
   const canEdit = q.approval_status === "draft" && (isSalesOwner || isSalesManager);
   const canSubmit = q.approval_status === "draft" && (isSalesOwner || isSalesManager);
   const canApprove = q.approval_status === "waiting_approval" &&
@@ -101,7 +105,11 @@ export default function QuotationDetailPage() {
       const result = await dispatch(convertQuotationToOrder(q.id)).unwrap();
       navigate(`/sales/orders/${result.id}`);
     } catch (err: any) {
-      setConvertError(err?.message ?? "Không thể chuyển báo giá thành đơn hàng.");
+      // Thunk reject bằng string (message backend) qua rejectWithValue, nên .unwrap()
+      // ném ra chính string đó — không có .message. Ưu tiên dùng err trực tiếp.
+      const msg =
+        typeof err === "string" ? err : err?.message ?? "Không thể chuyển báo giá thành đơn hàng.";
+      setConvertError(msg);
     }
   };
 
@@ -269,8 +277,14 @@ export default function QuotationDetailPage() {
           <Field label="Phiên bản" value={`v${q.version}`} />
           <Field label="Ngày báo giá" value={fmtDate(q.quotation_date)} />
           <Field label="Hiệu lực đến" value={fmtDate(q.valid_until)} highlight={isExpired ?? false} />
-          <Field label="Trạng thái duyệt" value={q.approval_status?.replace(/_/g, " ")} />
-          <Field label="Trạng thái tài liệu" value={q.status} />
+          <div>
+            <p className="text-xs text-gray-500 mb-1">Trạng thái duyệt</p>
+            <StatusBadge status={q.approval_status} variant="approval" />
+          </div>
+          <div>
+            <p className="text-xs text-gray-500 mb-1">Trạng thái tài liệu</p>
+            <StatusBadge status={q.status} />
+          </div>
           <Field label="Tiền tệ" value={q.currency ? `${q.currency.code} (${q.currency.symbol})` : "VND"} />
           {currencyCode !== "VND" && <Field label="Tỉ giá" value={`1 ${currencyCode} = ${Number(q.exchange_rate || 1).toLocaleString("vi-VN")} VND`} />}
           {q.discount_percent ? (

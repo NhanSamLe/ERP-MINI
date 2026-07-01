@@ -92,25 +92,23 @@ import { VendorRefund } from "../modules/purchase/models/vendorRefund.model";
 import { PurchasePriceList } from "../modules/purchase/models/purchasePriceList.model";
 import { PurchasePriceListItem } from "../modules/purchase/models/purchasePriceListItem.model";
 import { BlogPost } from "../modules/blog/models/blogPost.model";
+// CostCenter and PayrollAccountMapping imports
+import { CostCenter } from "../modules/finance/models/costCenter.model";
+import { PayrollAccountMapping } from "../modules/hrm/models/payrollAccountMapping.model";
+import { AccountMapping } from "../modules/finance/models/accountMapping.model";
+
 export function applyAssociations() {
   // =====================
   // AUTH
   // =====================
   // Một User có thể có nhiều Role, và một Role cũng có thể gán cho nhiều User (quan hệ N-N)
-
-  // Một User thuộc về 1 Role
   User.belongsTo(Role, {
     foreignKey: "role_id",
     as: "role",
     onDelete: "SET NULL",
   });
-
-  // Một Role có nhiều User
   Role.hasMany(User, { foreignKey: "role_id", as: "users" });
 
-  // =====================
-  // RBAC (Phase 1)
-  // =====================
   // Role ↔ Permission (N-N) qua RolePermission
   Role.belongsToMany(Permission, {
     through: RolePermission,
@@ -144,7 +142,6 @@ export function applyAssociations() {
   });
 
   // User ↔ Role (N-N) qua UserRole — DEFERRED: hiện tại dùng User.role_id (belongsTo)
-  // Uncomment khi chuyển sang multi-role system
   // User.belongsToMany(Role, {
   //   through: UserRole,
   //   foreignKey: "user_id",
@@ -160,18 +157,14 @@ export function applyAssociations() {
 
   // Một User thuộc về một Branch
   User.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
-
-  // Một Branch có nhiều User
   Branch.hasMany(User, { foreignKey: "branch_id", as: "users" });
 
   // =====================
   // COMPANY
   // =====================
-  // Một Company có nhiều Branch (chi nhánh)
   Company.hasMany(Branch, { foreignKey: "company_id", as: "branches" });
-  // Mỗi Branch thuộc về một Company
   Branch.belongsTo(Company, { foreignKey: "company_id", as: "company" });
-  // ✅ Branch ↔ Attendance
+
   Branch.hasMany(Attendance, {
     foreignKey: "branch_id",
     as: "attendances",
@@ -184,22 +177,20 @@ export function applyAssociations() {
     foreignKey: "branch_id",
     as: "payrollItems",
   });
-
   PayrollItem.belongsTo(Branch, {
     foreignKey: "branch_id",
     as: "branch",
   });
-  // ✅ Employee ↔ Attendance
+
   Employee.hasMany(Attendance, {
     foreignKey: "employee_id",
     as: "attendances",
   });
   Attendance.belongsTo(Employee, {
     foreignKey: "employee_id",
-    as: "employee", // 👈 alias CHÍNH XÁC là "employee"
+    as: "employee",
   });
 
-  // ✅ Employee ↔ EmployeeFace
   Employee.hasMany(EmployeeFace, {
     foreignKey: "employee_id",
     as: "faces",
@@ -210,7 +201,6 @@ export function applyAssociations() {
     as: "employee",
   });
 
-  // ✅ Employee ↔ LeaveRequest
   Employee.hasMany(LeaveRequest, {
     foreignKey: "employee_id",
     as: "leaveRequests",
@@ -221,7 +211,6 @@ export function applyAssociations() {
     as: "employee",
   });
 
-  // ✅ Branch ↔ LeaveRequest
   Branch.hasMany(LeaveRequest, {
     foreignKey: "branch_id",
     as: "leaveRequests",
@@ -930,6 +919,10 @@ export function applyAssociations() {
     as: "employee",
   });
 
+  // User ↔ Employee
+  User.belongsTo(Employee, { foreignKey: "employee_id", as: "employee" });
+  Employee.hasOne(User, { foreignKey: "employee_id", as: "user" });
+
   // =====================
   // FINANCE & GL
   // =====================
@@ -1146,6 +1139,10 @@ export function applyAssociations() {
     foreignKey: "sale_order_id",
     as: "saleOrder",
   });
+  SalesReturn.belongsTo(StockMove, {
+    foreignKey: "stock_move_id",
+    as: "stockMove",
+  });
   SalesReturnLine.belongsTo(Product, {
     foreignKey: "product_id",
     as: "product",
@@ -1311,8 +1308,11 @@ export function applyAssociations() {
     foreignKey: "purchase_order_id",
     as: "purchaseOrder",
   });
+  PurchaseReturn.belongsTo(StockMove, {
+    foreignKey: "stock_move_id",
+    as: "stockMove",
+  });
   PurchaseReturn.belongsTo(User, { foreignKey: "created_by", as: "creator" });
-  PurchaseReturn.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
   PurchaseReturnLine.belongsTo(Product, {
     foreignKey: "product_id",
     as: "product",
@@ -1355,7 +1355,6 @@ export function applyAssociations() {
   });
   ApDebitNote.belongsTo(GlEntry, { foreignKey: "gl_entry_id", as: "glEntry" });
   ApDebitNote.belongsTo(User, { foreignKey: "created_by", as: "creator" });
-  ApDebitNote.belongsTo(User, { foreignKey: "approved_by", as: "approver" });
   ApDebitNoteLine.belongsTo(Product, {
     foreignKey: "product_id",
     as: "product",
@@ -1444,6 +1443,37 @@ export function applyAssociations() {
 
   BlogPost.belongsTo(Product, { foreignKey: "product_id", as: "product", onDelete: "SET NULL" });
   Product.hasMany(BlogPost, { foreignKey: "product_id", as: "blogPosts" });
+
+  // Cost Center associations
+  Branch.hasMany(CostCenter, { foreignKey: "branch_id", as: "costCenters" });
+  CostCenter.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
+
+  CostCenter.hasMany(Department, { foreignKey: "cost_center_id", as: "departments" });
+  Department.belongsTo(CostCenter, { foreignKey: "cost_center_id", as: "costCenter" });
+
+  CostCenter.hasMany(GlEntryLine, { foreignKey: "cost_center_id", as: "glEntryLines" });
+  GlEntryLine.belongsTo(CostCenter, { foreignKey: "cost_center_id", as: "costCenter" });
+
+  // Payroll Account Mapping associations
+  Branch.hasMany(PayrollAccountMapping, { foreignKey: "branch_id", as: "payrollAccountMappings" });
+  PayrollAccountMapping.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
+
+  Department.hasMany(PayrollAccountMapping, { foreignKey: "department_id", as: "payrollAccountMappings" });
+  PayrollAccountMapping.belongsTo(Department, { foreignKey: "department_id", as: "department" });
+
+  GlAccount.hasMany(PayrollAccountMapping, { foreignKey: "account_id", as: "payrollAccountMappings" });
+  PayrollAccountMapping.belongsTo(GlAccount, { foreignKey: "account_id", as: "account" });
+
+  // GlAccount Self-referencing (parent-child)
+  GlAccount.hasMany(GlAccount, { foreignKey: "parent_id", as: "children" });
+  GlAccount.belongsTo(GlAccount, { foreignKey: "parent_id", as: "parent" });
+
+  // AccountMapping associations
+  AccountMapping.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
+  Branch.hasMany(AccountMapping, { foreignKey: "branch_id", as: "accountMappings" });
+
+  AccountMapping.belongsTo(GlAccount, { foreignKey: "account_id", as: "account" });
+  GlAccount.hasMany(AccountMapping, { foreignKey: "account_id", as: "accountMappings" });
 }
 
 // ===============================

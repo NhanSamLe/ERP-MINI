@@ -64,11 +64,10 @@ export interface PurchaseReturn {
   return_date: string;
   warehouse_id?: number | null;
   status: "draft" | "shipped" | "confirmed" | "completed" | "cancelled";
-  approval_status: "draft" | "waiting_approval" | "approved" | "rejected";
   total_return_amount: number;
+  return_type?: "refund" | "replacement" | "debit_note";
   stock_move_id?: number | null;
   created_by: number;
-  approved_by?: number | null;
   notes?: string | null;
   created_at: string;
   updated_at: string;
@@ -76,6 +75,10 @@ export interface PurchaseReturn {
   creator?: { id: number; full_name: string; avatar_url?: string };
   lines?: PurchaseReturnLine[];
 }
+
+type PurchaseReturnPayload = Partial<Omit<PurchaseReturn, "lines">> & {
+  lines: Partial<PurchaseReturnLine>[];
+};
 
 // ─── AP Debit Note ─────────────────────────────────────────────────────────────
 
@@ -103,7 +106,6 @@ export interface ApDebitNote {
   supplier_id: number;
   debit_note_date: string;
   status: "draft" | "posted" | "applied" | "cancelled";
-  approval_status: "draft" | "waiting_approval" | "approved" | "rejected";
   total_before_tax: number;
   total_tax: number;
   total_after_tax: number;
@@ -111,7 +113,6 @@ export interface ApDebitNote {
   exchange_rate?: number;
   gl_entry_id?: number | null;
   created_by: number;
-  approved_by?: number | null;
   notes?: string | null;
   created_at: string;
   updated_at: string;
@@ -202,16 +203,11 @@ export const purchaseReturnApi = {
     const res = await axiosClient.get(`/purchase/returns/${id}`);
     return res.data.data;
   },
-  create: async (
-    body: Partial<PurchaseReturn> & { lines: Partial<PurchaseReturnLine>[] },
-  ): Promise<PurchaseReturn> => {
+  create: async (body: PurchaseReturnPayload): Promise<PurchaseReturn> => {
     const res = await axiosClient.post("/purchase/returns", body);
     return res.data.data;
   },
-  update: async (
-    id: number,
-    body: Partial<PurchaseReturn> & { lines: Partial<PurchaseReturnLine>[] },
-  ): Promise<PurchaseReturn> => {
+  update: async (id: number, body: PurchaseReturnPayload): Promise<PurchaseReturn> => {
     const res = await axiosClient.put(`/purchase/returns/${id}`, body);
     return res.data.data;
   },
@@ -246,6 +242,12 @@ export const apDebitNoteApi = {
   createFromReturn: async (returnId: number): Promise<ApDebitNote> => {
     const res = await axiosClient.post(
       `/purchase/debit-notes/from-return/${returnId}`,
+    );
+    return res.data.data;
+  },
+  getPreview: async (returnId: number): Promise<any> => {
+    const res = await axiosClient.get(
+      `/purchase/debit-notes/from-return/${returnId}/preview`,
     );
     return res.data.data;
   },

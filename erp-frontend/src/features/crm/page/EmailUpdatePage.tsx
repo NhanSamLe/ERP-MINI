@@ -537,10 +537,16 @@ export default function EmailUpdatePage() {
             </summary>
             <div className="mt-1 bg-white rounded-xl border border-gray-200 shadow-sm p-4">
               <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-xs text-gray-500">
-                <div><span className="font-medium text-gray-700">Direction:</span> {detail.email?.direction}</div>
-                <div><span className="font-medium text-gray-700">From:</span> {detail.email?.email_from || "—"}</div>
-                <div><span className="font-medium text-gray-700">Status:</span> {detail.email?.status || "draft"}</div>
-                <div><span className="font-medium text-gray-700">Sent via:</span> {detail.email?.sent_via || "—"}</div>
+                <div>
+                  <span className="font-medium text-gray-700">Chiều gửi:</span>{" "}
+                  {detail.email?.direction === "out" ? "Gửi đi" : detail.email?.direction === "in" ? "Nhận vào" : "—"}
+                </div>
+                <div><span className="font-medium text-gray-700">Từ:</span> {detail.email?.email_from || "—"}</div>
+                <div>
+                  <span className="font-medium text-gray-700">Trạng thái:</span>{" "}
+                  {detail.email?.status === "sent" ? "Đã gửi" : "Bản nháp"}
+                </div>
+                <div><span className="font-medium text-gray-700">Gửi qua:</span> {detail.email?.sent_via || "—"}</div>
                 {detail.email?.message_id && (
                   <div className="col-span-2">
                     <span className="font-medium text-gray-700">Message-ID:</span>{" "}
@@ -549,7 +555,7 @@ export default function EmailUpdatePage() {
                 )}
                 {detail.email?.error_message && (
                   <div className="col-span-2 text-red-500">
-                    <span className="font-medium">Error:</span> {detail.email.error_message}
+                    <span className="font-medium">Lỗi:</span> {detail.email.error_message}
                   </div>
                 )}
               </div>

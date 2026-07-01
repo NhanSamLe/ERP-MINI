@@ -11,10 +11,11 @@ import {
 import { loadPartners } from "@/features/partner/store/partner.thunks";
 import { fetchPurchaseOrderByIdThunk } from "../../store/purchaseOrder.thunks";
 import { fetchPurchaseOrdersThunk } from "../../store/purchaseOrder.thunks";
-import { purchaseReturnApi } from "../../api/purchaseReturn.api";
+import { purchaseReturnApi, PurchaseReturnLine } from "../../api/purchaseReturn.api";
 import { StandardFormLayout } from "../../../../components/layout/StandardFormLayout";
 import { FormSection } from "../../../../components/layout/FormSection";
 import { PurchaseOrderLine } from "../../store";
+import { getErrorMessage } from "@/utils/ErrorHelper";
 
 interface ReturnLine {
   tempId: number;
@@ -32,9 +33,9 @@ interface ReturnLine {
 }
 
 const CONDITION_OPTIONS = [
-  { value: "good", label: "Good" },
-  { value: "damaged", label: "Damaged" },
-  { value: "defective", label: "Defective" },
+  { value: "good", label: "Tốt" },
+  { value: "damaged", label: "Hỏng hóc" },
+  { value: "defective", label: "Lỗi sản xuất" },
 ];
 
 export default function PurchaseReturnEditPage() {
@@ -79,7 +80,7 @@ export default function PurchaseReturnEditPage() {
             (line: any, idx: number) => ({
               tempId: idx,
               product_id: line.product_id,
-              product_name: line.product?.name ?? `Product ${line.product_id}`,
+              product_name: line.product?.name ?? `Sản phẩm ${line.product_id}`,
               po_line_id: line.po_line_id,
               quantity_returned: Number(line.quantity_returned),
               uom_id: line.uom_id ?? null,
@@ -119,7 +120,7 @@ export default function PurchaseReturnEditPage() {
 
   const addLineFromPO = (poLine: PurchaseOrderLine) => {
     if (lines.some((l) => l.po_line_id === poLine.id)) {
-      toast.warning("Line already added");
+      toast.warning("Mặt hàng này đã được thêm vào phiếu");
       return;
     }
     setLines((prev) => [
@@ -127,7 +128,7 @@ export default function PurchaseReturnEditPage() {
       {
         tempId: Date.now(),
         product_id: poLine.product_id ?? 0,
-        product_name: `Product #${poLine.product_id}`,
+        product_name: poLine.product?.name ?? `Sản phẩm #${poLine.product_id}`,
         po_line_id: poLine.id ?? null,
         quantity_returned: 1,
         uom_id: poLine.uom_id ?? null,
@@ -160,24 +161,24 @@ export default function PurchaseReturnEditPage() {
   const handleSubmit = async () => {
     if (!ret) return;
     if (!supplierId) {
-      toast.error("Supplier is required");
+      toast.error("Vui lòng chọn nhà cung cấp");
       return;
     }
     if (!returnDate) {
-      toast.error("Return date is required");
+      toast.error("Vui lòng chọn ngày trả hàng");
       return;
     }
     if (lines.length === 0) {
-      toast.error("Add at least one product line");
+      toast.error("Vui lòng thêm ít nhất một mặt hàng trả lại");
       return;
     }
     for (const l of lines) {
       if (l.quantity_returned <= 0) {
-        toast.error(`Quantity must be > 0`);
+        toast.error(`Số lượng trả hàng phải lớn hơn 0`);
         return;
       }
       if (l.unit_price <= 0) {
-        toast.error(`Unit price must be > 0`);
+        toast.error(`Đơn giá phải lớn hơn 0`);
         return;
       }
     }
@@ -198,13 +199,13 @@ export default function PurchaseReturnEditPage() {
           unit_price: l.unit_price,
           reason: l.reason || null,
           condition: l.condition,
-        })),
+        })) as Partial<PurchaseReturnLine>[],
       });
 
-      toast.success("Purchase Return updated");
+      toast.success("Đã cập nhật Phiếu trả hàng mua");
       navigate(`/purchase/returns/${ret.id}`);
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to update Purchase Return");
+      toast.error(getErrorMessage(e));
     } finally {
       setSubmitting(false);
     }
@@ -222,12 +223,12 @@ export default function PurchaseReturnEditPage() {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-500">
         <Package className="w-10 h-10 text-gray-300" />
-        <p className="text-sm font-medium">Purchase Return not found</p>
+        <p className="text-sm font-medium">Không tìm thấy Phiếu trả hàng mua</p>
         <button
           onClick={() => navigate("/purchase/returns")}
           className="text-sm text-orange-600 hover:underline"
         >
-          Back to list
+          Quay lại danh sách
         </button>
       </div>
     );
@@ -239,13 +240,13 @@ export default function PurchaseReturnEditPage() {
       <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-500">
         <ArrowLeft className="w-10 h-10 text-gray-300" />
         <p className="text-sm font-medium">
-          Only draft Purchase Returns can be edited
+          Chỉ có thể chỉnh sửa Phiếu trả hàng mua ở trạng thái nháp
         </p>
         <button
           onClick={() => navigate(`/purchase/returns/${ret.id}`)}
           className="text-sm text-orange-600 hover:underline"
         >
-          Back to Return
+          Quay lại chi tiết phiếu trả hàng
         </button>
       </div>
     );
@@ -259,15 +260,15 @@ export default function PurchaseReturnEditPage() {
 
   return (
     <StandardFormLayout
-      title={`Edit Purchase Return: ${ret.return_no}`}
+      title={`Chỉnh sửa Phiếu trả hàng mua: ${ret.return_no}`}
       actions={[
         {
-          label: "Cancel",
+          label: "Hủy bỏ",
           variant: "outline",
           onClick: () => navigate(`/purchase/returns/${ret.id}`),
         },
         {
-          label: "Save Changes",
+          label: "Lưu thay đổi",
           variant: "primary",
           onClick: handleSubmit,
           isLoading: submitting,
@@ -276,13 +277,13 @@ export default function PurchaseReturnEditPage() {
     >
       {/* Header */}
       <FormSection
-        title="Return Details"
+        title="Thông tin trả hàng"
         icon={<CornerUpLeft className="w-4 h-4" />}
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Purchase Order
+              Đơn mua hàng (PO)
             </label>
             <select
               value={purchaseOrderId}
@@ -291,7 +292,7 @@ export default function PurchaseReturnEditPage() {
               }
               className="w-full h-9 px-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
             >
-              <option value="">— Select PO (optional) —</option>
+              <option value="">— Chọn Đơn mua hàng (tùy chọn) —</option>
               {eligiblePOs.map((po) => (
                 <option key={po.id} value={po.id}>
                   {po.po_no}
@@ -302,7 +303,7 @@ export default function PurchaseReturnEditPage() {
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Supplier <span className="text-red-500">*</span>
+              Nhà cung cấp <span className="text-red-500">*</span>
             </label>
             <select
               value={supplierId}
@@ -311,7 +312,7 @@ export default function PurchaseReturnEditPage() {
               }
               className="w-full h-9 px-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
             >
-              <option value="">— Select Supplier —</option>
+              <option value="">— Chọn nhà cung cấp —</option>
               {partners.items.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -322,7 +323,7 @@ export default function PurchaseReturnEditPage() {
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Return Date <span className="text-red-500">*</span>
+              Ngày trả hàng <span className="text-red-500">*</span>
             </label>
             <input
               type="date"
@@ -334,7 +335,7 @@ export default function PurchaseReturnEditPage() {
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Branch
+              Chi nhánh
             </label>
             <div className="h-9 px-3 flex items-center text-sm bg-gray-50 border border-gray-200 rounded-md text-gray-600">
               {user?.branch?.name ?? "—"}
@@ -344,13 +345,13 @@ export default function PurchaseReturnEditPage() {
 
         <div className="mt-4">
           <label className="block text-xs font-medium text-gray-600 mb-1">
-            Notes
+            Ghi chú
           </label>
           <textarea
             rows={2}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Additional notes..."
+            placeholder="Ghi chú thêm..."
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-orange-500"
           />
         </div>
@@ -358,7 +359,7 @@ export default function PurchaseReturnEditPage() {
 
       {/* Lines */}
       <FormSection
-        title="Return Items"
+        title="Danh sách mặt hàng trả lại"
         icon={<Package className="w-4 h-4" />}
         noPadding
         action={
@@ -370,7 +371,7 @@ export default function PurchaseReturnEditPage() {
                 className="inline-flex items-center gap-1 h-8 px-3 text-sm font-medium bg-orange-500 hover:bg-orange-600 text-white rounded-md transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" />
-                Add from PO
+                Thêm từ PO
               </button>
             </div>
           ) : undefined
@@ -380,7 +381,7 @@ export default function PurchaseReturnEditPage() {
         {showPoLines && poLines.length > 0 && (
           <div className="px-5 py-3 border-b border-gray-100 bg-blue-50/40">
             <p className="text-xs font-medium text-blue-700 mb-2">
-              Select lines from PO to return:
+              Chọn các mặt hàng từ đơn mua hàng để trả lại:
             </p>
             <div className="space-y-1">
               {poLines.map((pl) => (
@@ -391,7 +392,7 @@ export default function PurchaseReturnEditPage() {
                   disabled={lines.some((l) => l.po_line_id === pl.id)}
                   className="w-full text-left px-3 py-2 text-sm bg-white border border-gray-200 rounded hover:bg-orange-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
-                  Product #{pl.product_id} — Qty: {pl.quantity} {(pl as any).uom?.name || (pl as any).product?.uom?.name || ""} ×{" "}
+                  {pl.product?.name ?? `Sản phẩm #${pl.product_id}`} — Số lượng: {pl.quantity} {(pl as any).uom?.name || (pl as any).product?.uom?.name || ""} ×{" "}
                   {Number(pl.unit_price).toLocaleString("vi-VN")}
                 </button>
               ))}
@@ -404,18 +405,18 @@ export default function PurchaseReturnEditPage() {
             <tr className="border-b border-orange-100 bg-orange-50/60">
               {[
                 "#",
-                "Product",
-                "Qty Returned",
-                "UOM",
-                "Unit Price",
-                "Condition",
-                "Reason",
-                "Line Total",
+                "Sản phẩm",
+                "S.Lượng trả",
+                "ĐVT",
+                "Đơn giá",
+                "Tình trạng",
+                "Lý do",
+                "Thành tiền",
                 "",
               ].map((h) => (
                 <th
                   key={h}
-                  className={`px-4 py-3 text-xs font-semibold text-gray-500 uppercase ${h === "Line Total" ? "text-right" : "text-left"}`}
+                  className={`px-4 py-3 text-xs font-semibold text-gray-500 uppercase ${h === "Thành tiền" ? "text-right" : "text-left"}`}
                 >
                   {h}
                 </th>
@@ -426,12 +427,12 @@ export default function PurchaseReturnEditPage() {
             {lines.length === 0 ? (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={9}
                   className="px-4 py-10 text-center text-sm text-gray-400"
                 >
                   {purchaseOrderId
-                    ? 'Click "Add from PO" to add lines'
-                    : "Select a PO first, then add lines"}
+                    ? 'Nhấp vào "Thêm từ PO" để thêm các mặt hàng'
+                    : "Vui lòng chọn đơn mua hàng (PO) trước, sau đó thêm các mặt hàng"}
                 </td>
               </tr>
             ) : (
@@ -496,7 +497,7 @@ export default function PurchaseReturnEditPage() {
                       onChange={(e) =>
                         updateLine(line.tempId, "reason", e.target.value)
                       }
-                      placeholder="Reason..."
+                      placeholder="Lý do..."
                       className="w-32 h-7 px-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-orange-500"
                     />
                   </td>
@@ -520,10 +521,10 @@ export default function PurchaseReturnEditPage() {
             <tfoot className="border-t border-gray-200 bg-gray-50/50">
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={7}
                   className="px-4 py-2 text-right text-sm font-bold text-gray-800"
                 >
-                  Total Return Amount
+                  Tổng giá trị trả hàng
                 </td>
                 <td className="px-4 py-2 text-right text-base font-bold text-orange-600">
                   {totalAmount.toLocaleString("vi-VN")}

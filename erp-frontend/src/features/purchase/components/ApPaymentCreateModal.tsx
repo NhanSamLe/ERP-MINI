@@ -8,6 +8,7 @@ import { createApPaymentThunk } from "../store/apPayment/apPayment.thunks";
 import { Partner } from "@/features/partner/store/partner.types";
 import { toast } from "react-toastify";
 import { getErrorMessage } from "@/utils/ErrorHelper";
+import axiosClient from "@/api/axiosClient";
 import {
   CreditCard,
   X,
@@ -29,9 +30,9 @@ type PaymentMethod = "cash" | "bank" | "transfer";
 
 const METHOD_OPTIONS: { value: PaymentMethod; label: string; icon: string }[] =
   [
-    { value: "bank", label: "Bank Transfer", icon: "🏦" },
-    { value: "cash", label: "Cash", icon: "💵" },
-    { value: "transfer", label: "Wire Transfer", icon: "⚡" },
+    { value: "bank", label: "Chuyển khoản", icon: "🏦" },
+    { value: "cash", label: "Tiền mặt", icon: "💵" },
+    { value: "transfer", label: "Chuyển khoản nhanh", icon: "⚡" },
   ];
 
 export default function ApPaymentCreateModal({
@@ -43,6 +44,9 @@ export default function ApPaymentCreateModal({
 
   const [postedSuppliers, setPostedSuppliers] = useState<Partner[]>([]);
   const [loadingSuppliers, setLoadingSuppliers] = useState(false);
+
+  const [bankAccounts, setBankAccounts] = useState<any[]>([]);
+  const [bankAccountId, setBankAccountId] = useState<string>("");
 
   const { postedSummary } = useAppSelector((s) => s.apInvoice);
   const loading = useAppSelector((s) => s.apPayment.loading);
@@ -62,11 +66,13 @@ export default function ApPaymentCreateModal({
   const totalPayable = postedSummary?.total_amount ?? 0;
   const amountNum = Number(form.amount.replace(/,/g, "")) || 0;
   const isOverLimit = amountNum > totalPayable;
+  const isBankMethod = ["bank", "transfer"].includes(form.method);
   const canSubmit =
     supplierId !== null &&
     form.payment_date &&
     amountNum > 0 &&
     !isOverLimit &&
+    (!isBankMethod || bankAccountId !== "") &&
     !loading;
 
   /* ─── Load suppliers on open ─────────────────────────────────────────── */
@@ -79,6 +85,15 @@ export default function ApPaymentCreateModal({
       .catch(console.error)
       .finally(() => setLoadingSuppliers(false));
   }, [open, dispatch]);
+
+  /* ─── Load bank accounts on open ─────────────────────────────────────── */
+  useEffect(() => {
+    if (!open) return;
+    axiosClient
+      .get("/master-data/bank-accounts")
+      .then((res) => setBankAccounts(res.data || []))
+      .catch(console.error);
+  }, [open]);
 
   /* ─── Load posted summary when supplier changes ──────────────────────── */
   useEffect(() => {
@@ -98,6 +113,7 @@ export default function ApPaymentCreateModal({
         amount: "",
         method: "bank",
       });
+      setBankAccountId("");
       setAmountError(null);
     }
   }, [open]);
@@ -108,7 +124,7 @@ export default function ApPaymentCreateModal({
     const num = Number(digits);
     if (num > totalPayable) {
       setAmountError(
-        `Cannot exceed total payable (${totalPayable.toLocaleString("en-US")})`,
+        `Không được vượt quá tổng số tiền cần thanh toán (${totalPayable.toLocaleString("en-US")})`,
       );
     } else {
       setAmountError(null);
@@ -122,10 +138,10 @@ export default function ApPaymentCreateModal({
   };
 
   const handleSubmit = async () => {
-    if (!supplierId) return toast.error("Please select a supplier");
-    if (!form.payment_date) return toast.error("Payment date is required");
-    if (amountNum <= 0) return toast.error("Amount must be greater than 0");
-    if (isOverLimit) return toast.error("Amount exceeds payable total");
+    if (!supplierId) return toast.error("Vui lòng chọn nhà cung cấp");
+    if (!form.payment_date) return toast.error("Vui lòng chọn ngày thanh toán");
+    if (amountNum <= 0) return toast.error("Số tiền thanh toán phải lớn hơn 0");
+    if (isOverLimit) return toast.error("Số tiền thanh toán vượt quá số dư nợ");
 
     try {
       await dispatch(
@@ -134,10 +150,11 @@ export default function ApPaymentCreateModal({
           payment_date: form.payment_date,
           amount: amountNum.toString(),
           method: form.method,
-        }),
+          bank_account_id: isBankMethod && bankAccountId ? Number(bankAccountId) : null,
+        } as any),
       ).unwrap();
 
-      toast.success("AP Payment created successfully");
+      toast.success("Tạo thanh toán AP thành công");
       onSuccess?.();
     } catch (e) {
       toast.error(getErrorMessage(e));
@@ -159,9 +176,9 @@ export default function ApPaymentCreateModal({
                 <CreditCard className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-white">New AP Payment</h2>
+                <h2 className="text-lg font-bold text-white">Thanh toán AP mới</h2>
                 <p className="text-orange-100 text-xs">
-                  Create a supplier payment
+                  Tạo thanh toán cho nhà cung cấp
                 </p>
               </div>
             </div>
@@ -180,7 +197,7 @@ export default function ApPaymentCreateModal({
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
               <Building2 className="w-3.5 h-3.5 inline mr-1 text-gray-400" />
-              Supplier <span className="text-red-500">*</span>
+              Nhà cung cấp <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <select
@@ -192,7 +209,7 @@ export default function ApPaymentCreateModal({
                 className="w-full appearance-none border border-gray-300 rounded-xl px-4 py-2.5 pr-10 text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none bg-white disabled:bg-gray-50 disabled:text-gray-400 transition"
               >
                 <option value="">
-                  {loadingSuppliers ? "Loading..." : "Select supplier..."}
+                  {loadingSuppliers ? "Đang tải..." : "Chọn nhà cung cấp..."}
                 </option>
                 {postedSuppliers.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -217,11 +234,10 @@ export default function ApPaymentCreateModal({
                 <>
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      Outstanding Balance
+                      Số dư nợ còn lại
                     </p>
                     <span className="text-xs text-gray-400">
-                      {postedSummary?.invoices?.length ?? 0} invoice
-                      {(postedSummary?.invoices?.length ?? 0) !== 1 ? "s" : ""}
+                      {postedSummary?.invoices?.length ?? 0} hóa đơn
                     </span>
                   </div>
                   <p className="text-2xl font-bold text-orange-600 mb-2">
@@ -259,7 +275,7 @@ export default function ApPaymentCreateModal({
                           {Number(inv.outstanding_amount) <
                             Number(inv.total_after_tax) && (
                             <span className="px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700 font-semibold text-[10px]">
-                              PARTIAL
+                              MỘT PHẦN
                             </span>
                           )}
                         </div>
@@ -270,7 +286,7 @@ export default function ApPaymentCreateModal({
               ) : (
                 <div className="flex items-center gap-2 text-gray-400">
                   <span className="text-sm">
-                    No outstanding invoices for this supplier
+                    Không có hóa đơn chưa thanh toán cho nhà cung cấp này
                   </span>
                 </div>
               )}
@@ -281,7 +297,7 @@ export default function ApPaymentCreateModal({
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
               <Calendar className="w-3.5 h-3.5 inline mr-1 text-gray-400" />
-              Payment Date <span className="text-red-500">*</span>
+              Ngày thanh toán <span className="text-red-500">*</span>
             </label>
             <input
               type="date"
@@ -297,7 +313,7 @@ export default function ApPaymentCreateModal({
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
               <Banknote className="w-3.5 h-3.5 inline mr-1 text-gray-400" />
-              Amount <span className="text-red-500">*</span>
+              Số tiền <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <input
@@ -335,7 +351,7 @@ export default function ApPaymentCreateModal({
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition"
                 >
                   <Zap className="w-3 h-3" />
-                  Pay Full ({totalPayable.toLocaleString("en-US")} VND)
+                  Thanh toán hết ({totalPayable.toLocaleString("en-US")} VND)
                 </button>
               </div>
             )}
@@ -344,7 +360,7 @@ export default function ApPaymentCreateModal({
           {/* Method */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              Payment Method <span className="text-red-500">*</span>
+              Phương thức thanh toán <span className="text-red-500">*</span>
             </label>
             <div className="grid grid-cols-3 gap-2">
               {METHOD_OPTIONS.map((opt) => (
@@ -366,6 +382,30 @@ export default function ApPaymentCreateModal({
               ))}
             </div>
           </div>
+
+          {/* Bank Account */}
+          {isBankMethod && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Tài khoản ngân hàng <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <select
+                  value={bankAccountId}
+                  onChange={(e) => setBankAccountId(e.target.value)}
+                  className="w-full appearance-none border border-gray-300 rounded-xl px-4 py-2.5 pr-10 text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none bg-white transition"
+                >
+                  <option value="">Chọn tài khoản ngân hàng...</option>
+                  {bankAccounts.map((acc) => (
+                    <option key={acc.id} value={acc.id}>
+                      {acc.bank_name} - {acc.account_number} ({acc.account_name})
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── Footer ── */}
@@ -375,7 +415,7 @@ export default function ApPaymentCreateModal({
             disabled={loading}
             className="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition disabled:opacity-50"
           >
-            Cancel
+            Hủy
           </button>
           <button
             onClick={handleSubmit}
@@ -387,7 +427,7 @@ export default function ApPaymentCreateModal({
             }`}
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {loading ? "Creating..." : "Create Payment"}
+            {loading ? "Đang tạo..." : "Tạo thanh toán"}
           </button>
         </div>
       </div>

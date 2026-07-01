@@ -13,7 +13,7 @@ export function ActivityMetaInfoCard({ createdAt, updatedAt, completedAt }: Prop
   return (
     <Card className="border border-gray-200 shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between py-3">
-        <CardTitle className="text-lg font-semibold">Information</CardTitle>
+        <CardTitle className="text-lg font-semibold">Thông tin hoạt động</CardTitle>
         <Clock className="w-5 h-5 text-gray-500" />
       </CardHeader>
 
@@ -23,7 +23,7 @@ export function ActivityMetaInfoCard({ createdAt, updatedAt, completedAt }: Prop
 
         {/* Created */}
         <div className="flex justify-between">
-          <span>Created</span>
+          <span>Ngày tạo</span>
           <span className="font-medium">
             {createdAt ? formatDateTime(createdAt) : "—"}
           </span>
@@ -31,7 +31,7 @@ export function ActivityMetaInfoCard({ createdAt, updatedAt, completedAt }: Prop
 
         {/* Updated */}
         <div className="flex justify-between">
-          <span>Updated</span>
+          <span>Cập nhật lần cuối</span>
           <span className="font-medium">
             {updatedAt ? formatDateTime(updatedAt) : "—"}
           </span>
@@ -40,7 +40,7 @@ export function ActivityMetaInfoCard({ createdAt, updatedAt, completedAt }: Prop
         {/* Completed */}
         {completedAt && (
           <div className="flex justify-between text-green-700">
-            <span>Completed</span>
+            <span>Ngày hoàn tất</span>
             <span className="font-medium">{formatDateTime(completedAt)}</span>
           </div>
         )}

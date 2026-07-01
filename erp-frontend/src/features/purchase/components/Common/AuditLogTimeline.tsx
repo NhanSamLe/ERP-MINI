@@ -41,32 +41,32 @@ const PAYMENT_ACTIONS: Record<
   { label: string; color: string; dot: string }
 > = {
   CREATE: {
-    label: "Created",
+    label: "Đã tạo",
     color: "bg-blue-100 text-blue-700",
     dot: "border-blue-400",
   },
   SUBMIT: {
-    label: "Submitted",
+    label: "Đã gửi",
     color: "bg-yellow-100 text-yellow-700",
     dot: "border-yellow-400",
   },
   APPROVE: {
-    label: "Approved",
+    label: "Đã phê duyệt",
     color: "bg-green-100 text-green-700",
     dot: "border-green-400",
   },
   REJECT: {
-    label: "Rejected",
+    label: "Đã từ chối",
     color: "bg-red-100 text-red-700",
     dot: "border-red-400",
   },
   ALLOCATE: {
-    label: "Allocated",
+    label: "Đã phân bổ",
     color: "bg-purple-100 text-purple-700",
     dot: "border-purple-400",
   },
   COMPLETE: {
-    label: "Completed",
+    label: "Đã hoàn thành",
     color: "bg-emerald-100 text-emerald-700",
     dot: "border-emerald-400",
   },
@@ -77,27 +77,27 @@ const INVOICE_ACTIONS: Record<
   { label: string; color: string; dot: string }
 > = {
   created: {
-    label: "Invoice Created",
+    label: "Hóa đơn đã tạo",
     color: "bg-blue-100 text-blue-700",
     dot: "border-blue-400",
   },
   auto_created: {
-    label: "Auto Created (OCR)",
+    label: "Tự động tạo (OCR)",
     color: "bg-purple-100 text-purple-700",
     dot: "border-purple-400",
   },
   override_duplicate: {
-    label: "Override Duplicate",
+    label: "Ghi đè trùng lặp",
     color: "bg-yellow-100 text-yellow-700",
     dot: "border-yellow-400",
   },
   mismatch_accepted: {
-    label: "Mismatch Accepted",
+    label: "Chấp nhận sai lệch",
     color: "bg-orange-100 text-orange-700",
     dot: "border-orange-400",
   },
   manual_override: {
-    label: "Manual Override",
+    label: "Ghi đè thủ công",
     color: "bg-gray-100 text-gray-700",
     dot: "border-gray-400",
   },
@@ -108,22 +108,22 @@ const PO_ACTIONS: Record<
   { label: string; color: string; dot: string }
 > = {
   CREATE: {
-    label: "PO Created",
+    label: "PO đã tạo",
     color: "bg-blue-100 text-blue-700",
     dot: "border-blue-400",
   },
   UPDATE: {
-    label: "PO Updated",
+    label: "PO đã cập nhật",
     color: "bg-indigo-100 text-indigo-700",
     dot: "border-indigo-400",
   },
   APPROVE: {
-    label: "PO Approved",
+    label: "PO đã phê duyệt",
     color: "bg-green-100 text-green-700",
     dot: "border-green-400",
   },
   CANCEL: {
-    label: "PO Cancelled",
+    label: "PO đã hủy",
     color: "bg-red-100 text-red-700",
     dot: "border-red-400",
   },
@@ -160,11 +160,11 @@ function PaymentDetails({ log }: { log: AuditLogEntry }) {
           {d.allocations.map((a: any, i: number) => (
             <span key={i} className="inline-flex items-center gap-1 mr-2">
               <span className="font-medium text-gray-700">
-                {a.invoice_id ? `INV #${a.invoice_id}` : "Invoice"}
+                {a.invoice_id ? `HĐ #${a.invoice_id}` : "Hóa đơn"}
               </span>
               <span>→</span>
               <span className="text-purple-600 font-medium">
-                {Number(a.amount).toLocaleString("en-US", {
+                {Number(a.amount).toLocaleString("vi-VN", {
                   minimumFractionDigits: 2,
                 })}
               </span>
@@ -178,26 +178,30 @@ function PaymentDetails({ log }: { log: AuditLogEntry }) {
                         : "bg-gray-100 text-gray-600"
                   }`}
                 >
-                  {a.status.replace(/_/g, " ").toUpperCase()}
+                  {a.status === "paid"
+                    ? "ĐÃ THANH TOÁN"
+                    : a.status === "partially_paid"
+                      ? "THANH TOÁN MỘT PHẦN"
+                      : a.status.replace(/_/g, " ").toUpperCase()}
                 </span>
               )}
             </span>
           ))}
           {d.total_allocated != null && (
             <p className="text-gray-500">
-              Total allocated:{" "}
+              Tổng phân bổ:{" "}
               <span className="font-semibold text-gray-700">
-                {Number(d.total_allocated).toLocaleString("en-US", {
+                {Number(d.total_allocated).toLocaleString("vi-VN", {
                   minimumFractionDigits: 2,
                 })}
               </span>
               {d.remaining != null && (
                 <span className="ml-2">
-                  · Remaining:{" "}
+                  · Còn lại:{" "}
                   <span
                     className={`font-semibold ${d.remaining === 0 ? "text-green-600" : "text-orange-600"}`}
                   >
-                    {Number(d.remaining).toLocaleString("en-US", {
+                    {Number(d.remaining).toLocaleString("vi-VN", {
                       minimumFractionDigits: 2,
                     })}
                   </span>
@@ -209,7 +213,7 @@ function PaymentDetails({ log }: { log: AuditLogEntry }) {
       )}
       {d.gl_entry_no && (
         <p className="text-xs text-gray-500">
-          GL Entry:{" "}
+          Bút toán GL:{" "}
           <span className="font-medium text-gray-700">{d.gl_entry_no}</span>
         </p>
       )}
@@ -222,15 +226,15 @@ function InvoiceDetails({ log }: { log: AuditLogEntry }) {
     <div className="mt-1.5 space-y-0.5">
       {log.source && (
         <span className="text-xs text-gray-500 mr-2">
-          Source:{" "}
+          Nguồn:{" "}
           <span className="font-medium">
-            {log.source === "ai_ocr" ? "OCR" : "Manual"}
+            {log.source === "ai_ocr" ? "OCR" : "Thủ công"}
           </span>
         </span>
       )}
       {log.ocr_confidence != null && (
         <span className="text-xs text-gray-500 mr-2">
-          Confidence:{" "}
+          Độ chính xác:{" "}
           <span
             className={`font-medium ${log.ocr_confidence >= 0.85 ? "text-green-600" : log.ocr_confidence >= 0.6 ? "text-yellow-600" : "text-red-600"}`}
           >
@@ -248,12 +252,16 @@ function InvoiceDetails({ log }: { log: AuditLogEntry }) {
                 : "bg-gray-100 text-gray-600"
           }`}
         >
-          {log.matching_status.toUpperCase()}
+          {log.matching_status === "matched"
+            ? "KHỚP"
+            : log.matching_status === "mismatch"
+              ? "LỆCH"
+              : log.matching_status.toUpperCase()}
         </span>
       )}
       {log.override_reason && (
         <p className="text-xs text-orange-600 italic">
-          Reason: "{log.override_reason}"
+          Lý do: "{log.override_reason}"
         </p>
       )}
     </div>
@@ -306,7 +314,7 @@ function PoDetails({ log }: { log: AuditLogEntry }) {
       })}
       {changedFields.length > 4 && (
         <p className="text-xs text-gray-400">
-          +{changedFields.length - 4} more fields
+          +{changedFields.length - 4} trường khác
         </p>
       )}
     </div>
@@ -324,7 +332,7 @@ export function AuditLogTimeline({
     return (
       <div className="flex items-center gap-2 text-gray-400 text-sm py-6">
         <Loader2 className="w-4 h-4 animate-spin" />
-        Loading activity...
+        Đang tải hoạt động...
       </div>
     );
   }
@@ -332,7 +340,7 @@ export function AuditLogTimeline({
   if (logs.length === 0) {
     return (
       <p className="text-sm text-gray-400 italic py-4">
-        No activity recorded yet.
+        Chưa có hoạt động nào được ghi nhận.
       </p>
     );
   }
@@ -342,7 +350,7 @@ export function AuditLogTimeline({
       {logs.map((log) => {
         const meta = getActionMeta(log.action, variant);
         const actorName =
-          log.actor?.full_name ?? log.changed_by_name ?? "Unknown";
+          log.actor?.full_name ?? log.changed_by_name ?? "Chưa rõ";
         const timestamp = log.created_at ?? log.changed_at;
 
         return (
@@ -377,7 +385,7 @@ export function AuditLogTimeline({
 
                 {/* Actor */}
                 <p className="text-xs text-gray-400 mt-1">
-                  by{" "}
+                  bởi{" "}
                   <span className="font-medium text-gray-600">{actorName}</span>
                 </p>
               </div>
@@ -385,7 +393,7 @@ export function AuditLogTimeline({
               {/* Timestamp */}
               {timestamp && (
                 <span className="text-xs text-gray-400 whitespace-nowrap shrink-0">
-                  {new Date(timestamp).toLocaleString("en-US", {
+                  {new Date(timestamp).toLocaleString("vi-VN", {
                     month: "short",
                     day: "numeric",
                     hour: "2-digit",
@@ -408,7 +416,7 @@ interface AuditLogCardProps extends AuditLogTimelineProps {
 }
 
 export function AuditLogCard({
-  title = "Activity Log",
+  title = "Nhật ký hoạt động",
   logs,
   loading,
   variant,
@@ -422,7 +430,7 @@ export function AuditLogCard({
         <h2 className="text-lg font-bold text-gray-900">{title}</h2>
         {!loading && logs.length > 0 && (
           <span className="ml-auto text-xs text-gray-400 font-medium">
-            {logs.length} {logs.length === 1 ? "entry" : "entries"}
+            {logs.length} bản ghi
           </span>
         )}
       </div>

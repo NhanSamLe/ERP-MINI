@@ -94,10 +94,10 @@ export default function OppStageActions({
                     />
                     <span>{stage.name}</span>
                     {stage.is_won && (
-                      <span className="ml-auto text-[10px] font-semibold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">WON</span>
+                      <span className="ml-auto text-[10px] font-semibold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">THẮNG</span>
                     )}
                     {stage.is_lost && (
-                      <span className="ml-auto text-[10px] font-semibold bg-red-100 text-red-600 px-1.5 py-0.5 rounded">LOST</span>
+                      <span className="ml-auto text-[10px] font-semibold bg-red-100 text-red-600 px-1.5 py-0.5 rounded">THUA</span>
                     )}
                   </button>
                 ))}

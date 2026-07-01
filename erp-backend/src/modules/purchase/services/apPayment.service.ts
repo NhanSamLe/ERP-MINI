@@ -8,9 +8,13 @@ import { GlJournal } from "../../finance/models/glJournal.model";
 import { GlEntry } from "../../finance/models/glEntry.model";
 import { GlEntryLine } from "../../finance/models/glEntryLine.model";
 import { GlAccount } from "../../finance/models/glAccount.model";
-import { ApPaymentAllocation, Partner, sequelize } from "../../../models";
+import { ApPaymentAllocation, Partner, sequelize, BankAccount } from "../../../models";
 import { Op, QueryTypes } from "sequelize";
 import { notificationService } from "../../../core/services/notification.service";
+import { getMappedAccount } from "../../finance/services/glAccount.service";
+import { checkPeriodLocked } from "../../finance/services/glJournal.service";
+import { generatePaymentNo } from "../utils";
+import { getCompanyIdFromBranch, getCompanyBranchIds } from "../../finance/services/companyScope.service";
 
 export const apPaymentService = {
   // ─── READ ──────────────────────────────────────────────────────────────────
@@ -18,8 +22,14 @@ export const apPaymentService = {
   async getAll(query: any, user: any) {
     const { status, approval_status, allocation_status, supplier_id } = query;
 
-    const where: any = { branch_id: user.branch_id };
-
+    const companyBranchIds = await getCompanyBranchIds(user);
+    const where: any = {};
+    if (user.role === "ADMIN" || user.role === "CEO") {
+      where.branch_id = { [Op.in]: companyBranchIds };
+    } else {
+      where.branch_id = user.branch_id;
+    }
+ 
     if (user.role === Role.ACCOUNT) {
       where.created_by = user.id;
     }
@@ -48,14 +58,25 @@ export const apPaymentService = {
           as: "approver",
           attributes: ["id", "full_name", "email", "phone", "avatar_url"],
         },
+        {
+          model: BankAccount,
+          as: "bankAccount",
+          required: false,
+        },
       ],
       order: [["created_at", "DESC"]],
     });
   },
 
   async getById(id: number, user: any) {
-    const where: any = { id, branch_id: user.branch_id };
-
+    const companyBranchIds = await getCompanyBranchIds(user);
+    const where: any = { id };
+    if (user.role === "ADMIN" || user.role === "CEO") {
+      where.branch_id = { [Op.in]: companyBranchIds };
+    } else {
+      where.branch_id = user.branch_id;
+    }
+ 
     if (user.role === Role.ACCOUNT) {
       where.created_by = user.id;
     }
@@ -79,6 +100,11 @@ export const apPaymentService = {
           as: "approver",
           attributes: ["id", "full_name", "email", "phone", "avatar_url"],
         },
+        {
+          model: BankAccount,
+          as: "bankAccount",
+          required: false,
+        },
       ],
     });
   },
@@ -86,8 +112,15 @@ export const apPaymentService = {
   // ─── AUDIT LOG ─────────────────────────────────────────────────────────────
 
   async getAuditLogs(paymentId: number, user: any) {
+    const companyBranchIds = await getCompanyBranchIds(user);
+    const where: any = { id: paymentId };
+    if (user.role === "ADMIN" || user.role === "CEO") {
+      where.branch_id = { [Op.in]: companyBranchIds };
+    } else {
+      where.branch_id = user.branch_id;
+    }
     const payment = await ApPayment.findOne({
-      where: { id: paymentId, branch_id: user.branch_id },
+      where,
     });
 
     if (!payment) throw new Error("AP Payment not found");
@@ -108,7 +141,7 @@ export const apPaymentService = {
   // ─── CREATE ────────────────────────────────────────────────────────────────
 
   async create(payload: any, user: any) {
-    if (user.role !== Role.ACCOUNT) {
+    if (user.role !== Role.ACCOUNT && user.role !== Role.CHACC && user.role !== "ADMIN" && user.role !== "CEO") {
       throw {
         status: 403,
         message: "You do not have permission to create AP Payment",
@@ -123,7 +156,7 @@ export const apPaymentService = {
       throw { status: 400, message: "Amount must be greater than zero" };
     }
 
-    const paymentNo = `PAY-${Date.now()}`;
+    const paymentNo = await generatePaymentNo();
 
     const payment = await ApPayment.create({
       payment_no: paymentNo,
@@ -211,17 +244,22 @@ export const apPaymentService = {
   // ─── APPROVE ───────────────────────────────────────────────────────────────
 
   async approve(id: number, user: any, app?: any) {
-    if (user.role !== Role.CHACC)
+    if (user.role !== Role.CHACC && user.role !== "ADMIN" && user.role !== "CEO")
       throw new Error("Only Chief Accountant can approve");
-
+ 
     const t: Transaction = await sequelize.transaction();
     try {
       const payment = await ApPayment.findByPk(id, { transaction: t });
       if (!payment) throw new Error("AP Payment not found");
-
-      if (payment.branch_id !== user.branch_id)
+ 
+      const companyBranchIds = await getCompanyBranchIds(user);
+      if (user.role !== "ADMIN" && user.role !== "CEO" && payment.branch_id !== user.branch_id)
         throw new Error("You cannot approve payment from another branch");
+      if (!companyBranchIds.includes(payment.branch_id))
+        throw new Error("You cannot approve payment for a different company");
 
+
+      const companyId = await getCompanyIdFromBranch(payment.branch_id, t);
       if (payment.approval_status !== "waiting_approval")
         throw new Error("Payment is not waiting for approval");
 
@@ -238,32 +276,27 @@ export const apPaymentService = {
         { transaction: t },
       );
 
-      // GL: cash->111, bank/transfer->112
-      const creditAccCode = payment.method === "cash" ? "111" : "112";
-      const debitAccCode = "331";
+      // Kiểm tra kỳ kế toán đã khóa sổ hay chưa
+      await checkPeriodLocked(payment.payment_date || new Date(), t);
 
-      const [debitAcc, creditAcc] = await Promise.all([
-        GlAccount.findOne({ where: { code: debitAccCode }, transaction: t }),
-        GlAccount.findOne({ where: { code: creditAccCode }, transaction: t }),
+      // GL: cash->111, bank/transfer->112 qua mapping động
+      const mappingKey = payment.method === "cash" ? "CASH_ACCOUNT" : "BANK_ACCOUNT";
+      const creditFallback = payment.method === "cash" ? "111" : "112";
+
+      const [debitAccountId, creditAccountId] = await Promise.all([
+        getMappedAccount(payment.branch_id, "AP_PAYABLE", "331", t),
+        getMappedAccount(payment.branch_id, mappingKey, creditFallback, t),
       ]);
 
-      if (!debitAcc || !creditAcc) {
-        throw new Error(`Missing GL Accounts ${debitAccCode} / ${creditAccCode}`);
-      }
-
-      const creditAccountId = creditAcc.id;
-      const debitAccountId = debitAcc.id;
-
       const journalCode = payment.method === "cash" ? "CASH" : "BANK";
-      const journal = await GlJournal.findOne({
-        where: { code: journalCode },
-        transaction: t,
-      });
+      const journal = await GlJournal.findOne({ where: { code: journalCode }, transaction: t });
       if (!journal) throw new Error(`${journalCode} journal not found`);
 
       const entryDate: Date = payment.payment_date || new Date();
       const amount = Number(payment.amount || 0);
       if (amount <= 0) throw new Error("Payment amount must be > 0");
+      const exchangeRate = Number(payment.exchange_rate ?? 1.0);
+      const baseAmount = amount * exchangeRate; // Quy đổi ra VND để ghi sổ cái
 
       const entry = await GlEntry.create(
         {
@@ -274,7 +307,8 @@ export const apPaymentService = {
           reference_id: payment.id,
           memo: `AP Payment ${payment.payment_no}`,
           status: "posted",
-        },
+          branch_id: payment.branch_id ?? null,
+        } as any,
         { transaction: t },
       );
 
@@ -283,14 +317,14 @@ export const apPaymentService = {
       const lineDebit: any = {
         entry_id: entry.id,
         account_id: debitAccountId,
-        debit: amount,
+        debit: baseAmount,
         credit: 0,
       };
       const lineCredit: any = {
         entry_id: entry.id,
         account_id: creditAccountId,
         debit: 0,
-        credit: amount,
+        credit: baseAmount,
       };
 
       if (supplierId) {
@@ -342,15 +376,19 @@ export const apPaymentService = {
   // ─── REJECT ────────────────────────────────────────────────────────────────
 
   async reject(id: number, reason: string, user: any, app?: any) {
-    if (user.role !== Role.CHACC) {
+    if (user.role !== Role.CHACC && user.role !== "ADMIN" && user.role !== "CEO") {
       throw new Error("Only Chief Accountant can reject");
     }
-
+ 
     const payment = await ApPayment.findByPk(id);
     if (!payment) throw new Error("AP Payment not found");
-
-    if (payment.branch_id !== user.branch_id) {
+ 
+    const companyBranchIds = await getCompanyBranchIds(user);
+    if (user.role !== "ADMIN" && user.role !== "CEO" && payment.branch_id !== user.branch_id) {
       throw new Error("You cannot reject payment from another branch");
+    }
+    if (!companyBranchIds.includes(payment.branch_id)) {
+      throw new Error("You cannot reject payment for a different company");
     }
 
     if (payment.approval_status !== "waiting_approval") {
@@ -440,18 +478,26 @@ export const apPaymentService = {
       `SELECT
          ai.id,
          ai.invoice_no,
+         ai.invoice_date,
          ai.total_after_tax,
          COALESCE(SUM(apa.applied_amount), 0) AS allocated_amount,
-         ai.total_after_tax - COALESCE(SUM(apa.applied_amount), 0) AS unpaid_amount
+         COALESCE(dn.debit_amount, 0) AS debit_note_amount,
+         ai.total_after_tax - COALESCE(SUM(apa.applied_amount), 0) - COALESCE(dn.debit_amount, 0) AS unpaid_amount
        FROM ap_invoices ai
-       JOIN purchase_orders po ON po.id = ai.po_id
        LEFT JOIN ap_payment_allocations apa ON apa.ap_invoice_id = ai.id
+       LEFT JOIN (
+         SELECT original_ap_invoice_id, SUM(total_after_tax) AS debit_amount
+         FROM ap_debit_notes
+         WHERE status = 'posted'
+         GROUP BY original_ap_invoice_id
+       ) dn ON dn.original_ap_invoice_id = ai.id
        WHERE ai.status IN ('posted', 'partially_paid')
          AND ai.approval_status = 'approved'
-         AND po.supplier_id = ?
+         AND ai.supplier_id = ?
          AND ai.branch_id = ?
        GROUP BY ai.id
-       HAVING unpaid_amount > 0`,
+       HAVING unpaid_amount > 0
+       ORDER BY ai.invoice_date ASC`,
       {
         replacements: [payment.supplier_id, user.branch_id],
         type: QueryTypes.SELECT,
@@ -515,15 +561,20 @@ export const apPaymentService = {
         if (item.amount <= 0)
           throw new Error("Allocation amount must be greater than zero");
 
-        // Validate invoice: supplier + status + approval + branch + lock
+        // Validate invoice: supplier_id trực tiếp từ ap_invoices (không JOIN PO, hỗ trợ cả invoice không có PO)
         const [invoice]: any = await sequelize.query(
           `SELECT ai.id,
-                  ai.total_after_tax - COALESCE(SUM(apa.applied_amount), 0) AS unpaid_amount
+                  ai.total_after_tax - COALESCE(SUM(apa.applied_amount), 0) - COALESCE(dn.debit_amount, 0) AS unpaid_amount
            FROM ap_invoices ai
-           JOIN purchase_orders po ON po.id = ai.po_id
            LEFT JOIN ap_payment_allocations apa ON apa.ap_invoice_id = ai.id
+           LEFT JOIN (
+             SELECT original_ap_invoice_id, SUM(total_after_tax) AS debit_amount
+             FROM ap_debit_notes
+             WHERE status = 'posted'
+             GROUP BY original_ap_invoice_id
+           ) dn ON dn.original_ap_invoice_id = ai.id
            WHERE ai.id = ?
-             AND po.supplier_id = ?
+             AND ai.supplier_id = ?
              AND ai.status IN ('posted', 'partially_paid')
              AND ai.approval_status = 'approved'
              AND ai.branch_id = ?
@@ -546,30 +597,11 @@ export const apPaymentService = {
           );
         }
 
-        // Check duplicate from same payment
+        // Check duplicate from same payment -> update amount instead of throwing error
         const existingAllocation = await ApPaymentAllocation.findOne({
           where: { payment_id: paymentId, ap_invoice_id: item.invoice_id },
           transaction: t,
         });
-        if (existingAllocation) {
-          throw new Error(
-            `Invoice ${item.invoice_id} already allocated from this payment`,
-          );
-        }
-
-        // Check allocation from other payment
-        const allocatedFromOther = await ApPaymentAllocation.findOne({
-          where: {
-            ap_invoice_id: item.invoice_id,
-            payment_id: { [Op.ne]: paymentId },
-          },
-          transaction: t,
-        });
-        if (allocatedFromOther) {
-          throw new Error(
-            `Invoice ${item.invoice_id} already allocated from another payment`,
-          );
-        }
 
         if (item.amount > invoice.unpaid_amount) {
           throw new Error(
@@ -577,14 +609,19 @@ export const apPaymentService = {
           );
         }
 
-        await ApPaymentAllocation.create(
-          {
-            payment_id: paymentId,
-            ap_invoice_id: item.invoice_id,
-            applied_amount: item.amount,
-          },
-          { transaction: t },
-        );
+        if (existingAllocation) {
+          existingAllocation.applied_amount = Number(existingAllocation.applied_amount || 0) + item.amount;
+          await existingAllocation.save({ transaction: t });
+        } else {
+          await ApPaymentAllocation.create(
+            {
+              payment_id: paymentId,
+              ap_invoice_id: item.invoice_id,
+              applied_amount: item.amount,
+            },
+            { transaction: t },
+          );
+        }
 
         // Update invoice paid_amount and status
         const unpaidAfter = invoice.unpaid_amount - item.amount;
@@ -602,7 +639,7 @@ export const apPaymentService = {
            FROM ap_payment_allocations WHERE ap_invoice_id = ?`,
           { replacements: [item.invoice_id], transaction: t, type: "SELECT" },
         );
-        const newPaidAmount = Number(paidResult?.total_paid ?? 0) + item.amount;
+        const newPaidAmount = Number(paidResult?.total_paid ?? 0);
 
         await sequelize.query(
           `UPDATE ap_invoices SET status = ?, paid_amount = ?, last_payment_date = CURDATE() WHERE id = ?`,

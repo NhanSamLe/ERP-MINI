@@ -16,10 +16,10 @@ export default function StatCards({ activities }: { activities: Activity[] }) {
 
   return (
     <div className="grid grid-cols-4 gap-3 px-1">
-      <Tile label="Calls" value={stats.call} color="text-blue-600" />
-      <Tile label="Emails" value={stats.email} color="text-purple-600" />
-      <Tile label="Meetings" value={stats.meeting} color="text-green-600" />
-      <Tile label="Tasks" value={stats.task} color="text-orange-600" />
+      <Tile label="Cuộc gọi" value={stats.call} color="text-blue-600" />
+      <Tile label="Email" value={stats.email} color="text-purple-600" />
+      <Tile label="Cuộc họp" value={stats.meeting} color="text-green-600" />
+      <Tile label="Công việc" value={stats.task} color="text-orange-600" />
     </div>
   );
 }

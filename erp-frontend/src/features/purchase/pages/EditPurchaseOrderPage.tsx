@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "../../../components/ui/Button";
 import { Input } from "../../../components/ui/input";
 import { Textarea } from "../../../components/ui/textarea";
@@ -51,6 +51,7 @@ import { PurchaseOrderStatus } from "../constants/purchaseStatus.enum";
 import { formatVND } from "@/utils/currency.helper";
 import { StatusBadge } from "../components/Common";
 import { purchasePriceListApi } from "../api/purchasePriceList.api";
+import axiosClient from "../../../api/axiosClient";
 
 interface LineItem {
   id?: number;
@@ -70,6 +71,9 @@ interface LineItem {
   tax_type: string;
   tax_rate: number;
   tax_amount: number;
+  discount_percent?: number;
+  discount_amount?: number;
+  discount_type?: "percentage" | "fixed";
   line_total: number;
   price_source?: "price_list" | "supplier_info" | "cost_price" | "manual";
 }
@@ -98,6 +102,11 @@ export default function EditPurchaseOrderPage() {
   const [totalBeforeTax, setTotalBeforeTax] = useState(0);
   const [totalAfterTax, setTotalAfterTax] = useState(0);
   const [description, setDescription] = useState("");
+
+  const [headerDiscountType, setHeaderDiscountType] = useState<"percentage" | "fixed">("percentage");
+  const [headerDiscountPercent, setHeaderDiscountPercent] = useState(0);
+  const [headerDiscountAmount, setHeaderDiscountAmount] = useState(0);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -106,12 +115,23 @@ export default function EditPurchaseOrderPage() {
   const [lines, setLines] = useState<LineItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [priceInputs, setPriceInputs] = useState<Record<number, string>>({});
+  const [paymentTerms, setPaymentTerms] = useState<any[]>([]);
+  const [paymentTermId, setPaymentTermId] = useState("");
+  const [currencies, setCurrencies] = useState<any[]>([]);
+  const [currencyId, setCurrencyId] = useState("");
+  const [exchangeRate, setExchangeRate] = useState("1.0");
 
   useEffect(() => {
     if (id) dispatch(fetchPurchaseOrderByIdThunk(Number(id)));
     dispatch(loadPartners({ type: "supplier" }));
     dispatch(fetchAllUomsThunk());
     dispatch(fetchAllConversionsThunk());
+    axiosClient.get("/master-data/payment-terms")
+      .then((res) => setPaymentTerms(res.data || []))
+      .catch((err) => console.error("Error fetching payment terms:", err));
+    axiosClient.get("/master-data/currencies")
+      .then((res) => setCurrencies(res.data?.currencies || []))
+      .catch((err) => console.error("Error fetching currencies:", err));
   }, [dispatch, id]);
 
   useEffect(() => {
@@ -154,17 +174,60 @@ export default function EditPurchaseOrderPage() {
     return () => clearTimeout(timer);
   }, [searchTerm, dispatch]);
 
-  const recalcTotals = (updatedLines: LineItem[]) => {
-    const before = updatedLines.reduce(
-      (s, l) =>
-        s + (l.sale_price || 0) * (l.quantity_in_stock_uom || l.quantity),
+  const recalcTotals = (
+    updatedLines: LineItem[],
+    headDiscountType = headerDiscountType,
+    headDiscountPct = headerDiscountPercent,
+    headDiscountAmt = headerDiscountAmount
+  ) => {
+    const sumLineTotal = updatedLines.reduce(
+      (sum, l) => {
+        const qty = l.quantity_in_stock_uom || l.quantity;
+        const gross = (l.sale_price || 0) * qty;
+        let discountAmt = 0;
+        if (l.discount_type === "fixed") {
+          discountAmt = l.discount_amount || 0;
+        } else {
+          discountAmt = gross * ((l.discount_percent || 0) / 100);
+        }
+        return sum + (gross - discountAmt);
+      },
       0,
     );
-    const tax = updatedLines.reduce((s, l) => s + l.tax_amount, 0);
-    const after = updatedLines.reduce((s, l) => s + l.line_total, 0);
-    setTotalBeforeTax(before);
-    setTotalOrderTax(tax);
-    setTotalAfterTax(after);
+
+    let finalHeaderDiscountAmount = 0;
+    if (headDiscountType === "fixed") {
+      finalHeaderDiscountAmount = headDiscountAmt;
+    } else {
+      finalHeaderDiscountAmount = sumLineTotal * (headDiscountPct / 100);
+    }
+
+    updatedLines.forEach(l => {
+      const qty = l.quantity_in_stock_uom || l.quantity;
+      const gross = (l.sale_price || 0) * qty;
+      let discountAmt = 0;
+      if (l.discount_type === "fixed") {
+        discountAmt = l.discount_amount || 0;
+      } else {
+        discountAmt = gross * ((l.discount_percent || 0) / 100);
+      }
+      const lineTotalBeforeHeader = gross - discountAmt;
+      const weight = sumLineTotal > 0 ? (lineTotalBeforeHeader / sumLineTotal) : 0;
+      const distributedDiscount = finalHeaderDiscountAmount * weight;
+      const netLineTotal = lineTotalBeforeHeader - distributedDiscount;
+      const taxAmount = netLineTotal * (l.tax_rate / 100);
+      
+      l.tax_amount = taxAmount;
+      l.line_total = netLineTotal + taxAmount;
+    });
+
+    const finalBeforeTax = sumLineTotal - finalHeaderDiscountAmount;
+    const finalTax = updatedLines.reduce((sum, l) => sum + l.tax_amount, 0);
+    const finalAfterTax = finalBeforeTax + finalTax;
+
+    setTotalBeforeTax(finalBeforeTax);
+    setTotalOrderTax(finalTax);
+    setTotalAfterTax(finalAfterTax);
   };
 
   const resolvePrice = (
@@ -270,6 +333,7 @@ export default function EditPurchaseOrderPage() {
       tax_type: tax?.type ?? "VAT",
       tax_rate: rate,
       tax_amount: taxAmount,
+      discount_percent: discountPercent,
       line_total: lineTotal,
       price_source: priceSource,
     };
@@ -296,6 +360,30 @@ export default function EditPurchaseOrderPage() {
       }
       setReference(finalPO?.po_no || "");
       setDescription(finalPO?.description || "");
+      if (finalPO?.payment_term_id) {
+        setPaymentTermId(finalPO.payment_term_id.toString());
+      } else {
+        setPaymentTermId("");
+      }
+      if (finalPO?.currency_id) {
+        setCurrencyId(finalPO.currency_id.toString());
+      } else {
+        setCurrencyId("");
+      }
+      if (finalPO?.exchange_rate) {
+        setExchangeRate(finalPO.exchange_rate.toString());
+      } else {
+        setExchangeRate("1.0");
+      }
+
+      // Load Header discounts
+      const discountPct = Number(finalPO?.discount_percent ?? 0);
+      const discountAmt = Number(finalPO?.discount_amount ?? 0);
+      const discountType = (discountAmt > 0 && !discountPct) ? "fixed" : "percentage";
+      setHeaderDiscountType(discountType);
+      setHeaderDiscountPercent(discountPct);
+      setHeaderDiscountAmount(discountAmt);
+
       const enrichedLines = await Promise.all(
         linesToLoad.map(async (l: PurchaseOrderLine) => {
           const product = await dispatch(
@@ -331,6 +419,11 @@ export default function EditPurchaseOrderPage() {
           const taxRate = Number(tax?.rate || 0);
           const taxAmount = priceInStockUom * qtyInStockUom * (taxRate / 100);
           const lineTotal = priceInStockUom * qtyInStockUom + taxAmount;
+
+          const lineDiscountPct = Number((l as any).discount_percent ?? 0);
+          const lineDiscountAmt = Number((l as any).discount_amount ?? 0);
+          const lineDiscountType: "percentage" | "fixed" = (lineDiscountAmt > 0 && !lineDiscountPct) ? "fixed" : "percentage";
+
           return {
             id: l.id ?? undefined,
             temp_id: l.id ?? Date.now(),
@@ -349,6 +442,9 @@ export default function EditPurchaseOrderPage() {
             tax_rate_id: product.tax_rate_id,
             tax_type: tax?.type || "VAT",
             tax_amount: taxAmount,
+            discount_percent: lineDiscountPct,
+            discount_amount: lineDiscountAmt,
+            discount_type: lineDiscountType,
             line_total: lineTotal,
             price_source: ((finalPO as any)?.price_list_id ? "price_list" : "supplier_info") as "price_list" | "supplier_info",
           };
@@ -361,7 +457,7 @@ export default function EditPurchaseOrderPage() {
           newPriceInputs[l.temp_id] = String(l.price_in_purchase_uom ?? 0);
       });
       setPriceInputs(newPriceInputs);
-      recalcTotals(enrichedLines);
+      recalcTotals(enrichedLines, discountType, discountPct, discountAmt);
     };
     loadLines();
   }, [finalPO, dispatch]);
@@ -398,14 +494,17 @@ export default function EditPurchaseOrderPage() {
         );
         const qtyForCalc = line.quantity_in_stock_uom || line.quantity;
         const baseTotal = qtyForCalc * newPriceInStockUom;
-        const discountedTotal = baseTotal * (1 - discountPercent / 100);
-        const taxAmount = discountedTotal * (line.tax_rate / 100);
-        const lineTotal = discountedTotal + taxAmount;
+        const discountAmt = baseTotal * (discountPercent / 100);
+        const taxAmount = (baseTotal - discountAmt) * (line.tax_rate / 100);
+        const lineTotal = baseTotal - discountAmt + taxAmount;
 
         return {
           ...line,
           price_in_purchase_uom: newPriceInPurchaseUom,
           sale_price: newPriceInStockUom,
+          discount_percent: discountPercent,
+          discount_amount: discountAmt,
+          discount_type: "percentage" as const,
           tax_amount: taxAmount,
           line_total: lineTotal,
           price_source: priceSource,
@@ -422,12 +521,36 @@ export default function EditPurchaseOrderPage() {
     setPriceInputs(newPriceInputs);
   };
 
+  const handleCurrencyChange = async (newCurrencyId: string) => {
+    setCurrencyId(newCurrencyId);
+    const selected = currencies.find((c) => String(c.id) === newCurrencyId);
+    if (!selected || selected.code === "VND") {
+      setExchangeRate("1.0");
+      return;
+    }
+    try {
+      const res = await axiosClient.get("/master-data/currencies/rates");
+      const rates = res.data?.rates || [];
+      const rateObj = rates.find((r: any) => String(r.quote_currency_id) === newCurrencyId);
+      if (rateObj) {
+        const val = Number(rateObj.rate);
+        const rateToVnd = val > 0 ? (1 / val).toFixed(2) : "1.0";
+        setExchangeRate(rateToVnd);
+      } else {
+        setExchangeRate("1.0");
+      }
+    } catch (e) {
+      console.error("Failed to load exchange rate", e);
+      setExchangeRate("1.0");
+    }
+  };
+
   const updateLine = async (
     temp_id: number,
     field: keyof LineItem,
-    value: number,
+    value: any,
   ) => {
-    if (field === "quantity" && value <= 0) {
+    if (field === "quantity" && Number(value) <= 0) {
       removeLine(temp_id);
       return;
     }
@@ -436,7 +559,7 @@ export default function EditPurchaseOrderPage() {
     if ((field === "quantity" || field === "uom_id") && supplierId) {
       const line = lines.find((l) => l.temp_id === temp_id);
       if (line) {
-        const newQty = field === "quantity" ? (value || 1) : line.quantity;
+        const newQty = field === "quantity" ? (Number(value) || 1) : line.quantity;
         try {
           const pRes = await purchasePriceListApi.evaluatePrice({
             product_id: Number(line.product_id),
@@ -466,7 +589,7 @@ export default function EditPurchaseOrderPage() {
       }
 
       if (field === "quantity") {
-        const newQty = value || 1;
+        const newQty = Number(value) || 1;
         updated.quantity_in_stock_uom =
           updated.uom_id &&
           updated.stock_uom_id &&
@@ -482,7 +605,7 @@ export default function EditPurchaseOrderPage() {
       }
       if (field === "price_in_purchase_uom") {
         updated.sale_price = convertPrice(
-          value,
+          Number(value),
           updated.uom_id,
           updated.stock_uom_id,
           conversions,
@@ -490,10 +613,26 @@ export default function EditPurchaseOrderPage() {
         );
         updated.price_source = "manual";
       }
+
       const qtyForCalc = updated.quantity_in_stock_uom || updated.quantity;
-      const taxAmount =
-        (updated.sale_price || 0) * qtyForCalc * (updated.tax_rate / 100);
-      const lineTotal = (updated.sale_price || 0) * qtyForCalc + taxAmount;
+      const grossAmount = (updated.sale_price || 0) * qtyForCalc;
+      let discountAmount = 0;
+      let discountPercent = 0;
+
+      if (updated.discount_type === "fixed") {
+        discountAmount = Number(updated.discount_amount || 0);
+        discountPercent = grossAmount > 0 ? (discountAmount / grossAmount) * 100 : 0;
+      } else {
+        discountPercent = Number(updated.discount_percent || 0);
+        discountAmount = grossAmount * (discountPercent / 100);
+      }
+
+      updated.discount_amount = discountAmount;
+      updated.discount_percent = discountPercent;
+
+      const netAmount = grossAmount - discountAmount;
+      const taxAmount = netAmount * (updated.tax_rate / 100);
+      const lineTotal = netAmount + taxAmount;
       return { ...updated, tax_amount: taxAmount, line_total: lineTotal };
     });
     setLines(updatedLines);
@@ -521,22 +660,22 @@ export default function EditPurchaseOrderPage() {
         fetchPurchaseOrderByIdThunk(Number(id)),
       ).unwrap();
       if (checkStatusOrder.status !== PurchaseOrderStatus.DRAFT) {
-        toast.error("This Purchase Order is no longer editable.");
+        toast.error("Đơn đặt hàng này không còn cho phép chỉnh sửa.");
         navigate("/purchase/orders");
         return;
       }
       const today = new Date().toISOString().split("T")[0];
       if (date > today) {
-        toast.error("Date cannot be in the future!");
+        toast.error("Ngày đặt hàng không thể ở tương lai!");
         return;
       }
-      if (!branch) return toast.error("Branch is required");
-      if (!supplierId) return toast.error("Supplier is required");
-      if (!date) return toast.error("Order date is required");
+      if (!branch) return toast.error("Vui lòng chọn chi nhánh!");
+      if (!supplierId) return toast.error("Vui lòng chọn nhà cung cấp!");
+      if (!date) return toast.error("Vui lòng nhập ngày đặt hàng!");
       if (lines.length === 0)
-        return toast.error("At least 1 product is required");
+        return toast.error("Vui lòng thêm ít nhất 1 sản phẩm!");
       const invalidLine = lines.find((l) => !l.quantity || l.quantity <= 0);
-      if (invalidLine) return toast.error("Quantity must be greater than 0");
+      if (invalidLine) return toast.error("Số lượng phải lớn hơn 0!");
 
       const existingLineIds =
         finalPO?.lines?.map((l) => l.id).filter(Boolean) ?? [];
@@ -545,27 +684,38 @@ export default function EditPurchaseOrderPage() {
         (id): id is number => id !== undefined && !currentLineIds.includes(id),
       );
 
-      const updatedLines: PurchaseOrderLine[] = lines.map((l) => ({
-        id: l.id,
-        product_id: Number(l.product_id),
-        quantity: Number(l.quantity),
-        qty_in_stock_uom: Number(l.quantity_in_stock_uom || l.quantity),
-        uom_id: l.uom_id ?? undefined,
-        unit_price: Number(l.price_in_purchase_uom ?? l.sale_price ?? 0),
-        tax_rate_id: l.tax_rate_id ? Number(l.tax_rate_id) : undefined,
-        line_total: Number(l.line_total),
-        line_tax: l.tax_amount,
-        line_total_after_tax: l.line_total,
-      }));
+      const updatedLines: PurchaseOrderLine[] = lines.map((l) => {
+        return {
+          id: l.id,
+          product_id: Number(l.product_id),
+          quantity: Number(l.quantity),
+          qty_in_stock_uom: Number(l.quantity_in_stock_uom || l.quantity),
+          uom_id: l.uom_id ?? undefined,
+          unit_price: Number(l.price_in_purchase_uom ?? l.sale_price ?? 0),
+          discount_percent: Number(l.discount_percent ?? 0),
+          discount_amount: Number(l.discount_amount ?? 0),
+          discount_type: l.discount_type || "percentage",
+          tax_rate_id: l.tax_rate_id ? Number(l.tax_rate_id) : undefined,
+          line_total: Number(l.line_total),
+          line_tax: l.tax_amount,
+          line_total_after_tax: l.line_total,
+        };
+      });
 
       const requestBody: PurchaseOrderUpdate & { deletedLineIds?: number[] } = {
         branch_id: branch.id ?? 0,
         po_no: reference,
         supplier_id: Number(supplierId),
         order_date: date,
+        payment_term_id: paymentTermId ? Number(paymentTermId) : null,
+        currency_id: currencyId ? Number(currencyId) : null,
+        exchange_rate: Number(exchangeRate) || 1.0,
         total_before_tax: totalBeforeTax,
         total_tax: totalOrderTax,
         total_after_tax: totalAfterTax,
+        discount_percent: headerDiscountPercent,
+        discount_amount: headerDiscountAmount,
+        discount_type: headerDiscountType,
         description,
         lines: updatedLines,
         deletedLineIds: deletedLineIds.length ? deletedLineIds : undefined,
@@ -574,11 +724,11 @@ export default function EditPurchaseOrderPage() {
       await dispatch(
         updatePurchaseOrderThunk({ id: Number(id), body: requestBody }),
       ).unwrap();
-      toast.success("Purchase Order updated!");
+      toast.success("Cập nhật đơn đặt hàng thành công!");
       navigate("/purchase/orders");
     } catch (error) {
       console.error("Failed to update Purchase Order:", error);
-      toast.error("Failed to update Purchase Order");
+      toast.error("Lỗi khi cập nhật đơn đặt hàng!");
     } finally {
       setIsSubmitting(false);
     }
@@ -587,6 +737,18 @@ export default function EditPurchaseOrderPage() {
   const selectedSupplierName =
     partners.items.find((w) => w.id === Number(supplierId))?.name || "";
 
+  const selectedPaymentTermName = paymentTermId
+    ? paymentTerms.find((t) => String(t.id) === paymentTermId)
+      ? `${paymentTerms.find((t) => String(t.id) === paymentTermId)?.name} (${paymentTerms.find((t) => String(t.id) === paymentTermId)?.days} ngày)`
+      : ""
+    : "";
+
+  const selectedCurrencyName = currencyId
+    ? currencies.find((c) => String(c.id) === currencyId)
+      ? `${currencies.find((c) => String(c.id) === currencyId)?.code} (${currencies.find((c) => String(c.id) === currencyId)?.name})`
+      : ""
+    : "";
+
   /* ─── Sidebar ─── */
   const SidebarSummary = (
     <div className="space-y-3">
@@ -594,7 +756,7 @@ export default function EditPurchaseOrderPage() {
       {finalPO?.status && (
         <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between">
           <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            Status
+            Trạng thái
           </span>
           <StatusBadge status={finalPO.status} />
         </div>
@@ -604,28 +766,105 @@ export default function EditPurchaseOrderPage() {
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            Order Summary
+            Tóm tắt đơn hàng
           </p>
         </div>
         <div className="p-4 space-y-3">
           <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-500">Items</span>
+            <span className="text-gray-500">Mặt hàng</span>
             <span className="font-semibold text-gray-900">{lines.length}</span>
           </div>
           <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-500">Subtotal</span>
+            <span className="text-gray-500">Tiền hàng (chưa CK)</span>
             <span className="font-medium text-gray-700">
+              {formatVND(lines.reduce((s, l) => {
+                const qty = l.quantity_in_stock_uom || l.quantity;
+                return s + (l.sale_price || 0) * qty;
+              }, 0))}
+            </span>
+          </div>
+          {lines.some(l => (l.discount_percent ?? 0) > 0 || (l.discount_amount ?? 0) > 0) && (
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-orange-500">Chiết khấu dòng</span>
+              <span className="font-medium text-orange-600">
+                -{formatVND(lines.reduce((s, l) => {
+                  const qty = l.quantity_in_stock_uom || l.quantity;
+                  const gross = (l.sale_price || 0) * qty;
+                  let discountAmt = 0;
+                  if (l.discount_type === "fixed") {
+                    discountAmt = l.discount_amount || 0;
+                  } else {
+                    discountAmt = gross * ((l.discount_percent || 0) / 100);
+                  }
+                  return s + discountAmt;
+                }, 0))}
+              </span>
+            </div>
+          )}
+
+          {/* Header Discount Input Section */}
+          <div className="pt-2 border-t border-gray-100 space-y-1.5">
+            <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+              Chiết khấu tổng đơn
+            </label>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="number"
+                min={0}
+                value={
+                  headerDiscountType === "fixed"
+                    ? (headerDiscountAmount || "")
+                    : (headerDiscountPercent || "")
+                }
+                onChange={(e) => {
+                  const val = e.target.value === "" ? 0 : Number(e.target.value);
+                  if (headerDiscountType === "fixed") {
+                    setHeaderDiscountAmount(val);
+                    recalcTotals(lines, headerDiscountType, headerDiscountPercent, val);
+                  } else {
+                    setHeaderDiscountPercent(val);
+                    recalcTotals(lines, headerDiscountType, val, headerDiscountAmount);
+                  }
+                }}
+                className="w-full h-8 text-right border border-gray-300 rounded-lg px-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono"
+                placeholder="0"
+              />
+              <select
+                value={headerDiscountType}
+                onChange={(e) => {
+                  const type = e.target.value as "percentage" | "fixed";
+                  setHeaderDiscountType(type);
+                  if (type === "fixed") {
+                    setHeaderDiscountPercent(0);
+                    recalcTotals(lines, type, 0, headerDiscountAmount);
+                  } else {
+                    setHeaderDiscountAmount(0);
+                    recalcTotals(lines, type, headerDiscountPercent, 0);
+                  }
+                }}
+                className="h-8 text-xs border border-gray-300 rounded-lg px-1 focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+              >
+                <option value="percentage">%</option>
+                <option value="fixed">đ</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center text-sm pt-2">
+            <span className="text-gray-500">Trước thuế</span>
+            <span className="font-semibold text-gray-900">
               {formatVND(totalBeforeTax)}
             </span>
           </div>
+
           <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-500">Tax</span>
+            <span className="text-gray-500">Thuế</span>
             <span className="font-medium text-blue-600">
               {formatVND(totalOrderTax)}
             </span>
           </div>
           <div className="pt-3 border-t border-dashed border-gray-200 flex justify-between items-center">
-            <span className="text-sm font-semibold text-gray-800">Total</span>
+            <span className="text-sm font-semibold text-gray-800">Tổng cộng</span>
             <span className="text-base font-bold text-orange-600">
               {formatVND(totalAfterTax)}
             </span>
@@ -637,27 +876,27 @@ export default function EditPurchaseOrderPage() {
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            Details
+            Chi tiết
           </p>
         </div>
         <div className="p-4 space-y-2.5">
           <div className="flex items-center gap-2 text-sm">
             <Hash className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-            <span className="text-gray-500 w-16 flex-shrink-0">Ref</span>
+            <span className="text-gray-500 w-16 flex-shrink-0">Mã PO</span>
             <span className="font-mono text-xs font-medium text-gray-900 truncate">
               {reference || "—"}
             </span>
           </div>
           <div className="flex items-center gap-2 text-sm">
             <Truck className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-            <span className="text-gray-500 w-16 flex-shrink-0">Supplier</span>
+            <span className="text-gray-500 w-16 flex-shrink-0">Nhà cung cấp</span>
             <span className="font-medium text-gray-900 truncate">
               {selectedSupplierName || "—"}
             </span>
           </div>
           <div className="flex items-center gap-2 text-sm">
             <CalendarDays className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-            <span className="text-gray-500 w-16 flex-shrink-0">Date</span>
+            <span className="text-gray-500 w-16 flex-shrink-0">Ngày đặt</span>
             <span className="font-medium text-gray-900">{date || "—"}</span>
           </div>
         </div>
@@ -666,7 +905,7 @@ export default function EditPurchaseOrderPage() {
       {lines.length === 0 && (
         <div className="flex items-start gap-2.5 px-3.5 py-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
           <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-          <span>Add at least one product line before saving.</span>
+          <span>Vui lòng thêm ít nhất một sản phẩm trước khi lưu.</span>
         </div>
       )}
 
@@ -680,10 +919,10 @@ export default function EditPurchaseOrderPage() {
           {isSubmitting ? (
             <>
               <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-              Saving…
+              Đang lưu…
             </>
           ) : (
-            "Save Changes"
+            "Lưu thay đổi"
           )}
         </Button>
         <Button
@@ -691,7 +930,7 @@ export default function EditPurchaseOrderPage() {
           onClick={() => navigate("/purchase/orders")}
           className="w-full py-2.5 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-50 font-medium text-sm transition-colors"
         >
-          Cancel
+          Hủy
         </Button>
       </div>
     </div>
@@ -703,12 +942,12 @@ export default function EditPurchaseOrderPage() {
       <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm border-t-2 border-t-orange-500">
         <div className="max-w-screen-2xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-sm min-w-0">
-            <span className="text-gray-400">Purchase</span>
+            <span className="text-gray-400">Mua hàng</span>
             <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
-            <span className="text-gray-400">Orders</span>
+            <span className="text-gray-400">Đơn hàng</span>
             <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
             <span className="font-semibold text-gray-900 truncate">
-              Edit — {reference || `#${id}`}
+              Chỉnh sửa — {reference || `#${id}`}
             </span>
           </div>
           {finalPO?.status && <StatusBadge status={finalPO.status} />}
@@ -724,14 +963,14 @@ export default function EditPurchaseOrderPage() {
               <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-100 bg-gray-50/60 rounded-t-xl">
                 <Receipt className="w-4 h-4 text-orange-500" />
                 <h2 className="text-sm font-semibold text-gray-700">
-                  General Information
+                  Thông tin chung
                 </h2>
               </div>
               <div className="p-5">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-1.5">
                     <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Supplier{" "}
+                      Nhà cung cấp{" "}
                       <span className="text-red-400 normal-case font-normal">
                         *
                       </span>
@@ -742,7 +981,7 @@ export default function EditPurchaseOrderPage() {
                       defaultLabel={selectedSupplierName}
                     >
                       <SelectTrigger className="h-9 text-sm">
-                        <SelectValue placeholder="Select Supplier" />
+                        <SelectValue placeholder="Chọn nhà cung cấp" />
                       </SelectTrigger>
                       <SelectContent>
                         {partners.items.map((p) => (
@@ -755,7 +994,7 @@ export default function EditPurchaseOrderPage() {
                   </div>
                   <div className="space-y-1.5">
                     <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Order Date{" "}
+                      Ngày đặt hàng{" "}
                       <span className="text-red-400 normal-case font-normal">
                         *
                       </span>
@@ -770,7 +1009,7 @@ export default function EditPurchaseOrderPage() {
                   </div>
                   <div className="space-y-1.5">
                     <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Reference{" "}
+                      Mã tham chiếu{" "}
                       <span className="text-red-400 normal-case font-normal">
                         *
                       </span>
@@ -782,6 +1021,60 @@ export default function EditPurchaseOrderPage() {
                       className="h-9 text-sm font-mono"
                     />
                   </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Điều khoản thanh toán
+                    </label>
+                    <Select
+                      value={paymentTermId}
+                      onValueChange={setPaymentTermId}
+                      defaultLabel={selectedPaymentTermName}
+                    >
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder="Chọn điều khoản..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {paymentTerms.map((t) => (
+                          <SelectItem key={t.id} value={String(t.id)}>
+                            {`${t.name} (${t.days} ngày)`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Tiền tệ
+                    </label>
+                    <Select
+                      value={currencyId}
+                      onValueChange={handleCurrencyChange}
+                      defaultLabel={selectedCurrencyName}
+                    >
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder="Chọn tiền tệ..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {currencies.map((c) => (
+                          <SelectItem key={c.id} value={String(c.id)}>
+                            {`${c.code} (${c.name})`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Tỷ giá (VND/Ngoại tệ)
+                    </label>
+                    <Input
+                      type="number"
+                      value={exchangeRate}
+                      onChange={setExchangeRate}
+                      disabled={!currencyId || currencies.find(c => String(c.id) === currencyId)?.code === "VND"}
+                      className="h-9 text-sm"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -791,10 +1084,10 @@ export default function EditPurchaseOrderPage() {
               <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-100 bg-gray-50/60 rounded-t-xl">
                 <Search className="w-4 h-4 text-orange-500" />
                 <h2 className="text-sm font-semibold text-gray-700">
-                  Add Products
+                  Thêm sản phẩm
                 </h2>
                 <span className="text-xs text-gray-400 ml-auto">
-                  Type at least 2 characters
+                  Nhập ít nhất 2 ký tự
                 </span>
               </div>
               <div className="p-5">
@@ -810,7 +1103,7 @@ export default function EditPurchaseOrderPage() {
                         products.length > 0 &&
                         setShowDropdown(true)
                       }
-                      placeholder="Search by name or SKU…"
+                      placeholder="Tìm theo tên hoặc SKU…"
                       className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
                     />
                     {searchLoading && (
@@ -821,13 +1114,13 @@ export default function EditPurchaseOrderPage() {
                     <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-60 overflow-auto">
                       {searchLoading ? (
                         <div className="px-4 py-3 text-center text-sm text-gray-400">
-                          Searching…
+                          Đang tìm…
                         </div>
                       ) : products.length === 0 ? (
                         <div className="px-4 py-3 text-center text-sm text-gray-400">
                           {searchTerm
-                            ? "No products found"
-                            : "Type at least 2 characters"}
+                            ? "Không tìm thấy sản phẩm"
+                            : "Nhập ít nhất 2 ký tự"}
                         </div>
                       ) : (
                         products.map((p) => (
@@ -870,7 +1163,7 @@ export default function EditPurchaseOrderPage() {
               <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-100 bg-gray-50/60">
                 <Package className="w-4 h-4 text-orange-500" />
                 <h2 className="text-sm font-semibold text-gray-700">
-                  Order Lines
+                  Chi tiết dòng hàng
                 </h2>
                 {lines.length > 0 && (
                   <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-600">
@@ -882,26 +1175,29 @@ export default function EditPurchaseOrderPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-100">
-                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider w-[30%]">
-                        Product
+                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider w-[28%]">
+                        Sản phẩm
                       </th>
                       <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                        Unit Price
+                        Đơn giá
                       </th>
                       <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                        Qty
+                        Số lượng
                       </th>
                       <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                        UOM
+                        Đơn vị tính
                       </th>
                       <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                        Stock Qty
+                        Số lượng quy đổi
                       </th>
                       <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                        Tax
+                        Chiết khấu
+                      </th>
+                      <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        Thuế
                       </th>
                       <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                        Line Total
+                        Thành tiền
                       </th>
                       <th className="px-2 py-2.5 w-8"></th>
                     </tr>
@@ -909,11 +1205,11 @@ export default function EditPurchaseOrderPage() {
                   <tbody className="divide-y divide-gray-50">
                     {lines.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="py-14 text-center">
+                        <td colSpan={9} className="py-14 text-center">
                           <div className="flex flex-col items-center gap-2 text-gray-400">
                             <Package className="w-8 h-8 text-gray-300" />
                             <span className="text-sm">
-                              No products added yet
+                              Chưa có sản phẩm nào được thêm
                             </span>
                           </div>
                         </td>
@@ -1120,6 +1416,39 @@ export default function EditPurchaseOrderPage() {
                               </span>
                             </td>
                             <td className="px-4 py-3 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  value={
+                                    line.discount_type === "fixed"
+                                      ? (line.discount_amount ?? "")
+                                      : (line.discount_percent ?? "")
+                                  }
+                                  onChange={(e) => {
+                                    const val = e.target.value === "" ? 0 : Number(e.target.value);
+                                    if (line.discount_type === "fixed") {
+                                      updateLine(line.temp_id!, "discount_amount", val);
+                                    } else {
+                                      updateLine(line.temp_id!, "discount_percent", val);
+                                    }
+                                  }}
+                                  className="w-20 text-center border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                                  placeholder="0"
+                                />
+                                <select
+                                  value={line.discount_type || "percentage"}
+                                  onChange={(e) => {
+                                    updateLine(line.temp_id!, "discount_type", e.target.value);
+                                  }}
+                                  className="text-xs border border-gray-300 rounded-lg px-1 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+                                >
+                                  <option value="percentage">%</option>
+                                  <option value="fixed">đ</option>
+                                </select>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-center">
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600 border border-blue-100">
                                 {line.tax_rate}% {line.tax_type}
                               </span>
@@ -1152,8 +1481,8 @@ export default function EditPurchaseOrderPage() {
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-gray-100 bg-gray-50/60">
                 <StickyNote className="w-4 h-4 text-orange-500" />
-                <h2 className="text-sm font-semibold text-gray-700">Notes</h2>
-                <span className="text-xs text-gray-400 ml-auto">Optional</span>
+                <h2 className="text-sm font-semibold text-gray-700">Ghi chú</h2>
+                <span className="text-xs text-gray-400 ml-auto">Tùy chọn</span>
               </div>
               <div className="p-5">
                 <Textarea
@@ -1161,7 +1490,7 @@ export default function EditPurchaseOrderPage() {
                   onChange={setDescription}
                   rows={3}
                   className="text-sm resize-none"
-                  placeholder="Enter notes or instructions…"
+                  placeholder="Nhập ghi chú hoặc hướng dẫn…"
                 />
               </div>
             </div>

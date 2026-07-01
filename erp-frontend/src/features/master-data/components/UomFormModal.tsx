@@ -20,7 +20,7 @@ export default function UomFormModal({ data, onClose, onSubmit }: Props) {
 
   const submit = () => {
     if (!form.code || !form.name) {
-      setError("Both code & name are required");
+      setError("Vui lòng nhập đầy đủ mã và tên");
       return;
     }
     onSubmit(form);
@@ -30,22 +30,22 @@ export default function UomFormModal({ data, onClose, onSubmit }: Props) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center">
       <div className="bg-white p-6 rounded-lg w-80 space-y-4">
-        <h3 className="font-semibold text-lg">{data?.id ? "Edit UOM" : "Add UOM"}</h3>
+        <h3 className="font-semibold text-lg">{data?.id ? "Sửa đơn vị tính" : "Thêm đơn vị tính"}</h3>
 
         {error && <Alert type="error" message={error} onClose={() => setError(null)} />}
 
-        <FormInput label="Code" value={form.code}
+        <FormInput label="Mã" value={form.code}
           disabled={!!data?.id}
           onChange={(v) => setForm({ ...form, code: v })}
           required />
 
-        <FormInput label="Name" value={form.name}
+        <FormInput label="Tên" value={form.name}
           onChange={(v) => setForm({ ...form, name: v })}
           required />
 
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" onClick={submit}>Save</Button>
+          <Button variant="outline" onClick={onClose}>Hủy</Button>
+          <Button variant="primary" onClick={submit}>Lưu</Button>
         </div>
       </div>
     </div>

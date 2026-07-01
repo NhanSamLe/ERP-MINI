@@ -178,13 +178,13 @@ export default function StockReportPage() {
       {/* Filters */}
       <div className="flex gap-3 flex-wrap items-end">
         <div>
-          <label className="block text-xs text-gray-500 mb-1">Warehouse</label>
+          <label className="block text-xs text-gray-500 mb-1">Kho hàng</label>
           <Select value={warehouseId} onValueChange={setWarehouseId}>
             <SelectTrigger className="w-48">
-              <SelectValue placeholder="All warehouses" />
+              <SelectValue placeholder="Tất cả kho hàng" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All</SelectItem>
+              <SelectItem value="">Tất cả</SelectItem>
               {warehouses.map((w) => (
                 <SelectItem key={w.id} value={String(w.id)}>
                   {w.name}
@@ -196,13 +196,13 @@ export default function StockReportPage() {
 
         {tab === "summary" && (
           <div className="relative">
-            <label className="block text-xs text-gray-500 mb-1">Search</label>
+            <label className="block text-xs text-gray-500 mb-1">Tìm kiếm</label>
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Product name or SKU..."
+                placeholder="Tên sản phẩm hoặc SKU..."
                 className="pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm w-56 focus:outline-none focus:ring-2 focus:ring-indigo-300"
               />
             </div>
@@ -212,7 +212,7 @@ export default function StockReportPage() {
         {tab === "movement" && (
           <>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">From</label>
+              <label className="block text-xs text-gray-500 mb-1">Từ ngày</label>
               <Input
                 type="date"
                 value={mvFrom}
@@ -221,7 +221,7 @@ export default function StockReportPage() {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">To</label>
+              <label className="block text-xs text-gray-500 mb-1">Đến ngày</label>
               <Input
                 type="date"
                 value={mvTo}
@@ -233,7 +233,7 @@ export default function StockReportPage() {
               className="bg-indigo-600 hover:bg-indigo-700 text-white mt-4"
               onClick={loadMovement}
             >
-              Search
+              Tìm kiếm
             </Button>
           </>
         )}
@@ -242,7 +242,7 @@ export default function StockReportPage() {
       {/* Content */}
       {loading ? (
         <div className="flex items-center justify-center h-48 text-gray-400">
-          Loading...
+          Đang tải...
         </div>
       ) : (
         <>
@@ -252,15 +252,15 @@ export default function StockReportPage() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-600">
                   <tr>
-                    <th className="p-3 text-left">Product</th>
+                    <th className="p-3 text-left">Sản phẩm</th>
                     <th className="p-3 text-left">SKU</th>
-                    <th className="p-3 text-left">Category</th>
-                    <th className="p-3 text-left">Warehouse</th>
-                    <th className="p-3 text-left">Location</th>
-                    <th className="p-3 text-left">Lot</th>
-                    <th className="p-3 text-right">Qty</th>
-                    <th className="p-3 text-right">Unit Cost</th>
-                    <th className="p-3 text-right">Total Value</th>
+                    <th className="p-3 text-left">Danh mục</th>
+                    <th className="p-3 text-left">Kho hàng</th>
+                    <th className="p-3 text-left">Vị trí</th>
+                    <th className="p-3 text-left">Lô hàng</th>
+                    <th className="p-3 text-right">Số lượng</th>
+                    <th className="p-3 text-right">Đơn giá vốn</th>
+                    <th className="p-3 text-right">Tổng giá trị</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -270,7 +270,7 @@ export default function StockReportPage() {
                         colSpan={9}
                         className="p-6 text-center text-gray-400 italic"
                       >
-                        No data
+                        Không có dữ liệu
                       </td>
                     </tr>
                   ) : (
@@ -360,7 +360,7 @@ export default function StockReportPage() {
                   By Category
                 </h3>
                 {valuation.by_category.length === 0 ? (
-                  <p className="text-gray-400 italic text-sm">No data</p>
+                  <p className="text-gray-400 italic text-sm">Không có dữ liệu</p>
                 ) : (
                   <ResponsiveContainer width="100%" height={260}>
                     <PieChart>
@@ -371,8 +371,8 @@ export default function StockReportPage() {
                         cx="50%"
                         cy="50%"
                         outerRadius={90}
-                        label={({ category, percent }) =>
-                          `${category} ${(percent * 100).toFixed(0)}%`
+                        label={({ name, payload, percent }) =>
+                          `${name ?? payload?.category ?? ""} ${(((percent ?? 0) * 100)).toFixed(0)}%`
                         }
                         labelLine={false}
                       >
@@ -394,18 +394,18 @@ export default function StockReportPage() {
             <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
               {movement.length === 0 ? (
                 <div className="p-8 text-center text-gray-400 italic">
-                  Select date range and click Search
+                  Chọn khoảng ngày rồi nhấn Tìm kiếm
                 </div>
               ) : (
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-600">
                     <tr>
-                      <th className="p-3 text-left">Move No</th>
-                      <th className="p-3 text-left">Date</th>
-                      <th className="p-3 text-left">Type</th>
-                      <th className="p-3 text-left">Product</th>
-                      <th className="p-3 text-left">Lot</th>
-                      <th className="p-3 text-right">Qty</th>
+                      <th className="p-3 text-left">Số phiếu</th>
+                      <th className="p-3 text-left">Ngày</th>
+                      <th className="p-3 text-left">Loại</th>
+                      <th className="p-3 text-left">Sản phẩm</th>
+                      <th className="p-3 text-left">Lô hàng</th>
+                      <th className="p-3 text-right">Số lượng</th>
                     </tr>
                   </thead>
                   <tbody>

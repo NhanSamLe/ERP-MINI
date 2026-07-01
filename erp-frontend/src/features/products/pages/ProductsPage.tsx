@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Product } from "../../../features/products/store/product.types";
 import { DataTable } from "../../../components/ui/DataTable";
 import { Link } from "react-router-dom";
@@ -23,9 +23,9 @@ import {
 import { formatMoney } from "@/utils/currency.helper";
 
 const PRODUCT_TYPE_LABELS: Record<string, string> = {
-  storable: "Storable",
-  consumable: "Consumable",
-  service: "Service",
+  storable: "Lưu kho",
+  consumable: "Tiêu hao",
+  service: "Dịch vụ",
 };
 
 const PRODUCT_TYPE_COLORS: Record<string, string> = {
@@ -79,10 +79,10 @@ export default function ProductsPage() {
     setDeleting(true);
     try {
       await dispatch(deleteProductThunk(selectedProduct.id)).unwrap();
-      toast.success("Product deleted successfully!");
+      toast.success("Xóa sản phẩm thành công!");
       setConfirmOpen(false);
     } catch {
-      toast.error("Failed to delete product!");
+      toast.error("Xóa sản phẩm thất bại!");
     } finally {
       setDeleting(false);
     }
@@ -91,7 +91,7 @@ export default function ProductsPage() {
   const columns = [
     {
       key: "image_url",
-      label: "Image",
+      label: "Hình ảnh",
       render: (p: Product) =>
         p.image_url ? (
           <img
@@ -106,10 +106,10 @@ export default function ProductsPage() {
         ),
     },
     { key: "sku", label: "SKU" },
-    { key: "name", label: "Product Name" },
+    { key: "name", label: "Tên sản phẩm" },
     {
       key: "category_id",
-      label: "Category",
+      label: "Danh mục",
       render: (p: Product) => {
         const cat = categories.find((c) => c.id === p.category_id);
         return cat ? (
@@ -123,7 +123,7 @@ export default function ProductsPage() {
     },
     {
       key: "product_type",
-      label: "TYPE",
+      label: "Phân loại",
       render: (p: Product) =>
         p.product_type ? (
           <span
@@ -137,13 +137,13 @@ export default function ProductsPage() {
     },
     {
       key: "sale_price",
-      label: "Sale Price",
+      label: "Giá bán",
       render: (p: Product) =>
         p.sale_price ? formatMoney(p.sale_price, "VND") : "—",
     },
     {
       key: "uom_id",
-      label: "UOM",
+      label: "Đơn vị tính",
       render: (p: Product) =>
         p.uom ? (
           <span className="text-gray-700 text-xs">{p.uom.name}</span>
@@ -153,12 +153,12 @@ export default function ProductsPage() {
     },
     {
       key: "status",
-      label: "Status",
+      label: "Trạng thái",
       render: (p: Product) => (
         <span
           className={`px-2 py-1 rounded text-xs font-medium ${p.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}
         >
-          {p.status === "active" ? "Active" : "Inactive"}
+          {p.status === "active" ? "Hoạt động" : "Không hoạt động"}
         </span>
       ),
     },
@@ -169,9 +169,9 @@ export default function ProductsPage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between bg-white px-6 py-4 rounded-xl border shadow-sm">
         <div>
-          <h1 className="text-xl font-semibold text-gray-800">Product List</h1>
+          <h1 className="text-xl font-semibold text-gray-800">Danh sách sản phẩm</h1>
           <p className="text-sm text-gray-500">
-            {filteredProducts.length} / {products.length} products
+            {filteredProducts.length} / {products.length} sản phẩm
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -189,7 +189,7 @@ export default function ProductsPage() {
           </button>
           <Link to="/inventory/products/create">
             <Button className="flex items-center gap-1 bg-[#ff8c00] hover:bg-[#ff7700] text-white px-4 py-2 rounded-lg shadow text-sm font-medium transition">
-              <Plus className="w-4 h-4" /> Add Product
+              <Plus className="w-4 h-4" /> Thêm sản phẩm
             </Button>
           </Link>
         </div>
@@ -204,7 +204,7 @@ export default function ProductsPage() {
             type="text"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
-            placeholder="Search by name or SKU..."
+            placeholder="Tìm kiếm theo tên hoặc SKU..."
             className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
           />
         </div>
@@ -215,7 +215,7 @@ export default function ProductsPage() {
           onChange={(e) => setFilterCategory(e.target.value)}
           className="border rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-orange-400 focus:outline-none"
         >
-          <option value="">All Categories</option>
+          <option value="">Tất cả danh mục</option>
           {categories.map((c) => (
             <option key={c.id} value={String(c.id)}>
               {c.name}
@@ -229,10 +229,10 @@ export default function ProductsPage() {
           onChange={(e) => setFilterType(e.target.value)}
           className="border rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-orange-400 focus:outline-none"
         >
-          <option value="">All Types</option>
-          <option value="storable">Storable</option>
-          <option value="consumable">Consumable</option>
-          <option value="service">Service</option>
+          <option value="">Tất cả phân loại</option>
+          <option value="storable">Lưu kho</option>
+          <option value="consumable">Tiêu hao</option>
+          <option value="service">Dịch vụ</option>
         </select>
 
         {/* Status */}
@@ -241,9 +241,9 @@ export default function ProductsPage() {
           onChange={(e) => setFilterStatus(e.target.value)}
           className="border rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-orange-400 focus:outline-none"
         >
-          <option value="">All Status</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
+          <option value="">Tất cả trạng thái</option>
+          <option value="active">Hoạt động</option>
+          <option value="inactive">Không hoạt động</option>
         </select>
 
         {/* Clear */}
@@ -257,7 +257,7 @@ export default function ProductsPage() {
             }}
             className="text-sm text-orange-500 hover:underline whitespace-nowrap"
           >
-            Clear filters
+            Xóa bộ lọc
           </button>
         )}
       </div>
@@ -292,9 +292,9 @@ export default function ProductsPage() {
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-lg p-6 w-96 text-center">
             <Trash2 className="w-10 h-10 text-red-500 mx-auto mb-3" />
-            <h2 className="text-lg font-semibold mb-2">Delete this product?</h2>
+            <h2 className="text-lg font-semibold mb-2">Xóa sản phẩm này?</h2>
             <p className="text-sm text-gray-500 mb-5">
-              This action cannot be undone.
+              Hành động này không thể hoàn tác.
             </p>
             <div className="flex justify-center gap-3">
               <Button
@@ -302,14 +302,14 @@ export default function ProductsPage() {
                 className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm"
                 disabled={deleting}
               >
-                Cancel
+                Hủy
               </Button>
               <Button
                 onClick={handleDelete}
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm"
                 disabled={deleting}
               >
-                {deleting ? "Deleting..." : "Yes, Delete"}
+                {deleting ? "Đang xóa..." : "Xác nhận xóa"}
               </Button>
             </div>
           </div>

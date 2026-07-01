@@ -13,6 +13,8 @@ const purchaseRoles = authMiddleware([
   Role.PURCHASEMANAGER,
   Role.ACCOUNT,
   Role.CHACC,
+  Role.WHSTAFF,
+  Role.WHMANAGER,
 ]);
 const purchaseOnly = authMiddleware([Role.PURCHASE, Role.PURCHASEMANAGER]);
 const accountRoles = authMiddleware([Role.ACCOUNT, Role.CHACC]);
@@ -58,6 +60,11 @@ purchaseReturnRouter.post(
 export const apDebitNoteRouter = Router();
 apDebitNoteRouter.get("/", accountRoles, apDebitNoteController.getAll);
 apDebitNoteRouter.get("/:id", accountRoles, apDebitNoteController.getById);
+apDebitNoteRouter.get(
+  "/from-return/:returnId/preview",
+  accountRoles,
+  apDebitNoteController.getPreviewFromReturn,
+);
 apDebitNoteRouter.post(
   "/from-return/:returnId",
   accountRoles,

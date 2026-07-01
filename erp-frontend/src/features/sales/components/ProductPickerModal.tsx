@@ -72,7 +72,7 @@ export default function ProductPickerModal({
         {/* ── Header ── */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 shrink-0">
           <div>
-            <h2 className="text-sm font-semibold text-gray-900">Select Product</h2>
+            <h2 className="text-sm font-semibold text-gray-900">Chọn sản phẩm</h2>
             <p className="text-xs text-gray-400 mt-0.5">
               {filtered.length} product{filtered.length !== 1 ? "s" : ""} available
             </p>
@@ -94,7 +94,7 @@ export default function ProductPickerModal({
               ref={searchRef}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name, SKU or internal ref..."
+              placeholder="Tìm theo tên, SKU hoặc mã nội bộ..."
               className="w-full h-9 pl-9 pr-8 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 placeholder:text-gray-400"
             />
             {search && (

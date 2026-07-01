@@ -1,14 +1,30 @@
-/**
- * StatusBadge — re-exported from the global common component.
- * Kept here for backward-compat with existing sales imports.
- *
- * The old `type` prop ("status" | "approval") is mapped to the common
- * component's `variant` prop automatically via the named re-export below.
- */
-export {
-  StatusBadge,
+import {
+  StatusBadge as CommonStatusBadge,
   STATUS_COLORS,
   APPROVAL_COLORS,
 } from "../../../../components/common/StatusBadge";
 
-export { StatusBadge as default } from "../../../../components/common/StatusBadge";
+interface Props {
+  status: string;
+  type?: "status" | "approval";
+  variant?: "status" | "approval";
+  className?: string;
+}
+
+export function StatusBadge({
+  status,
+  type,
+  variant,
+  className,
+}: Props) {
+  return (
+    <CommonStatusBadge
+      status={status}
+      variant={variant ?? type ?? "status"}
+      className={className}
+    />
+  );
+}
+
+export { STATUS_COLORS, APPROVAL_COLORS };
+export default StatusBadge;

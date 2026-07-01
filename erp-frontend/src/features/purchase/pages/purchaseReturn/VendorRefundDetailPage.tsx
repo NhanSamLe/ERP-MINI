@@ -18,9 +18,9 @@ import { Roles } from "@/types/enum";
 import { useState } from "react";
 
 const METHOD_LABELS: Record<string, string> = {
-  cash: "Cash",
-  bank: "Bank Transfer",
-  transfer: "Transfer",
+  cash: "Tiền mặt",
+  bank: "Chuyển khoản ngân hàng",
+  transfer: "Chuyển khoản",
 };
 
 export default function VendorRefundDetailPage() {
@@ -48,7 +48,7 @@ export default function VendorRefundDetailPage() {
     if (!refund) return;
     try {
       await dispatch(postVendorRefundThunk(refund.id)).unwrap();
-      toast.success("Vendor Refund posted");
+      toast.success("Đã ghi sổ phiếu hoàn tiền từ NCC");
       setPostModal(false);
     } catch (e: any) {
       toast.error(e);
@@ -67,12 +67,12 @@ export default function VendorRefundDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-500">
         <Banknote className="w-10 h-10 text-gray-300" />
-        <p className="text-sm font-medium">Vendor Refund not found</p>
+        <p className="text-sm font-medium">Không tìm thấy phiếu hoàn tiền từ NCC</p>
         <button
           onClick={() => navigate("/purchase/vendor-refunds")}
           className="text-sm text-orange-600 hover:underline"
         >
-          Back to list
+          Quay lại danh sách
         </button>
       </div>
     );
@@ -80,7 +80,7 @@ export default function VendorRefundDetailPage() {
 
   const actions = [
     {
-      label: "Back",
+      label: "Quay lại",
       variant: "outline" as const,
       onClick: () => navigate("/purchase/vendor-refunds"),
     },
@@ -88,7 +88,7 @@ export default function VendorRefundDetailPage() {
     (role === Roles.ACCOUNT || role === Roles.CHACC)
       ? [
           {
-            label: "Post",
+            label: "Ghi sổ",
             variant: "success" as const,
             onClick: () => setPostModal(true),
           },
@@ -104,56 +104,56 @@ export default function VendorRefundDetailPage() {
         actions={actions}
       >
         <FormSection
-          title="Refund Details"
+          title="Chi tiết Hoàn tiền"
           icon={<Banknote className="w-4 h-4" />}
         >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <p className="text-xs text-gray-500 mb-1">Refund No</p>
+              <p className="text-xs text-gray-500 mb-1">Số phiếu hoàn</p>
               <p className="text-sm font-semibold">{refund.refund_no}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 mb-1">Supplier</p>
+              <p className="text-xs text-gray-500 mb-1">Nhà cung cấp</p>
               <p className="text-sm">{refund.supplier?.name ?? "—"}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 mb-1">Refund Date</p>
+              <p className="text-xs text-gray-500 mb-1">Ngày hoàn tiền</p>
               <p className="text-sm">
                 {new Date(refund.refund_date).toLocaleDateString("vi-VN")}
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 mb-1">Amount</p>
+              <p className="text-xs text-gray-500 mb-1">Số tiền</p>
               <p className="text-sm font-bold text-orange-600">
                 {formatVND(refund.amount)}
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 mb-1">Method</p>
+              <p className="text-xs text-gray-500 mb-1">Phương thức</p>
               <p className="text-sm">
                 {METHOD_LABELS[refund.method] ?? refund.method}
               </p>
             </div>
             {refund.transaction_reference && (
               <div>
-                <p className="text-xs text-gray-500 mb-1">Transaction Ref</p>
+                <p className="text-xs text-gray-500 mb-1">Mã giao dịch</p>
                 <p className="text-sm">{refund.transaction_reference}</p>
               </div>
             )}
             {refund.debitNote && (
               <div>
-                <p className="text-xs text-gray-500 mb-1">Linked Debit Note</p>
+                <p className="text-xs text-gray-500 mb-1">Thẻ nợ liên kết</p>
                 <p className="text-sm text-orange-600">
                   {refund.debitNote.debit_note_no}
                 </p>
               </div>
             )}
             <div>
-              <p className="text-xs text-gray-500 mb-1">Created By</p>
+              <p className="text-xs text-gray-500 mb-1">Người tạo</p>
               <p className="text-sm">{refund.creator?.full_name ?? "—"}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 mb-1">Created At</p>
+              <p className="text-xs text-gray-500 mb-1">Thời gian tạo</p>
               <p className="text-sm">
                 {new Date(refund.created_at).toLocaleDateString("vi-VN")}
               </p>
@@ -161,7 +161,7 @@ export default function VendorRefundDetailPage() {
           </div>
           {refund.notes && (
             <div className="mt-4">
-              <p className="text-xs text-gray-500 mb-1">Notes</p>
+              <p className="text-xs text-gray-500 mb-1">Ghi chú</p>
               <p className="text-sm text-gray-700 whitespace-pre-wrap">
                 {refund.notes}
               </p>
@@ -174,9 +174,9 @@ export default function VendorRefundDetailPage() {
         isOpen={postModal}
         onClose={() => setPostModal(false)}
         onConfirm={handlePost}
-        title="Post Vendor Refund"
-        description={`Post ${refund.refund_no}? This will create a GL entry and increase bank balance.`}
-        confirmText="Post"
+        title="Ghi sổ Phiếu hoàn tiền"
+        description={`Ghi sổ phiếu hoàn tiền từ NCC ${refund.refund_no}? Bút toán sổ cái sẽ được tạo và tăng số dư tài khoản ngân hàng.`}
+        confirmText="Ghi sổ"
         variant="success"
         loading={actionLoading}
       />

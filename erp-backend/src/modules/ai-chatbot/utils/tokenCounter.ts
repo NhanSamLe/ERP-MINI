@@ -52,6 +52,7 @@ export function trimToTokenLimit(
     // (assistant có tool_calls phải đi kèm tool result)
     const first = trimmed[0];
     const second = trimmed[1];
+    if (!first) break;
 
     if (
       first.role === "assistant" &&

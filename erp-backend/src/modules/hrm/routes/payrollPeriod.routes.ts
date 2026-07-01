@@ -14,20 +14,20 @@ const router = Router();
 // HR Staff + Chief Accountant: được xem
 router.get(
   "/",
-  authMiddleware(["HR_STAFF", "CHACC"]),
+  authMiddleware(["HR_STAFF", "HRMANAGER", "CHACC"]),
   getPayrollPeriods
 );
 
 router.get(
   "/:id",
-  authMiddleware(["HR_STAFF", "CHACC"]),
+  authMiddleware(["HR_STAFF", "HRMANAGER", "CHACC"]),
   getPayrollPeriodDetail
 );
 
 // Chỉ HR Staff mới được tạo / sửa / đóng / xóa
-router.post("/", authMiddleware(["HR_STAFF"]), createPayrollPeriod);
-router.put("/:id", authMiddleware(["HR_STAFF"]), updatePayrollPeriod);
-router.post("/:id/close", authMiddleware(["HR_STAFF"]), closePayrollPeriod);
-router.delete("/:id", authMiddleware(["HR_STAFF"]), deletePayrollPeriod);
+router.post("/", authMiddleware(["HR_STAFF", "HRMANAGER"]), createPayrollPeriod);
+router.put("/:id", authMiddleware(["HR_STAFF", "HRMANAGER"]), updatePayrollPeriod);
+router.post("/:id/close", authMiddleware(["HR_STAFF", "HRMANAGER"]), closePayrollPeriod);
+router.delete("/:id", authMiddleware(["HR_STAFF", "HRMANAGER"]), deletePayrollPeriod);
 
 export default router;

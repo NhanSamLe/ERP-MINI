@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { confirmAction } from "../../../utils/alert";
 import {
   ArrowDownLeft,
   ArrowLeft,
@@ -18,7 +19,7 @@ import {
   UserRound,
   Video,
 } from "lucide-react";
-import { Alert } from "@/components/ui/Alert";
+import { toast } from "react-toastify";
 import { Button } from "@/components/ui/Button";
 import { formatDateTime } from "@/utils/time.helper";
 import { ActivityType } from "@/types/enum";
@@ -53,6 +54,12 @@ const STATUS_LABELS: Record<string, string> = {
   "Not Started": "Chưa bắt đầu",
   "In Progress": "Đang làm",
   Completed: "Hoàn tất",
+};
+
+const PRIORITY_LABELS: Record<string, string> = {
+  low: "Thấp",
+  medium: "Trung bình",
+  high: "Cao",
 };
 
 function iconFor(type: ActivityType, detail?: Activity) {
@@ -96,6 +103,7 @@ function DetailRows({ detail }: { detail: Activity }) {
         <InfoRow icon={<Phone className="h-4 w-4" />} label="Gọi đến" value={detail.call?.call_to} />
         <InfoRow icon={<Clock className="h-4 w-4" />} label="Thời lượng" value={detail.call?.duration ? `${detail.call.duration} giây` : "-"} />
         <InfoRow icon={<CheckCircle className="h-4 w-4" />} label="Kết quả" value={detail.call?.result || "-"} />
+        <InfoRow icon={<UserRound className="h-4 w-4" />} label="Ưu tiên" value={PRIORITY_LABELS[detail.priority || ""] || "Chưa đặt"} />
       </>
     );
   }
@@ -107,6 +115,7 @@ function DetailRows({ detail }: { detail: Activity }) {
         <InfoRow icon={<Mail className="h-4 w-4" />} label="Email đến" value={detail.email?.email_to} />
         <InfoRow icon={<ArrowUpRight className="h-4 w-4" />} label="Loại email" value={detail.email?.direction === "in" ? "Nhận vào" : "Gửi đi"} />
         <InfoRow icon={<CheckCircle className="h-4 w-4" />} label="Trạng thái gửi" value={detail.email?.status || "-"} />
+        <InfoRow icon={<UserRound className="h-4 w-4" />} label="Ưu tiên" value={PRIORITY_LABELS[detail.priority || ""] || "Chưa đặt"} />
       </>
     );
   }
@@ -130,6 +139,7 @@ function DetailRows({ detail }: { detail: Activity }) {
             )
           }
         />
+        <InfoRow icon={<UserRound className="h-4 w-4" />} label="Ưu tiên" value={PRIORITY_LABELS[detail.priority || ""] || "Chưa đặt"} />
       </>
     );
   }
@@ -138,8 +148,8 @@ function DetailRows({ detail }: { detail: Activity }) {
     <>
       <InfoRow icon={<CalendarDays className="h-4 w-4" />} label="Hạn xử lý" value={formatDateTime(detail.due_at)} />
       <InfoRow icon={<Clock className="h-4 w-4" />} label="Nhắc nhở" value={formatDateTime(detail.task?.reminder_at)} />
-      <InfoRow icon={<CheckCircle className="h-4 w-4" />} label="Trạng thái task" value={detail.task?.status || "-"} />
-      <InfoRow icon={<UserRound className="h-4 w-4" />} label="Ưu tiên" value={detail.priority || "-"} />
+      <InfoRow icon={<CheckCircle className="h-4 w-4" />} label="Trạng thái công việc" value={STATUS_LABELS[detail.task?.status || ""] || detail.task?.status || "-"} />
+      <InfoRow icon={<UserRound className="h-4 w-4" />} label="Ưu tiên" value={PRIORITY_LABELS[detail.priority || ""] || "Chưa đặt"} />
     </>
   );
 }
@@ -151,7 +161,7 @@ export function ActivityDetailView({ type }: { type: ActivityType }) {
   const meta = TYPE_META[type];
   const [detail, setDetail] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
-  const [alert, setAlert] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
 
   const loadDetail = async () => {
     try {
@@ -159,7 +169,7 @@ export function ActivityDetailView({ type }: { type: ActivityType }) {
       const data = await getActivityDetail(activityId);
       setDetail(data);
     } catch (err: any) {
-      setAlert({ type: "error", message: err?.response?.data?.message || err?.message || "Không thể tải activity" });
+      toast.error(err?.response?.data?.message || err?.message || "Không thể tải hoạt động");
     } finally {
       setLoading(false);
     }
@@ -173,25 +183,29 @@ export function ActivityDetailView({ type }: { type: ActivityType }) {
   const runAction = async (action: () => Promise<unknown>, successMessage: string) => {
     try {
       await action();
-      setAlert({ type: "success", message: successMessage });
+      toast.success(successMessage);
       loadDetail();
     } catch (err: any) {
-      setAlert({ type: "error", message: err?.response?.data?.message || err?.message || "Không thể thực hiện thao tác" });
+      toast.error(err?.response?.data?.message || err?.message || "Không thể thực hiện thao tác");
     }
   };
 
   const handleDelete = async () => {
-    if (!window.confirm("Xóa activity này? Hành động này không thể hoàn tác.")) return;
+    const confirm = await confirmAction(
+      "Xóa hoạt động",
+      "Bạn có chắc chắn muốn xóa hoạt động này? Hành động này không thể hoàn tác."
+    );
+    if (!confirm) return;
     try {
       await deleteActivity(activityId);
       navigate(meta.listPath);
     } catch (err: any) {
-      setAlert({ type: "error", message: err?.response?.data?.message || err?.message || "Không thể xóa activity" });
+      toast.error(err?.response?.data?.message || err?.message || "Không thể xóa hoạt động");
     }
   };
 
-  if (loading) return <div className="page-container text-center text-gray-500">Đang tải activity...</div>;
-  if (!detail) return <div className="page-container text-center text-gray-500">Không tìm thấy activity.</div>;
+  if (loading) return <div className="page-container text-center text-gray-500">Đang tải hoạt động...</div>;
+  if (!detail) return <div className="page-container text-center text-gray-500">Không tìm thấy hoạt động.</div>;
 
   const status = getStatus(detail);
   const editable = status !== "completed" && status !== "Completed" && status !== "cancelled";
@@ -229,12 +243,12 @@ export function ActivityDetailView({ type }: { type: ActivityType }) {
                 </Button>
               )}
               {type === "task" && detail.task?.status === "Not Started" && (
-                <Button variant="outline" leftIcon={<PlayCircle className="h-4 w-4" />} onClick={() => runAction(() => startTask(activityId), "Task đã bắt đầu.")}>
+                <Button variant="outline" leftIcon={<PlayCircle className="h-4 w-4" />} onClick={() => runAction(() => startTask(activityId), "Công việc đã bắt đầu.")}>
                   Bắt đầu
                 </Button>
               )}
               {type === "task" && detail.task?.status === "In Progress" && (
-                <Button variant="outline" leftIcon={<CheckCircle className="h-4 w-4" />} onClick={() => runAction(() => completeTask(activityId), "Task đã hoàn tất.")}>
+                <Button variant="outline" leftIcon={<CheckCircle className="h-4 w-4" />} onClick={() => runAction(() => completeTask(activityId), "Công việc đã hoàn tất.")}>
                   Hoàn tất
                 </Button>
               )}
@@ -253,7 +267,7 @@ export function ActivityDetailView({ type }: { type: ActivityType }) {
                         : type === "email"
                         ? () => cancelEmailActivity(activityId)
                         : () => cancelMeeting(activityId);
-                    runAction(action, "Activity đã được hủy.");
+                    runAction(action, "Hoạt động đã được hủy.");
                   }}
                 >
                   Hủy
@@ -270,11 +284,7 @@ export function ActivityDetailView({ type }: { type: ActivityType }) {
             </div>
           </div>
 
-          {alert && (
-            <div className="px-5 pt-4">
-              <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />
-            </div>
-          )}
+
 
           <div className="grid gap-5 p-5 lg:grid-cols-[1fr_320px]">
             <div className="space-y-5">

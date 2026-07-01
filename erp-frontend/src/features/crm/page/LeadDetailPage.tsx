@@ -14,7 +14,7 @@ import {
 import * as activityService from "../service/activity.service";
 import { FormInput } from "@/components/ui/FormInput";
 import { Button } from "@/components/ui/Button";
-import { Alert } from "@/components/ui/Alert";
+import { toast } from "react-toastify";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Separator } from "@/components/ui/separator";
 import { ActionConfirmModal } from "@/components/common";
@@ -43,7 +43,7 @@ export default function LeadDetailPage() {
   const lead: Lead | undefined =
     currentLead?.id === leadId ? currentLead : allLeads.find((l) => l?.id === leadId);
 
-  const [alert, setAlert] = useState<{ type: "success" | "error" | "warning" | "info"; message: string } | null>(null);
+
   const [basicEdit, setBasicEdit] = useState(false);
   const [evalEdit, setEvalEdit] = useState(false);
 
@@ -119,20 +119,20 @@ export default function LeadDetailPage() {
   const handleSaveBasic = async () => {
     try {
       await dispatch(updateLeadBasic({ leadId, data: basicForm })).unwrap();
-      setAlert({ type: "success", message: "Đã cập nhật thông tin" });
+      toast.success("Đã cập nhật thông tin");
       setBasicEdit(false);
     } catch {
-      setAlert({ type: "error", message: "Cập nhật thất bại" });
+      toast.error("Cập nhật thất bại");
     }
   };
 
   const handleSaveEval = async () => {
     try {
       await dispatch(updateLeadEvaluation({ leadId, data: evalForm })).unwrap();
-      setAlert({ type: "success", message: "Đã lưu đánh giá" });
+      toast.success("Đã lưu đánh giá");
       setEvalEdit(false);
     } catch {
-      setAlert({ type: "error", message: "Lưu đánh giá thất bại" });
+      toast.error("Lưu đánh giá thất bại");
     }
   };
 
@@ -140,17 +140,17 @@ export default function LeadDetailPage() {
     try {
       const result = await dispatch(convertLead(leadId)).unwrap();
       const customerId = result?.customer?.id;
-      setAlert({ type: "success", message: "Đã chuyển đổi thành Customer" });
       setShowConvert(false);
-      setTimeout(() => {
-        if (customerId) {
+      if (customerId) {
+        toast.success("Đã chuyển đổi thành Customer");
+        setTimeout(() => {
           navigate(`/crm/opportunities/create?related_type=customer&related_id=${customerId}`);
-        } else {
-          navigate("/crm/opportunities/create");
-        }
-      }, 600);
+        }, 600);
+      } else {
+        toast.error("Chuyển đổi xong nhưng không lấy được Customer. Vui lòng kiểm tra lại.");
+      }
     } catch (error: any) {
-      setAlert({ type: "error", message: typeof error === "string" ? error : "Chuyển đổi thất bại" });
+      toast.error(typeof error === "string" ? error : "Chuyển đổi thất bại");
     }
   };
 
@@ -158,21 +158,21 @@ export default function LeadDetailPage() {
     if (!lostReason.trim()) return;
     try {
       await dispatch(markLeadLost({ leadId, reason: lostReason })).unwrap();
-      setAlert({ type: "success", message: "Đã đánh dấu thua" });
+      toast.success("Đã đánh dấu thua");
       setShowLost(false);
       setLostReason("");
     } catch {
-      setAlert({ type: "error", message: "Thao tác thất bại" });
+      toast.error("Thao tác thất bại");
     }
   };
 
   const handleReopen = async () => {
     try {
       await dispatch(reopenLead(leadId)).unwrap();
-      setAlert({ type: "success", message: "Đã mở lại Lead" });
+      toast.success("Đã mở lại Lead");
       setShowReopen(false);
     } catch {
-      setAlert({ type: "error", message: "Thao tác thất bại" });
+      toast.error("Thao tác thất bại");
     }
   };
 
@@ -181,7 +181,7 @@ export default function LeadDetailPage() {
       await dispatch(deleteLead(leadId)).unwrap();
       navigate("/crm/leads");
     } catch {
-      setAlert({ type: "error", message: "Xóa thất bại" });
+      toast.error("Xóa thất bại");
     }
   };
 
@@ -202,6 +202,22 @@ export default function LeadDetailPage() {
     warm: "bg-amber-100 text-amber-700",
     hot: "bg-red-100 text-red-700",
   };
+  const leadRecommendation = (() => {
+    const score = lead.lead_score ?? 0;
+    const matchedFields = new Set(scoreReasons.map((reason) => reason.field));
+    if (score >= 75) {
+      if (!lead.contacted_at) return "Khuyến nghị: đây là Lead mức Hot, cần liên hệ trong vòng 2 giờ.";
+      if (matchedFields.has("activity.meeting.completed_count")) return "Khuyến nghị: cuộc họp đã hoàn thành, có thể tạo Cơ hội hoặc Báo giá nếu nhu cầu đã rõ.";
+      return "Khuyến nghị: ưu tiên theo dõi trong ngày và thống nhất bước tiếp theo với khách hàng.";
+    }
+    if (score >= 40) {
+      if (!lead.has_budget) return "Khuyến nghị: cần xác minh ngân sách để đánh giá mức độ ưu tiên chính xác hơn.";
+      if (!lead.ready_to_buy) return "Khuyến nghị: cần làm rõ thời điểm mua và mức độ sẵn sàng ra quyết định.";
+      return "Khuyến nghị: tiếp tục chăm sóc và lên lịch tương tác tiếp theo.";
+    }
+    if (!lead.phone && !lead.email) return "Khuyến nghị: cần bổ sung thông tin liên hệ trước khi đưa vào danh sách ưu tiên.";
+    return "Khuyến nghị: tiếp tục nuôi dưỡng hoặc thu thập thêm thông tin trước khi đánh giá đủ điều kiện.";
+  })();
 
   // Early return if lead not loaded yet
   if (!lead) {
@@ -268,8 +284,7 @@ export default function LeadDetailPage() {
         </div>
       </div>
 
-      {/* Alert */}
-      {alert && <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />}
+
 
       {/* Main 3-column layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
@@ -409,19 +424,19 @@ export default function LeadDetailPage() {
             <h2 className="text-sm font-semibold text-gray-900 px-1">Hoạt động</h2>
             <StatCards activities={activities} />
             <div className="grid grid-cols-2 gap-4">
-              <ActivityBoard title="Open Activities" activities={openActivities} onClick={(a) => navigate(getActivityUrl(a))} />
-              <ActivityBoard title="Active Tasks" activities={openActivities.filter((a) => a.activity_type === "task")} onClick={(a) => navigate(getActivityUrl(a))} />
+              <ActivityBoard title="Hoạt động đang mở" activities={openActivities} onClick={(a) => navigate(getActivityUrl(a))} />
+              <ActivityBoard title="Công việc đang thực hiện" activities={openActivities.filter((a) => a.activity_type === "task")} onClick={(a) => navigate(getActivityUrl(a))} />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <ActivityBoard title="Completed" activities={closedActivities.filter((a) => a.status === "completed")} onClick={(a) => navigate(getActivityUrl(a))} />
-              <ActivityBoard title="Cancelled" activities={closedActivities.filter((a) => a.status === "cancelled")} onClick={(a) => navigate(getActivityUrl(a))} />
+              <ActivityBoard title="Đã hoàn tất" activities={closedActivities.filter((a) => a.status === "completed")} onClick={(a) => navigate(getActivityUrl(a))} />
+              <ActivityBoard title="Đã hủy" activities={closedActivities.filter((a) => a.status === "cancelled")} onClick={(a) => navigate(getActivityUrl(a))} />
             </div>
           </div>
 
           {/* Timeline */}
           <Card>
             <CardHeader>
-              <h2 className="text-sm font-semibold text-gray-900">Timeline</h2>
+              <h2 className="text-sm font-semibold text-gray-900">Dòng thời gian</h2>
             </CardHeader>
             <Separator />
             <CardContent className="pt-5">
@@ -435,7 +450,7 @@ export default function LeadDetailPage() {
           {/* Score */}
           <Card>
             <CardHeader>
-              <h2 className="text-sm font-semibold text-gray-900">Lead Score</h2>
+              <h2 className="text-sm font-semibold text-gray-900">Điểm khách hàng tiềm năng</h2>
               {lead.score_grade && (
                 <span className={`ml-auto px-2 py-0.5 rounded-full text-xs font-semibold ${scoreGradeClass[lead.score_grade]}`}>
                   {scoreGradeLabel[lead.score_grade]}
@@ -451,6 +466,9 @@ export default function LeadDetailPage() {
               <p className="text-xs text-gray-400 mt-1">
                 Tính lần cuối: {fmtDateTime(lead.last_scored_at)}
               </p>
+              <div className="mt-4 rounded-lg border border-orange-100 bg-orange-50 px-3 py-2 text-sm text-orange-700">
+                {leadRecommendation}
+              </div>
               <div className="mt-4 space-y-2">
                 {scoreReasons.length === 0 ? (
                   <p className="text-sm text-gray-400">Chưa có rule nào khớp với Lead này.</p>
@@ -546,7 +564,7 @@ export default function LeadDetailPage() {
       <ActionConfirmModal
         isOpen={showDelete}
         onClose={() => setShowDelete(false)}
-        title="Xóa Lead"
+        title="Xóa khách hàng tiềm năng"
         description={`Bạn có chắc chắn muốn xóa "${lead.name}"? Hành động này không thể hoàn tác.`}
         confirmText="Xóa"
         variant="danger"
@@ -556,7 +574,7 @@ export default function LeadDetailPage() {
       <ActionConfirmModal
         isOpen={showConvert}
         onClose={() => setShowConvert(false)}
-        title="Chuyển đổi Lead"
+        title="Chuyển đổi khách hàng tiềm năng"
         description={`Chuyển đổi "${lead.name}" thành Customer và tạo Opportunity?`}
         confirmText="Chuyển đổi"
         variant="primary"
@@ -566,7 +584,7 @@ export default function LeadDetailPage() {
       <ActionConfirmModal
         isOpen={showReopen}
         onClose={() => setShowReopen(false)}
-        title="Mở lại Lead"
+        title="Mở lại khách hàng tiềm năng"
         description={`Mở lại lead "${lead.name}" để tiếp tục theo dõi?`}
         confirmText="Mở lại"
         variant="primary"

@@ -10,11 +10,12 @@ import { fetchPurchaseOrdersThunk } from "../../store/purchaseOrder.thunks";
 import { getAllApInvoicesThunk } from "../../store/apInvoice/apInvoice.thunks";
 import { StandardFormLayout } from "../../../../components/layout/StandardFormLayout";
 import { FormSection } from "../../../../components/layout/FormSection";
+import { getErrorMessage } from "@/utils/ErrorHelper";
 
 const RETURN_TYPE_OPTIONS = [
-  { value: "debit_note", label: "Debit Note (Trừ công nợ)" },
-  { value: "refund", label: "Refund (NCC hoàn tiền)" },
-  { value: "replacement", label: "Replacement (Đổi hàng)" },
+  { value: "debit_note", label: "Thẻ nợ (Trừ công nợ)" },
+  { value: "refund", label: "Hoàn tiền (NCC hoàn tiền)" },
+  { value: "replacement", label: "Đổi hàng (Đổi trả hàng)" },
 ];
 
 export default function PraCreatePage() {
@@ -57,21 +58,40 @@ export default function PraCreatePage() {
     if (po?.supplier_id) setSupplierId(po.supplier_id);
   }, [purchaseOrderId, purchaseOrders]);
 
+  // Filter POs to confirmed/partially_received/completed only
+  const eligiblePOs = purchaseOrders.filter((po) =>
+    ["confirmed", "partially_received", "completed"].includes(po.status),
+  );
+
+  const selectedPoObj = eligiblePOs.find((p) => p.id === purchaseOrderId);
+  const selectedInvObj = apInvoices.find((i) => i.id === apInvoiceId);
+  const maxReturnAmount = selectedInvObj
+    ? Number(selectedInvObj.total_after_tax ?? 0)
+    : selectedPoObj
+      ? Number(selectedPoObj.total_after_tax ?? 0)
+      : 0;
+
   const handleSubmit = async () => {
     if (!supplierId) {
-      toast.error("Supplier is required");
+      toast.error("Vui lòng chọn nhà cung cấp");
       return;
     }
     if (!purchaseOrderId) {
-      toast.error("Purchase Order is required");
+      toast.error("Vui lòng chọn đơn mua hàng");
       return;
     }
     if (!reason.trim()) {
-      toast.error("Return reason is required");
+      toast.error("Vui lòng nhập lý do trả hàng");
       return;
     }
     if (!totalReturnAmount || Number(totalReturnAmount) <= 0) {
-      toast.error("Total return amount must be > 0");
+      toast.error("Tổng giá trị trả hàng phải lớn hơn 0");
+      return;
+    }
+    if (Number(totalReturnAmount) > maxReturnAmount) {
+      toast.error(
+        `Số tiền trả hàng không được vượt quá giá trị tối đa cho phép là ${maxReturnAmount.toLocaleString("vi-VN")} đ`
+      );
       return;
     }
 
@@ -88,31 +108,28 @@ export default function PraCreatePage() {
           notes: notes.trim() || null,
         } as any),
       ).unwrap();
-      toast.success(`PRA ${pra.pra_no} created`);
+      toast.success(`Đã tạo PRA ${pra.pra_no}`);
       navigate(`/purchase/return-authorizations/${pra.id}`);
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to create PRA");
+      toast.error(getErrorMessage(e));
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Filter POs to confirmed/partially_received/completed only
-  const eligiblePOs = purchaseOrders.filter((po) =>
-    ["confirmed", "partially_received", "completed"].includes(po.status),
-  );
+
 
   return (
     <StandardFormLayout
-      title="New Return Authorization (PRA)"
+      title="Tạo Yêu cầu Trả hàng mua mới (PRA)"
       actions={[
         {
-          label: "Cancel",
+          label: "Hủy bỏ",
           variant: "outline",
           onClick: () => navigate("/purchase/return-authorizations"),
         },
         {
-          label: "Create PRA",
+          label: "Tạo PRA",
           variant: "primary",
           onClick: handleSubmit,
           isLoading: submitting,
@@ -120,14 +137,14 @@ export default function PraCreatePage() {
       ]}
     >
       <FormSection
-        title="Return Authorization Details"
+        title="Chi tiết Yêu cầu trả hàng mua"
         icon={<CornerUpLeft className="w-4 h-4" />}
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Purchase Order */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Purchase Order <span className="text-red-500">*</span>
+              Đơn mua hàng (PO) <span className="text-red-500">*</span>
             </label>
             <select
               value={purchaseOrderId}
@@ -136,17 +153,21 @@ export default function PraCreatePage() {
               }
               className="w-full h-9 px-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
             >
-              <option value="">— Select Purchase Order —</option>
+              <option value="">— Chọn Đơn mua hàng —</option>
               {eligiblePOs.map((po) => (
                 <option key={po.id} value={po.id}>
                   {po.po_no} — {po.status}
                 </option>
               ))}
             </select>
+            {selectedPoObj && (
+              <p className="text-xs text-blue-600 mt-1">
+                Giá trị PO: {Number(selectedPoObj.total_after_tax).toLocaleString("vi-VN")} đ
+              </p>
+            )}
             {purchaseOrders.length > 0 && eligiblePOs.length === 0 && (
               <p className="text-xs text-amber-600 mt-1">
-                No confirmed POs available. PO must be
-                confirmed/received/completed.
+                Không có đơn mua hàng nào đủ điều kiện. Đơn mua hàng phải ở trạng thái Đã xác nhận / Đã nhận hàng một phần / Đã hoàn thành.
               </p>
             )}
           </div>
@@ -154,7 +175,7 @@ export default function PraCreatePage() {
           {/* AP Invoice */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              AP Invoice <span className="text-gray-400">(optional)</span>
+              Hóa đơn mua hàng (AP) <span className="text-gray-400">(tùy chọn)</span>
             </label>
             <select
               value={apInvoiceId}
@@ -164,7 +185,7 @@ export default function PraCreatePage() {
               disabled={!purchaseOrderId}
               className="w-full h-9 px-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100 disabled:text-gray-400"
             >
-              <option value="">— Select AP Invoice —</option>
+              <option value="">— Chọn hóa đơn mua hàng —</option>
               {apInvoices
                 .filter(
                   (inv) =>
@@ -178,9 +199,14 @@ export default function PraCreatePage() {
                   </option>
                 ))}
             </select>
+            {selectedInvObj && (
+              <p className="text-xs text-blue-600 mt-1">
+                Giá trị hóa đơn: {Number(selectedInvObj.total_after_tax).toLocaleString("vi-VN")} đ
+              </p>
+            )}
             {!purchaseOrderId && (
               <p className="text-[10px] text-gray-500 mt-1">
-                Select a PO first to see its invoices
+                Vui lòng chọn PO trước để xem các hóa đơn tương ứng
               </p>
             )}
           </div>
@@ -188,7 +214,7 @@ export default function PraCreatePage() {
           {/* Supplier */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Supplier <span className="text-red-500">*</span>
+              Nhà cung cấp <span className="text-red-500">*</span>
             </label>
             <select
               value={supplierId}
@@ -197,7 +223,7 @@ export default function PraCreatePage() {
               }
               className="w-full h-9 px-3 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
             >
-              <option value="">— Select Supplier —</option>
+              <option value="">— Chọn nhà cung cấp —</option>
               {partners.items.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -209,7 +235,7 @@ export default function PraCreatePage() {
           {/* Return Type */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Return Type <span className="text-red-500">*</span>
+              Loại trả hàng <span className="text-red-500">*</span>
             </label>
             <select
               value={returnType}
@@ -227,7 +253,7 @@ export default function PraCreatePage() {
           {/* Total Return Amount */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Total Return Amount <span className="text-red-500">*</span>
+              Tổng giá trị trả hàng <span className="text-red-500">*</span>
             </label>
             <input
               type="number"
@@ -241,12 +267,17 @@ export default function PraCreatePage() {
               placeholder="0"
               className="w-full h-9 px-3 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
             />
+            {maxReturnAmount > 0 && (
+              <p className="text-[11px] text-orange-600 mt-1 font-medium">
+                Tối đa: {maxReturnAmount.toLocaleString("vi-VN")} đ
+              </p>
+            )}
           </div>
 
           {/* Branch (read-only) */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Branch
+              Chi nhánh
             </label>
             <div className="h-9 px-3 flex items-center text-sm bg-gray-50 border border-gray-200 rounded-md text-gray-600">
               {user?.branch?.name ?? "—"}
@@ -257,13 +288,13 @@ export default function PraCreatePage() {
         {/* Reason */}
         <div className="mt-4">
           <label className="block text-xs font-medium text-gray-600 mb-1">
-            Return Reason <span className="text-red-500">*</span>
+            Lý do trả hàng <span className="text-red-500">*</span>
           </label>
           <textarea
             rows={3}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Describe the reason for return..."
+            placeholder="Mô tả chi tiết lý do trả hàng..."
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-orange-500"
           />
         </div>
@@ -271,13 +302,13 @@ export default function PraCreatePage() {
         {/* Notes */}
         <div className="mt-3">
           <label className="block text-xs font-medium text-gray-600 mb-1">
-            Notes <span className="text-gray-400">(optional)</span>
+            Ghi chú <span className="text-gray-400">(tùy chọn)</span>
           </label>
           <textarea
             rows={2}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Additional notes..."
+            placeholder="Ghi chú thêm..."
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-orange-500"
           />
         </div>
@@ -285,7 +316,7 @@ export default function PraCreatePage() {
 
       {/* Info box */}
       <FormSection
-        title="What happens next?"
+        title="Quy trình tiếp theo là gì?"
         icon={<FileText className="w-4 h-4" />}
       >
         <ol className="space-y-2 text-sm text-gray-600">
@@ -294,29 +325,28 @@ export default function PraCreatePage() {
               1
             </span>
             <span>
-              PRA created as <strong>Draft</strong> — you can review before
-              submitting
+              PRA được tạo dưới dạng <strong>Nháp</strong> — bạn có thể xem lại trước khi gửi phê duyệt
             </span>
           </li>
           <li className="flex items-start gap-2">
             <span className="w-5 h-5 rounded-full bg-orange-100 text-orange-600 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
               2
             </span>
-            <span>Submit for approval → Purchase Manager reviews</span>
+            <span>Gửi phê duyệt → Trưởng phòng mua hàng sẽ duyệt yêu cầu</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="w-5 h-5 rounded-full bg-orange-100 text-orange-600 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
               3
             </span>
             <span>
-              Once approved → create Purchase Return to physically return goods
+              Sau khi được duyệt → Tạo Phiếu trả hàng mua để xuất kho trả hàng thực tế
             </span>
           </li>
           <li className="flex items-start gap-2">
             <span className="w-5 h-5 rounded-full bg-orange-100 text-orange-600 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
               4
             </span>
-            <span>Accountant creates AP Debit Note to adjust payables</span>
+            <span>Kế toán tạo Thẻ nợ (Debit Note) để giảm trừ khoản phải trả cho nhà cung cấp</span>
           </li>
         </ol>
       </FormSection>

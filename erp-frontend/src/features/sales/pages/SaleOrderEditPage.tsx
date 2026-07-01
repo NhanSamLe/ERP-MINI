@@ -25,7 +25,7 @@ export default function SaleOrderEditPage() {
     }
   }, [dispatch, id]);
 
-  if (loading || !order) return <p className="p-6">Loading...</p>;
+  if (loading || !order) return <p className="p-6">Đang tải...</p>;
 
   const isOwner = order.created_by === user?.id;
   const isSales = user?.role?.code === 'SALES';
@@ -51,7 +51,7 @@ export default function SaleOrderEditPage() {
   if (!allowEdit) {
     return (
       <p className="p-6 text-red-600">
-        You do not have permission to edit this order.
+        Bạn không có quyền chỉnh sửa đơn hàng này.
       </p>
     );
   }

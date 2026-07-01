@@ -105,6 +105,7 @@ export const convertToOrder = async (req: Request, res: Response) => {
     const order = await quotationService.convertToOrder(qId, user);
     res.status(200).json({ success: true, data: order });
   } catch (error: any) {
-    res.status(400).json({ success: false, error: error.message });
+    // Trả cả `message` (FE đọc response.data.message) lẫn `error` cho tương thích.
+    res.status(400).json({ success: false, message: error.message, error: error.message });
   }
 };

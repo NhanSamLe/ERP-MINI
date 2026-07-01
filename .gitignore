@@ -1,2 +1,4 @@
 # Qdrant local storage
 qdrant_storage/
+docs
+.agents

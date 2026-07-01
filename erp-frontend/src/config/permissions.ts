@@ -306,6 +306,11 @@ export function hasPermission(
 ): boolean {
   if (!user) return false;
 
+  const roleCode = user.role?.code;
+  if (roleCode === "ADMIN" || roleCode === "CEO") {
+    return true; // ADMIN and CEO have global permissions for all resource actions
+  }
+
   const permissions = getResourcePermissions(resource);
   const permissionFn = permissions[action];
 

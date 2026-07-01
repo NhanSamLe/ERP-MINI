@@ -52,6 +52,7 @@ export interface SalesReturnDto {
   created_by?: number | null;
   approved_by?: number | null;
   notes?: string | null;
+  stock_move_id?: number | null;
   lines?: SalesReturnLineDto[];
   rma?: SalesReturnAuthorizationDto;
   customer?: { id: number; name: string; email?: string; phone?: string };

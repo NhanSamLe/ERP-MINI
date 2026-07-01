@@ -17,12 +17,12 @@ interface FormInputProps {
 }
 
 const baseInput = [
-  "w-full rounded-md border border-gray-300 bg-white text-sm text-gray-900",
-  "placeholder:text-gray-400",
+  "w-full rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm text-gray-900 dark:text-slate-100",
+  "placeholder:text-gray-400 dark:placeholder:text-slate-500",
   "transition-colors duration-150",
   "focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500",
-  "disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed",
-  "read-only:bg-gray-50 read-only:text-gray-600",
+  "disabled:bg-gray-50 dark:disabled:bg-slate-800 disabled:text-gray-500 dark:disabled:text-slate-400 disabled:cursor-not-allowed",
+  "read-only:bg-gray-50 dark:read-only:bg-slate-800 read-only:text-gray-600 dark:read-only:text-slate-300",
 ].join(" ");
 
 export function FormInput({
@@ -48,7 +48,7 @@ export function FormInput({
   return (
     <div className="space-y-1.5">
       {label && (
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">
           {label}
           {required && <span className="text-red-500 ml-0.5">*</span>}
         </label>

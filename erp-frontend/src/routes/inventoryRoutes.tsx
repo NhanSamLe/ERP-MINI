@@ -18,7 +18,7 @@ const inventoryRoutes: RouteObject[] = [
   {
     path: "/inventory",
     element: (
-      <ProtectedRoute allowedRoles={["WHMANAGER", "WHSTAFF"]}>
+      <ProtectedRoute allowedRoles={["WHMANAGER", "WHSTAFF", "ADMIN"]}>
         <InventoryDashboard />
       </ProtectedRoute>
     ),

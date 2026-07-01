@@ -17,15 +17,15 @@ export function CurrencyFormModal({ isOpen, onClose, onAdd, realCurrencies }: Cu
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm">
-        <h2 className="text-lg font-semibold mb-4 text-gray-800">Add New Currency</h2>
+        <h2 className="text-lg font-semibold mb-4 text-gray-800">Thêm tiền tệ mới</h2>
 
-        <Label>Select Currency</Label>
+        <Label>Chọn tiền tệ</Label>
         <select
           className="w-full mt-2 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-orange-500"
           value={selectedCode}
           onChange={(e) => setSelectedCode(e.target.value)}
         >
-          <option value="">-- Select a currency --</option>
+          <option value="">-- Chọn một loại tiền tệ --</option>
           {realCurrencies.map((c) => (
             <option key={c.code} value={c.code}>
               {c.name} ({c.code}) {c.symbol}
@@ -34,7 +34,7 @@ export function CurrencyFormModal({ isOpen, onClose, onAdd, realCurrencies }: Cu
         </select>
 
         <div className="flex justify-end space-x-3 mt-6">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose}>Hủy</Button>
           <Button
             onClick={() => {
               if (selectedCode) onAdd(selectedCode);

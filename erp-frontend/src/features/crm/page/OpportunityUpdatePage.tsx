@@ -13,7 +13,7 @@ import { Currency } from "../../master-data/dto/currency.dto";
 import * as currencyService from "../../master-data/service/currency.service";
 import { FormInput } from "@/components/ui/FormInput";
 import { Button } from "@/components/ui/Button";
-import { Alert } from "@/components/ui/Alert";
+import { toast } from "react-toastify";
 import { formatStageProbability } from "../helpers/pipeline.helpers";
 import { UiAlert } from "@/types/ui";
 import { toDateInputValue } from "@/utils/time.helper";
@@ -27,7 +27,7 @@ export default function OpportunityUpdatePage() {
 
   const detail = useAppSelector((s: RootState) => s.opportunity.detail);
   const { loading, error } = useAppSelector((s: RootState) => s.opportunity);
-  const [alert, setAlert] = useState<UiAlert | null>(null);
+
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [currencyId, setCurrencyId] = useState<number | null>(null);
   const [exchangeRate, setExchangeRate] = useState<number>(1);
@@ -146,12 +146,12 @@ export default function OpportunityUpdatePage() {
 
     try {
       await dispatch(updateOpportunity({ data: payload })).unwrap();
-      setAlert({ type: "success", message: "Cập nhật Opportunity thành công!" });
+      toast.success("Cập nhật Opportunity thành công!");
       setTimeout(() => {
         navigate(`/crm/opportunities/${oppId}`);
       }, 800);
     } catch {
-      setAlert({ type: "error", message: "Cập nhật thất bại" });
+      toast.error("Cập nhật thất bại");
     }
   };
 
@@ -186,15 +186,14 @@ export default function OpportunityUpdatePage() {
         </div>
 
         <div className="space-y-6 p-5">
-          {alert && <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />}
-          {error && <Alert type="error" message={error} />}
+          {error && <div className="px-4 py-3 bg-red-50 border border-red-100 rounded-lg text-sm text-red-600 mb-4">{error}</div>}
 
           {detail.pipeline_id && (
             <div className="rounded-md border border-gray-200 bg-gray-50 p-4">
               <p className="text-xs font-medium uppercase text-gray-500 mb-3">Pipeline & Giai đoạn</p>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2 text-sm text-gray-700">
-                  <span className="font-medium text-gray-900">Pipeline:</span>
+                  <span className="font-medium text-gray-900">Quy trình:</span>
                   <span>{pipelineName}</span>
                 </div>
                 {currentStage && (
@@ -214,8 +213,8 @@ export default function OpportunityUpdatePage() {
                     {currentStageProbabilityLabel && (
                       <span className="text-xs text-gray-400">({currentStageProbabilityLabel})</span>
                     )}
-                    {currentStage.is_won && <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">WON</span>}
-                    {currentStage.is_lost && <span className="text-[10px] font-semibold bg-red-100 text-red-600 px-2 py-0.5 rounded-full">LOST</span>}
+                    {currentStage.is_won && <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">THẮNG</span>}
+                    {currentStage.is_lost && <span className="text-[10px] font-semibold bg-red-100 text-red-600 px-2 py-0.5 rounded-full">THUA</span>}
                   </div>
                 )}
               </div>
@@ -223,7 +222,7 @@ export default function OpportunityUpdatePage() {
           )}
 
           <div className="grid gap-4 md:grid-cols-2">
-            <FormInput label="Tên Opportunity" value={form.name} onChange={(v) => updateField("name", v)} required />
+            <FormInput label="Tên cơ hội kinh doanh" value={form.name} onChange={(v) => updateField("name", v)} required />
             <FormInput label="Giá trị kỳ vọng" value={form.expected_value} onChange={(v) => updateField("expected_value", v)} type="number" />
             <FormInput label="Xác suất (%)" value={form.probability} onChange={(v) => updateField("probability", v)} type="number" />
             <div>

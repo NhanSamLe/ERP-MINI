@@ -63,8 +63,8 @@ export default function InvoiceDetailPage() {
     `${Number(v || 0).toLocaleString("vi-VN", { maximumFractionDigits: 2 })} ${currencySymbol}`;
 
   const roleCode = user.role?.code;
-  const isAccountant = roleCode === "ACCOUNT";
-  const isChiefAcc = roleCode === "CHACC";
+  const isAccountant = ["ACCOUNT", "BRANCH_MANAGER", "CEO", "ADMIN"].includes(roleCode ?? "");
+  const isChiefAcc = ["CHACC", "BRANCH_MANAGER", "CEO", "ADMIN"].includes(roleCode ?? "");
   const isAccounting = isAccountant || isChiefAcc;
   const isOwner = invoice.created_by === user.id;
   const isRejected = invoice.approval_status === "rejected";

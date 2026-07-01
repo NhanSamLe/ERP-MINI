@@ -4,10 +4,10 @@
  * @author Senior Frontend Team
  */
 
-import React from 'react';
-import { FormFieldConfig, SelectOption } from './types';
+import { FormFieldConfig } from './types';
 import { FormInput } from '@/components/ui/FormInput';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/Select';
+import { formatNumberInput, parseNumberInput } from '@/utils/currency.helper';
 
 interface FormFieldProps {
   field: FormFieldConfig;
@@ -139,21 +139,58 @@ export function FormField({
 
   /**
    * Render number input
+   * - Chặn giá trị theo min/max (vd: chiết khấu / phần trăm 0–100).
+   * - Khi field.format === 'thousand': hiển thị phân tách nghìn kiểu VN (1.000)
+   *   nhưng vẫn trả về number thuần qua onChange.
    */
-  const renderNumberInput = () => (
-    <FormInput
-      label={field.label}
-      type="number"
-      value={value?.toString() || ''}
-      onChange={(val) => onChange(val ? parseFloat(val) : null)}
-      placeholder={field.placeholder}
-      required={field.required}
-      disabled={isDisabled}
-      readOnly={isReadOnly}
-      error={error}
-      className={field.componentProps?.className}
-    />
-  );
+  const clampNumber = (num: number): number => {
+    let n = num;
+    if (field.min !== undefined && n < Number(field.min)) n = Number(field.min);
+    if (field.max !== undefined && n > Number(field.max)) n = Number(field.max);
+    return n;
+  };
+
+  const renderNumberInput = () => {
+    // Ô tiền / số lượng: hiển thị có dấu phân tách nghìn
+    if (field.format === 'thousand') {
+      return (
+        <FormInput
+          label={field.label}
+          type="text"
+          value={value == null || value === '' ? '' : formatNumberInput(value)}
+          onChange={(val) => {
+            const parsed = parseNumberInput(val);
+            onChange(parsed == null ? null : clampNumber(parsed));
+          }}
+          placeholder={field.placeholder}
+          required={field.required}
+          disabled={isDisabled}
+          readOnly={isReadOnly}
+          error={error}
+          className={field.componentProps?.className}
+        />
+      );
+    }
+
+    return (
+      <FormInput
+        label={field.label}
+        type="number"
+        value={value?.toString() || ''}
+        onChange={(val) => {
+          if (!val) return onChange(null);
+          const parsed = parseFloat(val);
+          onChange(Number.isNaN(parsed) ? null : clampNumber(parsed));
+        }}
+        placeholder={field.placeholder}
+        required={field.required}
+        disabled={isDisabled}
+        readOnly={isReadOnly}
+        error={error}
+        className={field.componentProps?.className}
+      />
+    );
+  };
 
   /**
    * Render date input

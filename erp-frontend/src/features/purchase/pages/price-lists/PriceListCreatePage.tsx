@@ -39,7 +39,7 @@ export default function PriceListCreatePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return toast.error("Price list name is required");
+    if (!name.trim()) return toast.error("Tên bảng giá là bắt buộc");
     
     setIsSubmitting(true);
     try {
@@ -53,10 +53,10 @@ export default function PriceListCreatePage() {
         is_active: true,
       } as any);
 
-      toast.success("Purchase price list created successfully");
+      toast.success("Tạo bảng giá mua hàng thành công");
       navigate(`/purchase/price-lists/${data.id}`);
     } catch (err: any) {
-      toast.error(err?.message ?? "Failed to create price list");
+      toast.error(err?.message ?? "Tạo bảng giá thất bại");
     } finally {
       setIsSubmitting(false);
     }
@@ -74,8 +74,8 @@ export default function PriceListCreatePage() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-lg font-semibold text-gray-900">Create New Price List</h1>
-            <p className="text-xs text-gray-400">Establish basic information for the new price policy</p>
+            <h1 className="text-lg font-semibold text-gray-900">Tạo bảng giá mới</h1>
+            <p className="text-xs text-gray-400">Thiết lập thông tin cơ bản cho chính sách giá mới</p>
           </div>
         </div>
       </div>
@@ -83,7 +83,7 @@ export default function PriceListCreatePage() {
       <div className="max-w-4xl mx-auto bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/60 flex items-center gap-2">
           <FileSpreadsheet className="w-5 h-5 text-orange-500" />
-          <h2 className="text-sm font-semibold text-gray-700">Price List Information</h2>
+          <h2 className="text-sm font-semibold text-gray-700">Thông tin bảng giá</h2>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
@@ -91,10 +91,10 @@ export default function PriceListCreatePage() {
             {/* Tên bảng giá */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Price List Name <span className="text-red-400 font-normal">*</span>
+                Tên bảng giá <span className="text-red-400 font-normal">*</span>
               </label>
               <Input
-                placeholder="e.g. Master Parts Price List 2026"
+                placeholder="Ví dụ: Bảng giá phụ tùng chính 2026"
                 value={name}
                 onChange={(val) => setName(val)}
                 className="h-10 text-sm rounded-lg"
@@ -105,7 +105,7 @@ export default function PriceListCreatePage() {
             {/* Mã bảng giá */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Price List Code (Optional)
+                Mã bảng giá (Tùy chọn)
               </label>
               <Input
                 placeholder="PL-2026-XXXX"
@@ -119,17 +119,17 @@ export default function PriceListCreatePage() {
             {/* Nhà cung cấp */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Supplier
+                Nhà cung cấp
               </label>
               <Select
                 value={supplierId}
                 onValueChange={supplierId => setSupplierId(supplierId)}
               >
                 <SelectTrigger className="h-10 text-sm rounded-lg">
-                  <SelectValue placeholder="Generic (Applies to all suppliers)" />
+                  <SelectValue placeholder="Chung (Áp dụng cho tất cả nhà cung cấp)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Generic (Applies to all suppliers)</SelectItem>
+                  <SelectItem value="">Chung (Áp dụng cho tất cả nhà cung cấp)</SelectItem>
                   {(partners as any)?.items?.map((p: any) => (
                     <SelectItem key={p.id} value={String(p.id)}>
                       {p.name}
@@ -138,7 +138,7 @@ export default function PriceListCreatePage() {
                 </SelectContent>
               </Select>
               <span className="block text-[10px] text-gray-400">
-                Leave empty if this price list applies generically to all suppliers
+                Để trống nếu bảng giá này áp dụng chung cho tất cả nhà cung cấp
               </span>
             </div>
 
@@ -146,7 +146,7 @@ export default function PriceListCreatePage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Start Date
+                  Ngày bắt đầu
                 </label>
                 <Input
                   type="date"
@@ -158,7 +158,7 @@ export default function PriceListCreatePage() {
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  End Date
+                  Ngày kết thúc
                 </label>
                 <Input
                   type="date"
@@ -174,10 +174,10 @@ export default function PriceListCreatePage() {
           {/* Ghi chú */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Notes
+              Ghi chú
             </label>
             <Textarea
-              placeholder="Enter detailed description, payment terms, or special conditions..."
+              placeholder="Nhập mô tả chi tiết, điều khoản thanh toán hoặc điều kiện đặc biệt..."
               value={notes}
               onChange={(val) => setNotes(val)}
               rows={4}
@@ -195,7 +195,7 @@ export default function PriceListCreatePage() {
               disabled={isSubmitting}
               className="px-5 h-10 rounded-lg text-sm font-medium"
             >
-              Cancel
+              Hủy
             </Button>
             <Button
               type="submit"
@@ -205,12 +205,12 @@ export default function PriceListCreatePage() {
               {isSubmitting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                  Saving…
+                  Đang lưu...
                 </>
               ) : (
                 <>
                   <Save className="w-4 h-4" />
-                  Save & Continue
+                  Lưu & Tiếp tục
                 </>
               )}
             </Button>

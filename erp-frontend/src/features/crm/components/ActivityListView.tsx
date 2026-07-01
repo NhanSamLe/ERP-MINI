@@ -33,7 +33,7 @@ const ACTIVITY_CONFIGS: ActivityTypeConfig[] = [
   {
     type: "call",
     title: "Cuộc gọi",
-    description: "Theo dõi các cuộc gọi đến/đi với Lead, Opportunity và Customer.",
+    description: "Theo dõi các cuộc gọi đến và đi với khách hàng tiềm năng, cơ hội và khách hàng.",
     createLabel: "Ghi nhận cuộc gọi",
     createPath: "/crm/activities/call/create",
   },
@@ -54,8 +54,8 @@ const ACTIVITY_CONFIGS: ActivityTypeConfig[] = [
   {
     type: "task",
     title: "Công việc",
-    description: "Các việc cần làm tiếp theo để đẩy Lead/Opp trong pipeline.",
-    createLabel: "Tạo task",
+    description: "Các việc cần làm tiếp theo để thúc đẩy khách hàng tiềm năng và cơ hội trong quy trình bán hàng.",
+    createLabel: "Tạo công việc",
     createPath: "/crm/activities/task/create",
   },
 ];
@@ -187,7 +187,7 @@ export function ActivityListView({ type }: { type: ActivityType }) {
         const data = await getAllActivities();
         if (mounted) setActivities(data.filter((activity) => activity.activity_type === type));
       } catch (err: any) {
-        const message = err?.response?.data?.message || err?.message || "Không thể tải danh sách activity";
+        const message = err?.response?.data?.message || err?.message || "Không thể tải danh sách hoạt động";
         if (mounted) setError(message);
       } finally {
         if (mounted) setLoading(false);
@@ -265,7 +265,7 @@ export function ActivityListView({ type }: { type: ActivityType }) {
 
           <div className="grid gap-3 border-b border-gray-100 bg-gray-50 px-5 py-3 md:grid-cols-3">
             <div>
-              <p className="text-xs text-gray-500">Tổng activity</p>
+              <p className="text-xs text-gray-500">Tổng hoạt động</p>
               <p className="text-lg font-semibold text-gray-900">{activities.length}</p>
             </div>
             <div>
@@ -285,7 +285,7 @@ export function ActivityListView({ type }: { type: ActivityType }) {
                 className={`${inputClass} w-full pl-9`}
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Tìm theo tiêu đề, đối tượng liên quan, owner..."
+                placeholder="Tìm theo tiêu đề, đối tượng liên quan, người phụ trách..."
               />
             </div>
 
@@ -317,10 +317,10 @@ export function ActivityListView({ type }: { type: ActivityType }) {
             <table className="w-full min-w-[900px] text-sm">
               <thead className="border-y border-gray-100 bg-gray-50 text-left text-xs font-semibold uppercase text-gray-500">
                 <tr>
-                  <th className="px-5 py-3">Activity</th>
+                  <th className="px-5 py-3">Hoạt động</th>
                   <th className="px-4 py-3">Liên quan</th>
                   <th className="px-4 py-3">Thời gian</th>
-                  <th className="px-4 py-3">Owner</th>
+                  <th className="px-4 py-3">Người phụ trách</th>
                   <th className="px-4 py-3">Trạng thái</th>
                   <th className="px-4 py-3">Ưu tiên</th>
                 </tr>
@@ -329,7 +329,7 @@ export function ActivityListView({ type }: { type: ActivityType }) {
                 {loading && (
                   <tr>
                     <td colSpan={6} className="px-5 py-10 text-center text-gray-500">
-                      Đang tải activity...
+                      Đang tải hoạt động...
                     </td>
                   </tr>
                 )}
@@ -337,7 +337,7 @@ export function ActivityListView({ type }: { type: ActivityType }) {
                 {!loading && visibleActivities.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-5 py-10 text-center text-gray-500">
-                      Chưa có activity phù hợp.
+                      Chưa có hoạt động phù hợp.
                     </td>
                   </tr>
                 )}

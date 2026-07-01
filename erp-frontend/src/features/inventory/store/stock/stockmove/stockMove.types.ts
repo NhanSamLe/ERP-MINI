@@ -51,7 +51,7 @@ export interface StockMove {
   warehouse_to_id?: number | null;
   reference_type: ReferenceType;
   reference_id: number;
-  status: "draft" | "waiting_approval" | "posted" | "cancelled";
+  status: "draft" | "waiting_approval" | "in_transit" | "posted" | "cancelled";
   note?: string;
   created_at: string;
   updated_at: string;
@@ -203,6 +203,7 @@ export interface LineTransferItem {
   quantity: number;
   location_from_id?: number | null;
   location_to_id?: number | null;
+  lot_id?: number | null;
 }
 
 export interface TransferForm {
@@ -258,6 +259,7 @@ export interface LineIssueItem {
   uomOptions?: Array<{ id: number; code: string; name: string }>;
   quantity: number;
   location_from_id?: number | null;
+  lot_id?: number | null;
 }
 
 export interface StockMoveAdjustmentCreate {

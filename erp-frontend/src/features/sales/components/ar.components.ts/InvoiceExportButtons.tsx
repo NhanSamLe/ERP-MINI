@@ -185,7 +185,7 @@ export default function InvoiceExportButtons({ invoice }: Props) {
         className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-red-400 transition font-medium flex items-center gap-2"
       >
         <span>{exporting === "pdf" ? "⏳" : "📄"}</span>
-        {exporting === "pdf" ? "Exporting PDF..." : "Export PDF"}
+        {exporting === "pdf" ? "Đang xuất PDF..." : "Xuất PDF"}
       </button>
 
       <button

@@ -1,6 +1,6 @@
 import * as api from "../user/api/user.api";
 // import {User, Role} from "../../types/User";
-import { updateUserDTO } from "./dto/userDTO";
+import { createUserDTO, updateUserDTO } from "./dto/userDTO";
 
 export async function updateUser(data: updateUserDTO) {
   const res = await api.updateUser({
@@ -26,15 +26,9 @@ export async function getAllRoles() {
     const res = await api.getAllRoles();
     return res.data;
 }
-export async function createUser(data: {
-  branch_id: number;
-  username: string;
-  password: string;
-  full_name?: string;
-  email?: string;
-  phone?: string;
-  role_id: number;
-}) {
+
+
+export async function createUser(data: createUserDTO) {
     const res = await api.createUser(data);
     return res.data.user;
 }

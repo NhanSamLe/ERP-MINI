@@ -26,14 +26,14 @@ export default function SelectPoModal({
 
   const formatDate = (date?: string) => {
     if (!date) return "-";
-    return new Date(date).toLocaleDateString("en-US", {
+    return new Date(date).toLocaleDateString("vi-VN", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
     });
   };
 
-  const formatAmount = (val?: number) => (val ?? 0).toLocaleString("en-US");
+  const formatAmount = (val?: number) => (val ?? 0).toLocaleString("vi-VN");
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -46,11 +46,10 @@ export default function SelectPoModal({
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900">
-                Select Purchase Order
+                Chọn đơn đặt hàng (PO)
               </h2>
               <p className="text-sm text-gray-500">
-                {poList.length} {poList.length === 1 ? "order" : "orders"}{" "}
-                available — partial invoicing supported
+                Có {poList.length} đơn đặt hàng khả dụng — hỗ trợ xuất hóa đơn một phần
               </p>
             </div>
           </div>
@@ -71,10 +70,10 @@ export default function SelectPoModal({
                 <FileText className="w-10 h-10 text-gray-400" />
               </div>
               <p className="text-gray-700 font-semibold text-lg">
-                No Purchase Orders Available
+                Không có đơn đặt hàng nào khả dụng
               </p>
               <p className="text-sm text-gray-500 mt-2">
-                There are no confirmed or partially received orders to invoice
+                Không có đơn đặt hàng nào đã xác nhận hoặc đã nhận hàng một phần để xuất hóa đơn
               </p>
             </div>
           ) : (
@@ -87,6 +86,18 @@ export default function SelectPoModal({
                 const invoiceCount = po.invoice_count ?? 0;
                 const pct =
                   poTotal > 0 ? Math.round((invoiced / poTotal) * 100) : 0;
+
+                const getStatusLabel = (status: string) => {
+                  const statusMap: Record<string, string> = {
+                    draft: "Nháp",
+                    waiting_approval: "Chờ phê duyệt",
+                    confirmed: "Đã xác nhận",
+                    partially_received: "Nhập một phần",
+                    completed: "Hoàn thành",
+                    cancelled: "Đã hủy",
+                  };
+                  return statusMap[status] || status;
+                };
 
                 return (
                   <div
@@ -118,15 +129,14 @@ export default function SelectPoModal({
                               <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 shadow-sm">
                                 <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
                                 <span className="text-xs font-bold text-emerald-700 uppercase tracking-wide">
-                                  {po.status.replace("_", " ")}
+                                  {getStatusLabel(po.status)}
                                 </span>
                               </div>
                               {invoiceCount > 0 && (
                                 <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-200 shadow-sm">
                                   <FileText className="w-3.5 h-3.5 text-blue-600" />
                                   <span className="text-xs font-bold text-blue-700">
-                                    {invoiceCount} invoice
-                                    {invoiceCount > 1 ? "s" : ""} created
+                                    Đã tạo {invoiceCount} hóa đơn
                                   </span>
                                 </div>
                               )}
@@ -134,7 +144,7 @@ export default function SelectPoModal({
                                 <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 border border-gray-300">
                                   <AlertTriangle className="w-3.5 h-3.5 text-gray-500" />
                                   <span className="text-xs font-bold text-gray-600">
-                                    Fully Invoiced
+                                    Đã xuất hóa đơn đầy đủ
                                   </span>
                                 </div>
                               )}
@@ -146,7 +156,7 @@ export default function SelectPoModal({
                           {po.creator && (
                             <div className="flex items-center gap-2.5 text-gray-600">
                               <User className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                              <span className="font-medium">Created by:</span>
+                              <span className="font-medium">Người tạo:</span>
                               <span className="text-gray-900 font-semibold">
                                 {po.creator.full_name}
                               </span>
@@ -155,7 +165,7 @@ export default function SelectPoModal({
 
                           <div className="flex items-center gap-2.5 text-gray-600">
                             <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                            <span className="font-medium">Order date:</span>
+                            <span className="font-medium">Ngày đặt hàng:</span>
                             <span className="text-gray-900 font-semibold">
                               {formatDate(po.order_date)}
                             </span>
@@ -164,7 +174,7 @@ export default function SelectPoModal({
                           {po.approver && (
                             <div className="flex items-center gap-2.5 text-gray-600">
                               <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                              <span className="font-medium">Approved by:</span>
+                              <span className="font-medium">Người duyệt:</span>
                               <span className="text-gray-900 font-semibold">
                                 {po.approver.full_name}
                               </span>
@@ -184,7 +194,7 @@ export default function SelectPoModal({
                                   <Building2 className="w-4 h-4 text-blue-600" />
                                 </div>
                                 <span className="text-xs font-bold text-blue-700 uppercase tracking-wider">
-                                  Supplier
+                                  Nhà cung cấp
                                 </span>
                               </div>
                               <div className="font-bold text-base text-gray-900 mb-1 line-clamp-1">
@@ -199,7 +209,7 @@ export default function SelectPoModal({
                           {/* Amount breakdown */}
                           <div className="w-full bg-gradient-to-br from-gray-50 to-white rounded-xl p-4 border border-gray-200 shadow-sm space-y-2">
                             <div className="flex justify-between text-xs text-gray-500">
-                              <span>PO Total</span>
+                              <span>Tổng tiền PO</span>
                               <span className="font-semibold text-gray-800">
                                 {formatAmount(poTotal)} VND
                               </span>
@@ -207,7 +217,7 @@ export default function SelectPoModal({
                             {invoiceCount > 0 && (
                               <>
                                 <div className="flex justify-between text-xs text-blue-600">
-                                  <span>Invoiced</span>
+                                  <span>Đã xuất hóa đơn</span>
                                   <span className="font-semibold">
                                     {formatAmount(invoiced)} VND
                                   </span>
@@ -232,7 +242,7 @@ export default function SelectPoModal({
                                   : "text-orange-600"
                               }`}
                             >
-                              <span>Remaining</span>
+                              <span>Còn lại</span>
                               <span>{formatAmount(remaining)} VND</span>
                             </div>
                           </div>
@@ -252,7 +262,7 @@ export default function SelectPoModal({
             onClick={onClose}
             className="px-6 py-2.5 border-2 border-gray-300 rounded-xl font-semibold text-gray-700 hover:bg-white hover:border-gray-400 hover:shadow-md transition-all duration-200"
           >
-            Cancel
+            Hủy
           </button>
         </div>
       </div>

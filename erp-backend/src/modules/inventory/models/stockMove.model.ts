@@ -10,9 +10,15 @@ export interface StockMoveAttrs {
   type: "receipt" | "issue" | "transfer" | "adjustment" | "scrap";
   warehouse_from_id?: number | null;
   warehouse_to_id?: number | null;
-  reference_type?: "purchase_order" | "sale_order" | "transfer" | "adjustment";
+  reference_type?:
+    | "purchase_order"
+    | "sale_order"
+    | "transfer"
+    | "adjustment"
+    | "purchase_return"
+    | "sales_return";
   reference_id?: number | null;
-  status: "draft" | "waiting_approval" | "posted" | "cancelled";
+  status: "draft" | "waiting_approval" | "in_transit" | "posted" | "cancelled";
   note?: string;
   created_by: number;
   approved_by?: number | null;
@@ -38,9 +44,11 @@ export class StockMove
     | "purchase_order"
     | "sale_order"
     | "transfer"
-    | "adjustment";
+    | "adjustment"
+    | "purchase_return"
+    | "sales_return";
   public reference_id?: number | null;
-  public status!: "draft" | "waiting_approval" | "posted" | "cancelled";
+  public status!: "draft" | "waiting_approval" | "in_transit" | "posted" | "cancelled";
   public note?: string;
   public created_by!: number;
   public approved_by?: number | null;
@@ -76,12 +84,14 @@ StockMove.init(
         "sale_order",
         "transfer",
         "adjustment",
+        "purchase_return",
+        "sales_return",
       ),
       allowNull: false,
     },
     reference_id: { type: DataTypes.BIGINT, allowNull: true },
     status: {
-      type: DataTypes.ENUM("draft", "waiting_approval", "posted", "cancelled"),
+      type: DataTypes.ENUM("draft", "waiting_approval", "in_transit", "posted", "cancelled"),
       defaultValue: "draft",
     },
     note: { type: DataTypes.TEXT },

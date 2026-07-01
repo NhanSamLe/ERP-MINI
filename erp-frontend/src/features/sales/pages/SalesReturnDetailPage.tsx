@@ -46,7 +46,7 @@ type ReturnLineDraft = {
 };
 
 const RETURN_TYPE_LABEL: Record<string, string> = {
-  credit_note: "Credit Note",
+  credit_note: "Chứng từ ghi có",
   refund: "Hoàn tiền",
   replacement: "Đổi hàng",
 };
@@ -300,7 +300,7 @@ export default function SalesReturnDetailPage() {
       icon: <CheckCircle className="h-3.5 w-3.5" />,
     }] : []),
     ...(canCreateCreditNote ? [{
-      label: actionLoading ? "Đang xử lý..." : "Tạo Credit Note",
+      label: actionLoading ? "Đang xử lý..." : "Tạo chứng từ ghi có",
       variant: "primary" as const,
       onClick: () => run(() => createCreditNote(numericId), "Đã tạo credit note"),
       isLoading: actionLoading,
@@ -353,6 +353,16 @@ export default function SalesReturnDetailPage() {
               <MetaRow label="Ngày hoàn" value={fmtDate(salesReturn?.return_date)} />
               <MetaRow label="Kho nhận" value={(salesReturn as any)?.warehouse?.name || "—"} />
               <MetaRow label="Giá trị" value={fmtMoney(salesReturn?.total_return_amount, currencyCode)} />
+              {salesReturn?.stock_move_id && (
+                <MetaRow
+                  label="Phiếu kho"
+                  value={
+                    <Link to={`/inventory/stock_move/view/${salesReturn.stock_move_id}`} className="font-medium text-orange-600 hover:underline">
+                      Xem phiếu kho
+                    </Link>
+                  }
+                />
+              )}
             </>
           )}
           {saleOrder && (

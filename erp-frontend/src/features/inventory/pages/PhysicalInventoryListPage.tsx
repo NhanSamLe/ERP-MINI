@@ -34,8 +34,17 @@ import {
 const statusColors: Record<string, string> = {
   draft: "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-100",
   in_progress: "bg-blue-50 text-blue-700 border-blue-150 hover:bg-blue-50",
+  waiting_approval: "bg-amber-50 text-amber-700 border-amber-150 hover:bg-amber-50",
   validated: "bg-emerald-50 text-emerald-700 border-emerald-150 hover:bg-emerald-50",
   cancelled: "bg-rose-50 text-rose-700 border-rose-150 hover:bg-rose-50",
+};
+
+const statusLabels: Record<string, string> = {
+  draft: "Nháp",
+  in_progress: "Đang thực hiện",
+  waiting_approval: "Chờ phê duyệt",
+  validated: "Đã xác nhận",
+  cancelled: "Đã hủy",
 };
 
 export default function PhysicalInventoryListPage() {
@@ -72,7 +81,7 @@ export default function PhysicalInventoryListPage() {
 
   const handleCreate = async () => {
     if (!createForm.warehouse_id || !createForm.inv_date) {
-      toast.error("Please fill in all required fields");
+      toast.error("Vui lòng nhập đầy đủ thông tin bắt buộc!");
       return;
     }
     setCreating(true);
@@ -83,7 +92,7 @@ export default function PhysicalInventoryListPage() {
           inv_date: createForm.inv_date,
         }),
       ).unwrap();
-      toast.success("Physical inventory created");
+      toast.success("Tạo phiếu kiểm kê thực tế thành công!");
       setShowCreate(false);
       setCreateForm({ warehouse_id: "", inv_date: "" });
       navigate(`/inventory/physical-inventories/${result.id}`);
@@ -103,9 +112,9 @@ export default function PhysicalInventoryListPage() {
             <ClipboardList className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Physical Inventory</h1>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Kiểm kê kho thực tế</h1>
             <p className="text-gray-500 text-sm mt-0.5">
-              Initiate, count, and validate physical inventory stock count adjustments
+              Khởi tạo, đối chiếu và xác nhận các điều chỉnh số lượng tồn kho thực tế
             </p>
           </div>
         </div>
@@ -116,18 +125,18 @@ export default function PhysicalInventoryListPage() {
           size="md"
           className="self-end sm:self-auto"
         >
-          New Inventory
+          Tạo đợt kiểm kê
         </Button>
       </div>
 
       {/* Quick Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-3.5 transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
           <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 shrink-0">
             <Layers className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Audit Sheets</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Phiếu kiểm kê</p>
             <p className="text-lg font-extrabold text-slate-850 mt-0.5">{items.length}</p>
           </div>
         </div>
@@ -137,9 +146,21 @@ export default function PhysicalInventoryListPage() {
             <RefreshCw className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">In Progress</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Đang thực hiện</p>
             <p className="text-lg font-extrabold text-slate-850 mt-0.5">
               {items.filter(x => x.status === 'in_progress').length}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-3.5 transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-500 shrink-0">
+            <ClipboardList className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Chờ phê duyệt</p>
+            <p className="text-lg font-extrabold text-slate-850 mt-0.5">
+              {items.filter(x => x.status === 'waiting_approval').length}
             </p>
           </div>
         </div>
@@ -149,7 +170,7 @@ export default function PhysicalInventoryListPage() {
             <CheckSquare className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Validated</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Đã xác nhận</p>
             <p className="text-lg font-extrabold text-slate-850 mt-0.5">
               {items.filter(x => x.status === 'validated').length}
             </p>
@@ -161,7 +182,7 @@ export default function PhysicalInventoryListPage() {
             <FileEdit className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Draft Sheets</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Phiếu nháp</p>
             <p className="text-lg font-extrabold text-slate-850 mt-0.5">
               {items.filter(x => x.status === 'draft').length}
             </p>
@@ -176,7 +197,7 @@ export default function PhysicalInventoryListPage() {
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none z-10" />
             <Input
-              placeholder="Search sheets by inventory number or warehouse name..."
+              placeholder="Tìm kiếm phiếu theo số phiếu hoặc tên kho hàng..."
               value={search}
               onChange={setSearch}
               className="pl-9 bg-white border-slate-200 focus:ring-orange-500 focus:border-orange-500"
@@ -185,14 +206,15 @@ export default function PhysicalInventoryListPage() {
 
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-full md:w-[180px] h-10 bg-white border-slate-200 focus:ring-orange-500 focus:border-orange-500 rounded-lg">
-              <SelectValue placeholder="All Statuses" />
+              <SelectValue placeholder="Tất cả trạng thái" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Statuses</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="in_progress">In Progress</SelectItem>
-              <SelectItem value="validated">Validated</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
+              <SelectItem value="">Tất cả trạng thái</SelectItem>
+              <SelectItem value="draft">Nháp</SelectItem>
+              <SelectItem value="in_progress">Đang thực hiện</SelectItem>
+              <SelectItem value="waiting_approval">Chờ phê duyệt</SelectItem>
+              <SelectItem value="validated">Đã xác nhận</SelectItem>
+              <SelectItem value="cancelled">Đã hủy</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -202,13 +224,13 @@ export default function PhysicalInventoryListPage() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50/80 text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-slate-100">
               <tr>
-                <th className="py-3.5 px-6 text-left">Inv No</th>
-                <th className="py-3.5 px-6 text-left">Warehouse</th>
-                <th className="py-3.5 px-6 text-left">Date</th>
-                <th className="py-3.5 px-6 text-left">Status</th>
-                <th className="py-3.5 px-6 text-left">Created By</th>
-                <th className="py-3.5 px-6 text-left">Created At</th>
-                <th className="py-3.5 px-6 text-center w-20">Actions</th>
+                <th className="py-3.5 px-6 text-left">Mã phiếu</th>
+                <th className="py-3.5 px-6 text-left">Kho hàng</th>
+                <th className="py-3.5 px-6 text-left">Ngày kiểm</th>
+                <th className="py-3.5 px-6 text-left">Trạng thái</th>
+                <th className="py-3.5 px-6 text-left">Người tạo</th>
+                <th className="py-3.5 px-6 text-left">Ngày tạo</th>
+                <th className="py-3.5 px-6 text-center w-20">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -217,14 +239,14 @@ export default function PhysicalInventoryListPage() {
                   <td colSpan={7} className="py-16 text-center text-slate-400">
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-8 h-8 border-3 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-xs font-medium">Loading periodic counts...</span>
+                      <span className="text-xs font-medium">Đang tải danh sách kiểm kê...</span>
                     </div>
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-16 text-center text-slate-400 italic">
-                    No physical count sessions found
+                    Không tìm thấy đợt kiểm kê thực tế nào
                   </td>
                 </tr>
               ) : (
@@ -249,7 +271,7 @@ export default function PhysicalInventoryListPage() {
                           statusColors[inv.status] || "bg-slate-50 text-slate-600 border-slate-200"
                         }`}
                       >
-                        {inv.status.replace("_", " ")}
+                        {statusLabels[inv.status] || inv.status}
                       </Badge>
                     </td>
                     <td className="py-3.5 px-6 text-slate-700 font-medium">
@@ -262,7 +284,7 @@ export default function PhysicalInventoryListPage() {
                       <button
                         onClick={() => navigate(`/inventory/physical-inventories/${inv.id}`)}
                         className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm"
-                        title="View Details"
+                        title="Xem chi tiết"
                       >
                         <Eye className="w-3.5 h-3.5" />
                       </button>
@@ -279,16 +301,16 @@ export default function PhysicalInventoryListPage() {
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>New Physical Inventory</DialogTitle>
+            <DialogTitle>Tạo đợt kiểm kê thực tế mới</DialogTitle>
             <DialogDescription>
-              Initiate a stock-count audit sheet. You can scan barcodes or key in actual storage item counts afterwards.
+              Khởi tạo phiếu kiểm tra số lượng tồn kho. Bạn có thể nhập thực tế đếm số lượng sau đó.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Warehouse <span className="text-red-500">*</span>
+                Kho hàng <span className="text-red-500">*</span>
               </label>
               <Select
                 value={createForm.warehouse_id}
@@ -297,7 +319,7 @@ export default function PhysicalInventoryListPage() {
                 }
               >
                 <SelectTrigger className="w-full h-10 bg-white border-slate-200 focus:ring-orange-500 focus:border-orange-500 rounded-lg">
-                  <SelectValue placeholder="Select warehouse" />
+                  <SelectValue placeholder="Chọn kho hàng" />
                 </SelectTrigger>
                 <SelectContent>
                   {warehouses.map((w) => (
@@ -311,7 +333,7 @@ export default function PhysicalInventoryListPage() {
 
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Inventory Date <span className="text-red-500">*</span>
+                Ngày kiểm kê <span className="text-red-500">*</span>
               </label>
               <Input
                 type="date"
@@ -331,14 +353,14 @@ export default function PhysicalInventoryListPage() {
               onClick={() => setShowCreate(false)}
               disabled={creating}
             >
-              Cancel
+              Hủy
             </Button>
             <Button
               variant="primary"
               onClick={handleCreate}
               loading={creating}
             >
-              Start Session
+              Bắt đầu kiểm kê
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -8,6 +8,7 @@ export interface RfqLine {
   quantity: number;
   uom_id?: number | null;
   unit_price: number;
+  discount_type?: "percentage" | "fixed";
   discount_percent?: number;
   discount_amount?: number;
   tax_rate_id?: number | null;
@@ -42,6 +43,7 @@ export interface Rfq {
   total_before_tax: number;
   total_tax: number;
   total_after_tax: number;
+  discount_type?: "percentage" | "fixed";
   discount_percent: number;
   discount_amount: number;
   supplier_notes?: string | null;
@@ -59,6 +61,8 @@ export interface Rfq {
   supplier?: { id: number; name: string; email?: string; phone?: string };
   creator?: { id: number; full_name: string; avatar_url?: string };
   approver?: { id: number; full_name: string; avatar_url?: string };
+  currency?: { id: number; name: string; code: string };
+  paymentTerm?: { id: number; name: string; days: number };
   lines?: RfqLine[];
 }
 
@@ -79,7 +83,9 @@ export interface RfqCompareResult {
       {
         unit_price: number;
         quantity: number;
+        discount_type?: "percentage" | "fixed";
         discount_percent: number;
+        discount_amount?: number;
         line_total_after_tax: number;
         lead_time_days: number | null;
       }

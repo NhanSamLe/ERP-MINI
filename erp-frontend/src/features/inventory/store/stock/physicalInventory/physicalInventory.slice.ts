@@ -6,6 +6,9 @@ import {
   createPhysicalInventoryThunk,
   startPhysicalInventoryThunk,
   validatePhysicalInventoryThunk,
+  submitPhysicalInventoryThunk,
+  approvePhysicalInventoryThunk,
+  rejectPhysicalInventoryThunk,
   cancelPhysicalInventoryThunk,
 } from "./physicalInventory.thunks";
 
@@ -52,6 +55,21 @@ const physicalInventorySlice = createSlice({
       })
 
       .addCase(validatePhysicalInventoryThunk.fulfilled, (s, a) => {
+        s.items = s.items.map((i) => (i.id === a.payload.id ? a.payload : i));
+        s.selected = a.payload;
+      })
+
+      .addCase(submitPhysicalInventoryThunk.fulfilled, (s, a) => {
+        s.items = s.items.map((i) => (i.id === a.payload.id ? a.payload : i));
+        s.selected = a.payload;
+      })
+
+      .addCase(approvePhysicalInventoryThunk.fulfilled, (s, a) => {
+        s.items = s.items.map((i) => (i.id === a.payload.id ? a.payload : i));
+        s.selected = a.payload;
+      })
+
+      .addCase(rejectPhysicalInventoryThunk.fulfilled, (s, a) => {
         s.items = s.items.map((i) => (i.id === a.payload.id ? a.payload : i));
         s.selected = a.payload;
       })

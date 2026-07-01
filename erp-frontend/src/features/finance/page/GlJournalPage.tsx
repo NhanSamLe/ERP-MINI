@@ -37,7 +37,7 @@ const GlJournalPage: React.FC = () => {
       setFilteredData(res.data);
     } catch (e: any) {
       console.error(e);
-      toast.error(e.message || "Error loading journals list");
+      toast.error(e.message || "Lỗi khi tải danh sách sổ nhật ký");
     } finally {
       setLoading(false);
     }
@@ -57,7 +57,7 @@ const GlJournalPage: React.FC = () => {
   }, [searchTerm, data]);
 
   const handleExport = () => {
-    toast.info("File export feature is under development.");
+    toast.info("Tính năng xuất file đang được phát triển.");
   };
 
   return (
@@ -72,10 +72,10 @@ const GlJournalPage: React.FC = () => {
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-slate-800">
-                  General Journals
+                  Sổ nhật ký kế toán
                 </h1>
                 <p className="text-sm text-slate-500 mt-1">
-                  Manage journal list: SALES, PURCHASE, CASH, BANK
+                  Quản lý danh sách sổ nhật ký: BÁN HÀNG, MUA HÀNG, TIỀN MẶT, NGÂN HÀNG
                 </p>
               </div>
             </div>
@@ -86,7 +86,7 @@ const GlJournalPage: React.FC = () => {
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium transition-all duration-200 shadow-sm hover:shadow"
               >
                 <Download className="w-4 h-4" />
-                Export file
+                Xuất file
               </button>
               <button
                 onClick={loadData}
@@ -94,7 +94,7 @@ const GlJournalPage: React.FC = () => {
                 disabled={loading}
               >
                 <RefreshCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-                {loading ? "Loading..." : "Reload"}
+                {loading ? "Đang tải..." : "Tải lại"}
               </button>
             </div>
           </div>
@@ -108,7 +108,7 @@ const GlJournalPage: React.FC = () => {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search by code or journal name..."
+                  placeholder="Tìm kiếm theo mã hoặc tên sổ nhật ký..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-11 pr-4 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
@@ -119,7 +119,7 @@ const GlJournalPage: React.FC = () => {
             <div className="flex items-center gap-2 text-sm text-slate-600">
               <Filter className="w-4 h-4" />
               <span className="font-medium">
-                Showing: <span className="text-blue-600">{filteredData.length}</span> / {data.length} journals
+                Hiển thị: <span className="text-blue-600">{filteredData.length}</span> / {data.length} sổ nhật ký
               </span>
             </div>
           </div>
@@ -135,16 +135,16 @@ const GlJournalPage: React.FC = () => {
                     ID
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider w-32">
-                    Journal Code
+                    Mã sổ nhật ký
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    Journal Name
+                    Tên sổ nhật ký
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    Description
+                    Mô tả
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider w-32">
-                    Status
+                    Trạng thái
                   </th>
                 </tr>
               </thead>
@@ -155,7 +155,7 @@ const GlJournalPage: React.FC = () => {
                     <td className="px-6 py-12 text-center" colSpan={5}>
                       <div className="flex flex-col items-center justify-center gap-3">
                         <RefreshCcw className="w-8 h-8 text-blue-500 animate-spin" />
-                        <p className="text-sm text-slate-500 font-medium">Loading data...</p>
+                        <p className="text-sm text-slate-500 font-medium">Đang tải dữ liệu...</p>
                       </div>
                     </td>
                   </tr>
@@ -166,10 +166,10 @@ const GlJournalPage: React.FC = () => {
                         <FileText className="w-12 h-12 text-slate-300" />
                         <div>
                           <p className="text-sm font-medium text-slate-600">
-                            {searchTerm ? "No results found" : "No journals found"}
+                            {searchTerm ? "Không tìm thấy kết quả" : "Không tìm thấy sổ nhật ký"}
                           </p>
                           <p className="text-xs text-slate-400 mt-1">
-                            {searchTerm ? "Try searching with other keywords" : "Data will be displayed here"}
+                            {searchTerm ? "Thử tìm kiếm với từ khóa khác" : "Dữ liệu sẽ hiển thị ở đây"}
                           </p>
                         </div>
                       </div>
@@ -181,7 +181,7 @@ const GlJournalPage: React.FC = () => {
                       key={row.id}
                       className="hover:bg-slate-50 transition-colors duration-150 cursor-pointer"
                       onClick={() => navigate(`/finance/journals/${row.id}/entries`)} // ✅ thêm
-                      title="View entries list"
+                      title="Xem danh sách bút toán"
                     >
                       <td className="px-6 py-4 text-sm text-slate-500 font-medium">
                         #{row.id}
@@ -200,7 +200,7 @@ const GlJournalPage: React.FC = () => {
                       <td className="px-6 py-4">
                         <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                           <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5"></span>
-                          Active
+                          Hoạt động
                         </span>
                       </td>
                     </tr>

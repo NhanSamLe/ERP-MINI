@@ -5,7 +5,6 @@ import { toast } from "react-toastify";
 import {
   CornerUpLeft,
   CheckCircle,
-  XCircle,
   Clock,
   ArrowRight,
 } from "lucide-react";
@@ -25,9 +24,9 @@ import { formatVND } from "@/utils/currency.helper";
 import { Roles } from "@/types/enum";
 
 const RETURN_TYPE_LABELS: Record<string, string> = {
-  refund: "Refund (NCC hoàn tiền)",
-  replacement: "Replacement (Đổi hàng)",
-  debit_note: "Debit Note (Trừ công nợ)",
+  refund: "Hoàn tiền (NCC hoàn tiền)",
+  replacement: "Đổi hàng (Đổi trả hàng)",
+  debit_note: "Thẻ nợ (Trừ công nợ)",
 };
 
 // Timeline step component
@@ -94,17 +93,17 @@ export default function PraDetailPage() {
       switch (action) {
         case "submit":
           await dispatch(submitPraThunk(pra.id)).unwrap();
-          toast.success("PRA submitted for approval");
+          toast.success("Đã nộp PRA để phê duyệt");
           break;
         case "approve":
           await dispatch(approvePraThunk(pra.id)).unwrap();
-          toast.success("PRA approved");
+          toast.success("Đã phê duyệt PRA");
           break;
         case "reject":
           await dispatch(
             rejectPraThunk({ id: pra.id, reason: reason ?? "" }),
           ).unwrap();
-          toast.success("PRA rejected");
+          toast.success("Đã từ chối PRA");
           break;
       }
       setModal(null);
@@ -115,16 +114,20 @@ export default function PraDetailPage() {
 
   const buildActions = () => {
     if (!pra) return [];
-    const base = [
+    const base: Array<{
+      label: string;
+      variant: "primary" | "secondary" | "danger" | "success" | "outline";
+      onClick: () => void;
+    }> = [
       {
-        label: "Back",
+        label: "Quay lại",
         variant: "outline" as const,
         onClick: () => navigate("/purchase/return-authorizations"),
       },
     ];
     if (pra.status === "draft" && role === Roles.PURCHASE) {
       base.push({
-        label: "Edit",
+        label: "Chỉnh sửa",
         variant: "outline" as const,
         onClick: () =>
           navigate(`/purchase/return-authorizations/${pra.id}/edit`),
@@ -132,7 +135,7 @@ export default function PraDetailPage() {
     }
     if (pra.status === "draft" && role === Roles.PURCHASE) {
       base.push({
-        label: "Submit",
+        label: "Nộp duyệt",
         variant: "primary" as const,
         onClick: () => setModal("submit"),
       });
@@ -142,19 +145,19 @@ export default function PraDetailPage() {
       (role === Roles.PURCHASEMANAGER || role === Roles.CHACC)
     ) {
       base.push({
-        label: "Approve",
+        label: "Duyệt",
         variant: "success" as const,
         onClick: () => setModal("approve"),
       });
       base.push({
-        label: "Reject",
+        label: "Từ chối",
         variant: "danger" as const,
         onClick: () => setModal("reject"),
       });
     }
     if (pra.status === "approved") {
       base.push({
-        label: "Create Return",
+        label: "Tạo Phiếu trả hàng",
         variant: "primary" as const,
         onClick: () => navigate(`/purchase/returns/create?pra_id=${pra.id}`),
       });
@@ -174,21 +177,21 @@ export default function PraDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-500">
         <CornerUpLeft className="w-10 h-10 text-gray-300" />
-        <p className="text-sm font-medium">Return Authorization not found</p>
+        <p className="text-sm font-medium">Không tìm thấy yêu cầu trả hàng mua (PRA)</p>
         <button
           onClick={() => navigate("/purchase/return-authorizations")}
           className="text-sm text-orange-600 hover:underline"
         >
-          Back to list
+          Quay lại danh sách
         </button>
       </div>
     );
   }
 
   const timelineSteps = [
-    { label: "PRA Created", done: true, active: false },
+    { label: "Đã tạo PRA", done: true, active: false },
     {
-      label: "Submitted",
+      label: "Đã nộp",
       done: [
         "submitted",
         "approved",
@@ -199,16 +202,16 @@ export default function PraDetailPage() {
       active: pra.status === "submitted",
     },
     {
-      label: "Approved",
+      label: "Đã duyệt",
       done: ["approved", "processing", "completed"].includes(pra.status),
       active: pra.status === "approved",
     },
     {
-      label: "Processing",
+      label: "Đang xử lý",
       done: ["completed"].includes(pra.status),
       active: pra.status === "processing",
     },
-    { label: "Completed", done: pra.status === "completed", active: false },
+    { label: "Hoàn thành", done: pra.status === "completed", active: false },
   ];
 
   return (
@@ -219,7 +222,7 @@ export default function PraDetailPage() {
         actions={buildActions()}
       >
         {/* Timeline */}
-        <FormSection title="Progress" icon={<Clock className="w-4 h-4" />}>
+        <FormSection title="Tiến độ" icon={<Clock className="w-4 h-4" />}>
           <div className="flex items-center gap-3 flex-wrap">
             {timelineSteps.map((step, i) => (
               <div key={i} className="flex items-center gap-2">
@@ -234,49 +237,49 @@ export default function PraDetailPage() {
 
         {/* General Info */}
         <FormSection
-          title="Return Authorization Details"
+          title="Chi tiết Yêu cầu trả hàng mua"
           icon={<CornerUpLeft className="w-4 h-4" />}
         >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <p className="text-xs text-gray-500 mb-1">PRA No</p>
+              <p className="text-xs text-gray-500 mb-1">Số PRA</p>
               <p className="text-sm font-semibold text-gray-900">
                 {pra.pra_no}
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 mb-1">Supplier</p>
+              <p className="text-xs text-gray-500 mb-1">Nhà cung cấp</p>
               <p className="text-sm text-gray-800">
                 {pra.supplier?.name ?? "—"}
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 mb-1">Return Type</p>
+              <p className="text-xs text-gray-500 mb-1">Loại trả hàng</p>
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
                 {RETURN_TYPE_LABELS[pra.return_type] ?? pra.return_type}
               </span>
             </div>
             <div>
-              <p className="text-xs text-gray-500 mb-1">Total Return Amount</p>
+              <p className="text-xs text-gray-500 mb-1">Tổng giá trị trả hàng</p>
               <p className="text-sm font-bold text-orange-600">
                 {formatVND(pra.total_return_amount)}
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 mb-1">Created By</p>
+              <p className="text-xs text-gray-500 mb-1">Người tạo</p>
               <p className="text-sm text-gray-800">
                 {pra.creator?.full_name ?? "—"}
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 mb-1">Created At</p>
+              <p className="text-xs text-gray-500 mb-1">Thời gian tạo</p>
               <p className="text-sm text-gray-800">
                 {new Date(pra.created_at).toLocaleDateString("vi-VN")}
               </p>
             </div>
             {pra.submitted_at && (
               <div>
-                <p className="text-xs text-gray-500 mb-1">Submitted At</p>
+                <p className="text-xs text-gray-500 mb-1">Thời gian nộp</p>
                 <p className="text-sm text-gray-800">
                   {new Date(pra.submitted_at).toLocaleDateString("vi-VN")}
                 </p>
@@ -284,7 +287,7 @@ export default function PraDetailPage() {
             )}
             {pra.approved_at && (
               <div>
-                <p className="text-xs text-gray-500 mb-1">Approved At</p>
+                <p className="text-xs text-gray-500 mb-1">Thời gian phê duyệt</p>
                 <p className="text-sm text-gray-800">
                   {new Date(pra.approved_at).toLocaleDateString("vi-VN")}
                 </p>
@@ -295,7 +298,7 @@ export default function PraDetailPage() {
           {/* Reason */}
           <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
             <p className="text-xs font-semibold text-amber-700 mb-1">
-              Return Reason
+              Lý do trả hàng
             </p>
             <p className="text-sm text-amber-800">{pra.reason}</p>
           </div>
@@ -303,7 +306,7 @@ export default function PraDetailPage() {
           {pra.reject_reason && (
             <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
               <p className="text-xs font-semibold text-red-700 mb-1">
-                Reject Reason
+                Lý do từ chối
               </p>
               <p className="text-sm text-red-800">{pra.reject_reason}</p>
             </div>
@@ -311,7 +314,7 @@ export default function PraDetailPage() {
 
           {pra.notes && (
             <div className="mt-3">
-              <p className="text-xs text-gray-500 mb-1">Notes</p>
+              <p className="text-xs text-gray-500 mb-1">Ghi chú</p>
               <p className="text-sm text-gray-700 whitespace-pre-wrap">
                 {pra.notes}
               </p>
@@ -324,9 +327,9 @@ export default function PraDetailPage() {
         isOpen={modal === "submit"}
         onClose={() => setModal(null)}
         onConfirm={() => handleAction("submit")}
-        title="Submit PRA for Approval"
-        description={`Submit ${pra.pra_no} for manager approval?`}
-        confirmText="Submit"
+        title="Nộp PRA phê duyệt"
+        description={`Nộp yêu cầu ${pra.pra_no} để quản lý phê duyệt?`}
+        confirmText="Nộp duyệt"
         variant="primary"
         loading={actionLoading}
       />
@@ -334,9 +337,9 @@ export default function PraDetailPage() {
         isOpen={modal === "approve"}
         onClose={() => setModal(null)}
         onConfirm={() => handleAction("approve")}
-        title="Approve PRA"
-        description={`Approve return authorization ${pra.pra_no}?`}
-        confirmText="Approve"
+        title="Phê duyệt PRA"
+        description={`Phê duyệt yêu cầu trả hàng ${pra.pra_no}?`}
+        confirmText="Phê duyệt"
         variant="success"
         loading={actionLoading}
       />
@@ -344,12 +347,12 @@ export default function PraDetailPage() {
         isOpen={modal === "reject"}
         onClose={() => setModal(null)}
         onConfirm={(reason) => handleAction("reject", reason)}
-        title="Reject PRA"
-        description={`Reject return authorization ${pra.pra_no}?`}
-        confirmText="Reject"
+        title="Từ chối PRA"
+        description={`Từ chối yêu cầu trả hàng ${pra.pra_no}?`}
+        confirmText="Từ chối"
         variant="danger"
         requireReason
-        reasonLabel="Reject Reason"
+        reasonLabel="Lý do từ chối"
         loading={actionLoading}
       />
     </>

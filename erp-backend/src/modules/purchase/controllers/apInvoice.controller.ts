@@ -275,6 +275,25 @@ export const apInvoiceController = {
     }
   },
 
+  async overrideMismatch(req: Request, res: Response) {
+    const user = (req as any).user;
+    try {
+      const { reason } = req.body;
+      const data = await apInvoiceService.overrideMismatch(
+        Number(req.params.id),
+        user,
+        reason
+      );
+      res.json({
+        success: true,
+        message: "Ghi đè mismatch thành công",
+        data,
+      });
+    } catch (error: any) {
+      handleError(res, error);
+    }
+  },
+
   /**
    * DELETE /api/ap/invoices/:id
    * Xóa AP Invoice — chỉ khi draft + chưa submit + người tạo.

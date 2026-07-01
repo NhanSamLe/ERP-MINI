@@ -1,15 +1,8 @@
-/**
- * UOM Table Configuration
- * @description Configuration for UOM data table
- * @author Senior Frontend Team
- */
-
 import { TableConfig } from '@/components/v2/tables';
 import { Uom } from '../dto/uom.dto';
+import { Edit2, Trash2 } from 'lucide-react';
+import { createElement } from 'react';
 
-/**
- * Create UOM Table Configuration
- */
 export const createUomTableConfig = (
   onEdit: (uom: Uom) => void,
   onDelete: (uom: Uom) => void,
@@ -17,39 +10,26 @@ export const createUomTableConfig = (
   canDelete: (uom: Uom) => boolean
 ): TableConfig<Uom> => ({
   columns: [
-    {
-      key: 'code',
-      label: 'Code',
-      sortable: true,
-      width: '200px',
-    },
-    {
-      key: 'name',
-      label: 'Name',
-      sortable: true,
-    },
+    { key: 'code', label: 'Mã đơn vị', sortable: true, width: '160px' },
+    { key: 'name', label: 'Tên đơn vị', sortable: true },
     {
       key: 'created_at',
-      label: 'Created At',
+      label: 'Ngày tạo',
       sortable: true,
-      width: '180px',
-      hideOnMobile: true,
-      render: (value) => {
-        if (!value) return '-';
-        const date = new Date(value);
-        return date.toLocaleDateString('vi-VN');
-      },
+      width: '160px',
+      render: (value) => value ? new Date(value).toLocaleDateString('vi-VN') : '-',
     },
   ],
   actions: [
     {
-      label: 'Edit',
+      label: 'Sửa',
+      icon: createElement(Edit2, { className: 'w-4 h-4' }),
       onClick: onEdit,
       show: canEdit,
-      variant: 'primary',
     },
     {
-      label: 'Delete',
+      label: 'Xóa',
+      icon: createElement(Trash2, { className: 'w-4 h-4' }),
       onClick: onDelete,
       show: canDelete,
       variant: 'danger',
@@ -58,8 +38,8 @@ export const createUomTableConfig = (
   pagination: true,
   sortable: true,
   searchable: true,
-  searchPlaceholder: 'Search by code or name...',
-  emptyMessage: 'No UOM found. Create your first unit of measurement.',
-  loadingMessage: 'Loading UOM data...',
+  searchPlaceholder: 'Tìm theo mã hoặc tên đơn vị...',
+  emptyMessage: 'Chưa có đơn vị tính nào.',
+  loadingMessage: 'Đang tải danh sách đơn vị...',
   rowKey: 'id',
 });

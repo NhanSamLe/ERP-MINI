@@ -33,6 +33,8 @@ export default function PurchaseReturnDetailPage() {
   const [modal, setModal] = useState<
     "ship" | "confirm" | "complete" | "debit_note" | null
   >(null);
+  const [debitNotePreview, setDebitNotePreview] = useState<any>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
 
   interface ConfirmLineState {
     line_id: number;
@@ -50,7 +52,7 @@ export default function PurchaseReturnDetailPage() {
     setConfirmLines(
       (ret.lines ?? []).map((l: any) => ({
         line_id: l.id,
-        productName: l.product?.name ?? `Product #${l.product_id}`,
+        productName: l.product?.name ?? `Sản phẩm #${l.product_id}`,
         qty_returned: l.quantity_returned,
         uomName: l.uom?.name ?? "—",
         qty_confirmed: l.quantity_returned,
@@ -88,12 +90,32 @@ export default function PurchaseReturnDetailPage() {
     };
   }, [id, dispatch]);
 
+  useEffect(() => {
+    if (modal === "debit_note" && ret) {
+      const getPreview = async () => {
+        try {
+          setLoadingPreview(true);
+          const { apDebitNoteApi } = await import("../../api/purchaseReturn.api");
+          const res = await apDebitNoteApi.getPreview(ret.id);
+          setDebitNotePreview(res);
+        } catch (e: any) {
+          toast.error("Không thể tải thông tin xem trước Thẻ nợ: " + e);
+        } finally {
+          setLoadingPreview(false);
+        }
+      };
+      getPreview();
+    } else {
+      setDebitNotePreview(null);
+    }
+  }, [modal, ret]);
+
   const handleAction = async () => {
     if (!ret) return;
     try {
       if (modal === "ship") {
         await dispatch(shipReturnThunk(ret.id)).unwrap();
-        toast.success("Return shipped");
+        toast.success("Đã xuất hàng trả lại");
       } else if (modal === "confirm") {
         await dispatch(
           confirmReturnThunk({
@@ -105,15 +127,15 @@ export default function PurchaseReturnDetailPage() {
             })),
           })
         ).unwrap();
-        toast.success("Return confirmed successfully");
+        toast.success("Xác nhận trả hàng thành công");
       } else if (modal === "complete") {
         await dispatch(completeReturnThunk(ret.id)).unwrap();
-        toast.success("Return completed");
+        toast.success("Hoàn thành trả hàng");
       } else if (modal === "debit_note") {
         const dn = await dispatch(
           createDebitNoteFromReturnThunk(ret.id),
         ).unwrap();
-        toast.success(`Debit Note ${dn.debit_note_no} created`);
+        toast.success(`Đã tạo Thẻ nợ ${dn.debit_note_no}`);
         navigate(`/purchase/debit-notes/${dn.id}`);
       }
       setModal(null);
@@ -134,12 +156,12 @@ export default function PurchaseReturnDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-500">
         <CornerUpLeft className="w-10 h-10 text-gray-300" />
-        <p className="text-sm font-medium">Purchase Return not found</p>
+        <p className="text-sm font-medium">Không tìm thấy Phiếu trả hàng mua</p>
         <button
           onClick={() => navigate("/purchase/returns")}
           className="text-sm text-orange-600 hover:underline"
         >
-          Back to list
+          Quay lại danh sách
         </button>
       </div>
     );
@@ -150,19 +172,19 @@ export default function PurchaseReturnDetailPage() {
 
   const actions = [
     {
-      label: "Back",
+      label: "Quay lại",
       variant: "outline" as const,
       onClick: () => navigate("/purchase/returns"),
     },
     ...(ret.status === "draft" && isPurchase
       ? [
           {
-            label: "Edit",
+            label: "Chỉnh sửa",
             variant: "outline" as const,
             onClick: () => navigate(`/purchase/returns/${ret.id}/edit`),
           },
           {
-            label: "Ship Return",
+            label: "Xuất hàng",
             variant: "primary" as const,
             onClick: () => setModal("ship"),
           },
@@ -171,7 +193,7 @@ export default function PurchaseReturnDetailPage() {
     ...(ret.status === "shipped" && isPurchase
       ? [
           {
-            label: "Confirm Return",
+            label: "Xác nhận nhận",
             variant: "primary" as const,
             onClick: handleOpenConfirm,
           },
@@ -180,16 +202,18 @@ export default function PurchaseReturnDetailPage() {
     ...(ret.status === "confirmed" && isPurchase
       ? [
           {
-            label: "Complete",
+            label: "Hoàn thành",
             variant: "success" as const,
             onClick: () => setModal("complete"),
           },
         ]
       : []),
-    ...(["confirmed", "completed"].includes(ret.status) && isAccountant
+    ...(["confirmed", "completed"].includes(ret.status) &&
+    isAccountant &&
+    ret.return_type !== "replacement"
       ? [
           {
-            label: "Create Debit Note",
+            label: "Tạo Thẻ nợ",
             variant: "primary" as const,
             onClick: () => setModal("debit_note"),
           },
@@ -207,57 +231,86 @@ export default function PurchaseReturnDetailPage() {
         actions={actions}
       >
         <FormSection
-          title="Return Details"
+          title="Chi tiết trả hàng"
           icon={<CornerUpLeft className="w-4 h-4" />}
         >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <p className="text-xs text-gray-500 mb-1">Return No</p>
+              <p className="text-xs text-gray-500 mb-1">Số phiếu trả</p>
               <p className="text-sm font-semibold">{ret.return_no}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 mb-1">Supplier</p>
+              <p className="text-xs text-gray-500 mb-1">Nhà cung cấp</p>
               <p className="text-sm">{ret.supplier?.name ?? "—"}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 mb-1">Return Date</p>
+              <p className="text-xs text-gray-500 mb-1">Kho xuất hàng</p>
+              <p className="text-sm">{(ret as any).warehouse?.name ?? "—"}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Ngày trả hàng</p>
               <p className="text-sm">
                 {new Date(ret.return_date).toLocaleDateString("vi-VN")}
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 mb-1">Total Return Amount</p>
+              <p className="text-xs text-gray-500 mb-1">Tổng giá trị trả hàng</p>
               <p className="text-sm font-bold text-orange-600">
                 {formatVND(ret.total_return_amount)}
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 mb-1">Created By</p>
+              <p className="text-xs text-gray-500 mb-1">Người tạo</p>
               <p className="text-sm">{ret.creator?.full_name ?? "—"}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 mb-1">Created At</p>
+              <p className="text-xs text-gray-500 mb-1">Loại trả hàng</p>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-55 text-orange-700">
+                {ret.return_type === "debit_note"
+                  ? "Thẻ nợ (Trừ công nợ)"
+                  : ret.return_type === "refund"
+                    ? "Hoàn tiền (NCC hoàn tiền)"
+                    : ret.return_type === "replacement"
+                      ? "Đổi hàng (Đổi trả hàng)"
+                      : ret.return_type || "—"}
+              </span>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Thời gian tạo</p>
               <p className="text-sm">
                 {new Date(ret.created_at).toLocaleDateString("vi-VN")}
               </p>
             </div>
             {ret.pra_id && (
               <div>
-                <p className="text-xs text-gray-500 mb-1">From PRA</p>
+                <p className="text-xs text-gray-500 mb-1">Từ yêu cầu PRA</p>
                 <button
                   onClick={() =>
                     navigate(`/purchase/return-authorizations/${ret.pra_id}`)
                   }
                   className="text-sm text-orange-600 hover:underline"
                 >
-                  View PRA →
+                  Xem PRA →
+                </button>
+              </div>
+            )}
+            {ret.stock_move_id && (
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Phiếu kho</p>
+                <button
+                  onClick={() =>
+                    navigate(`/inventory/stock_move/view/${ret.stock_move_id}`)
+                  }
+                  className="text-sm text-orange-600 hover:underline font-medium"
+                >
+                  Xem phiếu kho →
                 </button>
               </div>
             )}
           </div>
           {ret.notes && (
             <div className="mt-4">
-              <p className="text-xs text-gray-500 mb-1">Notes</p>
+              <p className="text-xs text-gray-500 mb-1">Ghi chú</p>
               <p className="text-sm text-gray-700 whitespace-pre-wrap">
                 {ret.notes}
               </p>
@@ -267,7 +320,7 @@ export default function PurchaseReturnDetailPage() {
 
         {/* Lines */}
         <FormSection
-          title="Return Items"
+          title="Danh sách mặt hàng trả lại"
           icon={<Package className="w-4 h-4" />}
           noPadding
         >
@@ -276,18 +329,18 @@ export default function PurchaseReturnDetailPage() {
               <tr className="border-b border-orange-100 bg-orange-50/60">
                 {[
                   "#",
-                  "Product",
-                  "Qty Returned",
-                  "UOM",
-                  "Qty Confirmed",
-                  "Qty Rejected",
-                  "Unit Price",
-                  "Condition",
-                  "Line Total",
+                  "Sản phẩm",
+                  "SL Trả",
+                  "ĐVT",
+                  "SL Xác nhận",
+                  "SL Từ chối",
+                  "Đơn giá",
+                  "Tình trạng",
+                  "Thành tiền",
                 ].map((h) => (
                   <th
                     key={h}
-                    className={`px-4 py-3 text-xs font-semibold text-gray-500 uppercase ${["Qty Returned", "Qty Confirmed", "Qty Rejected", "Unit Price", "Line Total"].includes(h) ? "text-right" : "text-left"}`}
+                    className={`px-4 py-3 text-xs font-semibold text-gray-500 uppercase ${["SL Trả", "SL Xác nhận", "SL Từ chối", "Đơn giá", "Thành tiền"].includes(h) ? "text-right" : "text-left"}`}
                   >
                     {h}
                   </th>
@@ -301,7 +354,7 @@ export default function PurchaseReturnDetailPage() {
                     colSpan={9}
                     className="px-4 py-8 text-center text-sm text-gray-400"
                   >
-                    No line items
+                    Chưa có mặt hàng nào
                   </td>
                 </tr>
               ) : (
@@ -309,7 +362,7 @@ export default function PurchaseReturnDetailPage() {
                   <tr key={line.id} className="hover:bg-gray-50/60">
                     <td className="px-4 py-3 text-gray-500">{i + 1}</td>
                     <td className="px-4 py-3 font-medium text-gray-900">
-                      {line.product?.name ?? `Product #${line.product_id}`}
+                      {line.product?.name ?? `Sản phẩm #${line.product_id}`}
                     </td>
                     <td className="px-4 py-3 text-right">
                       {line.quantity_returned}
@@ -336,7 +389,7 @@ export default function PurchaseReturnDetailPage() {
                               : "bg-red-100 text-red-700"
                         }`}
                       >
-                        {line.condition}
+                        {line.condition === "good" ? "Tốt" : line.condition === "damaged" ? "Hỏng hóc" : "Lỗi sản xuất"}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right font-semibold text-orange-600">
@@ -354,9 +407,9 @@ export default function PurchaseReturnDetailPage() {
         isOpen={modal === "ship"}
         onClose={() => setModal(null)}
         onConfirm={handleAction}
-        title="Ship Return"
-        description={`Mark ${ret.return_no} as shipped to supplier?`}
-        confirmText="Ship"
+        title="Xuất hàng trả lại"
+        description={`Xác nhận đã xuất hàng trả lại cho nhà cung cấp đối với phiếu ${ret.return_no}?`}
+        confirmText="Xác nhận xuất hàng"
         variant="primary"
         loading={actionLoading}
       />
@@ -364,22 +417,139 @@ export default function PurchaseReturnDetailPage() {
         isOpen={modal === "complete"}
         onClose={() => setModal(null)}
         onConfirm={handleAction}
-        title="Complete Return"
-        description={`Mark ${ret.return_no} as completed?`}
-        confirmText="Complete"
+        title="Hoàn thành trả hàng"
+        description={`Xác nhận hoàn thành phiếu trả hàng mua ${ret.return_no}?`}
+        confirmText="Hoàn thành"
         variant="success"
         loading={actionLoading}
       />
-      <ActionConfirmModal
-        isOpen={modal === "debit_note"}
-        onClose={() => setModal(null)}
-        onConfirm={handleAction}
-        title="Create Debit Note"
-        description={`Create an AP Debit Note from ${ret.return_no}? Only confirmed quantities will be included.`}
-        confirmText="Create Debit Note"
-        variant="primary"
-        loading={actionLoading}
-      />
+      {modal === "debit_note" && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setModal(null);
+          }}
+        >
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-xl overflow-hidden animate-slide-up flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-gray-100 bg-orange-50/20">
+              <div className="flex items-center gap-3">
+                <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-orange-50">
+                  <AlertCircle className="w-5 h-5 text-orange-500" />
+                </span>
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900">Tạo Thẻ nợ</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Xác nhận và xem trước định khoản kế toán cho phiếu {ret.return_no}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setModal(null)}
+                className="shrink-0 p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 overflow-y-auto flex-1 space-y-4">
+              <p className="text-sm text-gray-600">
+                Chỉ số lượng hàng đã được nhà cung cấp xác nhận nhận thực tế mới được đưa vào thẻ nợ.
+              </p>
+
+              {loadingPreview ? (
+                <div className="flex flex-col items-center justify-center py-6 gap-2">
+                  <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+                  <p className="text-xs text-gray-400">Đang tính toán xem trước hạch toán...</p>
+                </div>
+              ) : debitNotePreview ? (
+                <div className="space-y-3">
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Xem trước định khoản (GL Entry)</p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs text-left border-collapse">
+                        <thead>
+                          <tr className="border-b border-gray-200 text-gray-600 bg-gray-100/50">
+                            <th className="py-2 px-3 font-semibold">Tài khoản</th>
+                            <th className="py-2 px-3 font-semibold text-right">Nợ (Debit)</th>
+                            <th className="py-2 px-3 font-semibold text-right">Có (Credit)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {/* 331 AP */}
+                          <tr>
+                            <td className="py-2.5 px-3">
+                              <span className="font-semibold block">331</span>
+                              <span className="text-gray-400 text-[10px]">Phải trả nhà cung cấp</span>
+                            </td>
+                            <td className="py-2.5 px-3 text-right text-emerald-600 font-bold">
+                              {formatVND(debitNotePreview.total_after_tax)}
+                            </td>
+                            <td className="py-2.5 px-3 text-right text-gray-300">—</td>
+                          </tr>
+                          {/* 156 Inventory */}
+                          {debitNotePreview.total_before_tax > 0 && (
+                            <tr>
+                              <td className="py-2.5 px-3">
+                                <span className="font-semibold block">156</span>
+                                <span className="text-gray-400 text-[10px]">Hàng hóa</span>
+                              </td>
+                              <td className="py-2.5 px-3 text-right text-gray-300">—</td>
+                              <td className="py-2.5 px-3 text-right text-orange-600 font-bold">
+                                {formatVND(debitNotePreview.total_before_tax)}
+                              </td>
+                            </tr>
+                          )}
+                          {/* 1331 VAT */}
+                          {debitNotePreview.total_tax > 0 && (
+                            <tr>
+                              <td className="py-2.5 px-3">
+                                <span className="font-semibold block">1331</span>
+                                <span className="text-gray-400 text-[10px]">Thuế GTGT được khấu trừ</span>
+                              </td>
+                              <td className="py-2.5 px-3 text-right text-gray-300">—</td>
+                              <td className="py-2.5 px-3 text-right text-orange-600 font-bold">
+                                {formatVND(debitNotePreview.total_tax)}
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  
+                  {/* Totals Summary */}
+                  <div className="flex justify-between items-center text-xs font-semibold px-2 py-1 bg-orange-50 text-orange-800 rounded">
+                    <span>Tổng số tiền đối trừ công nợ:</span>
+                    <span className="text-sm font-bold">{formatVND(debitNotePreview.total_after_tax)}</span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-red-500 italic text-center">Không thể tính toán xem trước. Vui lòng kiểm tra lại.</p>
+              )}
+            </div>
+
+            {/* Footer Actions */}
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-3">
+              <button
+                onClick={() => setModal(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleAction}
+                disabled={actionLoading || loadingPreview || !debitNotePreview}
+                className="px-4 py-2 text-sm font-semibold text-white bg-orange-500 rounded-lg hover:bg-orange-600 shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {actionLoading && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
+                Xác nhận tạo Thẻ nợ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {modal === "confirm" && (
         <div
@@ -396,7 +566,7 @@ export default function PurchaseReturnDetailPage() {
                   <AlertCircle className="w-5 h-5 text-orange-500" />
                 </span>
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-900">Confirm Return</h3>
+                  <h3 className="text-sm font-semibold text-gray-900">Xác nhận hàng trả</h3>
                   <p className="text-xs text-gray-500 mt-0.5">
                     Xác nhận số lượng thực tế nhà cung cấp đã nhận cho phiếu {ret.return_no}
                   </p>

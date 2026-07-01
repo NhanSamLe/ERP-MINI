@@ -9,8 +9,26 @@ import { Transaction } from "sequelize";
 import { GlJournal } from "../../finance/models/glJournal.model";
 import { GlEntry } from "../../finance/models/glEntry.model";
 import { GlEntryLine } from "../../finance/models/glEntryLine.model";
-import { GlAccount } from "../../finance/models/glAccount.model";
 import { notificationService } from "../../../core/services/notification.service";
+import { assertPostingPeriodOpen } from "../../finance/services/fiscalGuard.service";
+import { requireGlAccounts } from "../../finance/services/glAccount.helper";
+import { getCompanyIdFromBranch, getCompanyIdFromUserBranch } from "../../finance/services/companyScope.service";
+import { getMappedAccount } from "../../finance/services/glAccount.service";
+import { checkPeriodLocked } from "../../finance/services/glJournal.service";
+
+const ACCOUNTING_ROLES = ["ACCOUNT", "CHACC", "BRANCH_MANAGER", "BRMN"];
+
+function requireAccountingRole(user: any) {
+  if (!ACCOUNTING_ROLES.includes(user?.role)) {
+    throw new Error("Bạn không có quyền thao tác phiếu thu.");
+  }
+}
+
+function requireChiefAccountant(user: any) {
+  if (user?.role !== "CHACC") {
+    throw new Error("Chỉ Kế toán trưởng được phê duyệt hoặc từ chối phiếu thu.");
+  }
+}
 
 export const arReceiptService = {
   /** GET ALL — lọc theo branch và quyền */
@@ -23,12 +41,10 @@ export const arReceiptService = {
     const limit = pageSize;
 
     // Default filter
-    const where: any = {
-      branch_id: user.branch_id
-    };
-    console.log("FILTER WHERE:", where);
-
-
+    const where: any = {};
+    if (user.role !== "CEO" && user.role !== "ADMIN") {
+      where.branch_id = user.branch_id;
+    }
     if (user.role === "ACCOUNT") {
       where.created_by = user.id;
     }
@@ -118,8 +134,10 @@ export const arReceiptService = {
     });
 
     if (!receipt) throw new Error("Receipt not found");
-    if (receipt.branch_id !== user.branch_id)
-      throw new Error("Cross-branch denied");
+    if (user.role !== "CEO" && user.role !== "ADMIN") {
+      if (receipt.branch_id !== user.branch_id)
+        throw new Error("Cross-branch denied");
+    }
 
     if (user.role === "ACCOUNT" && receipt.created_by !== user.id)
       throw new Error("You can only view your own receipts");
@@ -128,9 +146,13 @@ export const arReceiptService = {
   },
 
   /** CREATE — Accountant */
-  async create(data: any, user: any) {
+  async create(data: any, user: any, app?: any) {
+    requireAccountingRole(user);
+    const companyId = await getCompanyIdFromUserBranch(user);
+    await assertPostingPeriodOpen(data.receipt_date || new Date(), companyId);
+
     const receipt_no = await generateReceiptNo(); // auto
-    return ArReceipt.create({
+    const receipt = await ArReceipt.create({
       branch_id: user.branch_id,
       receipt_no,
       receipt_date: data.receipt_date,
@@ -144,17 +166,28 @@ export const arReceiptService = {
       currency_id: data.currency_id || null,
       exchange_rate: data.exchange_rate || 1,
     });
+
+    // Kế toán trưởng (CHACC) tạo phiếu thu → tự duyệt + ghi sổ luôn, không cần
+    // bước gửi duyệt rồi tự duyệt cho chính mình. Sau khi posted, CHACC có thể
+    // phân bổ công nợ ngay (allocate yêu cầu status = "posted").
+    if (user?.role === "CHACC") {
+      await receipt.update({ approval_status: "waiting_approval", submitted_at: new Date() });
+      return this.approve(receipt.id, user, app);
+    }
+
+    return receipt;
   },
 
   /** SUBMIT — Accountant */
   async submit(id: number, user: any, app?: any) {
+    requireAccountingRole(user);
     const receipt = await ArReceipt.findByPk(id);
 
-    if (!receipt) throw new Error("Receipt not found");
+    if (!receipt) throw new Error("Không tìm thấy phiếu thu.");
     if (receipt.branch_id !== user.branch_id)
-      throw new Error("Cross-branch denied");
+      throw new Error("Không được thao tác phiếu thu khác chi nhánh.");
     if (receipt.approval_status !== "draft")
-      throw new Error("Already submitted");
+      throw new Error("Phiếu thu đã được gửi phê duyệt hoặc không còn ở trạng thái nháp.");
 
     await receipt.update({
       approval_status: "waiting_approval",
@@ -181,19 +214,23 @@ export const arReceiptService = {
 
   /** APPROVE — Chief Accountant + POST to GL */
   async approve(id: number, approver: any, app?: any) {
+    requireChiefAccountant(approver);
+
     const t: Transaction = await sequelize.transaction();
 
     try {
       // 1. Load receipt trong transaction
       const receipt = await ArReceipt.findByPk(id, { transaction: t });
 
-      if (!receipt) throw new Error("Receipt not found");
+      if (!receipt) throw new Error("Không tìm thấy phiếu thu.");
       if (receipt.approval_status !== "waiting_approval")
-        throw new Error("Wrong approval stage");
+        throw new Error("Phiếu thu không ở trạng thái chờ phê duyệt.");
 
       if (receipt.branch_id !== approver.branch_id)
-        throw new Error("Cross-branch denied");
+        throw new Error("Không được phê duyệt phiếu thu khác chi nhánh.");
 
+
+      const companyId = await getCompanyIdFromBranch(receipt.branch_id, t);
       // 2. Cập nhật trạng thái receipt: approved + posted
       await receipt.update(
         {
@@ -205,36 +242,26 @@ export const arReceiptService = {
         { transaction: t }
       );
 
-      // 3. Xác định tài khoản Nợ/Có theo method
-      const debitAccCode = receipt.method === "cash" ? "111" : "112";
-      const creditAccCode = "131";
+      // Kiểm tra kỳ kế toán có khóa sổ hay chưa
+      await checkPeriodLocked(receipt.receipt_date || new Date(), t);
 
-      const [debitAcc, creditAcc] = await Promise.all([
-        GlAccount.findOne({ where: { code: debitAccCode }, transaction: t }),
-        GlAccount.findOne({ where: { code: creditAccCode }, transaction: t }),
+      // 3. Xác định tài khoản Nợ/Có theo method qua mapping động
+      const mappingKey = receipt.method === "cash" ? "CASH_ACCOUNT" : "BANK_ACCOUNT";
+      const fallbackCode = receipt.method === "cash" ? "111" : "112";
+
+      const [debitAccountId, creditAccountId] = await Promise.all([
+        getMappedAccount(receipt.branch_id, mappingKey, fallbackCode, t),
+        getMappedAccount(receipt.branch_id, "AR_RECEIVABLE", "131", t),
       ]);
-
-      if (!debitAcc || !creditAcc) {
-        throw new Error(`Missing GL Accounts ${debitAccCode} / ${creditAccCode}`);
-      }
-
-      const debitAccountId = debitAcc.id;
-      const creditAccountId = creditAcc.id;
 
       // 4. Lấy journal: CASH hoặc BANK
       const journalCode = receipt.method === "cash" ? "CASH" : "BANK";
+      const journal = await GlJournal.findOne({ where: { code: journalCode }, transaction: t });
+      if (!journal) throw new Error(`${journalCode} journal not found`);
 
-      const journal = await GlJournal.findOne({
-        where: { code: journalCode },
-        transaction: t,
-      });
-
-      if (!journal) {
-        throw new Error(`${journalCode} journal not found`);
-      }
-
-      // 👇 FIX 1: đảm bảo là Date, không undefined
       const entryDate: Date = receipt.receipt_date || new Date();
+      // Kiểm tra kỳ kế toán đúng company
+      await assertPostingPeriodOpen(entryDate, companyId, t);
 
       // 5. Tạo GL Entry (chứng từ thu tiền)
       const entry = await GlEntry.create(
@@ -246,7 +273,8 @@ export const arReceiptService = {
           reference_id: receipt.id,
           memo: `AR Receipt ${receipt.receipt_no}`,
           status: "posted",
-        },
+          branch_id: receipt.branch_id ?? null,
+        } as any,
         { transaction: t }
       );
 
@@ -312,9 +340,18 @@ export const arReceiptService = {
 
   /** REJECT — Chief Accountant */
   async reject(id: number, approver: any, reason: string, app?: any) {
+    requireChiefAccountant(approver);
+    if (!reason || !String(reason).trim()) {
+      throw new Error("Vui lòng nhập lý do từ chối phiếu thu.");
+    }
+
     const receipt = await ArReceipt.findByPk(id);
 
-    if (!receipt) throw new Error("Not found");
+    if (!receipt) throw new Error("Không tìm thấy phiếu thu.");
+    if (receipt.branch_id !== approver.branch_id)
+      throw new Error("Không được từ chối phiếu thu khác chi nhánh.");
+    if (receipt.approval_status !== "waiting_approval")
+      throw new Error("Chỉ được từ chối phiếu thu đang chờ phê duyệt.");
 
     await receipt.update({
       approval_status: "rejected",
@@ -342,6 +379,7 @@ export const arReceiptService = {
   },
 
   async allocate(receiptId: number, allocations: any[], user: any) {
+    requireAccountingRole(user);
     const t = await sequelize.transaction();
 
     try {
@@ -349,13 +387,20 @@ export const arReceiptService = {
        * 1. Load receipt & validate
        * =============================== */
       const receipt = await ArReceipt.findByPk(receiptId, { transaction: t });
-      if (!receipt) throw new Error("Receipt not found");
+      if (!receipt) throw new Error("Không tìm thấy phiếu thu.");
+      if (receipt.branch_id !== user.branch_id) {
+        throw new Error("Không được phân bổ phiếu thu khác chi nhánh.");
+      }
 
       if (receipt.status !== "posted") {
-        throw new Error("Receipt must be posted before allocation");
+        throw new Error("Phiếu thu phải được ghi sổ trước khi phân bổ công nợ.");
       }
 
       const receiptAmount = Number(receipt.amount || 0);
+      const receiptRate = Number(receipt.exchange_rate || 1);
+      // Số tiền phiếu thu quy về VND để so sánh thống nhất
+      const receiptAmountVnd = receiptAmount * receiptRate;
+
       if (receiptAmount <= 0) {
         throw new Error("Receipt amount must be greater than 0");
       }
@@ -365,6 +410,7 @@ export const arReceiptService = {
         0
       );
 
+      // applied_amount frontend gửi lên phải cùng đơn vị với receipt.amount
       if (totalAllocInput > receiptAmount) {
         throw new Error(
           `Tổng tiền phân bổ (${totalAllocInput}) không được vượt quá số tiền thực thu (${receiptAmount})`
@@ -382,7 +428,7 @@ export const arReceiptService = {
         const invoice = await ArInvoice.findByPk(a.invoice_id, {
           transaction: t,
         });
-        if (!invoice) throw new Error("Invoice not found");
+        if (!invoice) throw new Error("Không tìm thấy hóa đơn phải thu.");
 
         if (invoice.branch_id !== receipt.branch_id) {
           throw new Error(`Invoice ${invoice.invoice_no} belongs to a different branch.`);
@@ -400,14 +446,26 @@ export const arReceiptService = {
             transaction: t,
           })) || 0;
 
-        const invoiceTotal = Number(invoice.total_after_tax || 0);
-        const unpaid = invoiceTotal - prevAllocated;
+        // Quy đổi về cùng currency với receipt để so sánh
+        const invoiceRate = Number(invoice.exchange_rate || 1);
+        const invoiceTotalVnd = Number(invoice.total_after_tax || 0) * invoiceRate;
+        const prevAllocatedVnd = prevAllocated * invoiceRate;
+        const appliedVnd = Number(a.applied_amount) * receiptRate;
+        const unpaidVnd = invoiceTotalVnd - prevAllocatedVnd;
 
-        if (a.applied_amount > unpaid) {
+        if (appliedVnd > unpaidVnd + 0.01) {
           throw new Error(
             `Allocation exceeds unpaid amount for invoice ${invoice.invoice_no}`
           );
         }
+
+        // Tính paid_amount và status theo đơn vị gốc của invoice
+        const invoiceTotal = Number(invoice.total_after_tax || 0);
+        // Giữ applied_amount theo currency receipt, chuyển đổi để cập nhật invoice paid_amount
+        const appliedInInvoiceCurrency = receiptRate > 0
+          ? (Number(a.applied_amount) * receiptRate) / invoiceRate
+          : Number(a.applied_amount);
+        const unpaid = invoiceTotal - prevAllocated;
 
         // Create allocation
         await ArReceiptAllocation.create(
@@ -421,7 +479,7 @@ export const arReceiptService = {
 
         totalAllocated += Number(a.applied_amount);
 
-        const newAllocated = prevAllocated + Number(a.applied_amount);
+        const newAllocated = prevAllocated + appliedInInvoiceCurrency;
         const remaining = invoiceTotal - newAllocated;
         let newInvoiceStatus: ArInvoice["status"] = "posted";
 
@@ -436,28 +494,28 @@ export const arReceiptService = {
           : new Date().toISOString().substring(0, 10);
 
         await invoice.update(
-          { 
+          {
             status: newInvoiceStatus,
-            paid_amount: newAllocated,
-            last_payment_date: paymentDateStr
+            paid_amount: newAllocated,          // đơn vị currency của invoice
+            last_payment_date: paymentDateStr,
           },
           { transaction: t }
         );
       }
       let allocationStatus: ArReceipt["allocation_status"] = "unallocated";
 
-      const previousAllocOfReceipt =
+      // Sum tất cả allocation của receipt này (bao gồm cả rows vừa tạo trong tx này)
+      // InnoDB reads own writes within same transaction, nên sum này đã bao gồm các dòng mới
+      const totalAllocatedForReceipt =
         (await ArReceiptAllocation.sum("applied_amount", {
           where: { receipt_id: receiptId },
           transaction: t,
         })) || 0;
-        
-      const currentGrandTotal = previousAllocOfReceipt + totalAllocated;
 
-      if (currentGrandTotal >= receiptAmount) {
+      if (totalAllocatedForReceipt >= receiptAmount) {
         allocationStatus = "fully_allocated";
-      } else if (currentGrandTotal > 0) {
-        allocationStatus = "partially_allocated" as any; // Ep kiểu vì model cần thêm enum
+      } else if (totalAllocatedForReceipt > 0) {
+        allocationStatus = "partially_allocated" as any;
       }
       
       await receipt.update(
@@ -478,21 +536,25 @@ export const arReceiptService = {
   },
   // UPDATE RECEIPT — only when draft
   async update(id: number, data: any, user: any) {
+    requireAccountingRole(user);
     const receipt = await ArReceipt.findByPk(id);
 
-    if (!receipt) throw new Error("Receipt not found");
+    if (!receipt) throw new Error("Không tìm thấy phiếu thu.");
 
     // Chặn cross-branch
     if (receipt.branch_id !== user.branch_id)
-      throw new Error("Cross-branch access denied");
+      throw new Error("Không được sửa phiếu thu khác chi nhánh.");
 
     // Chỉ accountant được sửa
-    if (user.role !== "ACCOUNT" && user.role !== "CHACC" && user.role !== "BRMN")
-      throw new Error("Permission denied");
+    if (user.role === "ACCOUNT" && receipt.created_by !== user.id)
+      throw new Error("Kế toán chỉ được sửa phiếu thu do mình tạo.");
 
     // Chỉ khi DRAFT
     if (receipt.approval_status !== "draft" || receipt.status !== "draft")
-      throw new Error("Only draft receipts can be updated");
+      throw new Error("Chỉ được sửa phiếu thu ở trạng thái nháp.");
+
+    const companyId = await getCompanyIdFromUserBranch(user);
+    await assertPostingPeriodOpen(data.receipt_date || receipt.receipt_date || new Date(), companyId);
 
     await receipt.update({
       receipt_date: data.receipt_date,

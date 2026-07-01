@@ -76,7 +76,15 @@ export class MathConsistencyChecker {
       const item = ocrData.items[i];
       if (!item) continue;
 
-      const rawComputedAmount = item.qty * item.unit_price;
+      const grossAmount = item.qty * item.unit_price;
+      let discountValue = 0;
+      if (item.discount_percent) {
+        discountValue = (grossAmount * item.discount_percent) / 100;
+      } else if (item.discount_amount) {
+        discountValue = item.discount_amount;
+      }
+
+      const rawComputedAmount = grossAmount - discountValue;
       const lineDiff = Math.abs(rawComputedAmount - item.amount);
 
       if (lineDiff > 0.01) {
@@ -86,7 +94,7 @@ export class MathConsistencyChecker {
           type: "line_amount_mismatch",
           severity: "medium",
           lineItemIndex: i,
-          description: `Dòng ${i} ("${item.name}"): qty × unit_price (${computedAmount}) không khớp với amount được khai báo (${declaredAmount}). Chênh lệch: ${this.round2(lineDiff)}.`,
+          description: `Dòng ${i} ("${item.name}"): số tiền tính toán (${computedAmount}) không khớp với amount được khai báo (${declaredAmount}). Chênh lệch: ${this.round2(lineDiff)}.`,
           metadata: {
             computed: computedAmount,
             declared: declaredAmount,

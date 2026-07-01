@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { EmployeeDTO, EmployeeFormPayload } from "../dto/employee.dto";
+import { useAppSelector } from "../../../store/hooks";
 
 import {
   fetchEmployees,
@@ -23,15 +24,18 @@ import {
   ChevronLeft,
   ChevronRight,
   Camera,
+  UserPlus,
+  Check,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ResignEmployeeModal from "../components/ResignEmployeeModal";
 
 export default function EmployeePage() {
   const nav = useNavigate();
-  // const auth = useSelector((state: RootState) => state.auth.user);
-  // const roleCode = auth?.role?.code;
-  // const isHR = roleCode === "HR_STAFF";
+  const authUser = useAppSelector((state) => state.auth.user);
+  const roleCode = (authUser as any)?.role?.code ?? (authUser as any)?.role ?? "UNKNOWN";
+  const isHRStaff = roleCode === "HR_STAFF";
+  const isAdminOrHRManager = ["ADMIN", "HRMANAGER"].includes(roleCode);
 
   const [employees, setEmployees] = useState<EmployeeDTO[]>([]);
   const [search, setSearch] = useState("");
@@ -58,6 +62,7 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
       setEmployees(data);
     } catch (err) {
       console.error("Failed to load employees", err);
+      toast.error("Lỗi khi tải danh sách nhân viên");
     } finally {
       setLoading(false);
     }
@@ -74,31 +79,34 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
   const handleSubmit = async (data: EmployeeFormPayload) => {
   try {
     if (editing?.id) {
-      // UPDATE: giữ nguyên
       await updateEmployee(editing.id, data);
       await load();
       setOpenForm(false);
       setEditing(null);
+      toast.success("Cập nhật thông tin nhân viên thành công!");
     } else {
-      // CREATE: nhận về employee mới
       const newEmp = await createEmployee(data);
-
-      // đóng form + reload list
       setOpenForm(false);
       setEditing(null);
       await load();
 
-      // 👉 chuyển sang UserForm, truyền kèm thông tin employee
-      nav("/hrm/users/create", {
-        state: {
-          employeeId: newEmp.id,
-          branchId: newEmp.branch_id,
-          fullName: newEmp.full_name,
-        },
-      });
+      if (isHRStaff) {
+        toast.success("Thêm nhân viên mới thành công! Hồ sơ đang chờ HR Manager phê duyệt (kích hoạt).");
+      } else if (isAdminOrHRManager) {
+        toast.success("Thêm nhân viên thành công! Đang chuyển hướng để tạo tài khoản.");
+        nav("/hrm/users/create", {
+          state: {
+            employeeId: newEmp.id,
+            branchId: newEmp.branch_id,
+            fullName: newEmp.full_name,
+          },
+        });
+      } else {
+        toast.success("Thêm nhân viên mới thành công!");
+      }
     }
   } catch (err: any) {
-    toast.error(err?.response?.data?.message || "An error occurred");
+    toast.error(err?.response?.data?.message || "Đã xảy ra lỗi");
   }
 };
 
@@ -106,13 +114,13 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
 
   const handleDelete = async (emp: EmployeeDTO) => {
     if (!emp.id) return;
-    if (!window.confirm(`Delete employee ${emp.full_name}?`)) return;
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa nhân viên ${emp.full_name}?`)) return;
 
     try {
       await deleteEmployee(emp.id);
       await load();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Unable to delete");
+      toast.error(err?.response?.data?.message || "Không thể xóa nhân viên này");
     }
   };
 
@@ -184,16 +192,29 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
     setOpenResign(false);
     setResignEmp(null);
   } catch (err: any) {
-    alert(err?.response?.data?.message || "Unable to update resignation status");
+    alert(err?.response?.data?.message || "Không thể cập nhật trạng thái thôi việc");
   }
 };
+
+  const handleApprove = async (emp: EmployeeDTO) => {
+    if (!emp.id) return;
+    if (!window.confirm(`Bạn có chắc chắn muốn duyệt hồ sơ nhân viên ${emp.full_name}?`)) return;
+
+    try {
+      await updateEmployee(emp.id, { status: "active" });
+      toast.success(`Phê duyệt nhân viên ${emp.full_name} thành công!`);
+      await load();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Không thể phê duyệt nhân viên này");
+    }
+  };
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
       {/* Header */}
       <div className="mb-8 flex justify-between items-center">
         <h1 className="text-3xl font-bold flex items-center gap-3">
           <Users className="w-8 h-8 text-blue-600" />
-          Employee Profiles
+          Hồ sơ nhân viên
         </h1>
 
         <button
@@ -203,7 +224,7 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
             setOpenForm(true);
           }}
         >
-          <Plus className="w-5 h-5" /> Add Employee
+          <Plus className="w-5 h-5" /> Thêm nhân viên
         </button>
       </div>
 
@@ -211,7 +232,7 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
       <div className="mb-6 max-w-md relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
-          placeholder="Search by name, employee code..."
+          placeholder="Tìm theo tên, mã nhân viên..."
           className="w-full border pl-10 pr-4 py-2 rounded-lg"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -225,33 +246,33 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b">
-                <th className="px-4 py-3 text-left">Emp Code</th>
-                <th className="px-4 py-3 text-left">Full Name</th>
-                <th className="px-4 py-3">Gender</th>
-                <th className="px-4 py-3">Department</th>
-                <th className="px-4 py-3">Position</th>
-                <th className="px-4 py-3">Branch</th>
-                <th className="px-4 py-3">Contract Type</th>
-                <th className="px-4 py-3">Bank Account</th>
-                <th className="px-4 py-3">Bank Name</th>
-                <th className="px-4 py-3">Salary</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-center">AI Face</th>
-                <th className="px-4 py-3 text-center">Actions</th>
+                <th className="px-4 py-3 text-left">Mã NV</th>
+                <th className="px-4 py-3 text-left">Họ và tên</th>
+                <th className="px-4 py-3">Giới tính</th>
+                <th className="px-4 py-3">Phòng ban</th>
+                <th className="px-4 py-3">Chức vụ</th>
+                <th className="px-4 py-3">Chi nhánh</th>
+                <th className="px-4 py-3">Loại HĐ</th>
+                <th className="px-4 py-3">Số TK</th>
+                <th className="px-4 py-3">Ngân hàng</th>
+                <th className="px-4 py-3">Mức lương</th>
+                <th className="px-4 py-3">Trạng thái</th>
+                <th className="px-4 py-3 text-center">Face AI</th>
+                <th className="px-4 py-3 text-center">Thao tác</th>
               </tr>
             </thead>
 
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={12} className="text-center py-10 text-gray-500">
-                    Loading...
+                  <td colSpan={13} className="text-center py-10 text-gray-500">
+                    Đang tải...
                   </td>
                 </tr>
               ) : totalItems === 0 ? (
                 <tr>
-                  <td colSpan={12} className="text-center py-10 text-gray-500">
-                    No data available
+                  <td colSpan={13} className="text-center py-10 text-gray-500">
+                    Không có dữ liệu nhân viên
                   </td>
                 </tr>
               ) : (
@@ -259,31 +280,31 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
                   <tr key={e.id} className="border-b hover:bg-gray-50">
                     <td className="px-4 py-3">{e.emp_code}</td>
                     <td className="px-4 py-3">{e.full_name}</td>
-                    <td className="px-4 py-3 text-center">{e.gender}</td>
+                    <td className="px-4 py-3 text-center">{e.gender === "male" ? "Nam" : e.gender === "female" ? "Nữ" : e.gender}</td>
                     <td className="px-4 py-3">{(e as any).department?.name || "-"}</td>
                     <td className="px-4 py-3">{(e as any).position?.name || "-"}</td>
                     <td className="px-4 py-3">{(e as any).branch?.name || "-"}</td>
-                    <td className="px-4 py-3">{e.contract_type}</td>
+                    <td className="px-4 py-3">{e.contract_type === "official" ? "Chính thức" : e.contract_type === "trial" ? "Thử việc" : e.contract_type === "seasonal" ? "Thời vụ" : e.contract_type}</td>
                     <td className="px-4 py-3">{e.bank_account || "-"}</td>
                     <td className="px-4 py-3">{e.bank_name || "-"}</td>
                     <td className="px-4 py-3">{e.base_salary.toLocaleString()} ₫</td>
                     <td className="px-4 py-3">
                       {
   e.status === "active"
-    ? "Active"
+    ? "Đang làm việc"
     : e.status === "inactive"
-    ? "Suspended"
-    : "Resigned"
+    ? "Chờ duyệt"
+    : "Đã thôi việc"
 }
                     </td>
                     <td className="px-4 py-3 text-center">
                       {e.faces && e.faces.length > 0 ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">
-                          Registered
+                          Đã đăng ký
                         </span>
                       ) : (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-rose-100 text-rose-800">
-                          Not Registered
+                          Chưa đăng ký
                         </span>
                       )}
                     </td>
@@ -295,15 +316,38 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
                           setEditing(e);
                           setOpenForm(true);
                         }}
-                        title="Edit Profile"
+                        title="Sửa hồ sơ"
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
 
+                      {isAdminOrHRManager && e.status === "inactive" && (
+                        <button
+                          className="p-2 text-emerald-600 hover:bg-emerald-50 rounded"
+                          onClick={() => handleApprove(e)}
+                          title="Duyệt hồ sơ nhân viên"
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+                      )}
+
+                      {isAdminOrHRManager && e.status === "active" && !(e as any).user && (
+                        <button
+                          className="p-2 text-indigo-600 hover:bg-indigo-50 rounded"
+                          onClick={() => {
+                            setUserForEmployee(e);
+                            setOpenUserForm(true);
+                          }}
+                          title="Tạo tài khoản đăng nhập"
+                        >
+                          <UserPlus className="w-4 h-4" />
+                        </button>
+                      )}
+
                       <button
                         className="p-2 text-red-600 hover:bg-red-50 rounded"
                         onClick={() => handleDelete(e)}
-                        title="Delete Employee"
+                        title="Xóa nhân viên"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -315,7 +359,7 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
                           setOpenRegisterFace(true);
                         }}
                         disabled={e.status === "resigned"}
-                        title={e.faces && e.faces.length > 0 ? "Update AI Face Registration" : "Register AI Face"}
+                        title={e.faces && e.faces.length > 0 ? "Cập nhật khuôn mặt AI" : "Đăng ký khuôn mặt AI"}
                       >
                         <Camera className="w-4 h-4" />
                       </button>
@@ -326,9 +370,9 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
                           setOpenResign(true);
                         }}
                         disabled={e.status === "resigned"}
-                        title="Resign"
+                        title="Cho thôi việc"
                       >
-                        Resign
+                        Thôi việc
                       </button>
                     </td>
                   </tr>
@@ -342,12 +386,12 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
         {totalItems > 0 && (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t bg-gradient-to-r from-gray-50 to-white">
             <div className="text-sm text-gray-600">
-              Showing{" "}
+              Hiển thị{" "}
               <span className="font-semibold text-gray-900">
                 {startIndex + 1} - {Math.min(startIndex + pageSize, totalItems)}
               </span>{" "}
-              of{" "}
-              <span className="font-semibold text-gray-900">{totalItems}</span> employees
+              trên{" "}
+              <span className="font-semibold text-gray-900">{totalItems}</span> nhân viên
             </div>
 
             <div className="flex items-center gap-2">
@@ -358,7 +402,7 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
                 className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white hover:shadow-sm transition-all duration-200 bg-gray-50"
               >
                 <ChevronLeft className="w-4 h-4" />
-                <span className="hidden sm:inline">Previous</span>
+                <span className="hidden sm:inline">Trước</span>
               </button>
 
               {/* Page Numbers */}
@@ -395,7 +439,7 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
                 disabled={currentPage === totalPages}
                 className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white hover:shadow-sm transition-all duration-200 bg-gray-50"
               >
-                <span className="hidden sm:inline">Next</span>
+                <span className="hidden sm:inline">Sau</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -412,13 +456,15 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
         }}
         initialData={editing}
         onSubmit={handleSubmit}
+        isHRStaff={isHRStaff}
       />
       <UserFormModal
   open={openUserForm}
   employee={userForEmployee}
-  onClose={() => {
+  onClose={async () => {
     setOpenUserForm(false);
     setUserForEmployee(null);
+    await load();
   }}
 />
   <ResignEmployeeModal

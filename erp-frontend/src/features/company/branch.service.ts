@@ -1,5 +1,5 @@
 // src/features/company/branch.service.ts
-import { BranchAPI, Branch } from "./api/branch.api";
+import { BranchAPI, Branch, BranchPayload, BranchUpdatePayload } from "./api/branch.api";
 
 /** Lấy danh sách chi nhánh */
 export async function fetchBranches() {
@@ -14,13 +14,13 @@ export async function fetchBranch(id: number) {
 }
 
 /** Tạo chi nhánh */
-export async function createBranch(payload: Branch) {
+export async function createBranch(payload: BranchPayload) {
   const res = await BranchAPI.create(payload);
   return res.data;
 }
 
 /** Cập nhật chi nhánh */
-export async function updateBranch(id: number, payload: Branch) {
+export async function updateBranch(id: number, payload: BranchUpdatePayload) {
   const res = await BranchAPI.update(id, payload);
   return res.data;
 }
@@ -42,4 +42,4 @@ export async function activateBranch(id: number) {
 }
 
 
-export type { Branch } from "./api/branch.api";
+export type { Branch, BranchPayload, BranchUpdatePayload } from "./api/branch.api";

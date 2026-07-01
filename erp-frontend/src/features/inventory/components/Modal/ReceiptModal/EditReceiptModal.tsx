@@ -190,7 +190,7 @@ export default function EditReceiptModal({
         setLineItems(fetchedProducts);
       } catch (err) {
         console.error(err);
-        toast.error("Failed to load product details");
+        toast.error("Tải chi tiết sản phẩm thất bại");
       }
     };
 
@@ -207,28 +207,28 @@ export default function EditReceiptModal({
 
   const handleSubmit = () => {
     if (!selectedPOId) {
-      toast.error("Please select a Purchase Order");
+      toast.error("Vui lòng chọn đơn mua hàng");
       return;
     }
 
     if (!form.warehouse) {
-      toast.error("Please select a Warehouse");
+      toast.error("Vui lòng chọn Kho hàng");
       return;
     }
 
     if (!form.move_date) {
-      toast.error("Please select a Move Date");
+      toast.error("Vui lòng chọn Ngày nhập kho");
       return;
     }
 
     if (lineItems.length === 0) {
-      toast.error("Please add at least one product");
+      toast.error("Vui lòng thêm ít nhất một sản phẩm");
       return;
     }
 
     for (const p of lineItems) {
       if (!p.quantity || p.quantity <= 0) {
-        toast.error(`Invalid quantity for product: ${p.name}`);
+        toast.error(`Số lượng không hợp lệ cho sản phẩm: ${p.name}`);
         return;
       }
     }
@@ -251,9 +251,9 @@ export default function EditReceiptModal({
             <Package className="w-5 h-5" />
           </div>
           <div>
-            <DialogTitle className="text-lg font-bold text-slate-900">Edit Stock Receipt</DialogTitle>
+            <DialogTitle className="text-lg font-bold text-slate-900">Sửa phiếu nhập kho</DialogTitle>
             <DialogDescription className="text-xs text-slate-400 mt-0.5">
-              Modify raw materials or products received from incoming purchase orders
+              Chỉnh sửa nguyên vật liệu hoặc sản phẩm nhận được từ các đơn mua hàng
             </DialogDescription>
           </div>
         </DialogHeader>
@@ -263,7 +263,7 @@ export default function EditReceiptModal({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* Warehouse Select */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Warehouse *</label>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Kho hàng *</label>
               <Select
                 value={form.warehouse}
                 onValueChange={(v) =>
@@ -272,7 +272,7 @@ export default function EditReceiptModal({
                 defaultLabel={selectedWarehouseName}
               >
                 <SelectTrigger className="w-full h-10 bg-white border-slate-200 focus:ring-orange-500 focus:border-orange-500 rounded-lg">
-                  <SelectValue placeholder="Select warehouse" />
+                  <SelectValue placeholder="Chọn kho hàng" />
                 </SelectTrigger>
                 <SelectContent>
                   {warehouses.map((w) => (
@@ -287,7 +287,7 @@ export default function EditReceiptModal({
             {/* Move Date */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-slate-400" /> Move Date *
+                <Calendar className="w-3.5 h-3.5 text-slate-400" /> Ngày nhập kho *
               </label>
               <Input
                 type="date"
@@ -301,7 +301,7 @@ export default function EditReceiptModal({
             {/* Purchase Order Select */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                <ShoppingCart className="w-3.5 h-3.5 text-slate-400" /> Purchase Order *
+                <ShoppingCart className="w-3.5 h-3.5 text-slate-400" /> Đơn mua hàng (PO) *
               </label>
               <Select
                 value={selectedPOId}
@@ -309,7 +309,7 @@ export default function EditReceiptModal({
                 defaultLabel={selectedPurchaseOrder}
               >
                 <SelectTrigger className="w-full h-10 bg-white border-slate-200 focus:ring-orange-500 focus:border-orange-500 rounded-lg">
-                  <SelectValue placeholder="Select PO" />
+                  <SelectValue placeholder="Chọn PO" />
                 </SelectTrigger>
                 <SelectContent>
                   {purchaseOrder.items?.map((po: PurchaseOrder) => (
@@ -324,10 +324,10 @@ export default function EditReceiptModal({
             {/* Reference Number */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                <Clipboard className="w-3.5 h-3.5 text-slate-400" /> Reference No
+                <Clipboard className="w-3.5 h-3.5 text-slate-400" /> Mã tham chiếu
               </label>
               <Input 
-                value={form.referenceNo || "Auto-assigned"} 
+                value={form.referenceNo || "Tự động gán"} 
                 disabled 
                 className="h-10 border-slate-200 bg-slate-50 text-slate-500 font-mono font-semibold"
               />
@@ -335,7 +335,7 @@ export default function EditReceiptModal({
 
             {/* Move Number */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Move Number</label>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Số phiếu</label>
               <Input 
                 value={form.move_no} 
                 disabled 
@@ -348,17 +348,17 @@ export default function EditReceiptModal({
           <Card className="border-slate-100 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">
             <CardHeader className="px-5 py-3.5 bg-slate-50/15 border-b border-slate-100 flex flex-row items-center gap-2">
               <ListCollapse className="w-4.5 h-4.5 text-slate-700" />
-              <CardTitle className="text-sm font-semibold text-slate-800">Dispatch Item Lines</CardTitle>
+              <CardTitle className="text-sm font-semibold text-slate-800">Danh sách sản phẩm nhập kho</CardTitle>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-slate-50/80 text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-slate-100">
                   <tr>
-                    <th className="py-3.5 px-5 text-left">Product</th>
-                    <th className="py-3.5 px-5 text-left">SKU</th>
-                    <th className="py-3.5 px-5 text-left w-28">UOM</th>
-                    <th className="py-3.5 px-5 text-right w-24">Qty</th>
-                    <th className="py-3.5 px-5 text-left w-40">Location (To)</th>
+                    <th className="py-3.5 px-5 text-left">Sản phẩm</th>
+                    <th className="py-3.5 px-5 text-left">Mã SKU</th>
+                    <th className="py-3.5 px-5 text-left w-28">ĐVT</th>
+                    <th className="py-3.5 px-5 text-right w-24">SL</th>
+                    <th className="py-3.5 px-5 text-left w-40">Vị trí (Đến)</th>
                     <th className="py-3.5 px-5 text-center w-14"></th>
                   </tr>
                 </thead>
@@ -375,7 +375,7 @@ export default function EditReceiptModal({
                           )}
                           <span className="font-semibold text-slate-800">{p.name}</span>
                         </td>
-                        <td className="py-3 px-5 font-mono text-xs font-bold text-slate-450 uppercase">{p.sku}</td>
+                        <td className="py-3 px-5 font-mono text-xs font-bold text-slate-455 uppercase">{p.sku}</td>
                         <td className="py-3 px-5">
                           <UomSelect
                             value={p.uom_id}
@@ -416,7 +416,7 @@ export default function EditReceiptModal({
                               )
                             }
                             types={["internal", "input"]}
-                            placeholder="— Select —"
+                            placeholder="— Chọn —"
                           />
                         </td>
                         <td className="py-3 px-5 text-center">
@@ -427,7 +427,7 @@ export default function EditReceiptModal({
                                 prev.filter((x) => x.product_id !== p.product_id),
                               )
                             }
-                            title="Delete Line"
+                            title="Xóa dòng"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -437,7 +437,7 @@ export default function EditReceiptModal({
                   ) : (
                     <tr>
                       <td colSpan={6} className="py-12 text-center text-slate-400 italic">
-                        No purchase order selected or loaded product lines.
+                        Chưa chọn đơn mua hàng hoặc chưa tải danh sách sản phẩm.
                       </td>
                     </tr>
                   )}
@@ -448,11 +448,11 @@ export default function EditReceiptModal({
 
           {/* Notes */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Internal Notes</label>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Ghi chú nội bộ</label>
             <Textarea
               value={form.notes}
               onChange={(v) => setForm((prev) => ({ ...prev, notes: v }))}
-              placeholder="Provide notes or special receipt instructions..."
+              placeholder="Cung cấp ghi chú hoặc hướng dẫn nhận hàng đặc biệt..."
               className="min-h-[80px] border-slate-200 focus:ring-orange-400 focus:border-orange-400 rounded-lg text-sm placeholder:text-slate-400"
             />
           </div>
@@ -460,13 +460,13 @@ export default function EditReceiptModal({
           {/* FOOTER */}
           <DialogFooter className="pt-4 border-t border-slate-100 flex-row justify-end gap-3">
             <Button variant="outline" onClick={onClose}>
-              Cancel
+              Hủy
             </Button>
             <Button
               className="bg-orange-500 hover:bg-orange-600 text-white"
               onClick={handleSubmit}
             >
-              Update Receipt
+              Cập nhật phiếu nhập
             </Button>
           </DialogFooter>
         </div>

@@ -11,10 +11,16 @@ export interface PurchaseOrder {
   branch_id?: number;
   po_no: string;
   supplier_id?: number;
+  payment_term_id?: number | null;
+  currency_id?: number | null;
+  exchange_rate?: number;
   order_date?: string;
   total_before_tax?: number;
   total_tax?: number;
   total_after_tax?: number;
+  discount_percent?: number | null;
+  discount_amount?: number | null;
+  discount_type?: "percentage" | "fixed" | null;
   status: PurchaseOrderStatus;
   description?: string;
   approved_by?: string;
@@ -44,6 +50,11 @@ export interface PurchaseOrder {
     email: string;
     phone: string;
   };
+  paymentTerm?: {
+    id: number;
+    name: string;
+    days: number;
+  };
   lines?: PurchaseOrderLine[];
   // Partial invoicing fields — populated by getAvailablePurchaseOrders
   invoiced_amount?: number;
@@ -58,7 +69,9 @@ export interface PurchaseOrderLine {
   uom_id?: number | null;
   qty_in_stock_uom?: number | null;
   unit_price: number;
-  discount?: number | null;
+  discount_percent?: number | null;
+  discount_amount?: number | null;
+  discount_type?: "percentage" | "fixed" | null;
   tax_rate_id?: number;
   line_total: number;
   line_tax: number;
@@ -111,9 +124,15 @@ export interface PurchaseOrderCreate {
   po_no: string;
   supplier_id: number;
   order_date: string;
+  payment_term_id?: number | null;
+  currency_id?: number | null;
+  exchange_rate?: number;
   total_before_tax: number;
   total_tax: number;
   total_after_tax: number;
+  discount_percent?: number | null;
+  discount_amount?: number | null;
+  discount_type?: "percentage" | "fixed" | null;
   status?: PurchaseOrderStatus;
   description?: string;
   approved_by?: string | null;
@@ -128,9 +147,15 @@ export interface PurchaseOrderUpdate {
   po_no: string;
   supplier_id: number;
   order_date: string; // YYYY-MM-DD
+  payment_term_id?: number | null;
+  currency_id?: number | null;
+  exchange_rate?: number;
   total_before_tax: number;
   total_tax: number;
   total_after_tax: number;
+  discount_percent?: number | null;
+  discount_amount?: number | null;
+  discount_type?: "percentage" | "fixed" | null;
   status?: PurchaseOrderStatus;
   description?: string;
   approved_by?: string | null;

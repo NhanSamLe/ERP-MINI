@@ -37,7 +37,7 @@ export const searchService = {
     // Lọc theo po_no (partial match, case-insensitive)
     if (filters.po_no) {
       where.po_no = {
-        [Op.iLike]: `%${filters.po_no}%`,
+        [Op.like]: `%${filters.po_no}%`,
       };
     }
 

@@ -119,6 +119,11 @@ export const apInvoiceApi = {
     return res.data.data;
   },
 
+  overrideMismatch: async (id: number, reason: string): Promise<ApInvoice> => {
+    const res = await axiosClient.post(`ap/invoices/${id}/override-mismatch`, { reason });
+    return res.data.data;
+  },
+
   getAuditLogs: async (id: number): Promise<any[]> => {
     const res = await axiosClient.get(`ap/invoices/${id}/audit-logs`);
     return res.data.data;

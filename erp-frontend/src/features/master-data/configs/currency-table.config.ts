@@ -5,26 +5,26 @@ export const currencyTableConfig: TableConfig<Currency> = {
   columns: [
     {
       key: 'name',
-      label: 'Currency Name',
+      label: 'Tên tiền tệ',
       sortable: true,
     },
     {
       key: 'code',
-      label: 'Code',
+      label: 'Mã tiền tệ',
       sortable: true,
       width: '150px',
     },
     {
       key: 'symbol',
-      label: 'Symbol',
+      label: 'Ký hiệu',
       width: '100px',
     },
   ],
   pagination: true,
   sortable: true,
   searchable: true,
-  searchPlaceholder: 'Search by name or code...',
-  emptyMessage: 'No currencies found. Add your first currency.',
-  loadingMessage: 'Loading currencies...',
+  searchPlaceholder: 'Tìm theo tên hoặc mã tiền tệ...',
+  emptyMessage: 'Chưa có tiền tệ nào.',
+  loadingMessage: 'Đang tải danh sách tiền tệ...',
   rowKey: 'id',
 };

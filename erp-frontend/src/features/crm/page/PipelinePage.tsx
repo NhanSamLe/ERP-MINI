@@ -214,7 +214,7 @@ export default function PipelinePage() {
               <GitBranch className="w-4 h-4 text-orange-500" />
             </span>
             <div>
-              <h1 className="text-base font-semibold text-gray-900">Pipelines</h1>
+              <h1 className="text-base font-semibold text-gray-900">Quy trình bán hàng</h1>
               <p className="text-xs text-gray-400 mt-0.5">Quản lý phễu bán hàng và các giai đoạn</p>
             </div>
             <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-600">
@@ -336,7 +336,7 @@ export default function PipelinePage() {
                 {/* Edit */}
                 <button
                   onClick={() => { setEditPipeline(pipeline); setShowPipelineModal(true); }}
-                  title="Sửa Pipeline"
+                  title="Sửa quy trình"
                   className="p-1.5 rounded-md text-gray-400 hover:text-orange-600 hover:bg-orange-50 transition-colors"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
@@ -390,7 +390,11 @@ export default function PipelinePage() {
                 }
                 config={pipelineFormConfig}
                 mode={editPipeline ? "edit" : "create"}
-                onSubmit={editPipeline ? handleUpdatePipeline : handleCreatePipeline}
+                onSubmit={(values) =>
+                  editPipeline
+                    ? handleUpdatePipeline(values as UpdatePipelineDto)
+                    : handleCreatePipeline(values as CreatePipelineDto)
+                }
                 onCancel={() => { setShowPipelineModal(false); setEditPipeline(null); }}
               />
             </div>

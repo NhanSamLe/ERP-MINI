@@ -6,6 +6,7 @@ import GlJournalPage from "../features/finance/page/GlJournalPage";
 import GlEntryListPage from "../features/finance/page/GlEntryListPage";
 import GlEntryDetailPage from "../features/finance/page/GlEntryDetailPage";
 import FinanceReportsPage from "../features/finance/page/FinanceReportsPage";
+import AccountMappingPage from "../features/finance/page/AccountMappingPage";
 
 const financeRoutes: RouteObject[] = [
   {
@@ -54,6 +55,14 @@ const financeRoutes: RouteObject[] = [
     element: (
       <ProtectedRoute allowedRoles={["ADMIN", "CHACC", "ACCOUNT", "CEO"]}>
         <FinanceReportsPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/finance/mappings",
+    element: (
+      <ProtectedRoute allowedRoles={["CHACC", "ACCOUNT", "ADMIN"]}>
+        <AccountMappingPage />
       </ProtectedRoute>
     ),
   },

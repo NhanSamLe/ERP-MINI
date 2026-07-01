@@ -28,3 +28,17 @@ export const updateUserInfoThunk = createAsyncThunk(
     }
   }
 );
+
+export const changePasswordThunk = createAsyncThunk(
+  "auth/changePassword",
+  async (
+    data: { oldPassword?: string; newPassword?: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      return await authService.changePassword(data);
+    } catch (err) {
+      return rejectWithValue(getErrorMessage(err));
+    }
+  }
+);

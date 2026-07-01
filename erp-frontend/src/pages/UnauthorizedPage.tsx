@@ -147,7 +147,7 @@ export default function UnauthorizedPage() {
 
             {/* Footer Info */}
             <div className="w-full max-w-4xl text-center mt-6 text-gray-600 text-sm">
-                <p>© 2025 ERP System. All rights reserved.</p>
+                <p>© 2025 ERP Mini. Đã đăng ký bản quyền.</p>
             </div>
         </div>
     );

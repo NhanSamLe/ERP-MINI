@@ -40,7 +40,7 @@ export const ArReceiptController = {
     try {
       const user = (req as any).user;
 
-      const receipt = await arReceiptService.create(req.body, user);
+      const receipt = await arReceiptService.create(req.body, user, req.app);
       return res.status(201).json({ message: "Created", data: receipt });
     } catch (err: any) {
       return res.status(400).json({ message: err.message });
@@ -61,30 +61,14 @@ export const ArReceiptController = {
   },
 
   /** SUBMIT */
-  /** SUBMIT */
   async submit(req: Request, res: Response) {
     try {
       const id = Number(req.params.id);
       const user = (req as any).user;
-
       const result = await arReceiptService.submit(id, user, req.app);
       return res.json({ message: "Submitted", data: result });
-
     } catch (err: any) {
-      console.error("🔥 SUBMIT RECEIPT ERROR:", {
-        message: err.message,
-        name: err.name,
-        errors: err.errors,
-        parent: err.parent,
-        stack: err.stack,
-        sql: err.sql,
-      });
-
-      return res.status(400).json({
-        message: err.message,
-        name: err.name,
-        errors: err.errors,
-      });
+      return res.status(400).json({ message: err.message });
     }
   },
 
@@ -93,25 +77,10 @@ export const ArReceiptController = {
     try {
       const id = Number(req.params.id);
       const user = (req as any).user;
-
       const result = await arReceiptService.approve(id, user, req.app);
       return res.json({ message: "Approved", data: result });
-
     } catch (err: any) {
-      console.error("🔥 APPROVE RECEIPT ERROR:", {
-        message: err.message,
-        name: err.name,
-        errors: err.errors,
-        parent: err.parent,
-        stack: err.stack,
-        sql: err.sql,
-      });
-
-      return res.status(403).json({
-        message: err.message,
-        name: err.name,
-        errors: err.errors,
-      });
+      return res.status(403).json({ message: err.message });
     }
   },
 
@@ -120,73 +89,44 @@ export const ArReceiptController = {
     try {
       const id = Number(req.params.id);
       const user = (req as any).user;
-
       const result = await arReceiptService.reject(id, user, req.body.reason, req.app);
       return res.json({ message: "Rejected", data: result });
-
     } catch (err: any) {
-      console.error("🔥 REJECT RECEIPT ERROR:", {
-        message: err.message,
-        name: err.name,
-        errors: err.errors,
-        parent: err.parent,
-        stack: err.stack,
-        sql: err.sql,
-      });
-
-      return res.status(403).json({
-        message: err.message,
-        name: err.name,
-        errors: err.errors,
-      });
+      return res.status(403).json({ message: err.message });
     }
   },
+
   /** ALLOCATE */
   async allocate(req: Request, res: Response) {
     try {
       const id = Number(req.params.id);
       const user = (req as any).user;
-
       const result = await arReceiptService.allocate(id, req.body.allocations, user);
       return res.json({ message: "Allocated", data: result });
     } catch (err: any) {
-      console.error("🔥 ALLOCATE RECEIPT ERROR:", {
-        message: err.message,
-        name: err.name,
-        errors: err.errors,
-        parent: err.parent,
-        stack: err.stack,
-        sql: err.sql,
-      });
-
-      return res.status(403).json({
-        message: err.message,
-        name: err.name,
-        errors: err.errors,
-      });
+      return res.status(400).json({ message: err.message });
     }
   },
   async getUnpaidInvoices(req: Request, res: Response) {
     try {
       const customerId = Number(req.params.customer_id);
+      const user = (req as any).user;
       if (!customerId)
         return res.status(400).json({ message: "customer_id is required" });
 
-      // 1) Lấy all invoices của khách này qua SaleOrder
+      // 1) Lấy all invoices của khách này qua SaleOrder, lọc theo branch
       const invoices = await ArInvoice.findAll({
         where: {
           status: { [Op.in]: ["posted", "partially_paid"] },
+          branch_id: user.branch_id,
         },
         include: [
-          // ✔ Lấy SaleOrder để filter theo customer
           {
             model: SaleOrder,
             as: "order",
             where: { customer_id: customerId },
             attributes: ["id", "order_no", "order_date"],
           },
-
-          // ✔ Lấy allocation từ bảng ar_receipt_allocations
           {
             model: ArReceiptAllocation,
             as: "allocations",
@@ -226,8 +166,12 @@ export const ArReceiptController = {
   },
   async getCustomersWithDebt(req: Request, res: Response) {
     try {
+      const user = (req as any).user;
       const invoicesRaw = await ArInvoice.findAll({
-        where: { status: { [Op.in]: ["posted", "partially_paid"] } },
+        where: {
+          status: { [Op.in]: ["posted", "partially_paid"] },
+          branch_id: user.branch_id,
+        },
         include: [
           {
             model: SaleOrder,

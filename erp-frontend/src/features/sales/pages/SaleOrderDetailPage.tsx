@@ -11,6 +11,8 @@ import {
 import { ActionConfirmModal, StatusBadge } from "@/components/common";
 import { StandardFormLayout, FormSection } from "@/components/layout";
 import { formatVND } from "@/utils/currency.helper";
+import { toast } from "react-toastify";
+import { getErrorMessage } from "@/utils/ErrorHelper";
 import {
   ShoppingCart, User, Building2, CreditCard,
   Phone, Mail, MapPin, Package, FileText, AlertTriangle,
@@ -61,6 +63,12 @@ export default function SaleOrderDetailPage() {
   const subtotal = order.total_before_tax ?? 0;
   const taxAmount = order.total_tax ?? 0;
   const grandTotal = order.total_after_tax ?? 0;
+  const discountPct = Number(order.discount_percent || 0);
+  const discountAmt = (order.discount_amount && Number(order.discount_amount) > 0)
+    ? Number(order.discount_amount)
+    : discountPct > 0
+      ? Math.round(Number(order.total_before_tax) * discountPct / (100 - discountPct))
+      : 0;
   const currencyCode = order.currency?.code || "VND";
   const currencySymbol = order.currency?.symbol || currencyCode;
   const exchangeRate = Number(order.exchange_rate || 1);
@@ -119,10 +127,14 @@ export default function SaleOrderDetailPage() {
                 <span className="text-gray-500">Thuế VAT</span>
                 <span className="font-medium text-gray-800">{formatOrderMoney(taxAmount)}</span>
               </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-500">Chiết khấu</span>
-                <span className="font-medium text-gray-800">—</span>
-              </div>
+              {discountAmt > 0 && (
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500">
+                    Chiết khấu{discountPct > 0 ? ` (${discountPct}%)` : ""}
+                  </span>
+                  <span className="font-medium text-emerald-600">-{formatOrderMoney(discountAmt)}</span>
+                </div>
+              )}
               <div className="pt-2.5 mt-1 border-t border-gray-200">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-semibold text-gray-900">Tổng cộng</span>
@@ -243,8 +255,14 @@ export default function SaleOrderDetailPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Field label="Số đơn hàng" value={order.order_no} />
           <Field label="Ngày đặt hàng" value={fmtDate(order.order_date)} />
-          <Field label="Trạng thái duyệt" value={order.approval_status?.replace(/_/g, " ")} />
-          <Field label="Trạng thái giao" value={order.status} />
+          <div>
+            <p className="text-xs text-gray-500 mb-1">Trạng thái duyệt</p>
+            <StatusBadge status={order.approval_status} variant="approval" />
+          </div>
+          <div>
+            <p className="text-xs text-gray-500 mb-1">Trạng thái giao</p>
+            <StatusBadge status={order.status} />
+          </div>
         </div>
         {/* Source Quotation link */}
         {(order as any).quotation_id && (
@@ -433,8 +451,13 @@ export default function SaleOrderDetailPage() {
         confirmText="Gửi duyệt"
         variant="primary"
         onConfirm={async () => {
-          await dispatch(submitSaleOrder(order.id)).unwrap();
-          setActiveModal(null);
+          try {
+            await dispatch(submitSaleOrder(order.id)).unwrap();
+            toast.success("Gửi duyệt đơn hàng thành công");
+            setActiveModal(null);
+          } catch (err) {
+            toast.error(getErrorMessage(err));
+          }
         }}
       />
 
@@ -446,8 +469,13 @@ export default function SaleOrderDetailPage() {
         confirmText="Duyệt"
         variant="success"
         onConfirm={async () => {
-          await dispatch(approveSaleOrder(order.id)).unwrap();
-          setActiveModal(null);
+          try {
+            await dispatch(approveSaleOrder(order.id)).unwrap();
+            toast.success("Duyệt đơn hàng thành công");
+            setActiveModal(null);
+          } catch (err) {
+            toast.error(getErrorMessage(err));
+          }
         }}
       />
 
@@ -462,8 +490,13 @@ export default function SaleOrderDetailPage() {
         reasonLabel="Lý do từ chối"
         reasonPlaceholder="VD: Giá không khớp thỏa thuận, không đủ hàng..."
         onConfirm={async (reason) => {
-          await dispatch(rejectSaleOrder({ id: order.id, reason: reason ?? "" })).unwrap();
-          setActiveModal(null);
+          try {
+            await dispatch(rejectSaleOrder({ id: order.id, reason: reason ?? "" })).unwrap();
+            toast.success("Đã từ chối đơn hàng");
+            setActiveModal(null);
+          } catch (err) {
+            toast.error(getErrorMessage(err));
+          }
         }}
       />
     </StandardFormLayout>

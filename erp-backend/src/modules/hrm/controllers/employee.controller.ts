@@ -49,7 +49,7 @@ export async function getEmployee(req: Request, res: Response) {
 export async function createEmployee(req: Request, res: Response) {
   try {
     const userJwt = (req as any).user;
-    const emp = await employeeService.createEmployee(req.body, userJwt);
+    const emp = await employeeService.createEmployee(req.body, userJwt, req.app);
     return res.status(201).json(emp);
   } catch (err: any) {
     return res.status(400).json({ message: err.message });
@@ -62,7 +62,7 @@ export async function updateEmployee(req: Request, res: Response) {
     const id = Number(req.params.id);
     if (Number.isNaN(id)) return res.status(400).json({ message: "Invalid id" });
 
-    const emp = await employeeService.updateEmployee(id, req.body, userJwt);
+    const emp = await employeeService.updateEmployee(id, req.body, userJwt, req.app);
     return res.json(emp);
   } catch (err: any) {
     const status = err.message === "Forbidden" ? 403 : 400;

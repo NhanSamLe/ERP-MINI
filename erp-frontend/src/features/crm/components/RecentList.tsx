@@ -25,7 +25,7 @@ export function RecentList<T>({
       <CardContent className="pt-4 space-y-3">
 
         {items.length === 0 && (
-          <p className="text-gray-500 text-center py-4 text-sm">Empty</p>
+          <p className="text-gray-500 text-center py-4 text-sm">Không có dữ liệu</p>
         )}
 
         {items.map((item, idx) => (

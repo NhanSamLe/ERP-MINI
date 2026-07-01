@@ -5,17 +5,26 @@ import { ActivityType, ActivityRelatedType , LeadStage, OpportunityStage} from "
 import { Lead } from "../../../models";
 import {canManage} from "./lead.service";
 import { addTimeline } from "./timeLine.service";
+import { getCompanyBranchIds } from "../../finance/services/companyScope.service";
 
 export async function getAllOpportunities(user: any) {
   const where: any = { is_deleted: false };
-  if (user.role === "ADMIN") {
-    // ADMIN: xem tất cả mọi branch
-  } else if (user.role === "SALESMANAGER") {
-    // SALESMANAGER: xem tất cả trong branch của mình
-    where.branch_id = user.branch_id;
+  const companyBranchIds = await getCompanyBranchIds(user);
+
+  if (user.role === "ADMIN" || user.role === "CEO") {
+    where.branch_id = { [Op.in]: companyBranchIds };
+  } else if (user.role === "SALESMANAGER" || user.role === "BRANCH_MANAGER") {
+    if (user.branch_id && companyBranchIds.includes(Number(user.branch_id))) {
+      where.branch_id = user.branch_id;
+    } else {
+      where.branch_id = { [Op.in]: companyBranchIds };
+    }
   } else {
-    // SALES: chỉ xem deal của mình
-    where.branch_id = user.branch_id;
+    if (user.branch_id && companyBranchIds.includes(Number(user.branch_id))) {
+      where.branch_id = user.branch_id;
+    } else {
+      where.branch_id = { [Op.in]: companyBranchIds };
+    }
     where.owner_id = user.id;
   }
 
@@ -47,7 +56,11 @@ export async function getOpportunityById(oppId: number, user?: any) {
 
   if (!opp) throw new Error("Opportunity không tồn tại");
   if (user) {
-    if (user.role !== "ADMIN" && opp.branch_id !== user.branch_id)
+    const companyBranchIds = await getCompanyBranchIds(user);
+    if (!companyBranchIds.includes(Number(opp.branch_id))) {
+      throw new Error("Access denied: cross-company");
+    }
+    if (user.role !== "ADMIN" && user.role !== "CEO" && opp.branch_id !== user.branch_id)
       throw new Error("Access denied: cross-branch");
     if (user.role === "SALES" && opp.owner_id !== user.id)
       throw new Error("Access denied: bạn không quản lý deal này");

@@ -60,6 +60,7 @@ import { ApInvoiceLine } from "../modules/purchase/models/apInvoiceLine.model";
 import { ApPayment } from "../modules/purchase/models/apPayment.model";
 import { ApPaymentAllocation } from "../modules/purchase/models/apPaymentAllocation.model";
 import { ApPaymentAuditLog } from "../modules/purchase/models/apPaymentAuditLog.model";
+import { MatchingTolerance } from "../modules/purchase/models/matchingTolerance.model";
 // Inventory
 import { Warehouse } from "../modules/inventory/models/warehouse.model";
 import { StockMove } from "../modules/inventory/models/stockMove.model";
@@ -69,6 +70,8 @@ import { StockLocation } from "../modules/inventory/models/stockLocation.model";
 import { StockLot } from "../modules/inventory/models/stockLot.model";
 import { PhysicalInventory } from "../modules/inventory/models/physicalInventory.model";
 import { PhysicalInventoryLine } from "../modules/inventory/models/physicalInventoryLine.model";
+import { StockInTransit } from "../modules/inventory/models/stockInTransit.model";
+import { StockReservation } from "../modules/inventory/models/stockReservation.model";
 // HRM
 import { Department } from "../modules/hrm/models/department.model";
 import { Position } from "../modules/hrm/models/position.model";
@@ -108,6 +111,11 @@ import { ApDebitNoteLine } from "../modules/purchase/models/apDebitNoteLine.mode
 import { VendorRefund } from "../modules/purchase/models/vendorRefund.model";
 import { PurchasePriceList } from "../modules/purchase/models/purchasePriceList.model";
 import { PurchasePriceListItem } from "../modules/purchase/models/purchasePriceListItem.model";
+// CostCenter and PayrollAccountMapping
+import { CostCenter } from "../modules/finance/models/costCenter.model";
+import { PayrollAccountMapping } from "../modules/hrm/models/payrollAccountMapping.model";
+import { AccountMapping } from "../modules/finance/models/accountMapping.model";
+import { PayrollConfig } from "../modules/hrm/models/payrollConfig.model";
 // Associations
 import { applyAssociations } from "./associations";
 
@@ -206,6 +214,7 @@ export {
   ApPayment,
   ApPaymentAllocation,
   ApPaymentAuditLog,
+  MatchingTolerance,
   Warehouse,
   StockMove,
   StockMoveLine,
@@ -214,6 +223,8 @@ export {
   StockLot,
   PhysicalInventory,
   PhysicalInventoryLine,
+  StockInTransit,
+  StockReservation,
   Department,
   Position,
   Employee,
@@ -266,4 +277,8 @@ export {
   VendorRefund,
   PurchasePriceList,
   PurchasePriceListItem,
+  CostCenter,
+  PayrollAccountMapping,
+  AccountMapping,
+  PayrollConfig,
 };

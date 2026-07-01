@@ -41,7 +41,6 @@ export const SaleOrderController = {
 
       return res.json(orders);
     } catch (err: any) {
-      console.error(err);
       return res.status(400).json({ message: err.message || "Error" });
     }
   },
@@ -49,11 +48,10 @@ export const SaleOrderController = {
   async create(req: Request, res: Response) {
     try {
       const user = (req as any).user;
-      const result = await saleOrderService.create(req.body, user);
+      const result = await saleOrderService.create(req.body, user, req.app);
 
       return res.status(201).json({ message: "Created", data: result });
     } catch (err: any) {
-      console.error("🔥 BE ERROR:", err);
       return res.status(400).json({ message: err.message });
     }
   },
@@ -93,7 +91,8 @@ export const SaleOrderController = {
       const result = await saleOrderService.approve(id, user, req.app);
       return res.json({ message: "Approved", data: result });
     } catch (err: any) {
-      return res.status(403).json({ message: err.message });
+      const status = typeof err?.status === "number" ? err.status : 400;
+      return res.status(status).json({ message: err.message });
     }
   },
 
@@ -108,7 +107,8 @@ export const SaleOrderController = {
 
       return res.json({ message: "Rejected", data: result });
     } catch (err: any) {
-      return res.status(403).json({ message: err.message });
+      const status = typeof err?.status === "number" ? err.status : 400;
+      return res.status(status).json({ message: err.message });
     }
   },
 };

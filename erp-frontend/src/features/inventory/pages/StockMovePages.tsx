@@ -62,6 +62,7 @@ import EditIssueModal from "../components/Modal/IssueModal/EditIssueModal";
 import { useNavigate } from "react-router-dom";
 import { Roles } from "@/types/enum";
 import { exportExcelReport } from "@/utils/excel/exportExcelReport";
+import axiosClient from "@/api/axiosClient";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -89,11 +90,68 @@ export default function StockMovePages() {
   const [warehouseId, setWarehouseId] = useState<string>("");
   const [type, setType] = useState("");
 
+  const [tab, setTab] = useState<"moves" | "returns">("moves");
+  const [purchaseReturns, setPurchaseReturns] = useState<any[]>([]);
+  const [loadingReturns, setLoadingReturns] = useState(false);
+
+  const fetchPendingReturns = async () => {
+    setLoadingReturns(true);
+    try {
+      const res = await axiosClient.get("/purchase/returns", { params: { status: "shipped" } });
+      const data = res.data.data || res.data || [];
+      setPurchaseReturns(data.filter((r: any) => !r.stock_move_id));
+    } catch (err) {
+      console.error(err);
+      toast.error("Không tải được danh sách trả hàng NCC");
+    } finally {
+      setLoadingReturns(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tab === "returns") {
+      fetchPendingReturns();
+    }
+  }, [tab]);
+
+  useEffect(() => {
+    // Tự động tải số lượng trả hàng chờ xử lý ban đầu
+    const loadCount = async () => {
+      try {
+        const res = await axiosClient.get("/purchase/returns", { params: { status: "shipped" } });
+        const data = res.data.data || res.data || [];
+        setPurchaseReturns(data.filter((r: any) => !r.stock_move_id));
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    loadCount();
+  }, []);
+
+  const handleCreateIssueForReturn = async (returnId: number) => {
+    try {
+      await axiosClient.post(`/stock-move/purchase-return/${returnId}/issue`);
+      toast.success("Tạo phiếu xuất kho thành công!");
+      setTab("moves");
+      dispatch(fetchStockMovesThunk());
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.response?.data?.message || "Tạo phiếu xuất kho thất bại");
+    }
+  };
+
   const typeColorMap: Record<string, string> = {
     receipt: "bg-green-50 text-green-700 border-green-200 hover:bg-green-50",
     issue: "bg-red-50 text-red-700 border-red-200 hover:bg-red-50",
     transfer: "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50",
     adjustment: "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50",
+  };
+
+  const typeLabelMap: Record<string, string> = {
+    receipt: "Nhập kho",
+    issue: "Xuất kho",
+    transfer: "Điều chuyển",
+    adjustment: "Kiểm kê",
   };
 
   const statusColorMap: Record<string, string> = {
@@ -102,6 +160,14 @@ export default function StockMovePages() {
     posted: "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50",
     cancelled: "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-50",
   };
+
+  const statusLabelMap: Record<string, string> = {
+    draft: "Nháp",
+    waiting_approval: "Chờ duyệt",
+    posted: "Đã duyệt",
+    cancelled: "Đã hủy",
+  };
+
   const [openCreateReceiptModal, setOpenCreateReceiptModal] = useState(false);
   const [openCreateTransferModal, setOpenCreateTransferModal] = useState(false);
   const [openCreateAdjustmentModal, setOpenCreateAdjustmentModal] =
@@ -199,7 +265,7 @@ export default function StockMovePages() {
             header: "Loại phiếu",
             key: "type",
             width: 15,
-            formatter: (val) => String(val).toUpperCase(),
+            formatter: (val) => typeLabelMap[String(val)] || String(val).toUpperCase(),
           },
           {
             header: "Ngày phiếu",
@@ -212,7 +278,7 @@ export default function StockMovePages() {
             header: "Trạng thái",
             key: "status",
             width: 15,
-            formatter: (val) => String(val).toUpperCase(),
+            formatter: (val) => statusLabelMap[String(val)] || String(val).toUpperCase(),
           },
         ],
         data: filteredData,
@@ -230,11 +296,11 @@ export default function StockMovePages() {
   const columns = [
     {
       key: "move_no",
-      label: "Move No",
+      label: "Mã phiếu",
     },
     {
       key: "warehouse",
-      label: "Warehouse",
+      label: "Kho hàng",
       render: (row: StockMove) => {
         const from = row.warehouse_from_id
           ? getWarehouseName(row.warehouse_from_id)
@@ -260,7 +326,7 @@ export default function StockMovePages() {
     },
     {
       key: "created_by",
-      label: "Created By",
+      label: "Người tạo",
       render: (row: StockMove) => {
         if (!row.creator) return "N/A";
 
@@ -274,41 +340,41 @@ export default function StockMovePages() {
 
     {
       key: "type",
-      label: "Type",
+      label: "Loại",
       render: (row: StockMove) => (
         <Badge
           className={`px-2.5 py-0.5 rounded-full text-xs font-bold border shadow-none capitalize ${
             typeColorMap[row.type] || "bg-gray-50 text-gray-700 border-gray-200"
           }`}
         >
-          {row.type}
+          {typeLabelMap[row.type] || row.type}
         </Badge>
       ),
     },
 
     {
       key: "move_date",
-      label: "Date",
+      label: "Ngày tạo",
       render: (row: StockMove) =>
-        row.move_date ? new Date(row.move_date).toLocaleString() : "N/A",
+        row.move_date ? new Date(row.move_date).toLocaleString("vi-VN") : "N/A",
     },
 
     {
       key: "status",
-      label: "Status",
+      label: "Trạng thái",
       render: (row: StockMove) => (
         <Badge
           className={`px-2.5 py-0.5 rounded-full text-xs font-bold border shadow-none capitalize ${
             statusColorMap[row.status] || "bg-gray-50 text-gray-700 border-gray-200"
           }`}
         >
-          {row.status.replace("_", " ")}
+          {statusLabelMap[row.status] || row.status}
         </Badge>
       ),
     },
     {
       key: "note",
-      label: "Note",
+      label: "Ghi chú",
       render: (row: StockMove) => {
         const text = row.note || "";
         const truncated =
@@ -362,7 +428,7 @@ export default function StockMovePages() {
         createReceiptStockMoveThunk(payload),
       ).unwrap();
       console.log("Created stock move:", result);
-      toast.success("Stock Receipt Move created!");
+      toast.success("Tạo phiếu nhập kho thành công!");
       setOpenCreateReceiptModal(false);
     } catch (error) {
       console.log(">>> Error caught:", error);
@@ -400,7 +466,7 @@ export default function StockMovePages() {
         createIssueStockMoveThunk(payload),
       ).unwrap();
       console.log("Created stock move:", result);
-      toast.success("Stock Issue Move created!");
+      toast.success("Tạo phiếu xuất kho thành công!");
       setOpenCreateIssueModal(false);
     } catch (error) {
       console.log(">>> Error caught:", error);
@@ -439,7 +505,7 @@ export default function StockMovePages() {
         createTransferStockMoveThunk(payload),
       ).unwrap();
       console.log("Created stock move:", result);
-      toast.success("Stock Transfer Move created!");
+      toast.success("Tạo phiếu điều chuyển thành công!");
       setOpenCreateTransferModal(false);
     } catch (error) {
       console.log(">>> Error caught:", error);
@@ -473,7 +539,7 @@ export default function StockMovePages() {
         createAdjustmentStockMoveThunk(payload),
       ).unwrap();
       console.log("Created stock move:", result);
-      toast.success("Stock Ajustment Move created!");
+      toast.success("Tạo phiếu kiểm kê thành công!");
       setOpenCreateAdjustmentModal(false);
     } catch (error) {
       console.log(">>> Error caught:", error);
@@ -488,7 +554,7 @@ export default function StockMovePages() {
     lineItems: LineReceiptItem[];
   }) => {
     if (!selectedStockMove) {
-      toast.error("No receipt selected!");
+      toast.error("Chưa chọn phiếu!");
       return;
     }
     const checkStatus = await dispatch(
@@ -496,7 +562,7 @@ export default function StockMovePages() {
     ).unwrap();
 
     if (checkStatus.status !== "draft") {
-      toast.error("Cannot edit, receipt already approved!");
+      toast.error("Không thể chỉnh sửa phiếu đã được phê duyệt!");
       setOpenEditReceiptModal(false);
       return;
     }
@@ -528,7 +594,7 @@ export default function StockMovePages() {
         }),
       ).unwrap();
       console.log("Edited stock move:", result);
-      toast.success("Stock Receipt Move Edited!");
+      toast.success("Cập nhật phiếu nhập kho thành công!");
       setOpenEditReceiptModal(false);
     } catch (error) {
       console.log(">>> Error caught:", error);
@@ -543,7 +609,7 @@ export default function StockMovePages() {
     lineItems: LineTransferItem[];
   }) => {
     if (!selectedStockMove) {
-      toast.error("No receipt selected!");
+      toast.error("Chưa chọn phiếu!");
       return;
     }
     const checkStatus = await dispatch(
@@ -551,7 +617,7 @@ export default function StockMovePages() {
     ).unwrap();
 
     if (checkStatus.status !== "draft") {
-      toast.error("Cannot edit, Transfer already approved!");
+      toast.error("Không thể chỉnh sửa phiếu điều chuyển đã được phê duyệt!");
       setOpenEditReceiptModal(false);
       return;
     }
@@ -583,11 +649,11 @@ export default function StockMovePages() {
         }),
       );
       console.log("Edited stock move:", result);
-      toast.success("Stock Transfer Move Edited!");
+      toast.success("Cập nhật phiếu điều chuyển thành công!");
       setOpenEditTransferModal(false);
     } catch (error) {
       console.error("Failed to edit Stock Transfer Move:", error);
-      toast.error("Failed to edit Stock Transfer Move");
+      toast.error("Cập nhật phiếu điều chuyển thất bại");
     }
   };
 
@@ -596,7 +662,7 @@ export default function StockMovePages() {
     lineItems: LineAdjustmentItem[];
   }) => {
     if (!selectedStockMove) {
-      toast.error("No receipt selected!");
+      toast.error("Chưa chọn phiếu!");
       return;
     }
     const checkStatus = await dispatch(
@@ -604,7 +670,7 @@ export default function StockMovePages() {
     ).unwrap();
 
     if (checkStatus.status !== "draft") {
-      toast.error("Cannot edit, Adjustment already approved!");
+      toast.error("Không thể chỉnh sửa phiếu kiểm kê đã được phê duyệt!");
       setOpenEditReceiptModal(false);
       return;
     }
@@ -634,7 +700,7 @@ export default function StockMovePages() {
         }),
       ).unwrap();
       console.log("Edited stock move:", result);
-      toast.success("Stock Adjustment Move Edited!");
+      toast.success("Cập nhật phiếu kiểm kê thành công!");
       setOpenEditAdjustmentModal(false);
     } catch (error) {
       console.log(">>> Error caught:", error);
@@ -648,7 +714,7 @@ export default function StockMovePages() {
     lineItems: LineIssueItem[];
   }) => {
     if (!selectedStockMove) {
-      toast.error("No receipt selected!");
+      toast.error("Chưa chọn phiếu!");
       return;
     }
     const checkStatus = await dispatch(
@@ -656,7 +722,7 @@ export default function StockMovePages() {
     ).unwrap();
 
     if (checkStatus.status !== "draft") {
-      toast.error("Cannot edit, receipt already approved!");
+      toast.error("Không thể chỉnh sửa phiếu đã được phê duyệt!");
       setOpenEditIssueModal(false);
       return;
     }
@@ -685,7 +751,7 @@ export default function StockMovePages() {
         updateIssueStockMoveThunk({ id: selectedStockMove.id, data: payload }),
       ).unwrap();
       console.log("Edited stock move:", result);
-      toast.success("Stock Receipt Move Edited!");
+      toast.success("Cập nhật phiếu xuất kho thành công!");
       setOpenEditIssueModal(false);
     } catch (error) {
       console.log(">>> Error caught:", error);
@@ -699,7 +765,7 @@ export default function StockMovePages() {
     try {
       setDeleting(true);
       await dispatch(deleteStockMoveThunk(selectedStockMove.id)).unwrap();
-      toast.success("Deleted successfully!");
+      toast.success("Xóa thành công!");
       setConfirmOpen(false);
       dispatch(fetchStockMovesThunk());
     } catch (error) {
@@ -720,9 +786,9 @@ export default function StockMovePages() {
             <Package className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Stock Movements</h1>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Dịch chuyển kho</h1>
             <p className="text-gray-500 text-sm mt-0.5">
-              Track, transfer, receive, adjust, and issue stock items across warehouses
+              Theo dõi, điều chuyển, nhận hàng, điều chỉnh và xuất kho giữa các kho hàng
             </p>
           </div>
         </div>
@@ -734,26 +800,26 @@ export default function StockMovePages() {
             leftIcon={<Download className="w-4 h-4" />}
             size="md"
           >
-            Export Excel
+            Xuất Excel
           </Button>
           <BasicDropdownMenu
             trigger={
               <Button size="md" leftIcon={<Plus className="w-4 h-4" />}>
-                Create Movement
+                Tạo phiếu dịch chuyển
               </Button>
             }
             items={[
               {
-                label: "Create Receipt",
+                label: "Nhập kho",
                 onClick: () => handleCreate("receipt"),
               },
-              { label: "Create Issue", onClick: () => handleCreate("issue") },
+              { label: "Xuất kho", onClick: () => handleCreate("issue") },
               {
-                label: "Create Transfer",
+                label: "Điều chuyển",
                 onClick: () => handleCreate("transfer"),
               },
               {
-                label: "Create Adjustment",
+                label: "Kiểm kê",
                 onClick: () => handleCreate("adjustment"),
               },
             ]}
@@ -768,7 +834,7 @@ export default function StockMovePages() {
             <Package className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Moves</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tổng số phiếu</p>
             <p className="text-lg font-extrabold text-slate-850 mt-0.5">{items.length}</p>
           </div>
         </div>
@@ -778,7 +844,7 @@ export default function StockMovePages() {
             <FileCheck className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pending Approval</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Chờ duyệt</p>
             <p className="text-lg font-extrabold text-slate-850 mt-0.5">
               {items.filter(x => x.status === 'waiting_approval').length}
             </p>
@@ -790,7 +856,7 @@ export default function StockMovePages() {
             <CheckCircle2 className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Posted / Approved</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Đã duyệt</p>
             <p className="text-lg font-extrabold text-slate-850 mt-0.5">
               {items.filter(x => x.status === 'posted').length}
             </p>
@@ -802,7 +868,7 @@ export default function StockMovePages() {
             <Clock className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Draft Movements</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Phiếu nháp</p>
             <p className="text-lg font-extrabold text-slate-850 mt-0.5">{items.filter(x => x.status === 'draft').length}</p>
           </div>
         </div>
@@ -810,80 +876,166 @@ export default function StockMovePages() {
 
       {/* Main Content Area */}
       <Card className="border-slate-100 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">
-        {/* Filters Header */}
-        <div className="p-5 border-b border-slate-100 bg-slate-50/10 flex flex-col sm:flex-row items-center gap-4">
-          <div className="flex flex-wrap items-center gap-3 w-full">
-            <Select value={warehouseId} onValueChange={setWarehouseId}>
-              <SelectTrigger className="w-full sm:w-[200px] h-10 bg-white border-slate-200 focus:ring-orange-500 focus:border-orange-500 rounded-lg">
-                <SelectValue placeholder="All Warehouses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={""}>All Warehouses</SelectItem>
-                {warehouses.map((w) => (
-                  <SelectItem key={w.id} value={String(w.id)}>
-                    {w.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={type} onValueChange={setType}>
-              <SelectTrigger className="w-full sm:w-[200px] h-10 bg-white border-slate-200 focus:ring-orange-500 focus:border-orange-500 rounded-lg">
-                <SelectValue placeholder="All Types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">All Types</SelectItem>
-                <SelectItem value="receipt">Receipt</SelectItem>
-                <SelectItem value="issue">Issue</SelectItem>
-                <SelectItem value="transfer">Transfer</SelectItem>
-                <SelectItem value="adjustment">Adjustment</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        {/* Tab Toggle */}
+        <div className="border-b border-slate-100 bg-slate-50/20 px-5 py-3 flex gap-2">
+          <button
+            type="button"
+            onClick={() => setTab("moves")}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+              tab === "moves"
+                ? "bg-orange-500 text-white shadow-sm"
+                : "text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            Phiếu dịch chuyển kho
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("returns")}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${
+              tab === "returns"
+                ? "bg-orange-500 text-white shadow-sm"
+                : "text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            Trả hàng NCC chờ xuất kho
+            {purchaseReturns.length > 0 && (
+              <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
+                {purchaseReturns.length}
+              </span>
+            )}
+          </button>
         </div>
 
-        {/* Table wrapper */}
-        <div className="p-5">
-          <DataTable
-            data={filteredData}
-            itemsPerPage={7}
-            columns={columns}
-            loading={loading}
-            onView={(item) => navigate(`/inventory/stock_move/view/${item.id}`)}
-            onEdit={(item) => {
-              try {
-                setSelectedStockMove(item);
-                switch (item.type) {
-                  case "receipt":
-                    setOpenEditReceiptModal(true);
-                    break;
-                  case "transfer":
-                    setOpenEditTransferModal(true);
-                    break;
-                  case "adjustment":
-                    setOpenEditAdjustmentModal(true);
-                    break;
-                  case "issue":
-                    setOpenEditIssueModal(true);
-                    break;
-                  default:
-                    toast.warn("Unknown stock move type");
+        {tab === "returns" ? (
+          <div className="p-5 overflow-x-auto">
+            {loadingReturns ? (
+              <div className="flex flex-col items-center gap-3 py-16 text-gray-400">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-orange-200 border-t-orange-500" />
+                <span className="text-sm">Đang tải...</span>
+              </div>
+            ) : purchaseReturns.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-16 text-gray-400">
+                <Package className="h-10 w-10 text-gray-200" />
+                <p className="text-sm font-medium">Không có yêu cầu xuất kho trả hàng nào.</p>
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 bg-slate-50/50">
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Mã trả hàng</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Nhà cung cấp</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Kho xuất</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Ngày trả</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Giá trị</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {purchaseReturns.map((retItem) => {
+                    const whName = warehouses.find((w) => w.id === retItem.warehouse_id)?.name || `Kho #${retItem.warehouse_id}`;
+                    return (
+                      <tr key={retItem.id} className="hover:bg-orange-50/20">
+                        <td className="px-4 py-3.5 font-semibold text-orange-600">{retItem.return_no}</td>
+                        <td className="px-4 py-3.5 text-slate-700">{retItem.supplier?.name || "—"}</td>
+                        <td className="px-4 py-3.5 text-slate-600">{whName}</td>
+                        <td className="px-4 py-3.5 text-slate-600">{new Date(retItem.return_date).toLocaleDateString("vi-VN")}</td>
+                        <td className="px-4 py-3.5 text-right font-bold text-slate-700">{Number(retItem.total_return_amount).toLocaleString("vi-VN")} ₫</td>
+                        <td className="px-4 py-3.5 text-center">
+                          <Button
+                            size="sm"
+                            onClick={() => handleCreateIssueForReturn(retItem.id)}
+                            className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium px-2.5 py-1 rounded"
+                          >
+                            Tạo phiếu xuất kho
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Filters Header */}
+            <div className="p-5 border-b border-slate-100 bg-slate-50/10 flex flex-col sm:flex-row items-center gap-4">
+              <div className="flex flex-wrap items-center gap-3 w-full">
+                <Select value={warehouseId} onValueChange={setWarehouseId}>
+                  <SelectTrigger className="w-full sm:w-[200px] h-10 bg-white border-slate-200 focus:ring-orange-500 focus:border-orange-500 rounded-lg">
+                    <SelectValue placeholder="Tất cả kho hàng" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={""}>Tất cả kho hàng</SelectItem>
+                    {warehouses.map((w) => (
+                      <SelectItem key={w.id} value={String(w.id)}>
+                        {w.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={type} onValueChange={setType}>
+                  <SelectTrigger className="w-full sm:w-[200px] h-10 bg-white border-slate-200 focus:ring-orange-500 focus:border-orange-500 rounded-lg">
+                    <SelectValue placeholder="Tất cả loại" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Tất cả loại</SelectItem>
+                    <SelectItem value="receipt">Nhập kho</SelectItem>
+                    <SelectItem value="issue">Xuất kho</SelectItem>
+                    <SelectItem value="transfer">Điều chuyển</SelectItem>
+                    <SelectItem value="adjustment">Kiểm kê</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Table wrapper */}
+            <div className="p-5">
+              <DataTable
+                data={filteredData}
+                itemsPerPage={7}
+                columns={columns}
+                loading={loading}
+                onView={(item) => navigate(`/inventory/stock_move/view/${item.id}`)}
+                onEdit={(item) => {
+                  try {
+                    setSelectedStockMove(item);
+                    switch (item.type) {
+                      case "receipt":
+                        setOpenEditReceiptModal(true);
+                        break;
+                      case "transfer":
+                        setOpenEditTransferModal(true);
+                        break;
+                      case "adjustment":
+                        setOpenEditAdjustmentModal(true);
+                        break;
+                      case "issue":
+                        setOpenEditIssueModal(true);
+                        break;
+                      default:
+                        toast.warn("Không xác định được loại dịch chuyển kho");
+                    }
+                  } catch (error) {
+                    console.log(error);
+                    toast.error("Tải chi tiết phiếu dịch chuyển kho thất bại");
+                  }
+                }}
+                onDelete={(item) => {
+                  setSelectedStockMove(item);
+                  setConfirmOpen(true);
+                }}
+                canEdit={(item) => item.status === "draft" && role === Roles.WHSTAFF}
+                canDelete={(item) =>
+                  item.status === "draft" && role === Roles.WHSTAFF
                 }
-              } catch (error) {
-                console.log(error);
-                toast.error("Failed to load stock move detail");
-              }
-            }}
-            onDelete={(item) => {
-              setSelectedStockMove(item);
-              setConfirmOpen(true);
-            }}
-            canEdit={(item) => item.status === "draft" && role === Roles.WHSTAFF}
-            canDelete={(item) =>
-              item.status === "draft" && role === Roles.WHSTAFF
-            }
-          />
-        </div>
+              />
+            </div>
+          </>
+        )}
       </Card>
+
 
       {/* Delete Confirmation Modal */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
@@ -893,10 +1045,10 @@ export default function StockMovePages() {
               <Trash2 className="h-6 w-6 text-red-600" />
             </div>
             <DialogTitle className="text-center text-lg font-bold text-gray-900">
-              Delete Stock Move
+              Xóa phiếu dịch chuyển kho
             </DialogTitle>
             <DialogDescription className="text-center text-sm text-gray-500">
-              Are you sure you want to delete this stock move? This action cannot be undone and will permanently remove this record from the system.
+              Bạn có chắc chắn muốn xóa phiếu dịch chuyển kho này? Hành động này không thể hoàn tác và sẽ xóa vĩnh viễn khỏi hệ thống.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-row justify-center gap-3 mt-4">
@@ -906,7 +1058,7 @@ export default function StockMovePages() {
               disabled={deleting}
               className="w-full sm:w-auto"
             >
-              Cancel
+              Hủy
             </Button>
             <Button
               variant="danger"
@@ -914,7 +1066,7 @@ export default function StockMovePages() {
               loading={deleting}
               className="w-full sm:w-auto"
             >
-              Yes, Delete
+              Xác nhận xóa
             </Button>
           </DialogFooter>
         </DialogContent>

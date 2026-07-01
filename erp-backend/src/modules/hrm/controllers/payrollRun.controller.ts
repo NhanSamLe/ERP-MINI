@@ -16,7 +16,8 @@ export const getPayrollRuns = async (req: Request, res: Response) => {
       filter.status = status as any;
     }
 
-    const data = await payrollRunService.getAllPayrollRuns(filter);
+    const user = (req as any).user;
+    const data = await payrollRunService.getAllPayrollRuns(filter, user?.branch_id);
     return res.json(data);
   } catch (err: any) {
     return res.status(400).json({ message: err.message });
@@ -166,6 +167,40 @@ export const getPayrollEvidence = async (req: Request, res: Response) => {
 
     const data = await payrollRunService.getPayrollEvidence(runId, employeeId);
     return res.json(data);
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message });
+  }
+};
+
+export const submitPayrollRun = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const user = (req as any).user;
+    const row = await payrollRunService.submitForApproval(id, user, req.app);
+    return res.json(row);
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message });
+  }
+};
+
+export const approvePayrollRun = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const user = (req as any).user;
+    const row = await payrollRunService.approvePayrollRun(id, user, req.app);
+    return res.json(row);
+  } catch (err: any) {
+    return res.status(400).json({ message: err.message });
+  }
+};
+
+export const rejectPayrollRun = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const { reason } = req.body;
+    const user = (req as any).user;
+    const row = await payrollRunService.rejectPayrollRun(id, reason, user, req.app);
+    return res.json(row);
   } catch (err: any) {
     return res.status(400).json({ message: err.message });
   }

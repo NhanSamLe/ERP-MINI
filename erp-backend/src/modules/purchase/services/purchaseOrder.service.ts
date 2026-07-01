@@ -16,12 +16,15 @@ import {
   TaxRate,
   User,
   Uom,
+  PaymentTerm,
+  Currency,
 } from "../../../models";
 import { Role } from "../../../core/types/enum";
 import { literal, Op } from "sequelize";
 import { notificationService } from "../../../core/services/notification.service";
 import { validationService } from "./validationService";
 import { auditService } from "./auditService";
+import { generatePoNo } from "../utils/poNoGenerator";
 
 /**
  * Quy đổi quantity từ purchase UOM sang stock UOM của product.
@@ -207,53 +210,120 @@ export const purchaseOrderService = {
           as: "approver",
           attributes: ["id", "full_name", "email", "phone", "avatar_url"],
         },
+        {
+          model: PaymentTerm,
+          as: "paymentTerm",
+          attributes: ["id", "name", "days", "code"],
+        },
+        {
+          model: Currency,
+          as: "currency",
+          attributes: ["id", "code", "symbol", "name"],
+        },
       ],
     });
 
-    if (!po) throw new Error("Purchase order not found");
+    if (!po) throw new Error("Không tìm thấy đơn mua hàng");
     return po;
   },
 
   async create(data: any, user: any) {
-    const allowedRoles = ["PURCHASE"];
+    const allowedRoles = ["PURCHASE", "ADMIN", "CEO"];
     if (!allowedRoles.includes(user.role)) {
-      throw new Error("You do not have permission to create purchase orders.");
+      throw new Error("Bạn không có quyền tạo đơn mua hàng.");
     }
 
     if (data.branch_id !== user.branch_id) {
-      throw new Error("You cannot create a purchase order for another branch.");
+      throw new Error("Bạn không thể tạo đơn mua hàng cho chi nhánh khác.");
+    }
+
+    // Tự gen po_no nếu không được cung cấp (ví dụ: tạo từ AI chatbot)
+    if (!data.po_no || data.po_no.trim() === "") {
+      data.po_no = generatePoNo();
+    }
+
+    // Tự set order_date nếu không có
+    if (!data.order_date) {
+      data.order_date = new Date();
     }
 
     // Validate input
     await validationService.validatePO(data);
 
-    // 👉 chỉ return poId trong transaction
     const poId = await sequelize.transaction(async (t) => {
-      let totalBeforeTax = 0;
-      let totalTax = 0;
-      let totalAfterTax = 0;
+      // 1. Calculate each line's initial values (before header discount)
+      const calculatedLines = [];
+      let totalBeforeHeaderDiscount = 0;
+
+      for (const line of data.lines) {
+        if (!line.tax_rate_id) {
+          const productForTax = await productService.getById(line.product_id);
+          if ((productForTax as any)?.tax_rate_id) {
+            line.tax_rate_id = (productForTax as any).tax_rate_id;
+          }
+        }
+        const calc = await this.calculateLine(line);
+        calculatedLines.push({
+          line,
+          calc,
+        });
+        totalBeforeHeaderDiscount += calc.line_total;
+      }
+
+      // 2. Determine Header Discount Amount
+      let headerDiscountAmount = 0;
+      let headerDiscountPercent = 0;
+
+      if (data.discount_type === "fixed") {
+        headerDiscountAmount = Number(data.discount_amount || 0);
+        headerDiscountPercent = totalBeforeHeaderDiscount > 0
+          ? (headerDiscountAmount / totalBeforeHeaderDiscount) * 100
+          : 0;
+      } else {
+        headerDiscountPercent = Number(data.discount_percent || 0);
+        headerDiscountAmount = totalBeforeHeaderDiscount * (headerDiscountPercent / 100);
+      }
 
       const po = await PurchaseOrder.create(
         {
           branch_id: data.branch_id,
           po_no: data.po_no,
           supplier_id: data.supplier_id,
+          payment_term_id: data.payment_term_id || null,
+          currency_id: data.currency_id || null,
+          exchange_rate: data.exchange_rate || 1.0,
           order_date: data.order_date,
           created_by: user.id,
           status: "draft",
           description: data.description,
+          discount_percent: headerDiscountPercent,
+          discount_amount: headerDiscountAmount,
         },
         { transaction: t },
       );
 
-      for (const line of data.lines) {
-        const calc = await this.calculateLine(line);
+      let totalBeforeTax = 0;
+      let totalTax = 0;
+      let totalAfterTax = 0;
 
-        totalBeforeTax += calc.line_total;
-        totalTax += calc.line_tax;
-        totalAfterTax += calc.line_total_after_tax;
+      for (const item of calculatedLines) {
+        const line = item.line;
+        const calc = item.calc;
 
-        // Lấy stock UOM của product để quy đổi (uom_id = stock UOM, không phải purchase_uom_id)
+        // Pro-rata distribution of header discount
+        const weight = totalBeforeHeaderDiscount > 0 ? (calc.line_total / totalBeforeHeaderDiscount) : 0;
+        const distributedDiscount = headerDiscountAmount * weight;
+
+        const netLineTotal = calc.line_total - distributedDiscount;
+        const taxRate = line.tax_rate_id ? await TaxRate.findByPk(line.tax_rate_id) : null;
+        const rate = taxRate ? Number(taxRate.rate) : 0;
+        const lineTax = (netLineTotal * rate) / 100;
+        const lineTotalAfterTax = netLineTotal + lineTax;
+
+        totalBeforeTax += netLineTotal;
+        totalTax += lineTax;
+        totalAfterTax += lineTotalAfterTax;
+
         const product = await productService.getById(line.product_id);
         const productStockUomId = product?.uom_id ?? null;
         const qty_in_stock_uom = await resolveQtyInStockUom(
@@ -271,10 +341,12 @@ export const purchaseOrderService = {
             ...(line.uom_id != null && { uom_id: line.uom_id }),
             qty_in_stock_uom,
             unit_price: line.unit_price,
+            discount_percent: calc.discount_percent ?? 0,
+            discount_amount: calc.discount_amount,
             ...(line.tax_rate_id != null && { tax_rate_id: line.tax_rate_id }),
-            line_total: calc.line_total,
-            line_tax: calc.line_tax,
-            line_total_after_tax: calc.line_total_after_tax,
+            line_total: netLineTotal,
+            line_tax: lineTax,
+            line_total_after_tax: lineTotalAfterTax,
           },
           { transaction: t },
         );
@@ -302,13 +374,15 @@ export const purchaseOrderService = {
   },
 
   async update(id: number, data: PurchaseOrderUpdateDto, user: any) {
-    const allowedRoles = ["PURCHASE"];
+    const allowedRoles = ["PURCHASE", "ADMIN", "CEO"];
     if (!allowedRoles.includes(user.role)) {
-      throw new Error("You do not have permission to edit purchase orders.");
+      throw new Error("Bạn không có quyền chỉnh sửa đơn mua hàng.");
     }
 
     if (data.branch_id !== user.branch_id) {
-      throw new Error("You cannot edit a purchase order for another branch.");
+      throw new Error(
+        "Bạn không thể chỉnh sửa đơn mua hàng của chi nhánh khác.",
+      );
     }
 
     const po = await PurchaseOrder.findByPk(id, {
@@ -324,30 +398,59 @@ export const purchaseOrderService = {
       ],
     });
 
-    if (!po) throw new Error("Purchase order not found");
+    if (!po) throw new Error("Không tìm thấy đơn mua hàng");
     if (po.status !== "draft") {
       throw {
         status: 400,
-        message:
-          "Cannot edit the purchase order because it has already been approved",
+        message: "Không thể chỉnh sửa đơn mua hàng đã được phê duyệt",
       };
     }
 
     if (po.created_by !== user.id)
-      throw new Error("You can only modify your own orders");
+      throw new Error("Bạn chỉ có thể chỉnh sửa đơn mua hàng của mình");
 
     await sequelize.transaction(async (t) => {
-      let totalBeforeTax = 0;
-      let totalTax = 0;
-      let totalAfterTax = 0;
+      // 1. Calculate each line's initial values (before header discount)
+      const calculatedLines = [];
+      let totalBeforeHeaderDiscount = 0;
+
+      if (data.lines?.length) {
+        for (const line of data.lines) {
+          const calc = await this.calculateLine(line);
+          calculatedLines.push({
+            line,
+            calc,
+          });
+          totalBeforeHeaderDiscount += calc.line_total;
+        }
+      }
+
+      // 2. Determine Header Discount Amount
+      let headerDiscountAmount = 0;
+      let headerDiscountPercent = 0;
+
+      if (data.discount_type === "fixed") {
+        headerDiscountAmount = Number(data.discount_amount || 0);
+        headerDiscountPercent = totalBeforeHeaderDiscount > 0
+          ? (headerDiscountAmount / totalBeforeHeaderDiscount) * 100
+          : 0;
+      } else {
+        headerDiscountPercent = Number(data.discount_percent || 0);
+        headerDiscountAmount = totalBeforeHeaderDiscount * (headerDiscountPercent / 100);
+      }
 
       await po.update(
         {
           branch_id: data.branch_id,
           po_no: data.po_no,
           supplier_id: data.supplier_id,
+          payment_term_id: data.payment_term_id || null,
+          currency_id: data.currency_id || null,
+          exchange_rate: data.exchange_rate || 1.0,
           order_date: new Date(data.order_date),
           description: data.description,
+          discount_percent: headerDiscountPercent,
+          discount_amount: headerDiscountAmount,
         },
         { transaction: t },
       );
@@ -359,68 +462,76 @@ export const purchaseOrderService = {
         });
       }
 
-      if (data.lines?.length) {
-        for (const line of data.lines) {
-          const calc = await this.calculateLine(line);
+      let totalBeforeTax = 0;
+      let totalTax = 0;
+      let totalAfterTax = 0;
 
-          totalBeforeTax += calc.line_total;
-          totalTax += calc.line_tax;
-          totalAfterTax += calc.line_total_after_tax;
+      for (const item of calculatedLines) {
+        const line = item.line;
+        const calc = item.calc;
 
-          if (line.id) {
-            const product = await productService.getById(line.product_id);
-            const productStockUomId = product?.uom_id ?? null;
-            const qty_in_stock_uom = await resolveQtyInStockUom(
-              line.quantity,
-              line.uom_id ?? null,
-              productStockUomId,
-              line.product_id,
-            );
+        // Pro-rata distribution of header discount
+        const weight = totalBeforeHeaderDiscount > 0 ? (calc.line_total / totalBeforeHeaderDiscount) : 0;
+        const distributedDiscount = headerDiscountAmount * weight;
 
-            await PurchaseOrderLine.update(
-              {
-                product_id: line.product_id,
-                quantity: line.quantity,
-                ...(line.uom_id != null && { uom_id: line.uom_id }),
-                qty_in_stock_uom,
-                unit_price: line.unit_price,
-                ...(line.tax_rate_id != null && {
-                  tax_rate_id: line.tax_rate_id,
-                }),
-                line_total: calc.line_total,
-                line_tax: calc.line_tax,
-                line_total_after_tax: calc.line_total_after_tax,
-              },
-              { where: { id: line.id, po_id: id }, transaction: t },
-            );
-          } else {
-            const product = await productService.getById(line.product_id);
-            const productStockUomId = product?.uom_id ?? null;
-            const qty_in_stock_uom = await resolveQtyInStockUom(
-              line.quantity,
-              line.uom_id ?? null,
-              productStockUomId,
-              line.product_id,
-            );
+        const netLineTotal = calc.line_total - distributedDiscount;
+        const taxRate = line.tax_rate_id ? await TaxRate.findByPk(line.tax_rate_id) : null;
+        const rate = taxRate ? Number(taxRate.rate) : 0;
+        const lineTax = (netLineTotal * rate) / 100;
+        const lineTotalAfterTax = netLineTotal + lineTax;
 
-            await PurchaseOrderLine.create(
-              {
-                po_id: id,
-                product_id: line.product_id,
-                quantity: line.quantity,
-                ...(line.uom_id != null && { uom_id: line.uom_id }),
-                qty_in_stock_uom,
-                unit_price: line.unit_price,
-                ...(line.tax_rate_id != null && {
-                  tax_rate_id: line.tax_rate_id,
-                }),
-                line_total: calc.line_total,
-                line_tax: calc.line_tax,
-                line_total_after_tax: calc.line_total_after_tax,
-              },
-              { transaction: t },
-            );
-          }
+        totalBeforeTax += netLineTotal;
+        totalTax += lineTax;
+        totalAfterTax += lineTotalAfterTax;
+
+        const product = await productService.getById(line.product_id);
+        const productStockUomId = product?.uom_id ?? null;
+        const qty_in_stock_uom = await resolveQtyInStockUom(
+          line.quantity,
+          line.uom_id ?? null,
+          productStockUomId,
+          line.product_id,
+        );
+
+        if (line.id) {
+          await PurchaseOrderLine.update(
+            {
+              product_id: line.product_id,
+              quantity: line.quantity,
+              ...(line.uom_id != null && { uom_id: line.uom_id }),
+              qty_in_stock_uom,
+              unit_price: line.unit_price,
+              discount_percent: calc.discount_percent ?? 0,
+              discount_amount: calc.discount_amount,
+              ...(line.tax_rate_id != null && {
+                tax_rate_id: line.tax_rate_id,
+              }),
+              line_total: netLineTotal,
+              line_tax: lineTax,
+              line_total_after_tax: lineTotalAfterTax,
+            },
+            { where: { id: line.id, po_id: id }, transaction: t },
+          );
+        } else {
+          await PurchaseOrderLine.create(
+            {
+              po_id: id,
+              product_id: line.product_id,
+              quantity: line.quantity,
+              ...(line.uom_id != null && { uom_id: line.uom_id }),
+              qty_in_stock_uom,
+              unit_price: line.unit_price,
+              discount_percent: calc.discount_percent ?? 0,
+              discount_amount: calc.discount_amount,
+              ...(line.tax_rate_id != null && {
+                tax_rate_id: line.tax_rate_id,
+              }),
+              line_total: netLineTotal,
+              line_tax: lineTax,
+              line_total_after_tax: lineTotalAfterTax,
+            },
+            { transaction: t },
+          );
         }
       }
 
@@ -440,24 +551,22 @@ export const purchaseOrderService = {
 
   async delete(id: number, user: any) {
     const po = await PurchaseOrder.findByPk(id);
-    const allowedRoles = ["PURCHASE"];
+    const allowedRoles = ["PURCHASE", "ADMIN", "CEO"];
 
     if (!allowedRoles.includes(user.role)) {
-      throw new Error("You do not have permission to delete purchase orders.");
+      throw new Error("Bạn không có quyền xóa đơn mua hàng.");
     }
 
     if (po?.branch_id !== user.branch_id) {
-      throw new Error("You cannot delete a purchase order for another branch.");
+      throw new Error("Bạn không thể xóa đơn mua hàng của chi nhánh khác.");
     }
 
-    if (!po) throw new Error("Purchase order not found");
+    if (!po) throw new Error("Không tìm thấy đơn mua hàng");
     if (po.status !== "draft") {
-      throw new Error(
-        "Cannot delete the purchase order because it has already been approved",
-      );
+      throw new Error("Không thể xóa đơn mua hàng đã được phê duyệt");
     }
     if (po.created_by !== user.id)
-      throw new Error("You can only delete your own orders");
+      throw new Error("Bạn chỉ có thể xóa đơn mua hàng của mình");
 
     await po.destroy();
     return { success: true };
@@ -465,21 +574,19 @@ export const purchaseOrderService = {
 
   async approvalPO(id: number, user: any, app?: any) {
     const po = await this.getPOById(id);
-    if (!po) throw new Error("Purchase order not found");
+    if (!po) throw new Error("Không tìm thấy đơn mua hàng");
 
-    if (user.role !== Role.PURCHASEMANAGER) {
-      throw new Error("You do not have permission to approve purchase orders.");
+    if (user.role !== Role.PURCHASEMANAGER && user.role !== "ADMIN" && user.role !== "CEO") {
+      throw new Error("Bạn không có quyền phê duyệt đơn mua hàng.");
     }
-    if (po.branch_id !== user.branch_id) {
+    if (user.role !== "ADMIN" && user.role !== "CEO" && po.branch_id !== user.branch_id) {
       throw new Error(
-        "You cannot approve a purchase order for another branch.",
+        "Bạn không thể phê duyệt đơn mua hàng của chi nhánh khác.",
       );
     }
 
     if (po.status !== "waiting_approval") {
-      throw new Error(
-        "Only purchase orders in 'waiting_approval' can be approved.",
-      );
+      throw new Error("Chỉ có thể phê duyệt đơn mua hàng đang chờ duyệt.");
     }
     po.status = "confirmed";
     po.approved_by = user.id;
@@ -509,24 +616,22 @@ export const purchaseOrderService = {
 
   async cancelPO(id: number, user: any, reason: string, app?: any) {
     const po = await this.getPOById(id);
-    if (!po) throw new Error("Purchase order not found");
+    if (!po) throw new Error("Không tìm thấy đơn mua hàng");
 
-    if (user.role !== Role.PURCHASEMANAGER) {
-      throw new Error("You do not have permission to cancel purchase orders.");
+    if (user.role !== Role.PURCHASEMANAGER && user.role !== "ADMIN" && user.role !== "CEO") {
+      throw new Error("Bạn không có quyền hủy đơn mua hàng.");
     }
 
-    if (po.branch_id !== user.branch_id) {
-      throw new Error("You cannot cancel a purchase order for another branch.");
+    if (user.role !== "ADMIN" && user.role !== "CEO" && po.branch_id !== user.branch_id) {
+      throw new Error("Bạn không thể hủy đơn mua hàng của chi nhánh khác.");
     }
 
     if (po.status !== "waiting_approval") {
-      throw new Error(
-        "Only purchase orders in 'waiting_approval' can be cancelled.",
-      );
+      throw new Error("Chỉ có thể hủy đơn mua hàng đang chờ duyệt.");
     }
 
     if (!reason || reason.trim() === "") {
-      throw new Error("Reject reason is required to cancel a purchase order.");
+      throw new Error("Vui lòng nhập lý do hủy đơn mua hàng.");
     }
 
     po.status = "cancelled";
@@ -559,18 +664,20 @@ export const purchaseOrderService = {
 
   async submitForApproval(id: number, user: any, app?: any) {
     const po = await this.getPOById(id);
-    if (!po) throw new Error("Purchase order not found");
+    if (!po) throw new Error("Không tìm thấy đơn mua hàng");
 
     if (po.branch_id !== user.branch_id) {
-      throw new Error("You cannot submit a purchase order for another branch.");
+      throw new Error(
+        "Bạn không thể gửi duyệt đơn mua hàng của chi nhánh khác.",
+      );
     }
 
     if (po.status !== "draft") {
-      throw new Error("Only draft purchase orders can be submitted.");
+      throw new Error("Chỉ có thể gửi duyệt đơn mua hàng ở trạng thái nháp.");
     }
 
     if (po.created_by !== user.id)
-      throw new Error("Only the creator can submit");
+      throw new Error("Chỉ người tạo mới có thể gửi duyệt đơn mua hàng.");
 
     po.status = "waiting_approval";
     po.submitted_at = new Date();
@@ -720,6 +827,16 @@ export const purchaseOrderService = {
           as: "supplier",
           attributes: ["id", "email", "name", "phone"],
         },
+        {
+          model: PaymentTerm,
+          as: "paymentTerm",
+          required: false,
+        },
+        {
+          model: Currency,
+          as: "currency",
+          required: false,
+        },
       ],
       order: [["created_at", "DESC"]],
     });
@@ -814,6 +931,8 @@ export const purchaseOrderService = {
       unit_price: Number(line.unit_price ?? 0),
       uom_id: line.uom_id,
       tax_rate_id: line.tax_rate_id,
+      discount_percent: Number(line.discount_percent ?? 0),
+      discount_amount: Number(line.discount_amount ?? 0),
       line_total: Number(line.line_total ?? 0),
       line_tax: Number(line.line_tax ?? 0),
       line_total_after_tax: Number(line.line_total_after_tax ?? 0),
@@ -846,8 +965,20 @@ export const purchaseOrderService = {
       : null;
 
     const rate = taxRate ? Number(taxRate.rate) : 0;
+    const grossTotal = Number(line.quantity) * Number(line.unit_price);
+    
+    let discountAmount = 0;
+    let discountPercent = 0;
 
-    const lineTotal = Number(line.quantity) * Number(line.unit_price);
+    if (line.discount_type === "fixed") {
+      discountAmount = Number(line.discount_amount || 0);
+      discountPercent = grossTotal > 0 ? (discountAmount / grossTotal) * 100 : 0;
+    } else {
+      discountPercent = Number(line.discount_percent || 0);
+      discountAmount = grossTotal * (discountPercent / 100);
+    }
+
+    const lineTotal = grossTotal - discountAmount;
     const lineTax = (lineTotal * rate) / 100;
     const lineTotalAfterTax = lineTotal + lineTax;
 
@@ -855,6 +986,8 @@ export const purchaseOrderService = {
       line_total: lineTotal,
       line_tax: lineTax,
       line_total_after_tax: lineTotalAfterTax,
+      discount_amount: discountAmount,
+      discount_percent: discountPercent,
     };
   },
 

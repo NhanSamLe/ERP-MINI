@@ -5,6 +5,11 @@ export interface PayrollRunDTO {
   period_id: number;
   run_no: string;
   status: PayrollRunStatus;
+  approval_status?: "draft" | "waiting_chief_accountant" | "waiting_ceo" | "approved" | "rejected";
+  submitted_at?: string | null;
+  approved_by?: number | null;
+  approved_at?: string | null;
+  reject_reason?: string | null;
   created_at?: string;
   updated_at?: string;
 

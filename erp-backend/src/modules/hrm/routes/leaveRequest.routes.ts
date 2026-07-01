@@ -20,14 +20,14 @@ router.post("/", authMiddleware([]), ctrl.create);
 // 👉 Quản lý/HR: duyệt đơn
 router.post(
   "/:id/approve",
-  authMiddleware(["HRMANAGER", "HR_STAFF", "ADMIN"]),
+  authMiddleware(["HRMANAGER", "ADMIN"]),
   ctrl.approve
 );
 
 // 👉 Quản lý/HR: từ chối đơn
 router.post(
   "/:id/reject",
-  authMiddleware(["HRMANAGER", "HR_STAFF", "ADMIN"]),
+  authMiddleware(["HRMANAGER", "ADMIN"]),
   ctrl.reject
 );
 

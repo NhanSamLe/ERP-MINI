@@ -24,13 +24,17 @@ export const fetchAllOpportunities = createAsyncThunk(
 // );
 export const createOpportunity = createAsyncThunk(
   "opportunity/create",
-  async (payload: CreateOpportunityDto, { rejectWithValue }) => {   
+  async (payload: CreateOpportunityDto, { rejectWithValue }) => {
     try {
       return await opportunityService.createOpportunity(payload);
-    } catch (error) {
-      return rejectWithValue(error);
-    }   
-    }   
+    } catch (error: any) {
+      // Chỉ trả message (string) — tránh đưa AxiosError non-serializable vào store
+      // và để UI hiển thị đúng lý do lỗi từ backend.
+      return rejectWithValue(
+        error?.response?.data?.message ?? error?.message ?? "Không thể tạo Opportunity",
+      );
+    }
+  },
 );
 export const updateOpportunity = createAsyncThunk(
   "opportunity/update",

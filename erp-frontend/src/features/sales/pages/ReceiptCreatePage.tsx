@@ -87,11 +87,11 @@ export default function ReceiptCreatePage() {
   };
 
   const handleSubmit = async () => {
-    if (!form.customer_id) return setError("Customer is required");
-    if (!form.receipt_date) return setError("Receipt date is required");
+    if (!form.customer_id) return setError("Vui lòng chọn khách hàng");
+    if (!form.receipt_date) return setError("Vui lòng chọn ngày thu tiền");
 
     const amountNum = Number(form.amount);
-    if (amountNum <= 0) return setError("Amount must be > 0");
+    if (amountNum <= 0) return setError("Số tiền phải lớn hơn 0");
 
     try {
       const payload: CreateReceiptDto = {
@@ -113,8 +113,8 @@ export default function ReceiptCreatePage() {
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <PageHeader
-          title="Create New Receipt"
-          description="Record a new payment from customer"
+          title="Tạo phiếu thu mới"
+          description="Ghi nhận khoản thanh toán mới từ khách hàng"
         />
       </div>
 
@@ -124,7 +124,7 @@ export default function ReceiptCreatePage() {
           <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 space-y-5">
             <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2 border-b pb-2">
               <Wallet size={20} className="text-orange-600" />
-              Receipt Details
+              Chi tiết phiếu thu
             </h2>
 
             {error && (
@@ -137,7 +137,7 @@ export default function ReceiptCreatePage() {
             {/* CUSTOMER */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">
-                Customer <span className="text-red-500">*</span>
+                Khách hàng <span className="text-red-500">*</span>
               </label>
               <button
                 type="button"
@@ -145,7 +145,7 @@ export default function ReceiptCreatePage() {
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-left flex justify-between items-center hover:border-orange-500 hover:ring-1 hover:ring-orange-500 transition focus:outline-none"
               >
                 <span className={selectedCustomer ? 'text-gray-900 font-medium' : 'text-gray-400'}>
-                  {selectedCustomer ? selectedCustomer.name : '-- Select Customer --'}
+                  {selectedCustomer ? selectedCustomer.name : '-- Chọn khách hàng --'}
                 </span>
                 <Search size={16} className="text-gray-400" />
               </button>
@@ -154,7 +154,7 @@ export default function ReceiptCreatePage() {
             {/* DATE & METHOD */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">Date</label>
+                <label className="block text-sm font-medium text-gray-700">Ngày thu</label>
                 <div className="relative">
                   <input
                     type="date"
@@ -165,15 +165,15 @@ export default function ReceiptCreatePage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">Method</label>
+                <label className="block text-sm font-medium text-gray-700">Phương thức</label>
                 <select
                   value={form.method}
                   onChange={(e) => setForm({ ...form, method: e.target.value as any })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm bg-white"
                 >
-                  <option value="cash">Cash</option>
-                  <option value="bank">Bank Transfer</option>
-                  <option value="transfer">Internal</option>
+                  <option value="cash">Tiền mặt</option>
+                  <option value="bank">Chuyển khoản ngân hàng</option>
+                  <option value="transfer">Nội bộ</option>
                 </select>
               </div>
             </div>
@@ -181,7 +181,7 @@ export default function ReceiptCreatePage() {
             {/* AMOUNT */}
             <div className="space-y-2 pt-2">
               <label className="block text-sm font-medium text-gray-700">
-                Receipt Amount <span className="text-red-500">*</span>
+                Số tiền thu <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <input
@@ -194,7 +194,7 @@ export default function ReceiptCreatePage() {
                 <span className="absolute right-4 top-3.5 text-gray-500 font-medium text-sm">VND</span>
               </div>
               <p className="text-xs text-gray-500">
-                Select invoices on the right to auto-calculate.
+                Chọn hóa đơn bên phải để tự động tính số tiền.
               </p>
             </div>
 
@@ -206,14 +206,14 @@ export default function ReceiptCreatePage() {
                 disabled={loading}
                 className="w-full py-2.5 bg-orange-600 text-white rounded-lg font-semibold hover:bg-orange-700 transition shadow-sm disabled:bg-gray-400"
               >
-                {loading ? 'Creating...' : 'Create Receipt'}
+                {loading ? 'Đang tạo...' : 'Tạo phiếu thu'}
               </button>
               <button
                 type="button"
                 onClick={() => navigate('/receipts')}
                 className="w-full py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition"
               >
-                Cancel
+                Hủy
               </button>
             </div>
           </div>
@@ -225,11 +225,11 @@ export default function ReceiptCreatePage() {
             <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
               <h3 className="font-semibold text-gray-800 flex items-center gap-2">
                 <CheckSquare size={18} className="text-orange-600" />
-                Select Invoices to Pay
+                Chọn hóa đơn cần thanh toán
               </h3>
               {selectedCustomer && (
                 <span className="text-sm font-medium text-gray-600">
-                  Debt: <span className="text-red-600">{formatVND(selectedCustomer.total)}</span>
+                  Công nợ: <span className="text-red-600">{formatVND(selectedCustomer.total)}</span>
                 </span>
               )}
             </div>
@@ -237,11 +237,11 @@ export default function ReceiptCreatePage() {
             <div className="flex-1 overflow-auto max-h-[600px] p-0">
               {!form.customer_id ? (
                 <div className="h-40 flex items-center justify-center text-gray-400 italic">
-                  Select a customer to view open invoices.
+                  Chọn khách hàng để xem các hóa đơn chưa thanh toán.
                 </div>
               ) : unpaidInvoices.length === 0 ? (
                 <div className="h-40 flex items-center justify-center text-gray-500">
-                  No unpaid invoices found for this customer.
+                  Không có hóa đơn chưa thanh toán của khách hàng này.
                 </div>
               ) : (
                 <table className="w-full text-sm text-left">
@@ -251,8 +251,8 @@ export default function ReceiptCreatePage() {
                         {/* Select All could go here */}
                       </th>
                       <th className="px-4 py-3">Invoice #</th>
-                      <th className="px-4 py-3 text-right">Total</th>
-                      <th className="px-4 py-3 text-right">Unpaid Balance</th>
+                      <th className="px-4 py-3 text-right">Tổng tiền</th>
+                      <th className="px-4 py-3 text-right">Số dư chưa thanh toán</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -290,7 +290,7 @@ export default function ReceiptCreatePage() {
             </div>
             {unpaidInvoices.length > 0 && form.customer_id && (
               <div className="p-3 border-t bg-gray-50 text-xs text-gray-500 text-center">
-                * Selecting invoices here helps calculate the amount. Validation and formal allocation occurs after approval.
+                * Việc chọn hóa đơn giúp tính số tiền. Hệ thống sẽ kiểm tra và phân bổ chính thức sau khi phê duyệt.
               </div>
             )}
           </div>
@@ -301,7 +301,7 @@ export default function ReceiptCreatePage() {
       <SearchSelectionModal
         isOpen={isCustomerModalOpen}
         onClose={() => setIsCustomerModalOpen(false)}
-        title="Select Customer"
+        title="Chọn khách hàng"
         items={customersWithDebt}
         searchKeys={['name']}
         onSelect={(c) => {

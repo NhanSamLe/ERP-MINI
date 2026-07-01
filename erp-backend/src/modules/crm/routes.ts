@@ -161,6 +161,8 @@ router.put("/pipelines/stages/:stageId", authMiddleware([]), pipelineController.
 router.delete("/pipelines/stages/:stageId", authMiddleware([]), pipelineController.deleteStage);
 
 // Scoring Rules
+router.get("/scoring-rules/signals", authMiddleware([]), scoringRuleController.getSignals);
+router.post("/scoring-rules/preview", authMiddleware([]), scoringRuleController.previewRule);
 router.get("/scoring-rules", authMiddleware([]), scoringRuleController.getAll);
 router.post("/scoring-rules", authMiddleware([]), scoringRuleController.create);
 router.put("/scoring-rules/:id", authMiddleware([]), scoringRuleController.update);

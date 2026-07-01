@@ -116,7 +116,7 @@ export default function BlogEditorPage() {
         }
       } catch (err: any) {
         console.error("Init editor page error:", err);
-        setErrorMessage("Error loading initialization data. Please check the system.");
+        setErrorMessage("Không thể tải dữ liệu khởi tạo. Vui lòng kiểm tra hệ thống.");
       } finally {
         setPageLoading(false);
       }
@@ -166,7 +166,7 @@ export default function BlogEditorPage() {
       navigate("/blog");
     } catch (err: any) {
       console.error("Submit blog post error:", err);
-      setErrorMessage(err.response?.data?.error || "Failed to save article. Please try again.");
+      setErrorMessage(err.response?.data?.error || "Lưu bài viết thất bại. Vui lòng thử lại.");
     } finally {
       setSubmitLoading(false);
     }
@@ -175,7 +175,7 @@ export default function BlogEditorPage() {
   // AI Content Generator: Full JSON Fill-out
   const handleAIGenerateFull = async () => {
     if (!aiProductId) {
-      alert("Please select a product for the PR article.");
+      alert("Vui lòng chọn sản phẩm cho bài viết quảng bá.");
       return;
     }
 
@@ -208,7 +208,7 @@ export default function BlogEditorPage() {
       }
     } catch (err: any) {
       console.error("AI Generation error:", err);
-      setErrorMessage(err.response?.data?.error || "Unable to generate article from AI. Please check your API Key.");
+      setErrorMessage(err.response?.data?.error || "Không thể tạo bài viết bằng AI. Vui lòng kiểm tra khóa API.");
     } finally {
       setAiLoading(false);
     }
@@ -217,7 +217,7 @@ export default function BlogEditorPage() {
   // AI Content Generator: SSE Streaming directly into Content
   const handleAIGenerateStream = async () => {
     if (!aiProductId) {
-      alert("Please select a product for the PR article.");
+      alert("Vui lòng chọn sản phẩm cho bài viết quảng bá.");
       return;
     }
 
@@ -254,13 +254,13 @@ export default function BlogEditorPage() {
         },
         (err) => {
           console.error("Stream error:", err);
-          setErrorMessage(err.message || "AI stream transmission error.");
+          setErrorMessage(err.message || "Lỗi truyền dữ liệu trực tiếp từ AI.");
           setAiLoading(false);
         }
       );
     } catch (err: any) {
       console.error("Stream call error:", err);
-      setErrorMessage(err.message || "Unable to connect to AI stream.");
+      setErrorMessage(err.message || "Không thể kết nối luồng dữ liệu AI.");
       setAiLoading(false);
     }
   };
@@ -296,7 +296,7 @@ export default function BlogEditorPage() {
 
   // Simple Markdown Parser for Live Preview tab
   const getParsedPreviewHtml = () => {
-    if (!content) return "<p class='text-gray-400 italic text-sm'>Preview content is empty...</p>";
+    if (!content) return "<p class='text-gray-400 italic text-sm'>Chưa có nội dung để xem trước...</p>";
     
     let html = content
       .replace(/&/g, "&amp;")
@@ -327,7 +327,7 @@ export default function BlogEditorPage() {
     return (
       <div className="flex flex-col items-center justify-center py-40 gap-3">
         <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
-        <span className="text-sm text-gray-500 font-medium">Loading article editor data...</span>
+        <span className="text-sm text-gray-500 font-medium">Đang tải dữ liệu trình soạn thảo...</span>
       </div>
     );
   }
@@ -340,10 +340,10 @@ export default function BlogEditorPage() {
           to="/blog" 
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-orange-500 transition-colors"
         >
-          <ArrowLeft className="w-4 h-4" /> Back to list
+          <ArrowLeft className="w-4 h-4" /> Quay lại danh sách
         </Link>
         <span className="text-xs font-semibold text-gray-500 bg-gray-50 border px-3 py-1 rounded-full">
-          {isEditMode ? "Mode: Edit Article" : "Mode: Create New Article"}
+          {isEditMode ? "Chế độ: Sửa bài viết" : "Chế độ: Tạo bài viết mới"}
         </span>
       </div>
 
@@ -361,21 +361,21 @@ export default function BlogEditorPage() {
           <div className="border-b border-gray-100 pb-4">
             <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
               <FileText className="w-5 h-5 text-orange-500" />
-              Draft Article
+              Soạn bài viết
             </h2>
-            <p className="text-xs text-gray-500 mt-1">Write product promotion articles or company news.</p>
+            <p className="text-xs text-gray-500 mt-1">Viết bài quảng bá sản phẩm hoặc tin tức doanh nghiệp.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Title */}
             <div className="space-y-1.5 md:col-span-2">
               <label className="block text-sm font-semibold text-gray-700">
-                Article Title <span className="text-red-500">*</span>
+                Tiêu đề bài viết <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 required
-                placeholder="Enter an engaging title for the article..."
+                placeholder="Nhập tiêu đề hấp dẫn cho bài viết..."
                 value={title}
                 onChange={(e) => handleTitleChange(e.target.value)}
                 className="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
@@ -399,13 +399,13 @@ export default function BlogEditorPage() {
 
             {/* Product Link */}
             <div className="space-y-1.5">
-              <label className="block text-sm font-semibold text-gray-700">Link ERP Product</label>
+              <label className="block text-sm font-semibold text-gray-700">Liên kết sản phẩm ERP</label>
               <select
                 value={productId}
                 onChange={(e) => setProductId(e.target.value ? Number(e.target.value) : "")}
                 className="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
               >
-                <option value="">No product link</option>
+                <option value="">Không liên kết sản phẩm</option>
                 {products.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name} (SKU: {p.sku})
@@ -416,11 +416,11 @@ export default function BlogEditorPage() {
 
             {/* Featured Image URL */}
             <div className="space-y-1.5 md:col-span-2">
-              <label className="block text-sm font-semibold text-gray-700">Feature Image URL</label>
+              <label className="block text-sm font-semibold text-gray-700">Đường dẫn ảnh đại diện</label>
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="https://images.unsplash.com/... or product image link"
+                  placeholder="https://images.unsplash.com/... hoặc liên kết ảnh sản phẩm"
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
                   className="w-full h-9 pl-9 pr-3 rounded-md border border-gray-300 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
@@ -467,7 +467,7 @@ export default function BlogEditorPage() {
                     type="button" 
                     onClick={() => insertMarkdown("**", "**")}
                     className="p-1 hover:bg-slate-100 text-gray-500 rounded" 
-                    title="Bold"
+                    title="In đậm"
                   >
                     <Bold className="w-3.5 h-3.5" />
                   </button>
@@ -475,7 +475,7 @@ export default function BlogEditorPage() {
                     type="button" 
                     onClick={() => insertMarkdown("*", "*")}
                     className="p-1 hover:bg-slate-100 text-gray-500 rounded" 
-                    title="Italic"
+                    title="In nghiêng"
                   >
                     <Italic className="w-3.5 h-3.5" />
                   </button>
@@ -483,7 +483,7 @@ export default function BlogEditorPage() {
                     type="button" 
                     onClick={() => insertMarkdown("## ")}
                     className="p-1 hover:bg-slate-100 text-gray-500 rounded" 
-                    title="H2 Heading"
+                    title="Tiêu đề H2"
                   >
                     <Heading1 className="w-3.5 h-3.5" />
                   </button>
@@ -491,7 +491,7 @@ export default function BlogEditorPage() {
                     type="button" 
                     onClick={() => insertMarkdown("### ")}
                     className="p-1 hover:bg-slate-100 text-gray-500 rounded" 
-                    title="H3 Heading"
+                    title="Tiêu đề H3"
                   >
                     <Heading2 className="w-3.5 h-3.5" />
                   </button>
@@ -499,7 +499,7 @@ export default function BlogEditorPage() {
                     type="button" 
                     onClick={() => insertMarkdown("- ")}
                     className="p-1 hover:bg-slate-100 text-gray-500 rounded" 
-                    title="List"
+                    title="Danh sách"
                   >
                     <List className="w-3.5 h-3.5" />
                   </button>
@@ -507,7 +507,7 @@ export default function BlogEditorPage() {
                     type="button" 
                     onClick={() => insertMarkdown("[", "](url)")}
                     className="p-1 hover:bg-slate-100 text-gray-500 rounded" 
-                    title="Insert Link"
+                    title="Chèn liên kết"
                   >
                     <LinkIcon className="w-3.5 h-3.5" />
                   </button>
@@ -520,7 +520,7 @@ export default function BlogEditorPage() {
                 ref={textareaRef}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder="Write Markdown content here. Or use the AI Assistant on the right to auto-generate content..."
+                placeholder="Viết nội dung Markdown tại đây hoặc dùng trợ lý AI bên phải để tự động tạo nội dung..."
                 rows={15}
                 className="w-full p-4 rounded-xl border border-gray-300 bg-white text-sm text-gray-900 placeholder:text-gray-400 font-mono focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 leading-relaxed"
               />
@@ -534,9 +534,9 @@ export default function BlogEditorPage() {
 
           {/* Post Summary (Snippet / SEO Meta Description) */}
           <div className="space-y-1.5">
-            <label className="block text-sm font-semibold text-gray-700">Short Summary / Snippet</label>
+            <label className="block text-sm font-semibold text-gray-700">Tóm tắt ngắn</label>
             <textarea
-              placeholder="Enter 2-3 sentences to summarize the article for listings or meta descriptions..."
+              placeholder="Nhập 2–3 câu tóm tắt bài viết dùng trong danh sách hoặc mô tả meta..."
               value={summary}
               onChange={(e) => setSummary(e.target.value)}
               rows={2}
@@ -553,10 +553,10 @@ export default function BlogEditorPage() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5 md:col-span-2">
-                <label className="block text-xs font-semibold text-gray-600">SEO Title (Recommended under 60 characters)</label>
+                <label className="block text-xs font-semibold text-gray-600">Tiêu đề SEO (khuyến nghị dưới 60 ký tự)</label>
                 <input
                   type="text"
-                  placeholder="Tip: Same as the article title"
+                  placeholder="Gợi ý: Có thể dùng tiêu đề bài viết"
                   value={seoTitle}
                   onChange={(e) => setSeoTitle(e.target.value)}
                   className="w-full h-9 px-3 rounded-md border border-gray-300 bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
@@ -564,9 +564,9 @@ export default function BlogEditorPage() {
               </div>
 
               <div className="space-y-1.5 md:col-span-2">
-                <label className="block text-xs font-semibold text-gray-600">SEO Meta Description (Recommended under 160 characters)</label>
+                <label className="block text-xs font-semibold text-gray-600">Mô tả SEO (khuyến nghị dưới 160 ký tự)</label>
                 <textarea
-                  placeholder="Describe the article's content for Google search results..."
+                  placeholder="Mô tả nội dung bài viết hiển thị trên kết quả tìm kiếm Google..."
                   value={seoMetaDesc}
                   onChange={(e) => setSeoMetaDesc(e.target.value)}
                   rows={2}
@@ -575,7 +575,7 @@ export default function BlogEditorPage() {
               </div>
 
               <div className="space-y-1.5 md:col-span-2">
-                <label className="block text-xs font-semibold text-gray-600">SEO Keywords (Separated by commas)</label>
+                <label className="block text-xs font-semibold text-gray-600">Từ khóa SEO (phân tách bằng dấu phẩy)</label>
                 <input
                   type="text"
                   placeholder="iPhone 15 pro, iPhone 15 review, premium smartphone"
@@ -590,7 +590,7 @@ export default function BlogEditorPage() {
           {/* Form Actions */}
           <div className="border-t border-gray-150 pt-5 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <label className="text-sm font-semibold text-gray-700">Article Status:</label>
+              <label className="text-sm font-semibold text-gray-700">Trạng thái bài viết:</label>
               <div className="flex gap-3">
                 <label className="inline-flex items-center gap-1.5 text-xs font-medium cursor-pointer">
                   <input 
@@ -601,7 +601,7 @@ export default function BlogEditorPage() {
                     onChange={() => setStatus("draft")}
                     className="text-orange-500 focus:ring-orange-500"
                   />
-                  Draft
+                  Bản nháp
                 </label>
                 <label className="inline-flex items-center gap-1.5 text-xs font-medium cursor-pointer">
                   <input 
@@ -612,7 +612,7 @@ export default function BlogEditorPage() {
                     onChange={() => setStatus("published")}
                     className="text-orange-500 focus:ring-orange-500"
                   />
-                  Published
+                  Đã xuất bản
                 </label>
               </div>
             </div>
@@ -624,11 +624,11 @@ export default function BlogEditorPage() {
             >
               {submitLoading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" /> Saving...
+                  <Loader2 className="w-4 h-4 animate-spin" /> Đang lưu...
                 </>
               ) : (
                 <>
-                  <Save className="w-4 h-4" /> Save Article
+                  <Save className="w-4 h-4" /> Lưu bài viết
                 </>
               )}
             </Button>
@@ -647,8 +647,8 @@ export default function BlogEditorPage() {
                 <Sparkles className="w-4 h-4 text-amber-300" />
               </div>
               <div>
-                <h3 className="text-sm font-bold tracking-wide">AI Marketing Assistant</h3>
-                <span className="text-[9px] text-white/50 font-semibold uppercase tracking-widest">Powered by OpenAI</span>
+                <h3 className="text-sm font-bold tracking-wide">Trợ lý tiếp thị AI</h3>
+                <span className="text-[9px] text-white/50 font-semibold uppercase tracking-widest">Vận hành bởi OpenAI</span>
               </div>
             </div>
 
@@ -707,17 +707,17 @@ export default function BlogEditorPage() {
                   disabled={aiLoading}
                   className="w-full h-8 px-2 rounded bg-white/10 border border-white/10 text-white font-medium focus:outline-none focus:ring-1 focus:ring-indigo-400"
                 >
-                  <option value="feature" className="text-slate-800">Feature/Solution Introduction</option>
-                  <option value="promotion" className="text-slate-800">Promotion Program</option>
-                  <option value="comparison" className="text-slate-800">Comparison with Competitors</option>
+                  <option value="feature" className="text-slate-800">Giới thiệu tính năng/giải pháp</option>
+                  <option value="promotion" className="text-slate-800">Chương trình khuyến mãi</option>
+                  <option value="comparison" className="text-slate-800">So sánh với đối thủ</option>
                 </select>
               </div>
 
               {/* Additional notes */}
               <div className="space-y-1">
-                <label className="font-semibold text-white/80">Additional Notes (Keywords, requests...)</label>
+                <label className="font-semibold text-white/80">Ghi chú bổ sung (từ khóa, yêu cầu...)</label>
                 <textarea
-                  placeholder="Example: Emphasize 2-year warranty, free headphones, youthful style..."
+                  placeholder="Ví dụ: Nhấn mạnh bảo hành 2 năm, tặng tai nghe, phong cách trẻ trung..."
                   value={aiNotes}
                   onChange={(e) => setAiNotes(e.target.value)}
                   disabled={aiLoading}
@@ -736,7 +736,7 @@ export default function BlogEditorPage() {
                 >
                   {aiLoading ? (
                     <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Processing...
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Đang xử lý...
                     </>
                   ) : (
                     <>
@@ -753,11 +753,11 @@ export default function BlogEditorPage() {
                 >
                   {aiLoading ? (
                     <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> AI is writing...
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> AI đang viết...
                     </>
                   ) : (
                     <>
-                      <RefreshCw className="w-3.5 h-3.5" /> Write Directly (Stream)
+                      <RefreshCw className="w-3.5 h-3.5" /> Viết trực tiếp
                     </>
                   )}
                 </Button>
@@ -769,7 +769,7 @@ export default function BlogEditorPage() {
           <div className="bg-white rounded-2xl border border-gray-150 p-4 shadow-sm space-y-4">
             <div className="flex items-center gap-1.5 border-b pb-2">
               <CheckCircle className="w-4 h-4 text-emerald-500" />
-              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-widest">AI SEO Analyst</h3>
+              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-widest">AI phân tích SEO</h3>
             </div>
             
             <ul className="space-y-3 text-xs">
@@ -778,7 +778,7 @@ export default function BlogEditorPage() {
                   ✓
                 </span>
                 <div>
-                  <span className="font-semibold text-gray-700">Article Title Length</span>
+                  <span className="font-semibold text-gray-700">Độ dài tiêu đề bài viết</span>
                   <p className="text-[10px] text-gray-400 mt-0.5">Ideal: 10 - 60 characters. Current: {title.length} characters.</p>
                 </div>
               </li>
@@ -788,7 +788,7 @@ export default function BlogEditorPage() {
                   ✓
                 </span>
                 <div>
-                  <span className="font-semibold text-gray-700">Article Length (Word Count)</span>
+                  <span className="font-semibold text-gray-700">Độ dài bài viết (số từ)</span>
                   <p className="text-[10px] text-gray-400 mt-0.5">Ideal: over 300 words. Current: {content.split(/\s+/).filter(Boolean).length} words.</p>
                 </div>
               </li>
@@ -798,8 +798,8 @@ export default function BlogEditorPage() {
                   ✓
                 </span>
                 <div>
-                  <span className="font-semibold text-gray-700">Heading Structure</span>
-                  <p className="text-[10px] text-gray-400 mt-0.5">Must contain subheadings (## H2 or ### H3).</p>
+                  <span className="font-semibold text-gray-700">Cấu trúc tiêu đề</span>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Cần có tiêu đề phụ (## H2 hoặc ### H3).</p>
                 </div>
               </li>
 
@@ -808,8 +808,8 @@ export default function BlogEditorPage() {
                   ✓
                 </span>
                 <div>
-                  <span className="font-semibold text-gray-700">SEO Keyword Optimization</span>
-                  <p className="text-[10px] text-gray-400 mt-0.5">Set keywords appear in the article.</p>
+                  <span className="font-semibold text-gray-700">Tối ưu từ khóa SEO</span>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Các từ khóa đã đặt cần xuất hiện trong bài viết.</p>
                 </div>
               </li>
 
@@ -818,7 +818,7 @@ export default function BlogEditorPage() {
                   ✓
                 </span>
                 <div>
-                  <span className="font-semibold text-gray-700">Meta Description Length</span>
+                  <span className="font-semibold text-gray-700">Độ dài mô tả meta</span>
                   <p className="text-[10px] text-gray-400 mt-0.5">Ideal: 50 - 160 characters. Current: {seoMetaDesc.length} characters.</p>
                 </div>
               </li>

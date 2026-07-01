@@ -11,7 +11,7 @@ import { usePaginationConfig } from '@/hooks/useAppConfig';
 interface UseTableOptions<T> {
   data: T[];
   initialPageSize?: number;
-  initialSortKey?: string;
+  initialSortKey?: string | null;
   initialSortOrder?: 'asc' | 'desc';
   searchFields?: (keyof T)[];
 }

@@ -14,6 +14,8 @@ export interface OcrLineItem {
   unit: string;
   unit_price: number;
   tax_rate: number;
+  discount_percent?: number;
+  discount_amount?: number;
   amount: number;
   confidence: number;
   needsReview?: boolean;

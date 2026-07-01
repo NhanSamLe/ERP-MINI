@@ -23,7 +23,7 @@ export default function ActivityBoard({
       <Separator />
       <CardContent className="pt-4 space-y-3">
         {activities.length === 0 ? (
-          <p className="text-sm text-gray-500 text-center">No activities</p>
+          <p className="text-sm text-gray-500 text-center">Không có hoạt động</p>
         ) : (
           activities.map((a) => (
             <ActivityCardMini key={a.id} a={a} onClick={() => onClick(a)} />

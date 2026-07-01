@@ -80,14 +80,14 @@ export default function ViewApPaymentPage() {
     return (
       <div className="flex flex-col items-center justify-center py-32">
         <Loader2 className="w-12 h-12 animate-spin text-blue-500 mb-4" />
-        <p className="text-gray-500 font-medium">Loading payment...</p>
+        <p className="text-gray-500 font-medium">Đang tải phiếu chi...</p>
       </div>
     );
   }
 
   if (!payment) {
     return (
-      <div className="text-center py-32 text-gray-500">Payment not found</div>
+      <div className="text-center py-32 text-gray-500">Không tìm thấy phiếu chi</div>
     );
   }
 
@@ -114,7 +114,7 @@ export default function ViewApPaymentPage() {
     try {
       setSubmitting(true);
       await dispatch(submitApPaymentThunk(payment.id)).unwrap();
-      toast.success("Payment submitted for approval");
+      toast.success("Đã gửi duyệt phiếu chi");
       setOpenSubmitModal(false);
       refreshAuditLogs();
     } catch (e) {
@@ -128,7 +128,7 @@ export default function ViewApPaymentPage() {
     try {
       setSubmitting(true);
       await dispatch(approveApPaymentThunk(payment.id)).unwrap();
-      toast.success("Payment approved");
+      toast.success("Đã phê duyệt phiếu chi");
       setOpenApproveModal(false);
       refreshAuditLogs();
     } catch (e) {
@@ -140,7 +140,7 @@ export default function ViewApPaymentPage() {
 
   const handleReject = async () => {
     if (!rejectReason.trim()) {
-      toast.warning("Please enter reject reason");
+      toast.warning("Vui lòng nhập lý do từ chối");
       return;
     }
     try {
@@ -148,7 +148,7 @@ export default function ViewApPaymentPage() {
       await dispatch(
         rejectApPaymentThunk({ id: payment.id, reason: rejectReason.trim() }),
       ).unwrap();
-      toast.success("Payment rejected");
+      toast.success("Đã từ chối phiếu chi");
       setOpenReject(false);
       setRejectReason("");
       refreshAuditLogs();
@@ -175,13 +175,13 @@ export default function ViewApPaymentPage() {
 
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Payment {payment.payment_no}
+                Phiếu chi {payment.payment_no}
               </h1>
 
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Calendar className="w-4 h-4" />
                 <span>
-                  {new Date(payment.payment_date).toLocaleDateString("en-US")}
+                  {new Date(payment.payment_date).toLocaleDateString("vi-VN")}
                 </span>
               </div>
             </div>
@@ -195,7 +195,7 @@ export default function ViewApPaymentPage() {
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500 text-white font-semibold text-sm shadow-md hover:bg-orange-600 transition"
               >
                 <Send className="w-4 h-4" />
-                Submit
+                Gửi duyệt
               </button>
             )}
 
@@ -206,14 +206,14 @@ export default function ViewApPaymentPage() {
                   className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 text-white font-semibold text-sm shadow-md hover:bg-emerald-600"
                 >
                   <CheckCircle className="w-4 h-4" />
-                  Approve
+                  Duyệt
                 </button>
 
                 <button
                   onClick={() => setOpenReject(true)}
                   className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500 text-white font-semibold text-sm shadow-md hover:bg-red-600"
                 >
-                  Reject
+                  Từ chối
                 </button>
               </>
             )}
@@ -226,7 +226,7 @@ export default function ViewApPaymentPage() {
                shadow-md hover:bg-purple-600"
               >
                 <CreditCard className="w-4 h-4" />
-                Allocate to Invoices
+                Phân bổ cho hóa đơn
               </button>
             )}
 
@@ -235,7 +235,7 @@ export default function ViewApPaymentPage() {
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold text-sm shadow-md "
             >
               <ArrowLeft className="w-4 h-4" />
-              Back
+              Quay lại
             </button>
 
             {/* STATUS */}
@@ -258,7 +258,7 @@ export default function ViewApPaymentPage() {
               <CreditCard className="w-5 h-5 text-blue-600" />
             </div>
             <h2 className="text-lg font-bold text-gray-900">
-              Payment Information
+              Thông tin thanh toán
             </h2>
           </div>
 
@@ -266,47 +266,47 @@ export default function ViewApPaymentPage() {
             {/* Amount nổi bật */}
             <div className="rounded-xl bg-orange-50 border border-orange-200 px-4 py-3 flex items-center justify-between">
               <span className="text-sm font-semibold text-orange-700">
-                Payment Amount
+                Số tiền thanh toán
               </span>
               <span className="text-xl font-bold text-orange-600">
-                {Number(payment.amount || 0).toLocaleString("en-US", {
-                  minimumFractionDigits: 2,
+                {Number(payment.amount || 0).toLocaleString("vi-VN", {
+                  minimumFractionDigits: 0,
                 })}{" "}
                 VND
               </span>
             </div>
             <InfoRow
               icon={<Calendar className="w-4 h-4" />}
-              label="Payment Date"
-              value={new Date(payment.payment_date).toLocaleDateString("en-US")}
+              label="Ngày thanh toán"
+              value={new Date(payment.payment_date).toLocaleDateString("vi-VN")}
             />
             <InfoRow
               icon={<CreditCard className="w-4 h-4" />}
-              label="Method"
+              label="Phương thức"
               value={payment.method.toUpperCase()}
             />
             <InfoRow
               icon={<CheckCircle className="w-4 h-4" />}
-              label="Status"
+              label="Trạng thái"
               value={payment.status.toUpperCase()}
             />
             {payment.submitted_at && (
               <InfoRow
                 icon={<Clock className="w-4 h-4" />}
-                label="Submitted At"
-                value={new Date(payment.submitted_at).toLocaleString("en-US")}
+                label="Gửi duyệt lúc"
+                value={new Date(payment.submitted_at).toLocaleString("vi-VN")}
               />
             )}
             {payment.approved_at && (
               <InfoRow
                 icon={<CheckCircle className="w-4 h-4" />}
-                label="Approved At"
-                value={new Date(payment.approved_at).toLocaleString("en-US")}
+                label="Được duyệt lúc"
+                value={new Date(payment.approved_at).toLocaleString("vi-VN")}
               />
             )}
             <InfoRow
               icon={<Clock className="w-4 h-4" />}
-              label="Approval"
+              label="Phê duyệt"
               value={payment.approval_status.toUpperCase()}
             />
           </div>
@@ -318,14 +318,14 @@ export default function ViewApPaymentPage() {
               <Building2 className="w-5 h-5 text-white" />
             </div>
             <h2 className="text-lg font-bold text-gray-900">
-              Supplier Information
+              Thông tin nhà cung cấp
             </h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-white rounded-xl p-4 border border-blue-100">
               <p className="text-xs font-semibold text-blue-700 uppercase mb-1">
-                Company
+                Công ty
               </p>
               <p className="font-bold text-gray-900">
                 {payment.supplier?.name}
@@ -343,7 +343,7 @@ export default function ViewApPaymentPage() {
 
             <div className="bg-white rounded-xl p-4 border border-blue-100">
               <p className="text-xs font-semibold text-blue-700 uppercase mb-1">
-                Phone
+                Số điện thoại
               </p>
               <p className="text-sm text-gray-900">
                 {payment.supplier?.phone ?? "-"}
@@ -355,11 +355,11 @@ export default function ViewApPaymentPage() {
 
       {/* ================= USERS ================= */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <UserCard title="Created By" user={payment.creator} />
+        <UserCard title="Người tạo" user={payment.creator} />
         <UserCard
-          title="Approved By"
+          title="Người duyệt"
           user={payment.approver}
-          empty="Waiting for approval"
+          empty="Đang chờ duyệt"
         />
       </div>
       {/* ================= REJECTION INFO ================= */}
@@ -371,7 +371,7 @@ export default function ViewApPaymentPage() {
                 <XCircle className="w-5 h-5 text-white" />
               </div>
               <h3 className="text-lg font-bold text-red-700">
-                Rejection Reason
+                Lý do từ chối
               </h3>
             </div>
 
@@ -390,13 +390,12 @@ export default function ViewApPaymentPage() {
                 <Send className="w-6 h-6 text-orange-600" />
               </div>
               <h3 className="text-lg font-bold text-gray-900">
-                Submit for approval?
+                Gửi phê duyệt?
               </h3>
             </div>
 
             <p className="text-sm text-gray-600 mb-6">
-              Once submitted, this payment will be sent for approval and you
-              will not be able to edit it anymore.
+              Sau khi gửi, phiếu chi này sẽ được gửi đi phê duyệt và bạn sẽ không thể chỉnh sửa được nữa.
             </p>
 
             <div className="flex justify-end gap-3">
@@ -404,7 +403,7 @@ export default function ViewApPaymentPage() {
                 onClick={() => setOpenSubmitModal(false)}
                 className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50"
               >
-                Cancel
+                Hủy
               </button>
               <button
                 disabled={submitting}
@@ -415,7 +414,7 @@ export default function ViewApPaymentPage() {
                     : "bg-orange-500 hover:bg-orange-600 text-white"
                 }`}
               >
-                {submitting ? "Submitting..." : "Confirm Submit"}
+                {submitting ? "Đang gửi..." : "Xác nhận gửi"}
               </button>
             </div>
           </div>
@@ -431,12 +430,12 @@ export default function ViewApPaymentPage() {
                 <CheckCircle className="w-6 h-6 text-emerald-600" />
               </div>
               <h3 className="text-lg font-bold text-gray-900">
-                Approve this payment?
+                Phê duyệt phiếu chi này?
               </h3>
             </div>
 
             <p className="text-sm text-gray-600 mb-6">
-              This action will approve the payment and allow further processing.
+              Hành động này sẽ phê duyệt phiếu chi và cho phép xử lý tiếp theo.
             </p>
 
             <div className="flex justify-end gap-3">
@@ -444,7 +443,7 @@ export default function ViewApPaymentPage() {
                 onClick={() => setOpenApproveModal(false)}
                 className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50"
               >
-                Cancel
+                Hủy
               </button>
 
               <button
@@ -456,7 +455,7 @@ export default function ViewApPaymentPage() {
                     : "bg-emerald-500 hover:bg-emerald-600 text-white"
                 }`}
               >
-                Confirm Approve
+                Xác nhận duyệt
               </button>
             </div>
           </div>
@@ -473,26 +472,26 @@ export default function ViewApPaymentPage() {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-gray-900">
-                  Reject Payment
+                  Từ chối phiếu chi
                 </h3>
                 <p className="text-xs text-gray-500">
-                  This action cannot be undone
+                  Hành động này không thể hoàn tác
                 </p>
               </div>
             </div>
 
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Reason <span className="text-red-500">*</span>
+              Lý do <span className="text-red-500">*</span>
             </label>
             <textarea
               rows={4}
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Please explain why this payment is being rejected..."
+              placeholder="Vui lòng giải thích lý do từ chối phiếu chi này..."
               className="w-full border border-gray-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-red-400 focus:border-transparent outline-none resize-none"
             />
             {rejectReason.trim() === "" && (
-              <p className="text-xs text-red-500 mt-1">Reason is required</p>
+              <p className="text-xs text-red-500 mt-1">Lý do là bắt buộc</p>
             )}
 
             <div className="flex justify-end gap-3 mt-5">
@@ -503,7 +502,7 @@ export default function ViewApPaymentPage() {
                 }}
                 className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition"
               >
-                Cancel
+                Hủy
               </button>
               <button
                 disabled={submitting || !rejectReason.trim()}
@@ -515,7 +514,7 @@ export default function ViewApPaymentPage() {
                 }`}
               >
                 {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                {submitting ? "Rejecting..." : "Confirm Reject"}
+                {submitting ? "Đang từ chối..." : "Xác nhận từ chối"}
               </button>
             </div>
           </div>
@@ -535,7 +534,7 @@ export default function ViewApPaymentPage() {
         <div className="bg-white rounded-2xl border-2 border-gray-100 p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-gray-900">
-              Allocation Status
+              Trạng thái phân bổ
             </h2>
             <span
               className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
@@ -556,16 +555,17 @@ export default function ViewApPaymentPage() {
                       : "bg-red-500"
                 }`}
               />
-              {((payment as any).allocation_status as string).replace(
-                /_/g,
-                " ",
-              )}
+              {(payment as any).allocation_status === "fully_allocated"
+                ? "Phân bổ toàn bộ"
+                : (payment as any).allocation_status === "partially_allocated"
+                  ? "Phân bổ một phần"
+                  : "Chưa phân bổ"}
             </span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div className="bg-blue-50 rounded-xl p-4">
               <p className="text-xs text-blue-600 font-medium mb-1">
-                Payment Amount
+                Số tiền thanh toán
               </p>
               <p className="text-lg font-bold text-blue-700">
                 {Number(payment.amount ?? 0).toLocaleString("vi-VN")} VND
@@ -574,29 +574,39 @@ export default function ViewApPaymentPage() {
             {(payment as any).transaction_reference && (
               <div className="bg-gray-50 rounded-xl p-4">
                 <p className="text-xs text-gray-500 font-medium mb-1">
-                  Transaction Reference
+                  Tham chiếu giao dịch
                 </p>
                 <p className="font-semibold text-gray-800">
                   {(payment as any).transaction_reference}
                 </p>
               </div>
             )}
-            {(payment as any).bank_account_id && (
+            {((payment as any).bankAccount || (payment as any).bank_account_id) && (
               <div className="bg-gray-50 rounded-xl p-4">
                 <p className="text-xs text-gray-500 font-medium mb-1">
-                  Bank Account
+                  Tài khoản ngân hàng
                 </p>
-                <p className="font-semibold text-gray-800">
-                  #{(payment as any).bank_account_id}
-                </p>
+                {(payment as any).bankAccount ? (
+                  <>
+                    <p className="font-semibold text-gray-800">
+                      {(payment as any).bankAccount.bank_name} - {(payment as any).bankAccount.account_number}
+                    </p>
+                    <p className="text-[10px] text-gray-400 font-semibold uppercase mt-0.5">
+                      {(payment as any).bankAccount.account_name}
+                    </p>
+                  </>
+                ) : (
+                  <p className="font-semibold text-gray-800">
+                    #{(payment as any).bank_account_id}
+                  </p>
+                )}
               </div>
             )}
           </div>
           {(payment as any).allocation_status === "unallocated" && (
             <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-xs text-red-700 font-medium">
-                ⚠️ This payment has not been allocated to any invoice yet.
-                Please allocate it to reduce supplier payables.
+                ⚠️ Khoản thanh toán này chưa được phân bổ cho bất kỳ hóa đơn nào. Vui lòng phân bổ để giảm công nợ nhà cung cấp.
               </p>
             </div>
           )}
@@ -605,7 +615,7 @@ export default function ViewApPaymentPage() {
 
       {/* ================= AUDIT LOG ================= */}
       <AuditLogCard
-        title="Activity Log"
+        title="Lịch sử hoạt động"
         logs={auditLogs}
         loading={loadingAuditLogs}
         variant="payment"
@@ -732,8 +742,16 @@ function AllocateModal({
         const invoices = await dispatch(
           getApPaymentUnpaidInvoicesThunk(paymentId),
         ).unwrap();
-        setAvailableAmount(result.available_amount);
-        setLocalInvoices(invoices.map((i) => ({ ...i, allocate_amount: 0 })));
+        setAvailableAmount(Number(result.available_amount || 0));
+        setLocalInvoices(
+          invoices.map((i) => ({
+            ...i,
+            unpaid_amount: Number(i.unpaid_amount || 0),
+            total_after_tax: Number(i.total_after_tax || 0),
+            allocated_amount: Number(i.allocated_amount || 0),
+            allocate_amount: 0,
+          })),
+        );
       } catch (e) {
         toast.error(getErrorMessage(e));
         onClose();
@@ -749,12 +767,12 @@ function AllocateModal({
     (sum, i) => sum + Number(i.allocate_amount || 0),
     0,
   );
-  const remaining = availableAmount - totalAllocate;
+  const remaining = Number(availableAmount || 0) - totalAllocate;
   const invalid =
     totalAllocate <= 0 ||
-    totalAllocate > availableAmount ||
+    totalAllocate > Number(availableAmount || 0) ||
     localInvoices.some(
-      (i) => i.allocate_amount! < 0 || i.allocate_amount! > i.unpaid_amount,
+      (i) => i.allocate_amount! < 0 || i.allocate_amount! > Number(i.unpaid_amount || 0),
     );
 
   /* ===== HANDLERS ===== */
@@ -767,15 +785,15 @@ function AllocateModal({
 
   // ✅ Phase 3: Fill max — tự động điền tối đa có thể cho từng invoice
   const handleFillMax = () => {
-    let budget = availableAmount;
-    setLocalInvoices((prev) =>
-      prev.map((inv) => {
-        if (budget <= 0) return { ...inv, allocate_amount: 0 };
-        const fill = Math.min(inv.unpaid_amount, budget);
-        budget -= fill;
-        return { ...inv, allocate_amount: fill };
-      }),
-    );
+    let budget = Number(availableAmount || 0);
+    const nextInvoices = localInvoices.map((inv) => {
+      const unpaid = Number(inv.unpaid_amount || 0);
+      if (budget <= 0) return { ...inv, allocate_amount: 0 };
+      const fill = Math.min(unpaid, budget);
+      budget -= fill;
+      return { ...inv, allocate_amount: fill };
+    });
+    setLocalInvoices(nextInvoices);
   };
 
   const handleSubmit = async () => {
@@ -789,12 +807,14 @@ function AllocateModal({
         allocateApPaymentThunk({ paymentId, allocations }),
       ).unwrap();
 
-      toast.success("Allocation completed successfully");
+      toast.success("Phân bổ thanh công");
       onSuccess?.();
       onClose();
       dispatch(getApPaymentByIdThunk(paymentId));
     } catch (e) {
-      toast.error(getErrorMessage(e));
+      const errMsg = getErrorMessage(e);
+      toast.error(errMsg);
+      alert("LỖI PHÂN BỔ: " + errMsg);
     } finally {
       setSubmitting(false);
     }
@@ -806,7 +826,7 @@ function AllocateModal({
         <div className="bg-white p-6 rounded-xl flex items-center gap-3">
           <Loader2 className="animate-spin text-purple-500" />
           <span className="text-sm font-medium text-gray-600">
-            Loading allocation data...
+            Đang tải dữ liệu phân bổ...
           </span>
         </div>
       </div>
@@ -821,7 +841,7 @@ function AllocateModal({
             <div className="flex flex-col items-center gap-3">
               <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
               <p className="text-sm font-semibold text-gray-700">
-                Allocating payment...
+                Đang phân bổ thanh toán...
               </p>
             </div>
           </div>
@@ -835,10 +855,10 @@ function AllocateModal({
             </div>
             <div>
               <h3 className="text-xl font-bold text-gray-900">
-                Allocate Payment
+                Phân bổ thanh toán
               </h3>
               <p className="text-xs text-gray-500">
-                Assign payment to outstanding invoices
+                Gán khoản thanh toán cho các hóa đơn còn nợ
               </p>
             </div>
           </div>
@@ -855,21 +875,21 @@ function AllocateModal({
         <div className="grid grid-cols-3 gap-3 mb-5">
           <div className="bg-blue-50 rounded-xl p-3 text-center">
             <p className="text-xs text-blue-600 font-medium mb-0.5">
-              Available
+              Khả dụng
             </p>
             <p className="text-lg font-bold text-blue-700">
-              {availableAmount.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
+              {availableAmount.toLocaleString("vi-VN", {
+                minimumFractionDigits: 0,
               })}
             </p>
           </div>
           <div className="bg-purple-50 rounded-xl p-3 text-center">
             <p className="text-xs text-purple-600 font-medium mb-0.5">
-              Allocating
+              Đang phân bổ
             </p>
             <p className="text-lg font-bold text-purple-700">
-              {totalAllocate.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
+              {totalAllocate.toLocaleString("vi-VN", {
+                minimumFractionDigits: 0,
               })}
             </p>
           </div>
@@ -879,12 +899,12 @@ function AllocateModal({
             <p
               className={`text-xs font-medium mb-0.5 ${remaining < 0 ? "text-red-600" : "text-green-600"}`}
             >
-              Remaining
+              Còn lại
             </p>
             <p
               className={`text-lg font-bold ${remaining < 0 ? "text-red-700" : "text-green-700"}`}
             >
-              {remaining.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+              {remaining.toLocaleString("vi-VN", { minimumFractionDigits: 0 })}
             </p>
           </div>
         </div>
@@ -895,14 +915,14 @@ function AllocateModal({
             onClick={handleFillMax}
             className="text-xs font-semibold text-purple-600 hover:text-purple-800 border border-purple-200 hover:border-purple-400 px-3 py-1.5 rounded-lg transition"
           >
-            ⚡ Auto-fill Max
+            ⚡ Tự động điền tối đa
           </button>
         </div>
 
         {/* TABLE */}
         {localInvoices.length === 0 ? (
           <div className="text-center py-10 text-gray-400 text-sm">
-            No unpaid invoices found for this supplier.
+            Không tìm thấy hóa đơn chưa thanh toán nào của nhà cung cấp này.
           </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-gray-100">
@@ -910,19 +930,19 @@ function AllocateModal({
               <thead className="bg-gray-50 border-b">
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold text-gray-600">
-                    Invoice
+                    Hóa đơn
                   </th>
                   <th className="px-4 py-3 text-left font-semibold text-gray-600">
-                    Status
+                    Trạng thái
                   </th>
                   <th className="px-4 py-3 text-right font-semibold text-gray-600">
-                    Total
+                    Tổng cộng
                   </th>
                   <th className="px-4 py-3 text-right font-semibold text-gray-600">
-                    Unpaid
+                    Chưa thanh toán
                   </th>
                   <th className="px-4 py-3 text-right font-semibold text-gray-600">
-                    Allocate
+                    Phân bổ
                   </th>
                 </tr>
               </thead>
@@ -942,13 +962,13 @@ function AllocateModal({
                         <InvoiceStatusBadge status={(inv as any).status} />
                       </td>
                       <td className="px-4 py-3 text-right text-gray-600">
-                        {Number(inv.total_after_tax).toLocaleString("en-US", {
-                          minimumFractionDigits: 2,
+                        {Number(inv.total_after_tax).toLocaleString("vi-VN", {
+                          minimumFractionDigits: 0,
                         })}
                       </td>
                       <td className="px-4 py-3 text-right font-medium text-orange-600">
-                        {Number(inv.unpaid_amount).toLocaleString("en-US", {
-                          minimumFractionDigits: 2,
+                        {Number(inv.unpaid_amount).toLocaleString("vi-VN", {
+                          minimumFractionDigits: 0,
                         })}
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -967,7 +987,7 @@ function AllocateModal({
                         />
                         {isOverAllocated && (
                           <p className="text-xs text-red-500 mt-0.5">
-                            Exceeds unpaid
+                            Vượt quá số tiền chưa thanh toán
                           </p>
                         )}
                       </td>
@@ -979,6 +999,11 @@ function AllocateModal({
           </div>
         )}
 
+        {/* DEBUGGING TEXT */}
+        <div className="text-[10px] text-gray-400 bg-gray-50 p-2 rounded-lg my-2 font-mono break-all">
+          [DEBUG] Invoices: {JSON.stringify(localInvoices.map(i => ({ id: i.id, unpaid: i.unpaid_amount, allocated: i.allocate_amount })))} | Available: {availableAmount}
+        </div>
+
         {/* FOOTER */}
         <div className="flex justify-end gap-3 mt-5">
           <button
@@ -986,7 +1011,7 @@ function AllocateModal({
             disabled={submitting}
             className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition disabled:opacity-50"
           >
-            Cancel
+            Hủy
           </button>
           <button
             disabled={invalid || submitting}
@@ -998,7 +1023,7 @@ function AllocateModal({
             }`}
           >
             {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-            {submitting ? "Allocating..." : "Confirm Allocate"}
+            {submitting ? "Đang phân bổ..." : "Xác nhận phân bổ"}
           </button>
         </div>
       </div>

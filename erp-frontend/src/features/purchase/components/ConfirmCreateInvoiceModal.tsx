@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   X,
   FileText,
@@ -51,9 +51,9 @@ interface Props {
 const fmt = (v: number) =>
   v.toLocaleString("en-US", { minimumFractionDigits: 0 });
 
-const today = () => new Date().toISOString().split("T")[0];
-const plusDays = (days: number) => {
-  const d = new Date();
+const plusDays = (days: number, baseDateStr?: string) => {
+  const d = baseDateStr ? new Date(baseDateStr) : new Date();
+  if (isNaN(d.getTime())) return baseDateStr || "";
   d.setDate(d.getDate() + days);
   return d.toISOString().split("T")[0];
 };
@@ -76,29 +76,33 @@ export default function ConfirmCreateInvoiceModal({
   const [fetchingLines, setFetchingLines] = useState(false);
   const [showLines, setShowLines] = useState(true);
 
+  const getTodayStr = () => new Date().toISOString().split("T")[0];
+
   const [meta, setMeta] = useState<InvoiceMetadata>({
     invoice_no: genInvoiceNo(),
-    invoice_date: today(),
+    invoice_date: getTodayStr(),
     due_date: plusDays(30),
     invoice_series: "",
     invoice_template: "",
     tax_code: "",
   });
 
-  // Reset khi mở lại
+  // Reset khi mở lại hoặc PO thay đổi
   useEffect(() => {
     if (open) {
       setStep(1);
+      const termDays = po?.paymentTerm?.days ?? 30;
+      const todayStr = getTodayStr();
       setMeta({
         invoice_no: genInvoiceNo(),
-        invoice_date: today(),
-        due_date: plusDays(30),
+        invoice_date: todayStr,
+        due_date: plusDays(termDays, todayStr),
         invoice_series: "",
         invoice_template: "",
         tax_code: "",
       });
     }
-  }, [open]);
+  }, [open, po]);
 
   // Fetch line summary khi chọn PO
   useEffect(() => {
@@ -123,6 +127,93 @@ export default function ConfirmCreateInvoiceModal({
       .finally(() => setFetchingLines(false));
   }, [open, po]);
 
+  const invoiceCalculation = useMemo(() => {
+    if (!po) {
+      return {
+        totalGrossAmount: 0,
+        totalLineDiscount: 0,
+        totalBeforeHeaderDiscount: 0,
+        headerDiscountAmount: 0,
+        totalBeforeTax: 0,
+        totalTax: 0,
+        totalAfterTax: 0,
+      };
+    }
+
+    // 1. Calculate each line's initial values (before header discount)
+    const lines = [];
+    let totalBeforeHeaderDiscount = 0;
+    let totalGrossAmount = 0;
+    let totalLineDiscount = 0;
+
+    for (const sel of selectedLines) {
+      if (!sel.checked || sel.quantity <= 0) continue;
+      const summaryLine = summaryLines.find((l) => l.po_line_id === sel.po_line_id);
+      if (!summaryLine) continue;
+
+      const unitPrice = Number(summaryLine.unit_price ?? 0);
+      const gross = sel.quantity * unitPrice;
+      const discountPercent = Number(summaryLine.discount_percent ?? 0);
+      const discountAmount = gross * (discountPercent / 100);
+      const lineTotalBeforeHeader = gross - discountAmount;
+
+      totalGrossAmount += gross;
+      totalLineDiscount += discountAmount;
+      totalBeforeHeaderDiscount += lineTotalBeforeHeader;
+
+      lines.push({
+        summaryLine,
+        quantity: sel.quantity,
+        unitPrice,
+        discountPercent,
+        discountAmount,
+        lineTotalBeforeHeader,
+      });
+    }
+
+    // 2. Determine Header Discount Amount
+    let headerDiscountAmount = 0;
+    let headerDiscountPercent = 0;
+
+    if (po.discount_percent && Number(po.discount_percent) > 0) {
+      headerDiscountPercent = Number(po.discount_percent);
+      headerDiscountAmount = totalBeforeHeaderDiscount * (headerDiscountPercent / 100);
+    } else if (po.discount_amount && Number(po.discount_amount) > 0) {
+      const poTotalBeforeHeaderDiscount = Number(po.total_before_tax ?? 0) + Number(po.discount_amount ?? 0);
+      const ratio = poTotalBeforeHeaderDiscount > 0 ? (totalBeforeHeaderDiscount / poTotalBeforeHeaderDiscount) : 0;
+      headerDiscountAmount = Number(po.discount_amount) * ratio;
+      headerDiscountPercent = totalBeforeHeaderDiscount > 0 ? (headerDiscountAmount / totalBeforeHeaderDiscount) * 100 : 0;
+    }
+
+    // 3. Pro-rata distribution of header discount to lines
+    const totalBeforeTax = totalBeforeHeaderDiscount - headerDiscountAmount;
+    let totalTax = 0;
+
+    for (const item of lines) {
+      const summaryLine = item.summaryLine;
+      const weight = totalBeforeHeaderDiscount > 0 ? (item.lineTotalBeforeHeader / totalBeforeHeaderDiscount) : 0;
+      const distributedDiscount = headerDiscountAmount * weight;
+
+      const netLineTotal = item.lineTotalBeforeHeader - distributedDiscount;
+      // Dynamically calculate tax rate from original PO line: taxRateValue = (line.line_tax / line.line_total) * 100
+      const taxRateValue = summaryLine.line_total > 0 ? (summaryLine.line_tax / summaryLine.line_total) * 100 : 0;
+      const netLineTax = (netLineTotal * taxRateValue) / 100;
+      totalTax += netLineTax;
+    }
+
+    const totalAfterTax = totalBeforeTax + totalTax;
+
+    return {
+      totalGrossAmount,
+      totalLineDiscount,
+      totalBeforeHeaderDiscount,
+      headerDiscountAmount,
+      totalBeforeTax,
+      totalTax,
+      totalAfterTax,
+    };
+  }, [selectedLines, summaryLines, po]);
+
   if (!open || !po) return null;
 
   const poTotal = Number(po.total_after_tax ?? 0);
@@ -130,14 +221,7 @@ export default function ConfirmCreateInvoiceModal({
   const invoiceCount = po.invoice_count ?? 0;
   const isPartialHistory = invoiceCount > 0;
 
-  const thisInvoiceTotal = selectedLines.reduce((sum, sel) => {
-    if (!sel.checked || sel.quantity <= 0) return sum;
-    const line = summaryLines.find((l) => l.po_line_id === sel.po_line_id);
-    if (!line) return sum;
-    const lineTotal = sel.quantity * line.unit_price;
-    const taxRate = line.tax_rate_id ? 0.1 : 0;
-    return sum + lineTotal * (1 + taxRate);
-  }, 0);
+  const thisInvoiceTotal = invoiceCalculation.totalAfterTax;
 
   const checkedCount = selectedLines.filter(
     (s) => s.checked && s.quantity > 0,
@@ -193,7 +277,7 @@ export default function ConfirmCreateInvoiceModal({
             </div>
             <div>
               <h3 className="font-bold text-lg text-gray-900">
-                Create AP Invoice
+                Tạo hóa đơn AP
               </h3>
               <p className="text-xs text-gray-500">
                 {po.po_no} · {po.supplier?.name}
@@ -207,14 +291,14 @@ export default function ConfirmCreateInvoiceModal({
               active={step === 1}
               done={step === 2}
               label="1"
-              text="Lines"
+              text="Chọn dòng"
             />
             <div className="w-8 h-px bg-gray-300" />
             <StepDot
               active={step === 2}
               done={false}
               label="2"
-              text="Details"
+              text="Thông tin"
             />
           </div>
 
@@ -234,7 +318,7 @@ export default function ConfirmCreateInvoiceModal({
               {/* PO amount summary */}
               <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-2 text-sm">
                 <div className="flex justify-between text-gray-600">
-                  <span>PO Total</span>
+                  <span>Tổng tiền PO (sau thuế)</span>
                   <span className="font-semibold text-gray-900">
                     {fmt(poTotal)} VND
                   </span>
@@ -243,12 +327,11 @@ export default function ConfirmCreateInvoiceModal({
                   <>
                     <div className="flex justify-between text-blue-600">
                       <span>
-                        Already Invoiced ({invoiceCount} invoice
-                        {invoiceCount > 1 ? "s" : ""})
+                        Đã xuất hóa đơn ({invoiceCount} hóa đơn)
                       </span>
                       <span className="font-semibold">{fmt(invoiced)} VND</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-1.5">
+                    <div className="w-full bg-gray-200 rounded-full h-1.5 mb-2">
                       <div
                         className="h-1.5 rounded-full bg-orange-400"
                         style={{
@@ -258,9 +341,39 @@ export default function ConfirmCreateInvoiceModal({
                     </div>
                   </>
                 )}
+
+                {checkedCount > 0 && (
+                  <div className="border-t pt-2 space-y-1 text-xs text-gray-600">
+                    <div className="flex justify-between">
+                      <span>Cộng tiền hàng (chưa chiết khấu)</span>
+                      <span className="font-medium text-gray-800">{fmt(invoiceCalculation.totalGrossAmount)} VND</span>
+                    </div>
+                    {invoiceCalculation.totalLineDiscount > 0 && (
+                      <div className="flex justify-between text-red-600">
+                        <span>Chiết khấu dòng</span>
+                        <span>-{fmt(invoiceCalculation.totalLineDiscount)} VND</span>
+                      </div>
+                    )}
+                    {invoiceCalculation.headerDiscountAmount > 0 && (
+                      <div className="flex justify-between text-red-600">
+                        <span>Chiết khấu tổng phân bổ</span>
+                        <span>-{fmt(invoiceCalculation.headerDiscountAmount)} VND</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-semibold text-gray-800 border-t border-dashed pt-1 mt-1">
+                      <span>Tiền trước thuế</span>
+                      <span>{fmt(invoiceCalculation.totalBeforeTax)} VND</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Thuế GTGT</span>
+                      <span className="font-medium text-gray-800">{fmt(Math.round(invoiceCalculation.totalTax))} VND</span>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex justify-between font-bold text-orange-600 text-base border-t pt-2">
-                  <span>This Invoice</span>
-                  <span>{fmt(thisInvoiceTotal)} VND</span>
+                  <span>Hóa đơn này (Tổng thanh toán)</span>
+                  <span>{fmt(Math.round(thisInvoiceTotal))} VND</span>
                 </div>
               </div>
 
@@ -269,16 +382,14 @@ export default function ConfirmCreateInvoiceModal({
                 <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-800">
                   <Info className="w-4 h-4 mt-0.5 shrink-0" />
                   <span>
-                    Select the lines and quantities you want to invoice in this
-                    delivery.
+                    Chọn các dòng và số lượng bạn muốn xuất hóa đơn trong đợt giao hàng này.
                   </span>
                 </div>
               ) : (
                 <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-gray-700">
                   <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-amber-500" />
                   <span>
-                    You can invoice all lines at once or select specific lines
-                    for partial delivery.
+                    Bạn có thể xuất hóa đơn cho tất cả các dòng cùng một lúc hoặc chọn các dòng cụ thể cho đợt giao hàng một phần.
                   </span>
                 </div>
               )}
@@ -292,11 +403,11 @@ export default function ConfirmCreateInvoiceModal({
                   <div className="flex items-center gap-2">
                     <Package className="w-4 h-4 text-gray-500" />
                     <span className="font-semibold text-sm text-gray-700">
-                      PO Lines
+                      Các dòng PO
                     </span>
                     {!fetchingLines && (
                       <span className="text-xs text-gray-400">
-                        ({checkedCount}/{summaryLines.length} selected)
+                        (đã chọn {checkedCount}/{summaryLines.length})
                       </span>
                     )}
                   </div>
@@ -310,8 +421,8 @@ export default function ConfirmCreateInvoiceModal({
                         className="text-xs text-orange-600 hover:underline font-medium"
                       >
                         {selectedLines.every((s) => s.checked)
-                          ? "Deselect All"
-                          : "Select All"}
+                          ? "Bỏ chọn tất cả"
+                          : "Chọn tất cả"}
                       </button>
                     )}
                     {showLines ? (
@@ -327,11 +438,11 @@ export default function ConfirmCreateInvoiceModal({
                     {fetchingLines ? (
                       <div className="flex items-center justify-center py-10 gap-2 text-gray-500">
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        <span className="text-sm">Loading lines...</span>
+                        <span className="text-sm">Đang tải dữ liệu dòng...</span>
                       </div>
                     ) : summaryLines.length === 0 ? (
                       <div className="py-8 text-center text-sm text-gray-400">
-                        No lines available
+                        Không có dòng nào khả dụng
                       </div>
                     ) : (
                       <div className="divide-y">
@@ -384,27 +495,27 @@ export default function ConfirmCreateInvoiceModal({
                                       {line.product_name
                                         ? line.product_name
                                         : line.product_id
-                                          ? `Product #${line.product_id}`
-                                          : `Line #${line.po_line_id}`}
+                                          ? `Sản phẩm #${line.product_id}`
+                                          : `Dòng #${line.po_line_id}`}
                                     </span>
                                     {isFullyInvoiced && (
                                       <span className="text-xs px-1.5 py-0.5 rounded bg-gray-200 text-gray-500 flex-shrink-0">
-                                        Fully Invoiced
+                                        Đã xuất hóa đơn hết
                                       </span>
                                     )}
                                   </div>
                                   <div className="text-xs text-gray-500 mt-0.5 flex gap-3">
                                     <span>
-                                      PO qty: <strong>{line.quantity}</strong>
+                                      SL đặt: <strong>{line.quantity}</strong>
                                     </span>
                                     {line.invoiced_qty > 0 && (
                                       <span className="text-blue-600">
-                                        Invoiced:{" "}
+                                        Đã xuất:{" "}
                                         <strong>{line.invoiced_qty}</strong>
                                       </span>
                                     )}
                                     <span className="text-orange-600">
-                                      Remaining:{" "}
+                                      Còn lại:{" "}
                                       <strong>{line.remaining_qty}</strong>
                                     </span>
                                     <span>@ {fmt(line.unit_price)} VND</span>
@@ -426,7 +537,7 @@ export default function ConfirmCreateInvoiceModal({
                                     )
                                   }
                                   className="w-24 px-2 py-1.5 border rounded-lg text-sm text-right focus:ring-2 focus:ring-orange-500 outline-none disabled:bg-gray-100 disabled:text-gray-400"
-                                  placeholder="Qty"
+                                  placeholder="SL"
                                 />
                                 <span className="text-xs text-gray-500 w-28 text-right">
                                   {isChecked && qty > 0
@@ -451,11 +562,10 @@ export default function ConfirmCreateInvoiceModal({
               {/* Summary chip */}
               <div className="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-xl text-sm">
                 <span className="text-gray-600">
-                  <strong className="text-orange-600">{checkedCount}</strong>{" "}
-                  line{checkedCount > 1 ? "s" : ""} selected
+                  Đã chọn <strong className="text-orange-600">{checkedCount}</strong> dòng
                 </span>
                 <span className="font-bold text-orange-600">
-                  {fmt(thisInvoiceTotal)} VND
+                  {fmt(Math.round(thisInvoiceTotal))} VND
                 </span>
               </div>
 
@@ -463,16 +573,16 @@ export default function ConfirmCreateInvoiceModal({
               <div className="space-y-4">
                 <SectionLabel
                   icon={<Receipt className="w-4 h-4" />}
-                  text="Invoice Information"
+                  text="Thông tin hóa đơn"
                   required
                 />
 
                 <div className="grid grid-cols-1 gap-4">
                   {/* Invoice No */}
                   <FormField
-                    label="Invoice No"
+                    label="Số hóa đơn"
                     required
-                    hint="Unique invoice number"
+                    hint="Mã hóa đơn duy nhất"
                   >
                     <input
                       type="text"
@@ -480,7 +590,7 @@ export default function ConfirmCreateInvoiceModal({
                       onChange={(e) =>
                         setMeta((p) => ({ ...p, invoice_no: e.target.value }))
                       }
-                      placeholder="e.g. AP-2026-001"
+                      placeholder="VD: AP-2026-001"
                       className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none"
                     />
                   </FormField>
@@ -488,26 +598,29 @@ export default function ConfirmCreateInvoiceModal({
                   <div className="grid grid-cols-2 gap-4">
                     {/* Invoice Date */}
                     <FormField
-                      label="Invoice Date"
+                      label="Ngày hóa đơn"
                       required
                       icon={<Calendar className="w-3.5 h-3.5 text-gray-400" />}
                     >
                       <input
                         type="date"
                         value={meta.invoice_date}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const newDate = e.target.value;
+                          const termDays = po?.paymentTerm?.days ?? 30;
                           setMeta((p) => ({
                             ...p,
-                            invoice_date: e.target.value,
-                          }))
-                        }
+                            invoice_date: newDate,
+                            due_date: plusDays(termDays, newDate),
+                          }));
+                        }}
                         className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none"
                       />
                     </FormField>
 
                     {/* Due Date */}
                     <FormField
-                      label="Due Date"
+                      label="Hạn thanh toán"
                       icon={<Calendar className="w-3.5 h-3.5 text-gray-400" />}
                     >
                       <input
@@ -527,12 +640,12 @@ export default function ConfirmCreateInvoiceModal({
               <div className="space-y-4">
                 <SectionLabel
                   icon={<Hash className="w-4 h-4" />}
-                  text="Tax & Reference (Optional)"
+                  text="Thuế & Tham chiếu (Tùy chọn)"
                 />
 
                 <div className="grid grid-cols-3 gap-4">
                   {/* Invoice Series */}
-                  <FormField label="Invoice Series" hint="e.g. AA/24E">
+                  <FormField label="Ký hiệu hóa đơn" hint="VD: AA/24E">
                     <input
                       type="text"
                       value={meta.invoice_series ?? ""}
@@ -549,7 +662,7 @@ export default function ConfirmCreateInvoiceModal({
                   </FormField>
 
                   {/* Invoice Template */}
-                  <FormField label="Invoice Template" hint="e.g. 01GTKT">
+                  <FormField label="Mẫu số hóa đơn" hint="VD: 01GTKT">
                     <input
                       type="text"
                       value={meta.invoice_template ?? ""}
@@ -566,7 +679,7 @@ export default function ConfirmCreateInvoiceModal({
                   </FormField>
 
                   {/* Tax Code */}
-                  <FormField label="Tax Code" hint="Supplier tax code">
+                  <FormField label="Mã số thuế" hint="MST nhà cung cấp">
                     <input
                       type="text"
                       value={meta.tax_code ?? ""}
@@ -590,16 +703,15 @@ export default function ConfirmCreateInvoiceModal({
             <>
               <div className="text-sm text-gray-600">
                 {checkedCount > 0 ? (
-                  <span>
-                    <strong className="text-orange-600">{checkedCount}</strong>{" "}
-                    line{checkedCount > 1 ? "s" : ""} ·{" "}
-                    <strong className="text-orange-600">
-                      {fmt(thisInvoiceTotal)}
-                    </strong>{" "}
-                    VND
-                  </span>
+                   <span>
+                     Đã chọn <strong className="text-orange-600">{checkedCount}</strong> dòng ·{" "}
+                     <strong className="text-orange-600">
+                       {fmt(Math.round(thisInvoiceTotal))}
+                     </strong>{" "}
+                     VND
+                   </span>
                 ) : (
-                  <span className="text-gray-400">No lines selected</span>
+                  <span className="text-gray-400">Chưa chọn dòng nào</span>
                 )}
               </div>
               <div className="flex gap-3">
@@ -607,14 +719,14 @@ export default function ConfirmCreateInvoiceModal({
                   onClick={onCancel}
                   className="px-5 py-2.5 rounded-xl border border-gray-300 font-semibold text-gray-700 hover:bg-white transition"
                 >
-                  Cancel
+                  Hủy
                 </button>
                 <button
                   onClick={() => setStep(2)}
                   disabled={!canGoNext}
                   className="px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold transition disabled:opacity-40 flex items-center gap-2"
                 >
-                  Next: Invoice Details
+                  Tiếp theo: Chi tiết hóa đơn
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
@@ -626,7 +738,7 @@ export default function ConfirmCreateInvoiceModal({
                 className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 font-medium transition"
               >
                 <ArrowLeft className="w-4 h-4" />
-                Back to Lines
+                Quay lại chọn dòng
               </button>
               <div className="flex gap-3">
                 <button
@@ -634,7 +746,7 @@ export default function ConfirmCreateInvoiceModal({
                   disabled={loading}
                   className="px-5 py-2.5 rounded-xl border border-gray-300 font-semibold text-gray-700 hover:bg-white transition disabled:opacity-50"
                 >
-                  Cancel
+                  Hủy
                 </button>
                 <button
                   onClick={handleConfirm}
@@ -642,7 +754,7 @@ export default function ConfirmCreateInvoiceModal({
                   className="px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold transition disabled:opacity-40 flex items-center gap-2"
                 >
                   {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {loading ? "Creating..." : "Create Invoice"}
+                  {loading ? "Đang tạo..." : "Tạo hóa đơn"}
                 </button>
               </div>
             </>

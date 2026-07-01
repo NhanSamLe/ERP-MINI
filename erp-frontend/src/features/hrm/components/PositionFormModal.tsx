@@ -69,11 +69,11 @@ export default function PositionFormModal({
 
   const handleSubmit = () => {
   if (!form.branch_id) {
-    toast.error("Please select a branch");
+    toast.error("Vui lòng chọn chi nhánh");
     return;
   }
   if (!form.name.trim()) {
-    toast.error("Position name is required");
+    toast.error("Vui lòng nhập tên chức vụ");
     return;
   }
 
@@ -100,10 +100,10 @@ export default function PositionFormModal({
         <div className="px-6 py-4 border-b flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold">
-              {form.id ? "Edit Position" : "Create Position"}
+              {form.id ? "Chỉnh sửa chức vụ" : "Tạo chức vụ mới"}
             </h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              Manage job titles in each branch
+              Quản lý chức danh công việc tại từng chi nhánh
             </p>
           </div>
           <button
@@ -119,7 +119,7 @@ export default function PositionFormModal({
           {/* Branch */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Branch
+              Chi nhánh
             </label>
             <select
               className="w-full border px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
@@ -132,7 +132,7 @@ export default function PositionFormModal({
               }
             >
               <option value="">
-                {loadingBranches ? "Loading branches..." : "Select a branch"}
+                {loadingBranches ? "Đang tải chi nhánh..." : "Chọn chi nhánh"}
               </option>
               {branches.map((b) => (
                 <option key={b.id} value={b.id}>
@@ -145,11 +145,11 @@ export default function PositionFormModal({
           {/* Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Position Name
+              Tên chức vụ
             </label>
             <input
               className="w-full border px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
-              placeholder="e.g. Sales Executive, Chief Accountant..."
+              placeholder="Ví dụ: Nhân viên Kinh doanh, Kế toán trưởng..."
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
@@ -162,13 +162,13 @@ export default function PositionFormModal({
             className="px-4 py-2 text-sm border rounded-lg hover:bg-white"
             onClick={onClose}
           >
-            Cancel
+            Hủy
           </button>
           <button
             className="px-4 py-2 text-sm rounded-lg bg-orange-500 text-white hover:bg-orange-600 shadow-sm"
             onClick={handleSubmit}
           >
-            {form.id ? "Save changes" : "Create"}
+            {form.id ? "Lưu thay đổi" : "Tạo mới"}
           </button>
         </div>
       </div>

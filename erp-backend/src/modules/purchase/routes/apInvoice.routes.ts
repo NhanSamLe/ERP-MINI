@@ -6,12 +6,13 @@ import { Role } from "../../../core/types/enum";
 const router = Router();
 
 const accountRoles = authMiddleware([Role.ACCOUNT, Role.CHACC]);
+const readRoles = authMiddleware([Role.ACCOUNT, Role.CHACC, Role.PURCHASE, Role.PURCHASEMANAGER]);
 const accountOnly = authMiddleware([Role.ACCOUNT]);
 const chaccOnly = authMiddleware([Role.CHACC]);
 
 // ─── READ ──────────────────────────────────────────────────────────────────
 // GET /api/ap/invoices?status=draft&source=ai_ocr
-router.get("/", accountRoles, apInvoiceController.getAll);
+router.get("/", readRoles, apInvoiceController.getAll);
 
 // GET /api/ap/invoices/posted-summary?supplier_id=5
 router.get(
@@ -28,7 +29,7 @@ router.get(
 );
 
 // GET /api/ap/invoices/:id  — kèm matching_details + audit_trail
-router.get("/:id", accountRoles, apInvoiceController.getById);
+router.get("/:id", readRoles, apInvoiceController.getById);
 
 // GET /api/ap/invoices/:id/audit-logs
 router.get("/:id/audit-logs", accountRoles, apInvoiceController.getAuditLogs);
@@ -63,6 +64,9 @@ router.put("/:id/approve", chaccOnly, apInvoiceController.approve);
 
 // PUT /api/ap/invoices/:id/reject
 router.put("/:id/reject", chaccOnly, apInvoiceController.reject);
+
+// POST /api/ap/invoices/:id/override-mismatch
+router.post("/:id/override-mismatch", chaccOnly, apInvoiceController.overrideMismatch);
 
 // DELETE /api/ap/invoices/:id  — chỉ draft chưa submit
 router.delete("/:id", accountOnly, apInvoiceController.deleteInvoice);

@@ -13,7 +13,7 @@ export interface UpdateActivityDto {
   subject?: string;
   due_at?: Date | null;
   notes?: string | null;
-  
+  priority?: "low" | "medium" | "high" | null;
 }
 export interface CompleteActivityDto {
   activityId: number;

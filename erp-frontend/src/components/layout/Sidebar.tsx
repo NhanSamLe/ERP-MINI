@@ -1,7 +1,9 @@
 import { useState, ElementType } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store/store";
+import FloatingChatButton from "../../features/ai-chatbot/components/FloatingChatButton";
+import LocalFloatingChatButton from "../../features/ai-local-rag/components/LocalFloatingChatButton";
 import {
   ShoppingCart,
   ShoppingBag,
@@ -12,9 +14,7 @@ import {
   UserCog,
   UserCheck,
   Handshake,
-  ChevronRight,
   Building2,
-  ClipboardList,
   BrainCircuit,
 } from "lucide-react";
 
@@ -34,22 +34,64 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   {
-    name: "Sales",
+    name: "Bán hàng",
     icon: ShoppingCart,
     path: "/sales",
-    allowedRoles: ["SALESMANAGER", "SALES", "BRANCH_MANAGER", "CHACC", "ACCOUNT", "WHSTAFF", "WHMANAGER"],
+    allowedRoles: [
+      "SALESMANAGER",
+      "SALES",
+      "BRANCH_MANAGER",
+      "CHACC",
+      "ACCOUNT",
+      "WHSTAFF",
+      "WHMANAGER",
+    ],
     subItems: [
-      { name: "Quotations", path: "/sales/quotations",      allowedRoles: ["SALES", "SALESMANAGER", "ADMIN"] },
-      { name: "Orders",     path: "/sales/orders",          allowedRoles: ["SALES", "SALESMANAGER", "CEO", "WHSTAFF", "ACCOUNT"] },
-      { name: "Returns",    path: "/sales/returns",         allowedRoles: ["SALES", "SALESMANAGER", "BRANCH_MANAGER", "WHSTAFF", "WHMANAGER"] },
-      { name: "Credit Notes & Refunds", path: "/sales/returns-accounting", allowedRoles: ["ACCOUNT", "CHACC"] },
-      { name: "Invoices",   path: "/invoices",              allowedRoles: ["ACCOUNT", "CHACC", "CEO"] },
-      { name: "Receipts",   path: "/receipts",              allowedRoles: ["ACCOUNT", "CHACC"] },
-      { name: "Customers",  path: "/partners?type=customer",allowedRoles: ["SALES", "SALESMANAGER"] },
+      {
+        name: "Báo giá",
+        path: "/sales/quotations",
+        allowedRoles: ["SALES", "SALESMANAGER", "ADMIN"],
+      },
+      {
+        name: "Đơn bán hàng",
+        path: "/sales/orders",
+        allowedRoles: ["SALES", "SALESMANAGER", "CEO", "WHSTAFF", "ACCOUNT"],
+      },
+      {
+        name: "Trả hàng bán",
+        path: "/sales/returns",
+        allowedRoles: [
+          "SALES",
+          "SALESMANAGER",
+          "BRANCH_MANAGER",
+          "WHSTAFF",
+          "WHMANAGER",
+        ],
+      },
+      {
+        name: "Ghi có & Hoàn tiền",
+        path: "/sales/returns-accounting",
+        allowedRoles: ["ACCOUNT", "CHACC"],
+      },
+      {
+        name: "Hóa đơn bán",
+        path: "/invoices",
+        allowedRoles: ["ACCOUNT", "CHACC", "CEO"],
+      },
+      {
+        name: "Phiếu thu",
+        path: "/receipts",
+        allowedRoles: ["ACCOUNT", "CHACC"],
+      },
+      {
+        name: "Khách hàng",
+        path: "/partners?type=customer",
+        allowedRoles: ["SALES", "SALESMANAGER"],
+      },
     ],
   },
   {
-    name: "Purchase",
+    name: "Mua hàng",
     icon: ShoppingBag,
     path: "/purchase",
     allowedRoles: [
@@ -61,88 +103,121 @@ const menuItems: MenuItem[] = [
     ],
     subItems: [
       {
-        name: "Purchase Orders",
+        name: "Đơn mua hàng",
         path: "/purchase/orders",
         allowedRoles: ["PURCHASE", "PURCHASEMANAGER", "ACCOUNT", "WHSTAFF"],
       },
       {
-        name: "Invoices",
+        name: "Hóa đơn mua",
         path: "/purchase/invoices",
         allowedRoles: ["ACCOUNT", "CHACC"],
       },
       {
-        name: "Payments",
+        name: "Phiếu chi",
         path: "/purchase/payments",
         allowedRoles: ["ACCOUNT", "CHACC"],
       },
       {
-        name: "Vendors",
+        name: "Nhà cung cấp",
         path: "/purchase/vendors",
         allowedRoles: ["PURCHASE", "PURCHASEMANAGER"],
       },
       {
-        name: "RFQs",
+        name: "Yêu cầu báo giá",
         path: "/purchase/rfqs",
         allowedRoles: ["PURCHASE", "PURCHASEMANAGER"],
       },
       {
-        name: "Price Lists",
+        name: "Bảng giá mua",
         path: "/purchase/price-lists",
         allowedRoles: ["PURCHASE", "PURCHASEMANAGER", "ACCOUNT"],
       },
       {
-        name: "Return Auth.",
+        name: "Yêu cầu trả hàng",
         path: "/purchase/return-authorizations",
         allowedRoles: ["PURCHASE", "PURCHASEMANAGER", "ACCOUNT", "CHACC"],
       },
       {
-        name: "Purchase Returns",
+        name: "Trả hàng mua",
         path: "/purchase/returns",
         allowedRoles: ["PURCHASE", "PURCHASEMANAGER", "ACCOUNT", "CHACC"],
       },
       {
-        name: "Debit Notes",
+        name: "Giấy báo nợ",
         path: "/purchase/debit-notes",
         allowedRoles: ["ACCOUNT", "CHACC"],
       },
       {
-        name: "Vendor Refunds",
+        name: "Hoàn tiền NCC",
         path: "/purchase/vendor-refunds",
         allowedRoles: ["ACCOUNT", "CHACC"],
       },
       {
-        name: "OCR Invoice",
+        name: "Scan hóa đơn (OCR)",
         path: "/purchase/document-intelligence",
         allowedRoles: ["ACCOUNT", "CHACC"],
       },
       {
-        name: "OCR History",
+        name: "Sandbox hóa đơn",
+        path: "/purchase/document-intelligence/sandbox",
+        allowedRoles: ["ACCOUNT", "CHACC"],
+      },
+      {
+        name: "Lịch sử OCR",
         path: "/purchase/document-intelligence/history",
         allowedRoles: ["ACCOUNT", "CHACC"],
       },
     ],
   },
   {
-    name: "Inventory",
+    name: "Kho hàng",
     icon: Package,
     path: "/inventory",
     allowedRoles: ["WHMANAGER", "WHSTAFF", "ADMIN"],
     subItems: [
-      { name: "Products",    path: "/inventory/products",    allowedRoles: ["WHMANAGER", "WHSTAFF", "ADMIN"] },
-      { name: "Warehouses",  path: "/inventory/warehouses",  allowedRoles: ["ADMIN"] },
-      { name: "Locations",   path: "/inventory/locations",   allowedRoles: ["ADMIN", "WHMANAGER", "WHSTAFF"] },
-      { name: "Lots",        path: "/inventory/lots",        allowedRoles: ["ADMIN", "WHMANAGER", "WHSTAFF", "PURCHASE"] },
-      { name: "Category",    path: "/inventory/categories",  allowedRoles: ["WHMANAGER", "ADMIN", "WHSTAFF"] },
-      { name: "Stock",       path: "/inventory/stock",       allowedRoles: ["WHMANAGER", "WHSTAFF"] },
-      { name: "Stock Moves", path: "/inventory/stock_move",  allowedRoles: ["WHMANAGER", "WHSTAFF"] },
-      { name: "Hàng bán trả về", path: "/inventory/sales-returns", allowedRoles: ["WHMANAGER", "WHSTAFF"] },
       {
-        name: "Physical Inventory",
+        name: "Sản phẩm",
+        path: "/inventory/products",
+        allowedRoles: ["WHMANAGER", "WHSTAFF", "ADMIN"],
+      },
+      { name: "Kho", path: "/inventory/warehouses", allowedRoles: ["ADMIN"] },
+      {
+        name: "Vị trí kho",
+        path: "/inventory/locations",
+        allowedRoles: ["ADMIN", "WHMANAGER", "WHSTAFF"],
+      },
+      {
+        name: "Lô hàng",
+        path: "/inventory/lots",
+        allowedRoles: ["ADMIN", "WHMANAGER", "WHSTAFF", "PURCHASE"],
+      },
+      {
+        name: "Danh mục",
+        path: "/inventory/categories",
+        allowedRoles: ["WHMANAGER", "ADMIN", "WHSTAFF"],
+      },
+      {
+        name: "Tồn kho",
+        path: "/inventory/stock",
+        allowedRoles: ["WHMANAGER", "WHSTAFF"],
+      },
+      {
+        name: "Phiếu kho",
+        path: "/inventory/stock_move",
+        allowedRoles: ["WHMANAGER", "WHSTAFF"],
+      },
+      {
+        name: "Hàng bán trả về",
+        path: "/inventory/sales-returns",
+        allowedRoles: ["WHMANAGER", "WHSTAFF"],
+      },
+      {
+        name: "Kiểm kê kho",
         path: "/inventory/physical-inventories",
         allowedRoles: ["ADMIN", "WHMANAGER", "WHSTAFF"],
       },
       {
-        name: "Reports",
+        name: "Báo cáo kho",
         path: "/inventory/reports",
         allowedRoles: ["ADMIN", "WHMANAGER", "WHSTAFF"],
       },
@@ -155,77 +230,82 @@ const menuItems: MenuItem[] = [
     allowedRoles: ["SALES", "SALESMANAGER", "ADMIN"],
     subItems: [
       {
-        name: "Leads",
+        name: "Khách hàng tiềm năng",
         path: "/crm/leads",
         allowedRoles: ["SALES", "SALESMANAGER", "ADMIN"],
       },
       {
-        name: "Opportunities",
+        name: "Cơ hội kinh doanh",
         path: "/crm/opportunities",
         allowedRoles: ["SALES", "SALESMANAGER", "ADMIN"],
       },
       {
-        name: "Tasks",
+        name: "Công việc",
         path: "/crm/activities/tasks",
         allowedRoles: ["SALES", "SALESMANAGER"],
       },
       {
-        name: "Calls",
+        name: "Cuộc gọi",
         path: "/crm/activities/calls",
         allowedRoles: ["SALES", "SALESMANAGER"],
       },
       {
-        name: "Emails",
+        name: "Email",
         path: "/crm/activities/emails",
         allowedRoles: ["SALES", "SALESMANAGER"],
       },
       {
-        name: "Meetings",
+        name: "Cuộc họp",
         path: "/crm/activities/meetings",
         allowedRoles: ["SALES", "SALESMANAGER"],
       },
       {
-        name: "Lead Sources",
+        name: "Nguồn khách hàng",
         path: "/crm/settings/lead-sources",
         allowedRoles: ["SALESMANAGER", "ADMIN"],
       },
       {
-        name: "Pipelines",
+        name: "Quy trình bán hàng",
         path: "/crm/settings/pipelines",
         allowedRoles: ["SALESMANAGER", "ADMIN"],
       },
       {
-        name: "Scoring Rules",
+        name: "Quy tắc chấm điểm",
         path: "/crm/settings/scoring-rules",
         allowedRoles: ["SALESMANAGER", "ADMIN"],
       },
     ],
   },
   {
-    name: "Finance",
+    name: "Tài chính",
     icon: DollarSign,
     path: "/finance",
     allowedRoles: ["ACCOUNT", "CHACC", "CEO"],
     subItems: [
       {
-        name: "Chart of Accounts",
+        name: "Hệ thống tài khoản",
         path: "/finance/accounts",
         allowedRoles: ["ACCOUNT", "CHACC"],
       },
       {
-        name: "Journal Entries",
+        name: "Bút toán",
         path: "/finance/journals",
         allowedRoles: ["ACCOUNT", "CHACC"],
       },
       {
-        name: "Reports",
+        name: "Thiết lập định khoản",
+        path: "/finance/mappings",
+        allowedRoles: ["ACCOUNT", "CHACC"],
+      },
+      {
+        name: "Báo cáo tài chính",
         path: "/finance/reports",
         allowedRoles: ["ACCOUNT", "CHACC", "CEO", "ADMIN"],
       },
     ],
   },
   {
-    name: "HR & Payroll",
+    name: "Nhân sự & Lương",
     icon: UserCheck,
     path: "/hrm",
     allowedRoles: [
@@ -242,106 +322,125 @@ const menuItems: MenuItem[] = [
     ],
     subItems: [
       {
-        name: "Department",
+        name: "Phòng ban",
         path: "/hrm/department",
         allowedRoles: ["HRMANAGER", "HR_STAFF"],
       },
       {
-        name: "Position",
+        name: "Chức vụ",
         path: "/hrm/position",
         allowedRoles: ["HRMANAGER", "HR_STAFF"],
       },
-      { name: "Chart", path: "", allowedRoles: ["CEO", "BRANCH_MANAGER"] },
       {
-        name: "Employees",
+        name: "Sơ đồ tổ chức",
+        path: "",
+        allowedRoles: ["CEO", "BRANCH_MANAGER"],
+      },
+      {
+        name: "Nhân viên",
         path: "/hrm/employees",
         allowedRoles: ["HRMANAGER", "HR_STAFF"],
       },
       {
-        name: "Attendance",
+        name: "Chấm công",
         path: "/hrm/attendance",
       },
       {
-        name: "Leave Requests",
+        name: "Đơn xin nghỉ phép",
         path: "/hrm/leave-requests",
       },
       {
-        name: "Payroll Period",
+        name: "Kỳ lương",
         path: "/hrm/payroll",
         allowedRoles: ["HRMANAGER", "HR_STAFF"],
       },
       {
-        name: "Payroll Items",
+        name: "Khoản lương",
         path: "/hrm/payroll-items",
         allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC"],
       },
       {
-        name: "Payroll Run",
+        name: "Tính lương",
         path: "/hrm/payroll-runs",
-        allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC"],
+        allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC", "CEO", "ADMIN"],
+      },
+      {
+        name: "Payroll Mapping",
+        path: "/hrm/payroll-mappings",
+        allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC", "CEO", "ADMIN"],
+      },
+      {
+        name: "Cost Centers",
+        path: "/hrm/cost-centers",
+        allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC", "CEO", "ADMIN"],
+      },
+      {
+        name: "Cấu hình lương",
+        path: "/hrm/payroll-configs",
+        allowedRoles: ["HRMANAGER", "HR_STAFF", "CHACC", "ADMIN"],
       },
     ],
   },
   {
-    name: "Reports",
+    name: "Báo cáo",
     icon: FileText,
     path: "/reports",
     allowedRoles: ["CEO", "BRANCH_MANAGER"],
     subItems: [
       {
-        name: "Sales Report",
+        name: "Báo cáo bán hàng",
         path: "/reports/sales",
         allowedRoles: ["CEO", "BRANCH_MANAGER"],
       },
       {
-        name: "Purchase Report",
+        name: "Báo cáo mua hàng",
         path: "/reports/purchase",
         allowedRoles: ["CEO", "BRANCH_MANAGER"],
       },
       {
-        name: "Inventory Report",
+        name: "Báo cáo kho",
         path: "/reports/inventory",
         allowedRoles: ["CEO", "BRANCH_MANAGER"],
       },
       {
-        name: "Financial Report",
+        name: "Báo cáo tài chính",
         path: "/reports/financial",
         allowedRoles: ["CEO", "BRANCH_MANAGER"],
       },
     ],
   },
   {
-    name: "Partners",
+    name: "Đối tác",
     icon: Handshake,
     path: "/partners",
     allowedRoles: ["PURCHASE", "ADMIN", "PURCHASEMANAGER"],
     subItems: [
-      { name: "All Partners", path: "/partners", allowedRoles: ["ADMIN"] },
+      { name: "Tất cả đối tác", path: "/partners", allowedRoles: ["ADMIN"] },
       {
-        name: "Customers",
+        name: "Khách hàng",
         path: "/partners?type=customer",
         allowedRoles: ["ADMIN"],
       },
       {
-        name: "Suppliers",
+        name: "Nhà cung cấp",
         path: "/partners?type=supplier",
         allowedRoles: ["PURCHASE", "ADMIN", "PURCHASEMANAGER"],
       },
     ],
   },
   {
-    name: "Branches",
+    name: "Chi nhánh",
     icon: Building2,
     path: "/company/branches",
     allowedRoles: ["CEO", "ADMIN"],
     subItems: [
       {
-        name: "Branch Management",
+        name: "Quản lý chi nhánh",
         path: "/company/branches",
         allowedRoles: ["ADMIN", "CEO"],
       },
       {
-        name: "Create Branch",
+        name: "Tạo chi nhánh",
         path: "/company/branches/create",
         allowedRoles: ["CEO", "ADMIN"],
       },
@@ -360,46 +459,56 @@ const menuItems: MenuItem[] = [
     allowedRoles: ["CEO", "ADMIN", "SALESMANAGER", "SALES"],
   },
   {
-    name: "Admin",
+    name: "Quản trị",
     icon: UserCog,
     allowedRoles: ["ADMIN"],
     subItems: [
-      { name: "Users", path: "/admin/users", allowedRoles: ["ADMIN"] },
+      { name: "Người dùng", path: "/admin/users", allowedRoles: ["ADMIN"] },
       {
-        name: "Currencies",
+        name: "Tiền tệ",
         path: "/master-data/currencies",
         allowedRoles: ["ADMIN"],
       },
       {
-        name: "Exchange Rates",
+        name: "Tỷ giá",
         path: "/master-data/exchange-rates",
         allowedRoles: ["ADMIN"],
       },
-      { name: "UOM", path: "/master-data/uoms", allowedRoles: ["ADMIN"] },
       {
-        name: "UOM Conversions",
+        name: "Đơn vị tính",
+        path: "/master-data/uoms",
+        allowedRoles: ["ADMIN"],
+      },
+      {
+        name: "Quy đổi đơn vị",
         path: "/master-data/uom-conversions",
         allowedRoles: ["ADMIN"],
       },
-      { name: "Taxes", path: "/master-data/taxes", allowedRoles: ["ADMIN"] },
+      {
+        name: "Thuế suất",
+        path: "/master-data/taxes",
+        allowedRoles: ["ADMIN"],
+      },
     ],
   },
 ];
 
-export default function Sidebar() {
-  const [expandedItems, setExpandedItems] = useState<string[]>([]);
+interface SidebarProps {
+  onNavigate?: () => void;
+}
+
+export default function Sidebar({ onNavigate }: SidebarProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useSelector((s: RootState) => s.auth);
   const branches = useSelector((s: RootState) => s.branch.branches || []);
   const defaultBranchId = branches[0]?.id;
 
   const canAccess = (roles?: string[]) =>
-    !roles || roles.includes(user?.role.code ?? "");
-
-  const toggleExpand = (name: string) =>
-    setExpandedItems((prev) =>
-      prev.includes(name) ? prev.filter((i) => i !== name) : [...prev, name],
-    );
+    !roles ||
+    user?.role.code === "ADMIN" ||
+    user?.role.code === "CEO" ||
+    roles.includes(user?.role.code ?? "");
 
   const isModuleActive = (item: MenuItem) => {
     if (item.path && location.pathname.startsWith(item.path)) return true;
@@ -413,12 +522,14 @@ export default function Sidebar() {
   const isSubItemActive = (path: string) => path && location.pathname === path;
 
   return (
-    <aside className="w-64 h-screen bg-white border-r border-gray-200 flex flex-col overflow-hidden">
-      {/* Sidebar header label */}
-      <div className="px-4 pt-3 pb-2">
-        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-          Navigation
-        </span>
+    <aside className="w-64 h-full bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 flex flex-col overflow-hidden">
+      {/* Brand logo block */}
+      <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-800">
+        <img
+          src="/assets/banner-lgoo.png"
+          alt="ERP Mini"
+          className="h-10 w-auto object-contain"
+        />
       </div>
 
       {/* Nav items */}
@@ -430,26 +541,28 @@ export default function Sidebar() {
               canAccess(sub.allowedRoles),
             );
             const moduleActive = isModuleActive(item);
-            const expanded = expandedItems.includes(item.name);
 
             return (
-              <div key={item.name}>
+              <div key={item.name} className="mb-2">
                 {/* Module row */}
                 <div
-                  onClick={() =>
-                    filteredSubs?.length && toggleExpand(item.name)
-                  }
+                  onClick={() => {
+                    if (item.path) {
+                      navigate(item.path);
+                    }
+                  }}
                   className={[
                     "flex items-center justify-between px-3 py-2 rounded-md cursor-pointer",
-                    "text-sm font-medium transition-colors duration-100 select-none",
+                    "text-sm font-bold transition-colors duration-100 select-none",
                     moduleActive
-                      ? "bg-orange-50 text-orange-600"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                      ? "text-orange-600 bg-orange-50/50"
+                      : "text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-white",
                   ].join(" ")}
                 >
                   {item.path ? (
                     <Link
                       to={item.path}
+                      onClick={onNavigate}
                       className="flex items-center gap-2.5 flex-1 min-w-0"
                     >
                       <item.icon
@@ -465,17 +578,11 @@ export default function Sidebar() {
                       <span className="truncate">{item.name}</span>
                     </div>
                   )}
-
-                  {filteredSubs && filteredSubs.length > 0 && (
-                    <ChevronRight
-                      className={`w-3.5 h-3.5 shrink-0 text-gray-400 transition-transform duration-150 ${expanded ? "rotate-90" : ""}`}
-                    />
-                  )}
                 </div>
 
                 {/* Sub-items */}
-                {filteredSubs && expanded && (
-                  <div className="mt-0.5 ml-3 pl-4 border-l border-gray-100 space-y-0.5">
+                {filteredSubs && filteredSubs.length > 0 && (
+                  <div className="mt-0.5 ml-3 pl-4 border-l border-gray-150 dark:border-slate-700 space-y-0.5">
                     {filteredSubs.map((sub) => {
                       const targetPath =
                         sub.name === "Chart"
@@ -490,11 +597,12 @@ export default function Sidebar() {
                         <Link
                           key={sub.name}
                           to={targetPath}
+                          onClick={onNavigate}
                           className={[
                             "block px-3 py-1.5 rounded-md text-sm transition-colors duration-100",
                             active
                               ? "bg-orange-50 text-orange-600 font-semibold"
-                              : "text-gray-500 hover:text-gray-800 hover:bg-gray-50",
+                              : "text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-800",
                           ].join(" ")}
                         >
                           {sub.name}
@@ -509,8 +617,8 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t border-gray-100">
-        <p className="text-[10px] text-gray-400 font-medium">ERP UTE · v1.0</p>
+      <div className="px-4 py-3 border-t border-gray-100 dark:border-slate-800">
+        <p className="text-[10px] text-gray-400 font-medium">ERP Mini · v1.0</p>
       </div>
     </aside>
   );
