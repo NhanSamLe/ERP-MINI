@@ -245,7 +245,7 @@ export class BehavioralAnomalyDetector {
 
     const partner = await Partner.findOne({
       where: {
-        name: { [Op.iLike]: ocrData.vendor_name },
+        name: { [Op.like]: ocrData.vendor_name },
       },
       attributes: ["name", "tax_code"],
     });

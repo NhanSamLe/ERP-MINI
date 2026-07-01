@@ -160,7 +160,14 @@ export const purchaseOrderController = {
       };
       if (req.query.po_no) filters.po_no = req.query.po_no as string;
       if (req.query.supplier_id) filters.supplier_id = parseInt(req.query.supplier_id as string, 10);
-      if (req.query.status) filters.status = (req.query.status as string).split(",");
+      const statusQuery = req.query.status || req.query["status[]"];
+      if (statusQuery) {
+        if (Array.isArray(statusQuery)) {
+          filters.status = statusQuery as string[];
+        } else if (typeof statusQuery === "string") {
+          filters.status = statusQuery.split(",");
+        }
+      }
       if (req.query.date_from) filters.date_from = req.query.date_from as string;
       if (req.query.date_to) filters.date_to = req.query.date_to as string;
       if (req.query.total_from) filters.total_from = parseFloat(req.query.total_from as string);

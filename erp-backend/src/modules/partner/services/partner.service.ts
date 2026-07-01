@@ -11,8 +11,12 @@ export interface PartnerFilter {
 export async function getAllPartners(filter: PartnerFilter = {}) {
   const where: any = {};
 
-  // Multi-tenant: chỉ trả về partner thuộc công ty của user
-  if (filter.company_id) where.company_id = filter.company_id;
+  // Multi-tenant: chỉ trả về partner thuộc công ty của user hoặc dùng chung (null)
+  if (filter.company_id) {
+    where.company_id = {
+      [Op.or]: [filter.company_id, null]
+    };
+  }
 
   if (filter.type) where.type = filter.type;
   if (filter.status) where.status = filter.status;
@@ -35,7 +39,11 @@ export async function getAllPartners(filter: PartnerFilter = {}) {
 
 export async function getPartnerById(id: number, companyId?: number) {
   const where: any = { id };
-  if (companyId) where.company_id = companyId;
+  if (companyId) {
+    where.company_id = {
+      [Op.or]: [companyId, null]
+    };
+  }
 
   const partner = await Partner.findOne({ where });
   if (!partner) throw new Error("Partner not found");
