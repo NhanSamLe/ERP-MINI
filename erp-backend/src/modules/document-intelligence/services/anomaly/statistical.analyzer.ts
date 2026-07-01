@@ -367,7 +367,7 @@ export class StatisticalAnalyzer {
         },
       ],
       where: {
-        description: { [Op.iLike]: `%${productName}%` },
+        description: { [Op.like]: `%${productName}%` },
       },
     });
 

@@ -113,13 +113,13 @@ export default function InventoryDashboard() {
     );
   }
 
-  const chartData = topProducts.map((p) => ({
-    name:
-      (p.product?.name ?? "").length > 14
-        ? (p.product?.name ?? "").slice(0, 14) + "…"
-        : (p.product?.name ?? ""),
-    value: Number(p.total_value ?? 0),
-  }));
+  const chartData = topProducts.map((p) => {
+    const name = p.product?.name ?? "";
+    return {
+      name: name.length > 14 ? name.slice(0, 14) + "…" : name,
+      value: Number(p.total_value ?? 0),
+    };
+  });
 
   return (
     <div className="min-h-screen bg-slate-50/40 p-6 md:p-8 space-y-8">
