@@ -50,6 +50,8 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
+
+      <FloatingChatButton />
     </div>
   );
 }

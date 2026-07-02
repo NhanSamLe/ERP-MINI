@@ -9,11 +9,18 @@ import {
   createConversationThunk,
   setActiveConversation,
   addOptimisticMessage,
+  clearMessages,
 } from "../store/chatSlice";
 import MessageBubble, { LoadingBubble } from "./MessageBubble";
 import ChatInput from "./ChatInput";
 import ConversationList from "./ConversationList";
-import { X, Bot, Sparkles } from "lucide-react";
+import { X, Bot, Sparkles, Plus } from "lucide-react";
+
+const SUGGESTIONS = [
+  "Tạo đơn mua iPhone 15 từ ABC Supplies",
+  "Doanh thu tháng này bao nhiêu?",
+  "Danh sách đơn hàng chờ duyệt",
+];
 
 export default function ChatPanel() {
   const dispatch = useDispatch<AppDispatch>();
@@ -67,10 +74,16 @@ export default function ChatPanel() {
     await dispatch(fetchMessagesThunk(convId));
   };
 
+  const handleNewChat = async () => {
+    dispatch(clearMessages());
+    dispatch(setActiveConversation(null));
+    await dispatch(createConversationThunk());
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed bottom-[76px] left-[272px] w-[440px] max-h-[calc(100vh-104px)] h-[600px] flex flex-col rounded-lg overflow-hidden z-50 shadow-lg border border-gray-200 bg-white animate-in fade-in slide-in-from-bottom-2 duration-200">
+    <div className="fixed bottom-20 right-5 w-[calc(100vw-2.5rem)] max-w-[440px] max-h-[calc(100vh-104px)] h-[600px] flex flex-col rounded-lg overflow-hidden z-50 shadow-lg border border-gray-200 bg-white animate-in fade-in slide-in-from-bottom-2 duration-200">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-orange-500 flex-shrink-0 border-b border-orange-600">
         <div className="flex items-center gap-2.5">
@@ -93,12 +106,22 @@ export default function ChatPanel() {
           </div>
         </div>
 
-        <button
-          onClick={() => dispatch(closePanel())}
-          className="w-7 h-7 rounded-md hover:bg-white/15 text-white flex items-center justify-center transition-colors duration-150"
-        >
-          <X className="w-4 h-4" strokeWidth={2.5} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={handleNewChat}
+            title="Cuộc trò chuyện mới"
+            className="w-7 h-7 rounded-md hover:bg-white/15 text-white flex items-center justify-center transition-colors duration-150"
+          >
+            <Plus className="w-4 h-4" strokeWidth={2.5} />
+          </button>
+          <button
+            onClick={() => dispatch(closePanel())}
+            title="Đóng"
+            className="w-7 h-7 rounded-md hover:bg-white/15 text-white flex items-center justify-center transition-colors duration-150"
+          >
+            <X className="w-4 h-4" strokeWidth={2.5} />
+          </button>
+        </div>
       </div>
 
       {/* Body */}
@@ -112,7 +135,7 @@ export default function ChatPanel() {
         <div className="flex-1 flex flex-col overflow-hidden bg-white">
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
             {messages.length === 0 && !isLoading && (
-              <div className="flex flex-col items-center justify-center h-full text-center gap-3 py-8">
+              <div className="flex flex-col items-center justify-center h-full text-center gap-4 py-8">
                 <div className="w-12 h-12 rounded-lg bg-orange-50 flex items-center justify-center border border-orange-100">
                   <Bot className="w-6 h-6 text-orange-500" />
                 </div>
@@ -120,14 +143,20 @@ export default function ChatPanel() {
                   <p className="text-sm font-semibold text-gray-700">
                     Xin chào!
                   </p>
-                  <p className="text-xs text-gray-400 mt-1 leading-relaxed max-w-[200px]">
+                  <p className="text-xs text-gray-400 mt-1 leading-relaxed max-w-[220px]">
                     Tôi có thể tra cứu dữ liệu ERP hoặc giúp bạn tạo đơn hàng.
                   </p>
                 </div>
-                <div className="bg-orange-50 border border-orange-100 rounded-md px-3 py-2">
-                  <p className="text-[11px] text-orange-600 italic leading-relaxed">
-                    "Tạo đơn mua iPhone 15 từ ABC Supplies"
-                  </p>
+                <div className="flex flex-col gap-1.5 w-full max-w-[240px]">
+                  {SUGGESTIONS.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => handleSend(s)}
+                      className="text-left bg-orange-50 hover:bg-orange-100 border border-orange-100 rounded-md px-3 py-2 text-[11px] text-orange-700 leading-relaxed transition-colors duration-150"
+                    >
+                      {s}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}

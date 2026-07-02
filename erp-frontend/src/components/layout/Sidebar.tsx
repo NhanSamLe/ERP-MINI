@@ -2,8 +2,6 @@ import { useState, ElementType } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store/store";
-import FloatingChatButton from "../../features/ai-chatbot/components/FloatingChatButton";
-import LocalFloatingChatButton from "../../features/ai-local-rag/components/LocalFloatingChatButton";
 import {
   ShoppingCart,
   ShoppingBag,
