@@ -1,5 +1,5 @@
 import { ChatMessage } from "../types/chat.types";
-import { Bot, User, CheckCircle, XCircle } from "lucide-react";
+import { Bot, User, CheckCircle, XCircle, Bell } from "lucide-react";
 
 interface Props {
   message: ChatMessage;
@@ -51,22 +51,22 @@ export default function MessageBubble({ message, onConfirm }: Props) {
 
   return (
     <div
-      className={`flex gap-2.5 items-end animate-in fade-in slide-in-from-bottom-2 duration-200 ${
+      className={`flex gap-2 items-end animate-in fade-in slide-in-from-bottom-1 duration-150 ${
         isUser ? "flex-row-reverse" : "flex-row"
       }`}
     >
       {/* Avatar */}
       <div
-        className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mb-0.5 ${
+        className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mb-0.5 ${
           isUser
-            ? "bg-gradient-to-br from-orange-400 to-orange-500 shadow-sm"
-            : "bg-gradient-to-br from-orange-100 to-orange-50 border border-orange-200"
+            ? "bg-orange-500"
+            : "bg-orange-50 border border-orange-200"
         }`}
       >
         {isUser ? (
-          <User className="w-3.5 h-3.5 text-white" />
+          <User className="w-3 h-3 text-white" />
         ) : (
-          <Bot className="w-3.5 h-3.5 text-orange-500" />
+          <Bot className="w-3 h-3 text-orange-500" />
         )}
       </div>
 
@@ -78,10 +78,10 @@ export default function MessageBubble({ message, onConfirm }: Props) {
         />
       ) : (
         <div
-          className={`max-w-[74%] px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words ${
+          className={`max-w-[74%] px-3.5 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words rounded-lg ${
             isUser
-              ? "bg-orange-500 text-white rounded-2xl rounded-br-md shadow-sm"
-              : "bg-gray-50 text-gray-700 rounded-2xl rounded-bl-md border border-gray-100"
+              ? "bg-orange-500 text-white"
+              : "bg-gray-50 text-gray-700 border border-gray-100"
           }`}
         >
           {renderMarkdown(message.content ?? "")}
@@ -101,39 +101,39 @@ function ConfirmationCard({
   const { description } = parseConfirmationContent(content);
 
   return (
-    <div className="max-w-[82%] rounded-2xl rounded-bl-md border-2 border-orange-200 bg-white shadow-sm overflow-hidden">
+    <div className="max-w-[82%] rounded-lg border border-orange-200 bg-white shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="bg-orange-500 px-4 py-2.5 flex items-center gap-2">
-        <span className="text-sm">🔔</span>
+      <div className="bg-orange-500 px-3.5 py-2 flex items-center gap-2">
+        <Bell className="w-3.5 h-3.5 text-white" />
         <span className="text-white text-sm font-semibold">
           Xác nhận thao tác
         </span>
       </div>
 
       {/* Description */}
-      <div className="px-4 py-3">
+      <div className="px-3.5 py-3">
         <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
           {renderMarkdown(description)}
         </p>
-        <p className="text-[11px] text-gray-400 mt-2.5 italic">
+        <p className="text-[11px] text-gray-400 mt-2 italic">
           Yêu cầu hết hạn sau 10 phút
         </p>
       </div>
 
       {/* Actions */}
-      <div className="px-4 pb-4 flex gap-2">
+      <div className="px-3.5 pb-3.5 flex gap-2">
         <button
           onClick={() => onConfirm("đồng ý")}
-          className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-colors active:scale-95 shadow-sm"
+          className="flex items-center gap-1.5 h-8 px-3 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-md transition-colors active:scale-[0.98]"
         >
-          <CheckCircle className="w-4 h-4" />
+          <CheckCircle className="w-3.5 h-3.5" />
           Xác nhận
         </button>
         <button
           onClick={() => onConfirm("hủy")}
-          className="flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-gray-50 text-gray-600 text-sm font-medium rounded-xl border border-gray-200 transition-colors active:scale-95"
+          className="flex items-center gap-1.5 h-8 px-3 bg-white hover:bg-gray-50 text-gray-600 text-sm font-medium rounded-md border border-gray-300 transition-colors active:scale-[0.98]"
         >
-          <XCircle className="w-4 h-4" />
+          <XCircle className="w-3.5 h-3.5" />
           Hủy
         </button>
       </div>
@@ -143,15 +143,15 @@ function ConfirmationCard({
 
 export function LoadingBubble() {
   return (
-    <div className="flex gap-2.5 items-end animate-in fade-in duration-200">
-      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-orange-100 to-orange-50 border border-orange-200 flex items-center justify-center flex-shrink-0">
-        <Bot className="w-3.5 h-3.5 text-orange-500" />
+    <div className="flex gap-2 items-end animate-in fade-in duration-150">
+      <div className="w-6 h-6 rounded-full bg-orange-50 border border-orange-200 flex items-center justify-center flex-shrink-0">
+        <Bot className="w-3 h-3 text-orange-500" />
       </div>
-      <div className="bg-gray-50 border border-gray-100 px-4 py-3 rounded-2xl rounded-bl-md">
+      <div className="bg-gray-50 border border-gray-100 px-3.5 py-2.5 rounded-lg">
         <div className="flex gap-1.5 items-center h-4">
-          <span className="w-2 h-2 bg-orange-400 rounded-full animate-bounce [animation-delay:0ms] [animation-duration:1s]" />
-          <span className="w-2 h-2 bg-orange-400 rounded-full animate-bounce [animation-delay:180ms] [animation-duration:1s]" />
-          <span className="w-2 h-2 bg-orange-400 rounded-full animate-bounce [animation-delay:360ms] [animation-duration:1s]" />
+          <span className="w-1.5 h-1.5 bg-orange-400 rounded-full animate-bounce [animation-delay:0ms] [animation-duration:1s]" />
+          <span className="w-1.5 h-1.5 bg-orange-400 rounded-full animate-bounce [animation-delay:180ms] [animation-duration:1s]" />
+          <span className="w-1.5 h-1.5 bg-orange-400 rounded-full animate-bounce [animation-delay:360ms] [animation-duration:1s]" />
         </div>
       </div>
     </div>

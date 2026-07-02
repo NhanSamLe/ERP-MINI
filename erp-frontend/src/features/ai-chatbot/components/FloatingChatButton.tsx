@@ -12,25 +12,21 @@ export default function FloatingChatButton() {
     <>
       <button
         onClick={() => dispatch(togglePanel())}
-        className={`relative w-14 h-14 rounded-2xl text-white shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 ${
+        className={`relative w-12 h-12 rounded-lg text-white shadow-md flex items-center justify-center transition-all duration-150 hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-1 ${
           isOpen
-            ? "bg-gray-600 shadow-gray-300/50"
-            : "bg-gradient-to-br from-orange-500 to-orange-600 shadow-orange-300/60 hover:shadow-orange-400/70"
+            ? "bg-gray-600"
+            : "bg-orange-500 hover:bg-orange-600"
         }`}
         title="Trợ lý AI"
       >
-        {!isOpen && (
-          <span className="absolute inset-0 rounded-2xl bg-orange-500 animate-ping opacity-20" />
-        )}
-
         {isOpen ? (
           <X className="w-5 h-5" strokeWidth={2.5} />
         ) : (
-          <Bot className="w-6 h-6" />
+          <Bot className="w-5 h-5" />
         )}
 
         {!isOpen && (
-          <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white shadow-sm" />
+          <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white" />
         )}
       </button>
 
