@@ -25,7 +25,21 @@ router.get(
   authMiddleware([Role.ADMIN, Role.WHSTAFF]),
   WarehouseController.getByBranch
 );
-router.get("/code/:code", WarehouseController.findByCode);
+router.get(
+  "/code/:code",
+  authMiddleware([
+    Role.ADMIN,
+    Role.WHSTAFF,
+    Role.WHMANAGER,
+    Role.PURCHASE,
+    Role.PURCHASEMANAGER,
+    Role.ACCOUNT,
+    Role.CHACC,
+    Role.SALES,
+    Role.SALESMANAGER,
+  ]),
+  WarehouseController.findByCode
+);
 router.get("/:id", authMiddleware([Role.ADMIN]), WarehouseController.getById);
 router.post("/", authMiddleware([Role.ADMIN]), WarehouseController.create);
 router.put("/:id", authMiddleware([Role.ADMIN]), WarehouseController.update);

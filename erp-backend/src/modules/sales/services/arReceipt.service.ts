@@ -16,15 +16,17 @@ import { getCompanyIdFromBranch, getCompanyIdFromUserBranch } from "../../financ
 import { getMappedAccount } from "../../finance/services/glAccount.service";
 import { checkPeriodLocked } from "../../finance/services/glJournal.service";
 
-const ACCOUNTING_ROLES = ["ACCOUNT", "CHACC", "BRANCH_MANAGER", "BRMN"];
+const ACCOUNTING_ROLES = ["ACCOUNT", "CHACC", "BRANCH_MANAGER"];
 
 function requireAccountingRole(user: any) {
+  if (user?.role === "ADMIN") return;
   if (!ACCOUNTING_ROLES.includes(user?.role)) {
     throw new Error("Bạn không có quyền thao tác phiếu thu.");
   }
 }
 
 function requireChiefAccountant(user: any) {
+  if (user?.role === "ADMIN") return;
   if (user?.role !== "CHACC") {
     throw new Error("Chỉ Kế toán trưởng được phê duyệt hoặc từ chối phiếu thu.");
   }

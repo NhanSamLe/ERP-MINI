@@ -1,8 +1,11 @@
 import { Router } from "express";
 import { SaleOrderController } from "../controllers/saleOrder.controller";
 import { authMiddleware } from "../../../core/middleware/auth";
+import { Role } from "../../../core/types/enum";
 
 const router = Router();
+
+const approveRoles = authMiddleware([Role.SALESMANAGER, Role.BRANCH_MANAGER, Role.CEO]);
 
 // Lấy danh sách (filter theo branch + role)
 router.get("/", authMiddleware([]), SaleOrderController.getAll);
@@ -27,9 +30,9 @@ router.put("/:id", authMiddleware([]), SaleOrderController.update);
 router.post("/:id/submit", authMiddleware([]), SaleOrderController.submit);
 
 // Sale Manager duyệt
-router.post("/:id/approve", authMiddleware([]), SaleOrderController.approve);
+router.post("/:id/approve", approveRoles, SaleOrderController.approve);
 
 // Sale Manager từ chối
-router.post("/:id/reject", authMiddleware([]), SaleOrderController.reject);
+router.post("/:id/reject", approveRoles, SaleOrderController.reject);
 
 export default router;

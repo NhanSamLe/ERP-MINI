@@ -17,7 +17,7 @@ router.get("/:id", authMiddleware([]), ArReceiptController.getOne);
 router.post("/", authMiddleware(["ACCOUNT", "CHACC"]), ArReceiptController.create);
 
 // Update (draft only)
-router.put("/:id", authMiddleware(["ACCOUNT", "CHACC", "BRANCH_MANAGER", "BRMN"]), ArReceiptController.update);
+router.put("/:id", authMiddleware(["ACCOUNT", "CHACC", "BRANCH_MANAGER"]), ArReceiptController.update);
 
 // Submit to approve
 router.post("/:id/submit", authMiddleware(["ACCOUNT", "CHACC"]), ArReceiptController.submit);

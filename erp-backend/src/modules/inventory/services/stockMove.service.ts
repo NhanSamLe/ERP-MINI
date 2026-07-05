@@ -1791,7 +1791,7 @@ export const stockMoveService = {
   },
 
   async approveStockMove(stockMoveId: number, user: any) {
-    if (user.role !== Role.WHMANAGER) {
+    if (user.role !== Role.WHMANAGER && user.role !== Role.ADMIN) {
       throw new Error("You do not have permission to approve Stock Move.");
     }
     const move = await this.getById(stockMoveId);
@@ -2438,7 +2438,7 @@ export const stockMoveService = {
   },
 
   async rejectStockMove(stockMoveId: number, user: any, rejectReason: string) {
-    if (user.role !== Role.WHMANAGER) {
+    if (user.role !== Role.WHMANAGER && user.role !== Role.ADMIN) {
       throw {
         status: 403,
         message: "You do not have permission to approve Stock Move.",

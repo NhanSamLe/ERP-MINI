@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { authMiddleware } from "../../../core/middleware/auth";
 import {
   getDepartmentsHandler,
   getDepartmentByIdHandler,
@@ -9,10 +10,13 @@ import {
 
 const router = Router();
 
-router.get("/", getDepartmentsHandler);
-router.get("/:id", getDepartmentByIdHandler);
-router.post("/", createDepartmentHandler);
-router.put("/:id", updateDepartmentHandler);
-router.patch("/:id/status", toggleDepartmentStatusHandler);
+const readRoles = authMiddleware([]);
+const writeRoles = authMiddleware(["HRMANAGER", "HR_STAFF"]);
+
+router.get("/", readRoles, getDepartmentsHandler);
+router.get("/:id", readRoles, getDepartmentByIdHandler);
+router.post("/", writeRoles, createDepartmentHandler);
+router.put("/:id", writeRoles, updateDepartmentHandler);
+router.patch("/:id/status", writeRoles, toggleDepartmentStatusHandler);
 
 export default router;

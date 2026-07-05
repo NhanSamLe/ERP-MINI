@@ -189,7 +189,7 @@ export const arInvoiceService = {
       throw new Error("Cross-branch denied");
 
     // Chỉ kế toán được sửa
-    if (user.role !== "ACCOUNT" && user.role !== "CHACC")
+    if (user.role !== "ACCOUNT" && user.role !== "CHACC" && user.role !== "ADMIN")
       throw new Error("Permission denied");
 
     if (order.approval_status !== "approved")
@@ -349,7 +349,7 @@ export const arInvoiceService = {
         throw new Error("Wrong approval stage");
       if (invoice.branch_id !== approver.branch_id)
         throw new Error("Cross-branch denied");
-      if (approver.role !== "CHACC") {
+      if (approver.role !== "CHACC" && approver.role !== "ADMIN") {
         throw new Error("Permission denied");
       }
       // Cập nhật trạng thái invoice → approved + posted
@@ -393,7 +393,7 @@ export const arInvoiceService = {
     const invoice = await ArInvoice.findByPk(id);
 
     if (!invoice) throw new Error("Invoice not found");
-    if (approver.role !== "CHACC") {
+    if (approver.role !== "CHACC" && approver.role !== "ADMIN") {
       throw new Error("Permission denied");
     }
 
@@ -434,7 +434,7 @@ export const arInvoiceService = {
       throw new Error("Cross-branch access denied");
 
     // Chỉ kế toán được sửa
-    if (user.role !== "ACCOUNT" && user.role !== "CHACC")
+    if (user.role !== "ACCOUNT" && user.role !== "CHACC" && user.role !== "ADMIN")
       throw new Error("Permission denied");
 
     // Chỉ sửa khi ở DRAFT

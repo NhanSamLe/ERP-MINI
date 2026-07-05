@@ -284,7 +284,7 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
                     <td className="px-4 py-3">{(e as any).department?.name || "-"}</td>
                     <td className="px-4 py-3">{(e as any).position?.name || "-"}</td>
                     <td className="px-4 py-3">{(e as any).branch?.name || "-"}</td>
-                    <td className="px-4 py-3">{e.contract_type === "fulltime" ? "Chính thức" : e.contract_type === "parttime" ? "Bán thời gian" : e.contract_type === "intern" ? "Thực tập" : e.contract_type}</td>
+                    <td className="px-4 py-3">{e.contract_type === "official" ? "Chính thức" : e.contract_type === "trial" ? "Thử việc" : e.contract_type === "seasonal" ? "Thời vụ" : e.contract_type}</td>
                     <td className="px-4 py-3">{e.bank_account || "-"}</td>
                     <td className="px-4 py-3">{e.bank_name || "-"}</td>
                     <td className="px-4 py-3">{e.base_salary.toLocaleString()} ₫</td>

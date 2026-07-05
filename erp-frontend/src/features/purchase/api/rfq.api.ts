@@ -8,6 +8,7 @@ export interface RfqLine {
   quantity: number;
   uom_id?: number | null;
   unit_price: number;
+  discount_type?: "percentage" | "fixed";
   discount_percent?: number;
   discount_amount?: number;
   tax_rate_id?: number | null;
@@ -42,6 +43,7 @@ export interface Rfq {
   total_before_tax: number;
   total_tax: number;
   total_after_tax: number;
+  discount_type?: "percentage" | "fixed";
   discount_percent: number;
   discount_amount: number;
   discount_type?: "percentage" | "fixed";
@@ -82,7 +84,9 @@ export interface RfqCompareResult {
       {
         unit_price: number;
         quantity: number;
+        discount_type?: "percentage" | "fixed";
         discount_percent: number;
+        discount_amount?: number;
         line_total_after_tax: number;
         lead_time_days: number | null;
       }

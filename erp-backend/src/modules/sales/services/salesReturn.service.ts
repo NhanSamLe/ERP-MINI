@@ -59,30 +59,35 @@ const RMA_INCLUDE = [
 ];
 
 function requireManager(user: any) {
+  if (user.role === Role.ADMIN) return;
   if (![Role.SALESMANAGER, Role.BRANCH_MANAGER].includes(user.role)) {
     throw new Error("Only sales manager or branch manager can approve return requests");
   }
 }
 
 function requireAccountant(user: any) {
+  if (user.role === Role.ADMIN) return;
   if (user.role !== Role.ACCOUNT) {
     throw new Error("Only accountant can create refunds");
   }
 }
 
 function requireCreditNoteCreator(user: any) {
+  if (user.role === Role.ADMIN) return;
   if (![Role.ACCOUNT, Role.CHACC].includes(user.role)) {
     throw new Error("Only accountant or chief accountant can create credit notes");
   }
 }
 
 function requireWarehouse(user: any) {
+  if (user.role === Role.ADMIN) return;
   if (![Role.WHSTAFF, Role.WHMANAGER].includes(user.role)) {
     throw new Error("Only warehouse staff or warehouse manager can receive and inspect returned goods");
   }
 }
 
 function requireChiefAccountant(user: any) {
+  if (user.role === Role.ADMIN) return;
   if (user.role !== Role.CHACC) {
     throw new Error("Only chief accountant can approve/post credit notes or refunds");
   }

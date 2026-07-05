@@ -2,3 +2,7 @@
 qdrant_storage/
 docs
 .agents
+
+# Build artifacts
+erp-frontend/dist.tar.gz
+*.tar.gz

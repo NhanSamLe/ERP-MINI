@@ -11,7 +11,7 @@ export const employeeApi = {
   create: (data: EmployeeFormPayload) =>
     axiosClient.post<EmployeeDTO>("/hrm/employees", data),
 
-  update: (id: number, data: EmployeeFormPayload) =>
+  update: (id: number, data: Partial<EmployeeFormPayload>) =>
     axiosClient.put<EmployeeDTO>(`/hrm/employees/${id}`, data),
 
   remove: (id: number) =>

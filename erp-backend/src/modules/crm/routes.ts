@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authMiddleware } from "../../core/middleware/auth";
+import { Role } from "../../core/types/enum";
 import * as leadController from "./controllers/lead.controller";
 import * as opportunityController from "./controllers/opportunity.controller";
 import * as activityController from "./controllers/activity.controller";
@@ -12,163 +13,165 @@ import multer from "multer";
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-router.get("/leads", authMiddleware([]), leadController.getLeads);
-router.post("/leads/bulk", authMiddleware([]), leadController.bulkCreateLeads);
-router.post("/leads/import", authMiddleware([]), upload.single("file"), leadController.importLeads);
-router.get("/leads/today", authMiddleware([]), leadController.getTodayLead);
-router.get("/leads/stage/:stage", authMiddleware([]), leadController.getLeadByStage);
-router.get("/leads/:leadId", authMiddleware([]), leadController.getLeadById);
-router.post("/leads", authMiddleware([]), leadController.createLead);
+const crmRoles = authMiddleware([Role.SALES, Role.SALESMANAGER, Role.CEO]);
 
-router.patch("/leads/:leadId", authMiddleware([]), leadController.updateLeadBasic);
-router.patch("/leads/:leadId/evaluation", authMiddleware([]), leadController.updateLeadEvaluation);
-router.post("/leads/:leadId/convert", authMiddleware([]), leadController.convertToCustomer);
-router.patch("/leads/:leadId/lost", authMiddleware([]), leadController.markAsLost);
-router.patch("/leads/:leadId/reassign", authMiddleware([]), leadController.reassignLead);
-router.patch("/leads/:leadId/reopen", authMiddleware([]), leadController.reopenLead);
-router.delete("/leads/:leadId", authMiddleware([]), leadController.deleteLead);
+router.get("/leads", crmRoles, leadController.getLeads);
+router.post("/leads/bulk", crmRoles, leadController.bulkCreateLeads);
+router.post("/leads/import", crmRoles, upload.single("file"), leadController.importLeads);
+router.get("/leads/today", crmRoles, leadController.getTodayLead);
+router.get("/leads/stage/:stage", crmRoles, leadController.getLeadByStage);
+router.get("/leads/:leadId", crmRoles, leadController.getLeadById);
+router.post("/leads", crmRoles, leadController.createLead);
+
+router.patch("/leads/:leadId", crmRoles, leadController.updateLeadBasic);
+router.patch("/leads/:leadId/evaluation", crmRoles, leadController.updateLeadEvaluation);
+router.post("/leads/:leadId/convert", crmRoles, leadController.convertToCustomer);
+router.patch("/leads/:leadId/lost", crmRoles, leadController.markAsLost);
+router.patch("/leads/:leadId/reassign", crmRoles, leadController.reassignLead);
+router.patch("/leads/:leadId/reopen", crmRoles, leadController.reopenLead);
+router.delete("/leads/:leadId", crmRoles, leadController.deleteLead);
 
 // Opportunity Routes
-// router.get("/opportunities/my", authMiddleware([]), opportunityController.getMyOpportunities);
-// router.get("/opportunities", authMiddleware([]), opportunityController.getAllOpportunities);
-router.get("/opportunities", authMiddleware([]), opportunityController.getOpportunities);
-router.get("/opportunities/pipeline-summary", authMiddleware([]), opportunityController.getPipelineSummary);
-router.get("/opportunities/closing-this-month", authMiddleware([]), opportunityController.getClosingThisMonth);
-router.get("/opportunities/unclosed", authMiddleware([]), opportunityController.getUnclosedOpportunities);
-router.get("/opportunities/:oppId", authMiddleware([]), opportunityController.getOpportunityById);
-router.post("/opportunities", authMiddleware([]), opportunityController.createOpportunity);
-router.patch("/opportunities/:oppId", authMiddleware([]), opportunityController.updateOpportunity);
-router.post("/opportunities/:oppId/negotiation", authMiddleware([]), opportunityController.moveToNegotiation);
-router.patch("/opportunities/:oppId/stage", authMiddleware([]), opportunityController.changePipelineStage);
-router.patch("/opportunities/:oppId/won", authMiddleware([]), opportunityController.markWon);
-router.patch("/opportunities/:oppId/lost", authMiddleware([]), opportunityController.markLost);
-router.patch("/opportunities/:oppId/reassign", authMiddleware([]), opportunityController.reassignOpportunity);
-router.delete("/opportunities/:oppId", authMiddleware([]), opportunityController.deleteOpportunity);
+// router.get("/opportunities/my", crmRoles, opportunityController.getMyOpportunities);
+// router.get("/opportunities", crmRoles, opportunityController.getAllOpportunities);
+router.get("/opportunities", crmRoles, opportunityController.getOpportunities);
+router.get("/opportunities/pipeline-summary", crmRoles, opportunityController.getPipelineSummary);
+router.get("/opportunities/closing-this-month", crmRoles, opportunityController.getClosingThisMonth);
+router.get("/opportunities/unclosed", crmRoles, opportunityController.getUnclosedOpportunities);
+router.get("/opportunities/:oppId", crmRoles, opportunityController.getOpportunityById);
+router.post("/opportunities", crmRoles, opportunityController.createOpportunity);
+router.patch("/opportunities/:oppId", crmRoles, opportunityController.updateOpportunity);
+router.post("/opportunities/:oppId/negotiation", crmRoles, opportunityController.moveToNegotiation);
+router.patch("/opportunities/:oppId/stage", crmRoles, opportunityController.changePipelineStage);
+router.patch("/opportunities/:oppId/won", crmRoles, opportunityController.markWon);
+router.patch("/opportunities/:oppId/lost", crmRoles, opportunityController.markLost);
+router.patch("/opportunities/:oppId/reassign", crmRoles, opportunityController.reassignOpportunity);
+router.delete("/opportunities/:oppId", crmRoles, opportunityController.deleteOpportunity);
 
 
 
 // // Activity Routes
 // // ---- CREATE ----
-// router.post("/activities/call",     authMiddleware([]), activityController.createCallActivity);
-// router.post("/activities/email",    authMiddleware([]), activityController.createEmailActivity);
-// router.post("/activities/meeting",  authMiddleware([]), activityController.createMeetingActivity);
-// router.post("/activities/task",     authMiddleware([]), activityController.createTaskActivity);
+// router.post("/activities/call",     crmRoles, activityController.createCallActivity);
+// router.post("/activities/email",    crmRoles, activityController.createEmailActivity);
+// router.post("/activities/meeting",  crmRoles, activityController.createMeetingActivity);
+// router.post("/activities/task",     crmRoles, activityController.createTaskActivity);
 
 // // ---- UPDATE COMMON ----
-// router.put("/activities/:id", authMiddleware([]), activityController.updateActivity);
+// router.put("/activities/:id", crmRoles, activityController.updateActivity);
 
 // // ---- UPDATE DETAIL ----
-// router.put("/activities/call/:id",    authMiddleware([]), activityController.updateCallDetail);
-// router.put("/activities/email/:id",   authMiddleware([]), activityController.updateEmailDetail);
-// router.put("/activities/meeting/:id", authMiddleware([]), activityController.updateMeetingDetail);
+// router.put("/activities/call/:id",    crmRoles, activityController.updateCallDetail);
+// router.put("/activities/email/:id",   crmRoles, activityController.updateEmailDetail);
+// router.put("/activities/meeting/:id", crmRoles, activityController.updateMeetingDetail);
 
 // // ---- TASK STATUS ----
-// router.patch("/activities/task/start/:id",    authMiddleware([]), activityController.startTask);
-// router.patch("/activities/task/complete/:id", authMiddleware([]), activityController.completeTask);
+// router.patch("/activities/task/start/:id",    crmRoles, activityController.startTask);
+// router.patch("/activities/task/complete/:id", crmRoles, activityController.completeTask);
 
 // // ---- COMPLETE ACTIVITY (general) ----
-// router.patch("/activities/complete/:id", authMiddleware([]), activityController.completeActivity);
+// router.patch("/activities/complete/:id", crmRoles, activityController.completeActivity);
 
 // // ---- REASSIGN ----
-// router.patch("/activities/reassign/:id", authMiddleware([]), activityController.reassignActivity);
+// router.patch("/activities/reassign/:id", crmRoles, activityController.reassignActivity);
 
 // // ---- DETAIL ----
-// router.get("/activities/call/:id",    authMiddleware([]), activityController.getCallActivityDetail);
-// router.get("/activities/email/:id",   authMiddleware([]), activityController.getEmailActivityDetail);
-// router.get("/activities/meeting/:id", authMiddleware([]), activityController.getMeetingActivityDetail);
-// router.get("/activities/task/:id",    authMiddleware([]), activityController.getTaskActivityDetail);
+// router.get("/activities/call/:id",    crmRoles, activityController.getCallActivityDetail);
+// router.get("/activities/email/:id",   crmRoles, activityController.getEmailActivityDetail);
+// router.get("/activities/meeting/:id", crmRoles, activityController.getMeetingActivityDetail);
+// router.get("/activities/task/:id",    crmRoles, activityController.getTaskActivityDetail);
 
 // // ---- LIST ----
-// router.get("/activities",        authMiddleware([]), activityController.getAllActivities);
-// router.get("/activities/my",     authMiddleware([]), activityController.getMyActivities);
-// router.get("/activities/today",  authMiddleware([]), activityController.getTodayActivities);
+// router.get("/activities",        crmRoles, activityController.getAllActivities);
+// router.get("/activities/my",     crmRoles, activityController.getMyActivities);
+// router.get("/activities/today",  crmRoles, activityController.getTodayActivities);
 
 // // ---- LIST BY ENTITY ----
-// router.get("/activities/for/:type/:id", authMiddleware([]), activityController.getActivitiesFor);
-// router.get("/activities/timeline/:type/:id", authMiddleware([]), activityController.getTimeline);
+// router.get("/activities/for/:type/:id", crmRoles, activityController.getActivitiesFor);
+// router.get("/activities/timeline/:type/:id", crmRoles, activityController.getTimeline);
 
 // // ---- DELETE ----
-// router.delete("/activities/:id", authMiddleware([]), activityController.deleteActivity);
+// router.delete("/activities/:id", crmRoles, activityController.deleteActivity);
 
 
 
 // // ---- CREATE (Priority: Specific types first) ----
-router.post("/activities/call", authMiddleware([]), activityController.createCallActivity);
-router.post("/activities/email", authMiddleware([]), activityController.createEmailActivity);
-router.post("/activities/meeting", authMiddleware([]), activityController.createMeetingActivity);
-router.post("/activities/task", authMiddleware([]), activityController.createTaskActivity);
+router.post("/activities/call", crmRoles, activityController.createCallActivity);
+router.post("/activities/email", crmRoles, activityController.createEmailActivity);
+router.post("/activities/meeting", crmRoles, activityController.createMeetingActivity);
+router.post("/activities/task", crmRoles, activityController.createTaskActivity);
 
 // ---- LIST (Priority: Specific paths before :id params) ----
-router.get("/activities/my", authMiddleware([]), activityController.getMyActivities);
-router.get("/activities/today", authMiddleware([]), activityController.getTodayActivities);
-router.get("/activities/for/:type/:id", authMiddleware([]), activityController.getActivitiesFor);
-router.get("/activities/timeline/:type/:id", authMiddleware([]), activityController.getTimeline);
+router.get("/activities/my", crmRoles, activityController.getMyActivities);
+router.get("/activities/today", crmRoles, activityController.getTodayActivities);
+router.get("/activities/for/:type/:id", crmRoles, activityController.getActivitiesFor);
+router.get("/activities/timeline/:type/:id", crmRoles, activityController.getTimeline);
 
 // ---- DETAIL by type (Priority: Before generic :id) ----
-router.get("/activities/:id", authMiddleware([]), activityController.getActivityDetail);
+router.get("/activities/:id", crmRoles, activityController.getActivityDetail);
 
 
 // ---- UPDATE DETAIL by type ----
-router.put("/activities/call/:id", authMiddleware([]), activityController.updateCallDetail);
-router.put("/activities/email/:id", authMiddleware([]), activityController.updateEmailDetail);
-router.put("/activities/meeting/:id", authMiddleware([]), activityController.updateMeetingDetail);
-router.put("/activities/task/:id", authMiddleware([]), activityController.updateTaskDetail);
+router.put("/activities/call/:id", crmRoles, activityController.updateCallDetail);
+router.put("/activities/email/:id", crmRoles, activityController.updateEmailDetail);
+router.put("/activities/meeting/:id", crmRoles, activityController.updateMeetingDetail);
+router.put("/activities/task/:id", crmRoles, activityController.updateTaskDetail);
 
 // ---- TASK STATUS ----
-router.patch("/activities/task/start/:id", authMiddleware([]), activityController.startTask);
-router.patch("/activities/task/complete/:id", authMiddleware([]), activityController.completeTask);
+router.patch("/activities/task/start/:id", crmRoles, activityController.startTask);
+router.patch("/activities/task/complete/:id", crmRoles, activityController.completeTask);
 
 // ---- REASSIGN & COMPLETE (Priority: Before generic :id) ----
-router.patch("/activities/reassign/:id", authMiddleware([]), activityController.reassignActivity);
+router.patch("/activities/reassign/:id", crmRoles, activityController.reassignActivity);
 
 // ---- UPDATE COMMON (Generic :id routes last) ----
-router.put("/activities/:id", authMiddleware([]), activityController.updateActivity);
+router.put("/activities/:id", crmRoles, activityController.updateActivity);
 
 // ---- GENERIC GET ALL ----
-router.get("/activities", authMiddleware([]), activityController.getAllActivities);
+router.get("/activities", crmRoles, activityController.getAllActivities);
 
 // ---- DELETE ----
-router.delete("/activities/:id", authMiddleware([]), activityController.deleteActivity);
+router.delete("/activities/:id", crmRoles, activityController.deleteActivity);
 
 
-router.post("/activities/meeting/cancel", authMiddleware([]), activityController.cancelMeeting);
-router.post("/activities/call/cancel", authMiddleware([]), activityController.cancelCallActivity);
-router.post("/activities/email/cancel", authMiddleware([]), activityController.cancelEmailActivity);
+router.post("/activities/meeting/cancel", crmRoles, activityController.cancelMeeting);
+router.post("/activities/call/cancel", crmRoles, activityController.cancelCallActivity);
+router.post("/activities/email/cancel", crmRoles, activityController.cancelEmailActivity);
 
-router.post("/activities/meeting/complete", authMiddleware([]), activityController.completeMeeting);
-router.post("/activities/email/send", authMiddleware([]), activityController.sendEmailForActivity);
-router.post("/activities/email/send-with-attachments", authMiddleware([]), upload.array("attachments", 10), activityController.sendEmailWithAttachments);
+router.post("/activities/meeting/complete", crmRoles, activityController.completeMeeting);
+router.post("/activities/email/send", crmRoles, activityController.sendEmailForActivity);
+router.post("/activities/email/send-with-attachments", crmRoles, upload.array("attachments", 10), activityController.sendEmailWithAttachments);
 
-router.get("/dashboard/sales", authMiddleware([]), getSalesDashboard);
+router.get("/dashboard/sales", crmRoles, getSalesDashboard);
 
 // =====================
 // PHASE 2: NEW CRM ROUTES
 // =====================
 
 // Lead Sources
-router.get("/lead-sources", authMiddleware([]), leadSourceController.getAll);
-router.post("/lead-sources", authMiddleware([]), leadSourceController.create);
-router.put("/lead-sources/:id", authMiddleware([]), leadSourceController.update);
-router.delete("/lead-sources/:id", authMiddleware([]), leadSourceController.remove);
+router.get("/lead-sources", crmRoles, leadSourceController.getAll);
+router.post("/lead-sources", crmRoles, leadSourceController.create);
+router.put("/lead-sources/:id", crmRoles, leadSourceController.update);
+router.delete("/lead-sources/:id", crmRoles, leadSourceController.remove);
 
 // Pipelines & Stages
-router.get("/pipelines", authMiddleware([]), pipelineController.getAllPipelines);
-router.post("/pipelines", authMiddleware([]), pipelineController.createPipeline);
-router.put("/pipelines/:id", authMiddleware([]), pipelineController.updatePipeline);
+router.get("/pipelines", crmRoles, pipelineController.getAllPipelines);
+router.post("/pipelines", crmRoles, pipelineController.createPipeline);
+router.put("/pipelines/:id", crmRoles, pipelineController.updatePipeline);
 
-router.post("/pipelines/:id/stages", authMiddleware([]), pipelineController.addStage);
-router.put("/pipelines/stages/:stageId", authMiddleware([]), pipelineController.updateStage);
-router.delete("/pipelines/stages/:stageId", authMiddleware([]), pipelineController.deleteStage);
+router.post("/pipelines/:id/stages", crmRoles, pipelineController.addStage);
+router.put("/pipelines/stages/:stageId", crmRoles, pipelineController.updateStage);
+router.delete("/pipelines/stages/:stageId", crmRoles, pipelineController.deleteStage);
 
 // Scoring Rules
-router.get("/scoring-rules/signals", authMiddleware([]), scoringRuleController.getSignals);
-router.post("/scoring-rules/preview", authMiddleware([]), scoringRuleController.previewRule);
-router.get("/scoring-rules", authMiddleware([]), scoringRuleController.getAll);
-router.post("/scoring-rules", authMiddleware([]), scoringRuleController.create);
-router.put("/scoring-rules/:id", authMiddleware([]), scoringRuleController.update);
-router.delete("/scoring-rules/:id", authMiddleware([]), scoringRuleController.remove);
+router.get("/scoring-rules/signals", crmRoles, scoringRuleController.getSignals);
+router.post("/scoring-rules/preview", crmRoles, scoringRuleController.previewRule);
+router.get("/scoring-rules", crmRoles, scoringRuleController.getAll);
+router.post("/scoring-rules", crmRoles, scoringRuleController.create);
+router.put("/scoring-rules/:id", crmRoles, scoringRuleController.update);
+router.delete("/scoring-rules/:id", crmRoles, scoringRuleController.remove);
 
 // Auto-recalculate individual Lead Score
-router.post("/leads/:leadId/recalculate-score", authMiddleware([]), scoringRuleController.recalculateLead);
+router.post("/leads/:leadId/recalculate-score", crmRoles, scoringRuleController.recalculateLead);
 
 export default router;

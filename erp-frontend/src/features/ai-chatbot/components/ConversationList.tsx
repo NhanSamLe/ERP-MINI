@@ -26,12 +26,12 @@ export default function ConversationList() {
   return (
     <div className="flex flex-col h-full">
       {/* New chat button */}
-      <div className="p-2.5">
+      <div className="p-2">
         <button
           onClick={handleNewChat}
-          className="w-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-[11px] font-bold tracking-wide transition-all duration-200 shadow-sm hover:scale-[1.02] active:scale-[0.98]"
+          className="w-full flex items-center justify-center gap-1.5 h-7 rounded-md bg-orange-500 hover:bg-orange-600 text-white text-[11px] font-semibold transition-colors duration-150"
         >
-          <Plus className="w-3.5 h-3.5" strokeWidth={3} />
+          <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
           Mới
         </button>
       </div>
@@ -58,10 +58,10 @@ export default function ConversationList() {
                 key={conv.id}
                 onClick={() => handleSelect(conv)}
                 title={displayTitle}
-                className={`w-full flex items-center gap-1.5 px-2 py-2 text-left rounded-xl transition-all duration-150 group ${
+                className={`w-full flex items-center gap-1.5 px-2 py-1.5 text-left rounded-md transition-colors duration-150 group ${
                   isActive
                     ? "bg-orange-50 text-orange-700 border border-orange-200"
-                    : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                    : "text-gray-500 hover:bg-gray-100 hover:text-gray-700 border border-transparent"
                 }`}
               >
                 <MessageSquare

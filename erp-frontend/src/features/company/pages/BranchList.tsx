@@ -23,15 +23,14 @@ import {
   Branch,
 } from "../branch.service";
 import { ActionConfirmModal } from "@/components/common/ActionConfirmModal";
-
-const useAuth = () => ({ user: { role: "ADMIN" as "ADMIN" | "BRANCH_MANAGER" } });
+import { useAppSelector } from "@/store/hooks";
 
 const PAGE_SIZE = 10;
 
 export default function BranchList() {
   const nav = useNavigate();
-  const { user } = useAuth();
-  const isAdmin = user.role === "ADMIN";
+  const { user } = useAppSelector((state) => state.auth);
+  const isAdmin = user?.role?.code === "ADMIN" || user?.role?.code === "CEO";
 
   const [items, setItems] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);

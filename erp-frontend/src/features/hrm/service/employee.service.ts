@@ -20,7 +20,7 @@ export async function createEmployee(data: EmployeeFormPayload) {
 }
 
 // UPDATE
-export async function updateEmployee(id: number, data: EmployeeFormPayload) {
+export async function updateEmployee(id: number, data: Partial<EmployeeFormPayload>) {
   const res = await employeeApi.update(id, data);
   return res.data;
 }

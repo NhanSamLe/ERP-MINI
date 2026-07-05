@@ -19,9 +19,30 @@ const companyRoutes: RouteObject[] = [
   {
     path: "/company/branches",
     children: [
-      { index: true, element: <BranchList /> }, // /company/branches
-      { path: "create", element: <BranchForm mode="create" /> }, // /company/branches/create
-      { path: ":id", element: <BranchForm mode="edit" /> }, // /company/branches/:id
+      {
+        index: true,
+        element: (
+          <ProtectedRoute allowedRoles={["ADMIN", "CEO"]}>
+            <BranchList />
+          </ProtectedRoute>
+        ),
+      }, // /company/branches
+      {
+        path: "create",
+        element: (
+          <ProtectedRoute allowedRoles={["ADMIN", "CEO"]}>
+            <BranchForm mode="create" />
+          </ProtectedRoute>
+        ),
+      }, // /company/branches/create
+      {
+        path: ":id",
+        element: (
+          <ProtectedRoute allowedRoles={["ADMIN", "CEO"]}>
+            <BranchForm mode="edit" />
+          </ProtectedRoute>
+        ),
+      }, // /company/branches/:id
     ],
   },
 ];
