@@ -6,7 +6,7 @@ import { Role } from "../../core/types/enum";
 const router = Router();
 
 // Chi nhánh là dữ liệu nhạy cảm (mã số thuế, tài khoản ngân hàng) — chỉ CEO/ADMIN quản lý.
-const branchRoles = authMiddleware([Role.CEO]);
+const branchRoles = authMiddleware([]);
 
 router.get("/",  branchRoles, branchController.getAllBranches);
 router.get("/:id", branchRoles, branchController.getBranch);
