@@ -1,5 +1,6 @@
 import { Op } from "sequelize";
 import { InvoiceDocument } from "../models/invoiceDocument.model";
+import { TaxRate } from "../../../models";
 import { VendorMatcherService } from "./vendorMatcher.service";
 import { ProductMatcherService } from "./productMatcher.service";
 import { DuplicateDetectorService } from "./duplicateDetector.service";
@@ -52,6 +53,7 @@ export interface ConfirmPayload {
   invoice_no?: string;
   invoice_date?: Date;
   due_date?: Date;
+  discount_amount?: number;
   invoice_series?: string;
   invoice_template?: string;
   tax_code?: string;
@@ -419,23 +421,61 @@ export class DocumentService {
       ? parseInvoiceDate(String(payload.invoice_date))
       : parseInvoiceDate(ocr?.invoice_date);
 
-    // due_date: 30 ngày sau invoice_date nếu không được cung cấp
+    // due_date: let apInvoiceService calculate from payment_term_id if not provided
     const dueDate: Date | undefined = payload.due_date
       ? new Date(payload.due_date)
-      : (() => {
-          const d = new Date(invoiceDate);
-          d.setDate(d.getDate() + 30);
-          return d;
-        })();
+      : undefined;
 
-    const resolvedLines: CreateAPInvoiceLineInput[] = (
-      payload.lines ??
-      payload.items ??
-      []
-    ).map((item: any) => {
+    // Fetch tax rates to compute taxes accurately
+    const taxRates = await TaxRate.findAll();
+
+    const rawLines = payload.lines ?? payload.items ?? [];
+    
+    // Calculate line totals before general discount
+    const linesWithPreTotal = rawLines.map((item: any) => {
       const qty = item.quantity ?? item.qty ?? 0;
       const price = item.unit_price ?? 0;
-      const lineTotal = item.line_total ?? qty * price;
+      let discountVal = 0;
+      if (item.discount_amount) {
+        discountVal = item.discount_amount;
+      } else if (item.discount_percent) {
+        discountVal = (qty * price * item.discount_percent) / 100;
+      }
+      const preTotal = qty * price - discountVal;
+      return { item, qty, price, preTotal };
+    });
+
+    const sumPreTotal = linesWithPreTotal.reduce((sum: number, l: any) => sum + l.preTotal, 0);
+    const generalDiscount = Number(payload.discount_amount) || 0;
+
+    const resolvedLines: CreateAPInvoiceLineInput[] = linesWithPreTotal.map(({ item, qty, price, preTotal }: any, idx: number) => {
+      let lineTotal = preTotal;
+      if (generalDiscount > 0 && sumPreTotal > 0) {
+        if (idx === linesWithPreTotal.length - 1) {
+          const distributedSoFar = linesWithPreTotal
+            .slice(0, idx)
+            .reduce((sum: number, l: any, i: number) => {
+              const share = (l.preTotal / sumPreTotal) * generalDiscount;
+              return sum + Math.round(share * 100) / 100;
+            }, 0);
+          const remainingDiscount = generalDiscount - distributedSoFar;
+          lineTotal = Math.round((preTotal - remainingDiscount) * 100) / 100;
+        } else {
+          const share = (preTotal / sumPreTotal) * generalDiscount;
+          lineTotal = Math.round((preTotal - share) * 100) / 100;
+        }
+      }
+
+      // Calculate tax
+      let taxPercent = 0;
+      if (item.tax_rate_id) {
+        const tr = taxRates.find((t) => Number(t.id) === Number(item.tax_rate_id));
+        if (tr) taxPercent = Number(tr.rate ?? 0);
+      }
+      
+      const lineTax = Math.round(((lineTotal * taxPercent) / 100) * 100) / 100;
+      const lineTotalAfterTax = Math.round((lineTotal + lineTax) * 100) / 100;
+
       return {
         product_id: item.product_id ?? null,
         description: item.description ?? item.name ?? "",
@@ -443,8 +483,8 @@ export class DocumentService {
         unit_price: price,
         tax_rate_id: item.tax_rate_id ?? null,
         line_total: lineTotal,
-        line_tax: item.line_tax ?? 0,
-        line_total_after_tax: item.line_total_after_tax ?? lineTotal,
+        line_tax: lineTax,
+        line_total_after_tax: lineTotalAfterTax,
         po_line_id: item.po_line_id ?? null,
         grn_line_id: item.grn_line_id ?? null,
         uom_id: item.uom_id ?? null,

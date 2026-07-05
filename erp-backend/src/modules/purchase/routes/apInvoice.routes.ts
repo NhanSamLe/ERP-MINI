@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { apInvoiceController } from "../controllers/apInvoice.controller";
+import { signatureController } from "../controllers/signature.controller";
 import { authMiddleware } from "../../../core/middleware/auth";
 import { Role } from "../../../core/types/enum";
 
@@ -61,6 +62,9 @@ router.post("/:id/submit", accountOnly, apInvoiceController.submitForApproval);
 
 // PUT /api/ap/invoices/:id/approve
 router.put("/:id/approve", chaccOnly, apInvoiceController.approve);
+
+// POST /api/ap/invoices/:id/sign
+router.post("/:id/sign", chaccOnly, signatureController.signApInvoice);
 
 // PUT /api/ap/invoices/:id/reject
 router.put("/:id/reject", chaccOnly, apInvoiceController.reject);

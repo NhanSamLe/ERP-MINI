@@ -21,6 +21,7 @@ import { SaleOrderDto } from "@/features/sales/dto/saleOrder.dto";
 import { fetchSaleOrdersByStatus } from "@/features/sales/store/saleOrder.slice";
 import { LocationSelect } from "../../LocationSelect";
 import { LotSelect } from "../../LotSelect";
+import { translateUomName } from "../../UomSelect";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../../../../../components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "../../../../../components/ui/Card";
 import { Truck, Calendar, Clipboard, ShoppingBag, ListCollapse } from "lucide-react";
@@ -113,7 +114,7 @@ export default function CreateIssueModal({
               product_id: result.id,
               name: result.name,
               sku: result.sku,
-              uom: result.uom?.name ?? result.uom?.code ?? "",
+              uom: translateUomName(result.uom?.name ?? result.uom?.code ?? ""),
               uom_id: result.uom_id ?? null,
               uomOptions: [
                 ...(result.uom ? [result.uom] : []),
@@ -123,8 +124,8 @@ export default function CreateIssueModal({
                   : []),
               ],
               image: result.image_url,
-              quantity: line.quantity,          // số lượng thực xuất (user có thể sửa)
-              ordered_quantity: line.quantity,  // số lượng đặt hàng gốc (chỉ đọc)
+              quantity: Number(line.quantity ?? 0),          // số lượng thực xuất (user có thể sửa)
+              ordered_quantity: Number(line.quantity ?? 0),  // số lượng đặt hàng gốc (chỉ đọc)
             } as LineIssueItemWithOrdered;
           }),
         );
@@ -333,7 +334,7 @@ export default function CreateIssueModal({
                           <span className="font-semibold text-slate-800">{p.name}</span>
                         </td>
                         <td className="py-3 px-5 font-mono text-xs font-bold text-slate-455 uppercase">{p.sku}</td>
-                        <td className="py-3 px-5 text-slate-500 font-medium">{p.uom || "—"}</td>
+                        <td className="py-3 px-5 text-slate-500 font-medium">{translateUomName(p.uom) || "—"}</td>
                         {/* SL đặt hàng — chỉ đọc */}
                         <td className="py-3 px-4 text-right font-mono font-bold text-slate-500">
                           {p.ordered_quantity ?? p.quantity}

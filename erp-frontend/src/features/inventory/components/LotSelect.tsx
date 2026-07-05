@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { stockLotApi, StockLot } from "../api/stockLot.api";
+import { toast } from "react-toastify";
 
 export interface NewLotData {
   lot_no: string;
@@ -82,9 +83,20 @@ export function LotSelect({
     return (
       <select
         value={value ?? ""}
-        onChange={(e) =>
-          onChange(e.target.value ? Number(e.target.value) : null)
-        }
+        onChange={(e) => {
+          const val = e.target.value ? Number(e.target.value) : null;
+          if (val) {
+            const selectedLot = lots.find((l) => l.id === val);
+            if (selectedLot && selectedLot.expiry_date) {
+              const today = new Date().toISOString().split("T")[0];
+              if (selectedLot.expiry_date < today) {
+                toast.error(`Không thể chọn lô ${selectedLot.lot_no} vì đã hết hạn sử dụng (${selectedLot.expiry_date})!`);
+                return;
+              }
+            }
+          }
+          onChange(val);
+        }}
         disabled={disabled || loading || !productId}
         className={`border rounded px-2 py-1 text-xs focus:ring-1 focus:ring-orange-400 focus:outline-none w-full ${
           !productId ? "bg-gray-50 text-gray-400" : ""
@@ -132,9 +144,20 @@ export function LotSelect({
       {mode === "existing" ? (
         <select
           value={value ?? ""}
-          onChange={(e) =>
-            onChange(e.target.value ? Number(e.target.value) : null)
-          }
+          onChange={(e) => {
+            const val = e.target.value ? Number(e.target.value) : null;
+            if (val) {
+              const selectedLot = lots.find((l) => l.id === val);
+              if (selectedLot && selectedLot.expiry_date) {
+                const today = new Date().toISOString().split("T")[0];
+                if (selectedLot.expiry_date < today) {
+                  toast.error(`Không thể chọn lô ${selectedLot.lot_no} vì đã hết hạn sử dụng (${selectedLot.expiry_date})!`);
+                  return;
+                }
+              }
+            }
+            onChange(val);
+          }}
           disabled={disabled || loading || !productId}
           className={`border rounded px-2 py-1 text-xs focus:ring-1 focus:ring-orange-400 focus:outline-none w-full ${
             !productId ? "bg-gray-50 text-gray-400" : ""

@@ -2,6 +2,8 @@ export type PurchaseOrderStatus =
   | "draft"
   | "waiting_approval"
   | "confirmed"
+  | "sent"
+  | "supplier_accepted"
   | "partially_received"
   | "completed"
   | "cancelled";
@@ -49,6 +51,8 @@ export interface PurchaseOrder {
     name: string;
     email: string;
     phone: string;
+    tax_code?: string;
+    address?: string;
   };
   paymentTerm?: {
     id: number;

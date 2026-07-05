@@ -72,6 +72,13 @@ export class InvoiceParser {
         ? items.reduce((sum, it) => sum + it.confidence, 0) / items.length
         : 0.0;
 
+    // Calculate general discount if subtotal + tax > total
+    const computedSubtotal = items.reduce((sum, it) => sum + it.amount, 0);
+    const declaredTax = Number(data.tax_amount) || 0;
+    const declaredTotal = Number(data.total) || 0;
+    const implicitDiscount = computedSubtotal + declaredTax - declaredTotal;
+    const generalDiscount = implicitDiscount > 0.01 ? Math.round(implicitDiscount * 100) / 100 : 0;
+
     // Weighted overall_confidence
     const overall_confidence =
       FIELD_WEIGHTS.invoice_no * confidence_scores.invoice_no +
@@ -95,9 +102,10 @@ export class InvoiceParser {
       invoice_template: data.invoice_template ?? undefined,
       invoice_date: data.invoice_date ?? "",
       items,
-      subtotal: Number(data.subtotal) || 0,
-      tax_amount: Number(data.tax_amount) || 0,
-      total: Number(data.total) || 0,
+      subtotal: computedSubtotal,
+      discount_amount: generalDiscount,
+      tax_amount: declaredTax,
+      total: declaredTotal,
       confidence_scores,
       overall_confidence,
       warnings,

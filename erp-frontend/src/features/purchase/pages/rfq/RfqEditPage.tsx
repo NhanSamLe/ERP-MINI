@@ -221,7 +221,7 @@ export default function RfqEditPage() {
     dispatch(fetchAllUomsThunk());
     dispatch(fetchAllConversionsThunk());
     axiosClient.get("/master-data/payment-terms")
-      .then((res) => setPaymentTerms(res.data || []))
+      .then((res) => setPaymentTerms(res.data?.data || res.data || []))
       .catch((err) => console.error("Error fetching payment terms:", err));
     axiosClient.get("/master-data/currencies")
       .then((res) => {
@@ -319,8 +319,6 @@ export default function RfqEditPage() {
         uom_id: purchaseUomId,
         quantity: 1,
         unit_price: price,
-        discount_percent: 0,
-        discount_amount: 0,
         discount_type: "percentage",
         tax_rate_id: product.tax_rate_id ?? null,
         tax_rate: taxRate,

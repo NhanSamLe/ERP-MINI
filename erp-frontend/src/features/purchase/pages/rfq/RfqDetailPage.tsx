@@ -30,6 +30,27 @@ import { FormSection } from "../../../../components/layout/FormSection";
 import { formatVND } from "@/utils/currency.helper";
 import { Roles } from "@/types/enum";
 
+const UOM_TRANSLATIONS: Record<string, string> = {
+  piece: "cái",
+  pcs: "cái",
+  box: "hộp/thùng",
+  carton: "thùng",
+  pack: "gói",
+  bag: "bao/túi",
+  kilogram: "kg",
+  kg: "kg",
+  gram: "g",
+  liter: "lít",
+  meter: "mét",
+  set: "bộ",
+};
+
+function translateUom(uomName: string | null | undefined): string {
+  if (!uomName) return "—";
+  const key = uomName.trim().toLowerCase();
+  return UOM_TRANSLATIONS[key] || uomName;
+}
+
 export default function RfqDetailPage() {
   const { id } = useParams<{ id: string }>();
   const dispatch = useDispatch<AppDispatch>();
@@ -486,10 +507,10 @@ export default function RfqDetailPage() {
                           {line.description ?? "—"}
                         </td>
                         <td className="px-4 py-3 text-right text-gray-800">
-                          {line.quantity}
+                          {Number(line.quantity || 0)}
                         </td>
                         <td className="px-4 py-3 text-left text-gray-600">
-                          {(line as any).uom?.name ?? "—"}
+                          {translateUom((line as any).uom?.name)}
                         </td>
                         <td className="px-4 py-3 text-right text-gray-800">
                           {formatVND(line.unit_price)}

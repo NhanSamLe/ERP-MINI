@@ -15,8 +15,9 @@ import {
   Loader2,
   FileCheck,
 } from "lucide-react";
-import { useAppDispatch } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { uploadDocumentThunk, resetDocumentState } from "../../store/documentIntelligence";
+import { fetchPurchaseOrderByStatus, fetchPurchaseOrderByIdThunk } from "../../store/purchaseOrder.thunks";
 
 // Định nghĩa cấu trúc kịch bản mẫu
 interface SandboxItem {
@@ -50,6 +51,7 @@ interface SandboxScenario {
   lowQualityText?: boolean;
   watermarkText?: string;
   notes?: string;
+  discount_rate?: number;
 }
 
 // 12/13 Kịch bản chi tiết từ ocr-invoice-scenarios.html
@@ -57,26 +59,24 @@ const PRESETS: SandboxScenario[] = [
   {
     code: "TC-01",
     name: "Lavie Happy Path (Có PO)",
-    description: "Hóa đơn nước Lavie, khớp 100% với đơn đặt hàng PO-2024-0123. AI tự động phê duyệt.",
-    vendor: "Công Ty TNHH Nước Giải Khát Lavie Việt Nam",
-    taxCode: "0301234567",
-    address: "123 Đường Nguyễn Văn Linh, Q.7, TP.HCM",
-    phone: "028-3456-7890",
+    description: "Mục tiêu: Hóa đơn nước Lavie, khớp 100% với đơn đặt hàng PO-2024-0123. AI tự động phê duyệt.",
+    vendor: "CDB Supplies Ltd",
+    taxCode: "012345678913",
+    address: "Phường Phú Định, Quận 8, Thành Phố HCM",
+    phone: "076840214",
     email: "billing@lavie.com.vn",
     buyer: "Công Ty Cổ Phần Thương Mại XYZ",
-    buyerTaxCode: "0987654321",
+    buyerTaxCode: "01259549871",
     buyerAddress: "456 Lê Văn Việt, Q.9, TP.HCM",
-    poNo: "PO-2024-0123",
-    invNo: "HD-2024-0055",
-    date: "15/03/2024",
+    poNo: "PO-20260704-0214",
+    invNo: "HD-2026-0055",
+    date: "04/06/2026",
     series: "1C24TAA",
-    templateNo: "01GTKT0/001",
+    templateNo: "01GTKT0/201",
     items: [
-      { name: "Nước suối Lavie 500ml", unit: "Thùng", qty: 10, price: 168000, tax: 10 },
-      { name: "Nước suối Lavie 1.5L", unit: "Thùng", qty: 5, price: 210000, tax: 10 },
-      { name: "Nước khoáng Lavie Sparkling 330ml", unit: "Thùng", qty: 8, price: 195000, tax: 10 }
+      { name: "iPhone 15 Pro Max", unit: "Cái", qty: 4, price: 25000000, tax: 5, discount: 1 }
     ],
-    notes: "Hóa đơn liên kết với Đơn Mua Hàng PO-2024-0123. Đã giao đầy đủ hàng."
+    notes: "Hóa đơn liên kết với Đơn Mua Hàng PO-20260704-0214. Giao đầy đủ hàng."
   },
   {
     code: "TC-02",
@@ -303,6 +303,8 @@ export default function InvoiceGeneratorPage() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   
+  const purchaseOrders = useAppSelector((state) => state.purchaseOrder.items);
+  const [selectedPOId, setSelectedPOId] = useState<string>("");
   const [selectedPresetCode, setSelectedPresetCode] = useState<string>("TC-01");
   const [invoiceData, setInvoiceData] = useState<SandboxScenario>({ ...PRESETS[0] });
   const [exporting, setExporting] = useState(false);
@@ -310,12 +312,50 @@ export default function InvoiceGeneratorPage() {
 
   const printAreaRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    dispatch(fetchPurchaseOrderByStatus("confirmed,sent,supplier_accepted,partially_received,received"));
+  }, [dispatch]);
+
   // Load preset data when dropdown changes
   const handlePresetChange = (code: string) => {
     setSelectedPresetCode(code);
+    setSelectedPOId("");
     const preset = PRESETS.find((p) => p.code === code);
     if (preset) {
       setInvoiceData(JSON.parse(JSON.stringify(preset)));
+    }
+  };
+
+  const handleSelectRealPO = async (poId: string) => {
+    setSelectedPOId(poId);
+    if (!poId) return;
+
+    try {
+      const po = await dispatch(fetchPurchaseOrderByIdThunk(Number(poId))).unwrap();
+      if (!po) return;
+
+      setInvoiceData((prev) => ({
+        ...prev,
+        poNo: po.po_no,
+        vendor: po.supplier?.name || prev.vendor,
+        taxCode: po.supplier?.tax_code || prev.taxCode,
+        address: po.supplier?.address || prev.address,
+        phone: po.supplier?.phone || prev.phone,
+        email: po.supplier?.email || prev.email,
+        discount_rate: po.discount_percent || 0,
+        items: (po.lines || []).map((line: any) => ({
+          name: line.product?.name || "Sản phẩm",
+          unit: line.uom?.name || line.product?.uom?.name || "Cái",
+          qty: Number(line.quantity ?? 0),
+          price: Number(line.unit_price ?? 0),
+          tax: Number(line.tax_rate ?? 10),
+          discount: Number(line.discount_rate ?? 0),
+        })),
+        notes: `Hóa đơn liên kết với Đơn Mua Hàng ${po.po_no}.`,
+      }));
+    } catch (err) {
+      console.error(err);
+      toast.error("Không thể tải chi tiết đơn mua hàng (PO) này.");
     }
   };
 
@@ -372,14 +412,19 @@ export default function InvoiceGeneratorPage() {
     return s + (amountBeforeDiscount - discountAmount);
   }, 0);
 
+  const discountRate = Number(invoiceData.discount_rate) || 0;
+  const totalDiscountAmount = subtotal * (discountRate / 100);
+  const subtotalAfterDiscount = subtotal - totalDiscountAmount;
+
   const taxAmount = invoiceData.items.reduce((s, it) => {
     const amountBeforeDiscount = (Number(it.qty) || 0) * (Number(it.price) || 0);
     const discountAmount = amountBeforeDiscount * ((Number(it.discount) || 0) / 100);
     const lineTotal = amountBeforeDiscount - discountAmount;
-    return s + (lineTotal * (Number(it.tax) || 0)) / 100;
+    const lineTotalAfterOverallDiscount = lineTotal * (1 - discountRate / 100);
+    return s + (lineTotalAfterOverallDiscount * (Number(it.tax) || 0)) / 100;
   }, 0);
 
-  const grandTotal = subtotal + taxAmount;
+  const grandTotal = subtotalAfterDiscount + taxAmount;
 
   // Thực hiện chụp ảnh HTML và tạo PDF
   const generatePDFBlob = async (): Promise<{ blob: Blob; filename: string }> => {
@@ -653,6 +698,21 @@ export default function InvoiceGeneratorPage() {
             </h3>
             <div className="space-y-3">
               <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Liên kết Đơn mua hàng (PO) trong hệ thống</label>
+                <select
+                  value={selectedPOId}
+                  onChange={(e) => handleSelectRealPO(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm bg-white"
+                >
+                  <option value="">— Nhập thủ công (Tùy chọn kịch bản mẫu) —</option>
+                  {purchaseOrders.map((po: any) => (
+                    <option key={po.id} value={po.id}>
+                      {po.po_no} — {po.supplier?.name || "Nhà cung cấp"} ({Number(po.total_after_tax).toLocaleString("vi-VN")}đ)
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Tên đơn vị mua hàng</label>
                 <input
                   type="text"
@@ -776,6 +836,35 @@ export default function InvoiceGeneratorPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Overall Discount */}
+          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-3">
+            <h3 className="text-sm font-bold text-gray-800 border-b pb-2 flex items-center gap-1.5">
+              <span>🏷️ Chiết khấu tổng đơn hàng</span>
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Tỷ lệ chiết khấu tổng (%)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={invoiceData.discount_rate ?? 0}
+                  onChange={(e) => updateField("discount_rate", Number(e.target.value))}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm text-right font-semibold"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Giá trị chiết khấu tổng</label>
+                <input
+                  type="text"
+                  disabled
+                  value={totalDiscountAmount.toLocaleString("vi-VN") + " VNĐ"}
+                  className="w-full px-3 py-2 border rounded-lg outline-none text-sm text-right bg-gray-50 text-gray-500 font-semibold"
+                />
+              </div>
             </div>
           </div>
 
@@ -968,6 +1057,12 @@ export default function InvoiceGeneratorPage() {
                     <td colSpan={7} style={{ padding: "6px 6px", textAlign: "right", color: "#475569" }}>Cộng tiền hàng:</td>
                     <td style={{ padding: "6px 6px", textAlign: "right", fontWeight: "bold", color: "#000000" }}>{subtotal.toLocaleString("vi-VN")}</td>
                   </tr>
+                  {discountRate > 0 && (
+                    <tr>
+                      <td colSpan={7} style={{ padding: "6px 6px", textAlign: "right", color: "#475569" }}>Chiết khấu tổng đơn hàng ({discountRate}%):</td>
+                      <td style={{ padding: "6px 6px", textAlign: "right", fontWeight: "bold", color: "#000000" }}>-{totalDiscountAmount.toLocaleString("vi-VN")}</td>
+                    </tr>
+                  )}
                   <tr>
                     <td colSpan={7} style={{ padding: "6px 6px", textAlign: "right", color: "#475569" }}>Thuế GTGT:</td>
                     <td style={{ padding: "6px 6px", textAlign: "right", fontWeight: "bold", color: "#000000" }}>{taxAmount.toLocaleString("vi-VN")}</td>

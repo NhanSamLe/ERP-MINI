@@ -242,3 +242,17 @@ export const getMeAttendance = async (req: Request, res: Response) => {
     return res.status(400).json({ message: err.message });
   }
 };
+
+export const setupSignaturePin = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const { pin } = req.body;
+    const result = await authService.setupSignaturePin(user.id, { pin });
+    res.status(200).json(result);
+  } catch (error: any) {
+    return res.status(400).json({ message: error.message || "Thiết lập mã PIN thất bại" });
+  }
+};

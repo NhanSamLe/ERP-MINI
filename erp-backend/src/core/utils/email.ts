@@ -285,3 +285,82 @@ export function newEmployeeAccountTemplate(
     }),
   };
 }
+
+export function purchaseOrderTemplate(po: any, supplierName: string, isVi: boolean) {
+  const brandName = "ERP Mini";
+  const managerSig = po.signatures?.find((s: any) => s.document_type === "purchase_order");
+  const viewLink = `${process.env.FRONTEND_URL || "http://localhost:3000"}/public/verify/${managerSig?.hash_value || ""}`;
+  const orderDateStr = po.order_date
+    ? new Date(po.order_date).toLocaleDateString(isVi ? "vi-VN" : "en-US")
+    : "—";
+  const currencySymbol = po.currency?.symbol || "VND";
+  const fmtMoney = (v: number) =>
+    `${Number(v || 0).toLocaleString(isVi ? "vi-VN" : "en-US")} ${currencySymbol}`;
+
+  const bodyHtml = `
+    <h1 style="margin:0 0 16px;font-size:20px;font-weight:bold;color:#111827;">
+      ${isVi ? "Đơn đặt hàng mới" : "New Purchase Order"} — ${po.po_no}
+    </h1>
+    <p style="margin:0 0 12px;">Xin chào <strong>${supplierName}</strong>,</p>
+    <p style="margin:0 0 12px;">
+      ${
+        isVi
+          ? `Công ty chúng tôi xin gửi đến quý đối tác Đơn đặt hàng mã số <strong>${po.po_no}</strong> được tạo ngày ${orderDateStr}.`
+          : `Our company would like to send you Purchase Order No. <strong>${po.po_no}</strong> created on ${orderDateStr}.`
+      }
+    </p>
+
+    <h3 style="margin:20px 0 10px;font-size:16px;font-weight:bold;color:#f97316;">
+      ${isVi ? "Thông tin tóm tắt đơn hàng" : "Purchase Order Summary"}
+    </h3>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;border:1px solid #e5e7eb;border-collapse:collapse;">
+      <thead>
+        <tr style="background-color:#f9fafb;border-bottom:1px solid #e5e7eb;">
+          <th style="padding:10px;text-align:left;font-size:13px;color:#4b5563;font-weight:bold;width:40%;">${isVi ? "Sản phẩm" : "Product"}</th>
+          <th style="padding:10px;text-align:right;font-size:13px;color:#4b5563;font-weight:bold;width:15%;">${isVi ? "ĐVT" : "UoM"}</th>
+          <th style="padding:10px;text-align:right;font-size:13px;color:#4b5563;font-weight:bold;width:15%;">${isVi ? "Số lượng" : "Qty"}</th>
+          <th style="padding:10px;text-align:right;font-size:13px;color:#4b5563;font-weight:bold;width:15%;">${isVi ? "Đơn giá" : "Price"}</th>
+          <th style="padding:10px;text-align:right;font-size:13px;color:#4b5563;font-weight:bold;width:15%;">${isVi ? "Thành tiền" : "Total"}</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${(po.lines || [])
+          .map(
+            (line: any) => `
+          <tr style="border-bottom:1px solid #e5e7eb;">
+            <td style="padding:10px;font-size:13px;color:#1f2937;">${line.product?.name || "—"}</td>
+            <td style="padding:10px;font-size:13px;color:#1f2937;text-align:right;">${line.uom?.name || "—"}</td>
+            <td style="padding:10px;font-size:13px;color:#1f2937;text-align:right;">${line.quantity}</td>
+            <td style="padding:10px;font-size:13px;color:#1f2937;text-align:right;">${fmtMoney(line.unit_price)}</td>
+            <td style="padding:10px;font-size:13px;color:#1f2937;text-align:right;font-weight:bold;">${fmtMoney(line.line_total_after_tax)}</td>
+          </tr>
+        `
+          )
+          .join("")}
+        <tr style="background-color:#f9fafb;">
+          <td colspan="4" style="padding:10px;font-size:13px;color:#4b5563;font-weight:bold;text-align:right;">${isVi ? "TỔNG CỘNG" : "GRAND TOTAL"}:</td>
+          <td style="padding:10px;font-size:14px;color:#ea580c;font-weight:bold;text-align:right;">${fmtMoney(po.total_after_tax)}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p style="margin:0 0 12px;">
+      ${
+        isVi
+          ? "Đơn hàng này đã được phê duyệt bằng chữ ký số hợp lệ của ban quản lý. Quý đối tác vui lòng nhấn nút dưới đây để xem chi tiết bản gốc và xác thực tính pháp lý của chữ ký số."
+          : "This order has been approved with a valid digital signature by our management team. Please click the button below to view the original details and verify the signature's validity."
+      }
+    </p>
+    ${ctaButton(viewLink, isVi ? "Xem chi tiết & Xác thực" : "View Details & Verify")}
+  `;
+
+  return {
+    subject: `[${brandName}] ${isVi ? "Đơn đặt hàng mới" : "New Purchase Order"} — ${po.po_no}`,
+    text: `${isVi ? "Đơn đặt hàng mới" : "New Purchase Order"} ${po.po_no}`,
+    html: baseEmailLayout({
+      title: isVi ? "Đơn đặt hàng mới" : "New Purchase Order",
+      preheader: `${isVi ? "Đơn đặt hàng từ" : "Purchase order from"} ${brandName} - ${po.po_no}`,
+      bodyHtml,
+    }),
+  };
+}

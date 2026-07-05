@@ -19,7 +19,7 @@ import { AppDispatch, RootState } from "../../../../../store/store";
 import { toast } from "react-toastify";
 import { fetchProductByIdThunk } from "@/features/products/store/product.thunks";
 import { LocationSelect } from "../../LocationSelect";
-import { UomSelect, buildUomOptions } from "../../UomSelect";
+import { UomSelect, buildUomOptions, translateUomName } from "../../UomSelect";
 import { LotSelect, NewLotData } from "../../LotSelect";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../../../../../components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "../../../../../components/ui/Card";
@@ -91,7 +91,7 @@ export default function CreateReceiptModal({
 
   useEffect(() => {
     if (form.reference_type === "purchase_order") {
-      dispatch(fetchPurchaseOrderByStatus("confirmed,partially_received"));
+      dispatch(fetchPurchaseOrderByStatus("confirmed,sent,supplier_accepted,partially_received"));
     } else if (form.reference_type === "purchase_return") {
       dispatch(fetchReturnsThunk({ status: "confirmed,completed", return_type: "replacement" }));
     }
@@ -146,11 +146,11 @@ export default function CreateReceiptModal({
                 id: result.id,
                 name: result.name,
                 sku: result.sku,
-                uom: result.uom?.name ?? result.uom?.code ?? "",
+                uom: translateUomName(result.uom?.name ?? result.uom?.code ?? ""),
                 uom_id: result.uom_id ?? null,
                 uomOptions: buildUomOptions(result),
                 image: result.image_url,
-                quantity: line.qty_in_stock_uom ?? line.quantity,
+                quantity: Number(line.qty_in_stock_uom ?? line.quantity ?? 0),
                 default_supplier_id: po.supplier_id ?? null,
               } as ProductItem;
             }),
@@ -178,13 +178,13 @@ export default function CreateReceiptModal({
                 fetchProductByIdThunk(line.product_id),
               ).unwrap();
 
-              const quantity = line.quantity_confirmed_stock_uom ?? line.qty_in_stock_uom ?? line.quantity_returned;
+              const quantity = Number(line.quantity_confirmed_stock_uom ?? line.qty_in_stock_uom ?? line.quantity_returned ?? 0);
 
               return {
                 id: result.id,
                 name: result.name,
                 sku: result.sku,
-                uom: result.uom?.name ?? result.uom?.code ?? "",
+                uom: translateUomName(result.uom?.name ?? result.uom?.code ?? ""),
                 uom_id: result.uom_id ?? null,
                 uomOptions: buildUomOptions(result),
                 image: result.image_url,
@@ -255,6 +255,13 @@ export default function CreateReceiptModal({
         if (!p.new_lot.lot_no?.trim()) {
           toast.error(`Vui lòng nhập mã lô cho sản phẩm: ${p.name}`);
           return;
+        }
+        if (p.new_lot.expiry_date) {
+          const today = new Date().toISOString().split("T")[0];
+          if (p.new_lot.expiry_date < today) {
+            toast.error(`Không thể lưu vì lô mới của sản phẩm ${p.name} đã hết hạn sử dụng (${p.new_lot.expiry_date})!`);
+            return;
+          }
         }
       }
     }

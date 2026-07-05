@@ -2148,7 +2148,7 @@ export const stockMoveService = {
       // Nhận thừa (totalReceived > poQty) vẫn tính là fully received
     }
     await po.update({
-      status: fullyReceived ? "completed" : "partially_received",
+      status: fullyReceived ? "received" : "partially_received",
     }, { transaction: t });
   },
 

@@ -9,6 +9,8 @@ export interface OcrLineItem {
   unit: string;
   unit_price: number;
   tax_rate: number;
+  discount_percent?: number;
+  discount_amount?: number;
   amount: number;
   confidence: number;
   needsReview?: boolean;
@@ -26,6 +28,7 @@ export interface OcrInvoiceData {
   invoice_date: string;
   items: OcrLineItem[];
   subtotal: number;
+  discount_amount?: number;
   tax_amount: number;
   total: number;
   confidence_scores?: Record<string, number>;
@@ -210,6 +213,7 @@ export interface ConfirmPayload {
   currency_id?: number | null;
   exchange_rate?: number;
   payment_term_id?: number | null;
+  discount_amount?: number;
   items: ConfirmLineItem[];
 }
 
@@ -244,9 +248,12 @@ export interface HistoryParams {
 
 export interface HistoryResponse {
   data: HistoryItem[];
-  total: number;
-  page: number;
-  limit: number;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }
 
 // =====================

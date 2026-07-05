@@ -128,4 +128,17 @@ export const purchaseOrderApi = {
     const res = await axiosClient.get(`/purchase-order/${id}/audit-logs`);
     return res.data.data;
   },
+
+  sign: async (id: number, pin: string, signature_image: string): Promise<any> => {
+    const res = await axiosClient.post(`/purchase-order/${id}/sign`, {
+      pin,
+      signature_image,
+    });
+    return res.data;
+  },
+
+  sendEmail: async (id: number): Promise<{ success: boolean; message: string; po: PurchaseOrder }> => {
+    const res = await axiosClient.post(`/purchase-order/${id}/send-email`);
+    return res.data;
+  },
 };

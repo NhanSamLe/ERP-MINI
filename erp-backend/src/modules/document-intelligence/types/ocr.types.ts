@@ -30,6 +30,7 @@ export interface OcrInvoiceData {
   invoice_date: string;
   items: OcrLineItem[];
   subtotal: number;
+  discount_amount?: number;
   tax_amount: number;
   total: number;
   confidence_scores: Record<string, number>;

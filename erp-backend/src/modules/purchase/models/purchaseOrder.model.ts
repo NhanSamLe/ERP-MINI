@@ -11,7 +11,10 @@ export interface PurchaseOrderAttrs {
     | "draft"
     | "waiting_approval"
     | "confirmed"
+    | "sent"
+    | "supplier_accepted"
     | "partially_received"
+    | "received"
     | "completed"
     | "cancelled";
   total_before_tax?: number;
@@ -59,6 +62,8 @@ export class PurchaseOrder
     | "draft"
     | "waiting_approval"
     | "confirmed"
+    | "sent"
+    | "supplier_accepted"
     | "partially_received"
     | "completed"
     | "cancelled";
@@ -83,6 +88,7 @@ export class PurchaseOrder
   public submitted_at?: Date | null;
   public approved_at?: Date | null;
   public reject_reason?: string | null;
+  public creator?: any;
 }
 
 PurchaseOrder.init(
@@ -100,6 +106,8 @@ PurchaseOrder.init(
         "draft",
         "waiting_approval",
         "confirmed",
+        "sent",
+        "supplier_accepted",
         "partially_received",
         "completed",
         "cancelled",

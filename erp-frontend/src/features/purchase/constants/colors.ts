@@ -23,6 +23,8 @@ export const PURCHASE_COLORS = {
     waiting_approval: "bg-orange-50 text-orange-700",
     approved: "bg-emerald-50 text-emerald-700",
     confirmed: "bg-teal-50 text-teal-700",
+    sent: "bg-blue-50 text-blue-700",
+    supplier_accepted: "bg-sky-50 text-sky-700",
     completed: "bg-green-50 text-green-700",
     cancelled: "bg-red-50 text-red-700",
     rejected: "bg-red-50 text-red-700",

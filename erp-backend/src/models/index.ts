@@ -55,6 +55,7 @@ import { ArRefund } from "../modules/sales/models/arRefund.model";
 // Purchase & AP
 import { PurchaseOrder } from "../modules/purchase/models/purchaseOrder.model";
 import { PurchaseOrderLine } from "../modules/purchase/models/purchaseOrderLine.model";
+import { PurchaseOrderAuditLog } from "../modules/purchase/models/purchaseOrderAuditLog.model";
 import { ApInvoice } from "../modules/purchase/models/apInvoice.model";
 import { ApInvoiceLine } from "../modules/purchase/models/apInvoiceLine.model";
 import { ApPayment } from "../modules/purchase/models/apPayment.model";
@@ -111,6 +112,7 @@ import { ApDebitNoteLine } from "../modules/purchase/models/apDebitNoteLine.mode
 import { VendorRefund } from "../modules/purchase/models/vendorRefund.model";
 import { PurchasePriceList } from "../modules/purchase/models/purchasePriceList.model";
 import { PurchasePriceListItem } from "../modules/purchase/models/purchasePriceListItem.model";
+import { DocumentSignature } from "../modules/purchase/models/documentSignature.model";
 // CostCenter and PayrollAccountMapping
 import { CostCenter } from "../modules/finance/models/costCenter.model";
 import { PayrollAccountMapping } from "../modules/hrm/models/payrollAccountMapping.model";
@@ -209,6 +211,7 @@ export {
   ArReceiptAllocation,
   PurchaseOrder,
   PurchaseOrderLine,
+  PurchaseOrderAuditLog,
   ApInvoice,
   ApInvoiceLine,
   ApPayment,
@@ -281,4 +284,5 @@ export {
   PayrollAccountMapping,
   AccountMapping,
   PayrollConfig,
+  DocumentSignature,
 };

@@ -309,7 +309,7 @@ export async function resetPassword(token: string, newPassword: string) {
 export async function getInforUser(userId: number) {
  const user = await model.User.findByPk(userId, {
       include: [{ model: model.Role, as: "role" } ,{ model: model.Branch, as: "branch" ,attributes: ["id","code","name","address"],},],
-      attributes: ["id", "username", "full_name", "email", "phone","avatar_url", "is_active"],
+      attributes: ["id", "username", "full_name", "email", "phone","avatar_url", "is_active", "signature_pin"],
     });
   if (!user) {
     throw new Error("Không tìm thấy người dùng.");
@@ -343,7 +343,7 @@ export async function updateUserInfo(
 ) {
   const user = await model.User.findByPk(userId, {
       include: [{ model: model.Role, as: "role" } ,{ model: model.Branch, as: "branch" ,attributes: ["id","code","name","address"],},],
-      attributes: ["id", "username", "full_name", "email", "phone","avatar_url"],
+      attributes: ["id", "username", "full_name", "email", "phone","avatar_url", "signature_pin"],
     });
   if (!user) throw new Error("Không tìm thấy người dùng.");
 
@@ -401,6 +401,22 @@ export async function getUserForAttendance(userId: number) {
     throw new Error("User not found");
   }
   return user;
+}
+
+export async function setupSignaturePin(
+  userId: number,
+  data: { pin: string }
+) {
+  if (!data.pin || data.pin.length !== 6 || isNaN(Number(data.pin))) {
+    throw new Error("Mã PIN phải bao gồm đúng 6 chữ số.");
+  }
+  const user = await model.User.findByPk(userId);
+  if (!user) throw new Error("Không tìm thấy người dùng.");
+
+  user.signature_pin = await hashPassword(data.pin);
+  await user.save();
+
+  return { message: "Thiết lập mã PIN ký duyệt thành công." };
 }
 
 

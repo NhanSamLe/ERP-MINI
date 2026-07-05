@@ -22,6 +22,8 @@ import {
   Building2,
   XCircle,
   History,
+  Mail,
+  Phone,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { getErrorMessage } from "@/utils/ErrorHelper";
@@ -31,7 +33,7 @@ import {
   ApprovalStatus,
   ApPaymentStatus,
 } from "../../constants/purchaseStatus.enum";
-import { AuditLogCard } from "../../components/Common";
+import { AuditLogCard, StatusBadge } from "../../components/Common";
 
 export default function ViewApPaymentPage() {
   const { id } = useParams();
@@ -239,13 +241,16 @@ export default function ViewApPaymentPage() {
             </button>
 
             {/* STATUS */}
-            <div className="px-4 py-2 rounded-xl border-2 font-semibold text-sm bg-blue-50 text-blue-700 border-blue-200">
-              {payment.status.toUpperCase()}
-            </div>
+            <StatusBadge
+              status={payment.status}
+              className="px-4 py-2 text-sm rounded-xl border-2"
+            />
 
-            <div className="px-4 py-2 rounded-xl border-2 font-semibold text-sm bg-amber-50 text-amber-700 border-amber-200">
-              {payment.approval_status.toUpperCase()}
-            </div>
+            <StatusBadge
+              status={payment.approval_status}
+              variant="approval"
+              className="px-4 py-2 text-sm rounded-xl border-2"
+            />
           </div>
         </div>
       </div>
@@ -288,7 +293,7 @@ export default function ViewApPaymentPage() {
             <InfoRow
               icon={<CheckCircle className="w-4 h-4" />}
               label="Trạng thái"
-              value={payment.status.toUpperCase()}
+              value={<StatusBadge status={payment.status} />}
             />
             {payment.submitted_at && (
               <InfoRow
@@ -307,48 +312,43 @@ export default function ViewApPaymentPage() {
             <InfoRow
               icon={<Clock className="w-4 h-4" />}
               label="Phê duyệt"
-              value={payment.approval_status.toUpperCase()}
+              value={<StatusBadge status={payment.approval_status} variant="approval" />}
             />
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-blue-50 to-blue-50/50 rounded-2xl border-2 border-blue-100 p-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center">
-              <Building2 className="w-5 h-5 text-white" />
+        <div className="bg-white rounded-2xl border-2 border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+              <Building2 className="w-5 h-5 text-blue-600" />
             </div>
             <h2 className="text-lg font-bold text-gray-900">
               Thông tin nhà cung cấp
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white rounded-xl p-4 border border-blue-100">
-              <p className="text-xs font-semibold text-blue-700 uppercase mb-1">
-                Công ty
-              </p>
-              <p className="font-bold text-gray-900">
+          <div className="space-y-4">
+            {/* Nhà cung cấp nổi bật */}
+            <div className="rounded-xl bg-blue-50 border border-blue-200 px-4 py-3 flex items-center justify-between">
+              <span className="text-sm font-semibold text-blue-700">
+                Nhà cung cấp
+              </span>
+              <span className="font-bold text-blue-600">
                 {payment.supplier?.name}
-              </p>
+              </span>
             </div>
 
-            <div className="bg-white rounded-xl p-4 border border-blue-100">
-              <p className="text-xs font-semibold text-blue-700 uppercase mb-1">
-                Email
-              </p>
-              <p className="text-sm text-gray-900">
-                {payment.supplier?.email ?? "-"}
-              </p>
-            </div>
+            <InfoRow
+              icon={<Mail className="w-4 h-4" />}
+              label="Email"
+              value={payment.supplier?.email ?? "-"}
+            />
 
-            <div className="bg-white rounded-xl p-4 border border-blue-100">
-              <p className="text-xs font-semibold text-blue-700 uppercase mb-1">
-                Số điện thoại
-              </p>
-              <p className="text-sm text-gray-900">
-                {payment.supplier?.phone ?? "-"}
-              </p>
-            </div>
+            <InfoRow
+              icon={<Phone className="w-4 h-4" />}
+              label="Số điện thoại"
+              value={payment.supplier?.phone ?? "-"}
+            />
           </div>
         </div>
       </div>
@@ -999,10 +999,6 @@ function AllocateModal({
           </div>
         )}
 
-        {/* DEBUGGING TEXT */}
-        <div className="text-[10px] text-gray-400 bg-gray-50 p-2 rounded-lg my-2 font-mono break-all">
-          [DEBUG] Invoices: {JSON.stringify(localInvoices.map(i => ({ id: i.id, unpaid: i.unpaid_amount, allocated: i.allocate_amount })))} | Available: {availableAmount}
-        </div>
 
         {/* FOOTER */}
         <div className="flex justify-end gap-3 mt-5">

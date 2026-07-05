@@ -75,4 +75,8 @@ export const purchaseOrderService = {
   async getAuditLogs(id: number): Promise<any[]> {
     return purchaseOrderApi.getAuditLogs(id);
   },
+
+  async sendEmail(id: number): Promise<{ success: boolean; message: string; po: PurchaseOrder }> {
+    return purchaseOrderApi.sendEmail(id);
+  },
 };

@@ -11,7 +11,16 @@ const IMAGE_MIME_MAP: Record<string, string> = {
   png: "image/png",
 };
 
-const SYSTEM_PROMPT = `You are an invoice OCR assistant. Extract invoice data from the provided document and return ONLY a valid JSON object with the following fields:
+const SYSTEM_PROMPT = `You are an invoice OCR assistant. Extract invoice data from the provided document.
+
+IMPORTANT FOR VIETNAMESE INVOICES:
+- Vietnamese invoices use dot (.) as a thousands separator and comma (,) as a decimal separator. For example, "4.900.500" means 4900500, NOT 490.5 or 490500. "25.000.000" means 25000000. "990.000" means 990000. Please parse all numbers carefully according to this rule. Do not lose digits.
+  - Double-check that the extracted numbers match the document:
+    - Extract all fields and line items exactly as they are printed on the invoice.
+    - If there is a document-level discount (e.g., "Chiết khấu tổng đơn hàng"), do not attempt to perform calculations or distribute it yourself. Simply extract the line items, subtotal, tax_amount, and total exactly as written. The system backend will automatically reconcile the discount mathematically.
+    - Ensure \`tax_amount\` and \`total\` are read correctly.
+
+Return ONLY a valid JSON object with the following fields:
 {
   "vendor_name": "string",
   "vendor_tax_code": "string",

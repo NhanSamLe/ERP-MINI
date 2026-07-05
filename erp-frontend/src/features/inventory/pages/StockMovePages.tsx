@@ -190,7 +190,7 @@ export default function StockMovePages() {
   useEffect(() => {
     dispatch(fetchStockMovesThunk());
     dispatch(fetchWarehousesThunk());
-    dispatch(fetchPurchaseOrderByStatus("confirmed"));
+    dispatch(fetchPurchaseOrderByStatus("confirmed,sent,supplier_accepted,partially_received"));
     dispatch(fetchSaleOrdersByStatus("confirmed"));
   }, [dispatch]);
 

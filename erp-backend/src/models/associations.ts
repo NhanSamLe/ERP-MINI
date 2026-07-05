@@ -22,6 +22,7 @@ import { ArReceipt } from "../modules/sales/models/arReceipt.model";
 import { ArReceiptAllocation } from "../modules/sales/models/arReceiptAllocation.model";
 import { PurchaseOrder } from "../modules/purchase/models/purchaseOrder.model";
 import { PurchaseOrderLine } from "../modules/purchase/models/purchaseOrderLine.model";
+import { PurchaseOrderAuditLog } from "../modules/purchase/models/purchaseOrderAuditLog.model";
 import { ApInvoice } from "../modules/purchase/models/apInvoice.model";
 import { ApInvoiceLine } from "../modules/purchase/models/apInvoiceLine.model";
 import { ApPayment } from "../modules/purchase/models/apPayment.model";
@@ -92,6 +93,7 @@ import { VendorRefund } from "../modules/purchase/models/vendorRefund.model";
 import { PurchasePriceList } from "../modules/purchase/models/purchasePriceList.model";
 import { PurchasePriceListItem } from "../modules/purchase/models/purchasePriceListItem.model";
 import { BlogPost } from "../modules/blog/models/blogPost.model";
+import { DocumentSignature } from "../modules/purchase/models/documentSignature.model";
 // CostCenter and PayrollAccountMapping imports
 import { CostCenter } from "../modules/finance/models/costCenter.model";
 import { PayrollAccountMapping } from "../modules/hrm/models/payrollAccountMapping.model";
@@ -427,6 +429,24 @@ export function applyAssociations() {
     foreignKey: "po_id",
     as: "order",
   });
+
+  // PurchaseOrder ↔ AuditLogs
+  PurchaseOrder.hasMany(PurchaseOrderAuditLog, {
+    foreignKey: "po_id",
+    as: "auditLogs",
+  });
+  PurchaseOrderAuditLog.belongsTo(PurchaseOrder, {
+    foreignKey: "po_id",
+    as: "purchaseOrder",
+  });
+  PurchaseOrderAuditLog.belongsTo(User, {
+    foreignKey: "changed_by",
+    as: "changedByUser",
+  });
+  User.hasMany(PurchaseOrderAuditLog, {
+    foreignKey: "changed_by",
+    as: "purchaseOrderAuditLogs",
+  });
   // PurchaseOrder ↔ Product
 
   PurchaseOrderLine.belongsTo(Product, {
@@ -497,6 +517,16 @@ export function applyAssociations() {
   ApInvoiceLine.belongsTo(Product, {
     foreignKey: "product_id",
     as: "product",
+  });
+
+  // ApInvoiceLine ↔ Uom
+  ApInvoiceLine.belongsTo(Uom, {
+    foreignKey: "uom_id",
+    as: "uom",
+  });
+  Uom.hasMany(ApInvoiceLine, {
+    foreignKey: "uom_id",
+    as: "invoiceLines",
   });
 
   // ApPayment ↔ Allocations
@@ -1474,6 +1504,18 @@ export function applyAssociations() {
 
   AccountMapping.belongsTo(GlAccount, { foreignKey: "account_id", as: "account" });
   GlAccount.hasMany(AccountMapping, { foreignKey: "account_id", as: "accountMappings" });
+
+  // ===============================
+  //   DOCUMENT SIGNATURES
+  // ===============================
+  DocumentSignature.belongsTo(User, { foreignKey: "signer_id", as: "signer" });
+  User.hasMany(DocumentSignature, { foreignKey: "signer_id", as: "signatures" });
+
+  DocumentSignature.belongsTo(PurchaseOrder, { foreignKey: "document_id", constraints: false, as: "purchaseOrder" });
+  PurchaseOrder.hasMany(DocumentSignature, { foreignKey: "document_id", constraints: false, scope: { document_type: "purchase_order" }, as: "signatures" });
+
+  DocumentSignature.belongsTo(ApInvoice, { foreignKey: "document_id", constraints: false, as: "apInvoice" });
+  ApInvoice.hasMany(DocumentSignature, { foreignKey: "document_id", constraints: false, scope: { document_type: "ap_invoice" }, as: "signatures" });
 }
 
 // ===============================

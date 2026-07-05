@@ -18,6 +18,7 @@ import {
   Uom,
   PaymentTerm,
   Currency,
+  DocumentSignature,
 } from "../../../models";
 import { Role } from "../../../core/types/enum";
 import { literal, Op } from "sequelize";
@@ -25,6 +26,7 @@ import { notificationService } from "../../../core/services/notification.service
 import { validationService } from "./validationService";
 import { auditService } from "./auditService";
 import { generatePoNo } from "../utils/poNoGenerator";
+import { sendEmail2, purchaseOrderTemplate } from "../../../core/utils/email";
 
 /**
  * Quy đổi quantity từ purchase UOM sang stock UOM của product.
@@ -219,6 +221,17 @@ export const purchaseOrderService = {
           model: Currency,
           as: "currency",
           attributes: ["id", "code", "symbol", "name"],
+        },
+        {
+          model: DocumentSignature,
+          as: "signatures",
+          include: [
+            {
+              model: User,
+              as: "signer",
+              attributes: ["id", "full_name", "email"],
+            },
+          ],
         },
       ],
     });
@@ -796,7 +809,7 @@ export const purchaseOrderService = {
       where: {
         branch_id: user.branch_id,
         status: {
-          [Op.in]: ["confirmed", "partially_received", "completed"],
+          [Op.in]: ["confirmed", "sent", "supplier_accepted", "partially_received", "received"],
         },
       },
       include: [
@@ -1012,9 +1025,23 @@ export const purchaseOrderService = {
         ? "partial"
         : "pending";
 
-    await PurchaseOrder.update({ receipt_status: receiptStatus } as any, {
-      where: { id: poId },
-    });
+    const allInvoiced = lines.every(
+      (l) => Number(l.qty_invoiced ?? 0) >= Number(l.quantity ?? 0),
+    );
+
+    const po = await PurchaseOrder.findByPk(poId);
+    if (po) {
+      const updates: any = { receipt_status: receiptStatus };
+      if (allReceived && allInvoiced) {
+        updates.status = "completed";
+      } else {
+        // If it was completed, but now it is not (e.g. GRN was unposted/reversed)
+        if (po.status === "completed") {
+          updates.status = allReceived ? "received" : "partially_received";
+        }
+      }
+      await po.update(updates);
+    }
   },
 
   /**
@@ -1036,9 +1063,23 @@ export const purchaseOrderService = {
         ? "partial"
         : "not_invoiced";
 
-    await PurchaseOrder.update({ invoice_status: invoiceStatus } as any, {
-      where: { id: poId },
-    });
+    const allReceived = lines.every(
+      (l) => Number(l.qty_received ?? 0) >= Number(l.quantity ?? 0),
+    );
+
+    const po = await PurchaseOrder.findByPk(poId);
+    if (po) {
+      const updates: any = { invoice_status: invoiceStatus };
+      if (allReceived && allInvoiced) {
+        updates.status = "completed";
+      } else {
+        // If it was completed, but now it is not (e.g. Invoice was cancelled)
+        if (po.status === "completed") {
+          updates.status = allReceived ? "received" : "partially_received";
+        }
+      }
+      await po.update(updates);
+    }
   },
 
   /**
@@ -1096,5 +1137,96 @@ export const purchaseOrderService = {
 
     await poLine.update({ qty_invoiced: newInvoiced } as any);
     await this.updateInvoiceStatus(poLine.po_id);
+  },
+
+  async sendPOEmail(id: number, user: any) {
+    const po = await PurchaseOrder.findByPk(id, {
+      include: [
+        {
+          model: PurchaseOrderLine,
+          as: "lines",
+          include: [
+            { model: Product, as: "product" },
+            { model: Uom, as: "uom", attributes: ["id", "name"] },
+          ],
+        },
+        {
+          model: User,
+          as: "creator",
+          attributes: ["id", "full_name", "email", "phone", "avatar_url"],
+        },
+        {
+          model: User,
+          as: "approver",
+          attributes: ["id", "full_name", "email", "phone", "avatar_url"],
+        },
+        {
+          model: PaymentTerm,
+          as: "paymentTerm",
+          attributes: ["id", "name", "days", "code"],
+        },
+        {
+          model: Currency,
+          as: "currency",
+          attributes: ["id", "code", "symbol", "name"],
+        },
+        {
+          model: DocumentSignature,
+          as: "signatures",
+        },
+        {
+          model: Partner,
+          as: "supplier",
+          attributes: ["id", "name", "email", "phone"],
+        },
+      ],
+    });
+
+    if (!po) throw new Error("Không tìm thấy đơn mua hàng");
+    if (po.branch_id !== user.branch_id) {
+      throw new Error("Bạn không thể gửi email đơn mua hàng của chi nhánh khác.");
+    }
+
+    if (po.status !== "confirmed" && po.status !== "sent") {
+      throw new Error("Chỉ có thể gửi email cho đơn đặt hàng đã phê duyệt.");
+    }
+
+    const supplier = (po as any).supplier;
+    if (!supplier || !supplier.email) {
+      throw new Error("Nhà cung cấp chưa được gán hoặc không có địa chỉ email hợp lệ.");
+    }
+
+    const isVi = true; // Default to Vietnamese email template
+    const template = purchaseOrderTemplate(po, supplier.name, isVi);
+
+    const emailResult = await sendEmail2(
+      supplier.email,
+      template.subject,
+      template.text,
+      template.html,
+      po.creator?.email || null, // CC to creator
+      null,
+      []
+    );
+
+    if (!emailResult.success) {
+      throw new Error(`Gửi email thất bại: ${emailResult.error}`);
+    }
+
+    // Transition status to "sent" if it was "confirmed"
+    const oldStatus = po.status;
+    if (po.status === "confirmed") {
+      po.status = "sent";
+      await po.save();
+    }
+
+    // Log audit trail
+    await auditService.logSendEmail(po, supplier.email, user);
+
+    return {
+      success: true,
+      message: `Đơn hàng đã được gửi thành công đến email: ${supplier.email}`,
+      po,
+    };
   },
 };

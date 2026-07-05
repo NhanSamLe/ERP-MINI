@@ -174,3 +174,16 @@ export const fetchPurchaseOrderAuditLogsThunk = createAsyncThunk<
     return rejectWithValue(getErrorMessage(error));
   }
 });
+
+// ================= SEND EMAIL =================
+export const sendPurchaseOrderEmailThunk = createAsyncThunk<
+  { success: boolean; message: string; po: PurchaseOrder },
+  number,
+  { rejectValue: string }
+>("purchaseOrder/sendEmail", async (id, { rejectWithValue }) => {
+  try {
+    return await purchaseOrderService.sendEmail(id);
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});

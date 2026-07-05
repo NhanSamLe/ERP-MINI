@@ -68,7 +68,7 @@ export class OCRConfigService {
       maxFileSizeMb: parseInt(process.env.MAX_FILE_SIZE_MB || "10", 10),
 
       openaiApiKey: process.env.LLM_API_KEY || process.env.OPENAI_API_KEY || "",
-      openaiModel: process.env.LLM_MODEL || "gpt-4o-mini",
+      openaiModel: process.env.OCR_MODEL || process.env.LLM_MODEL || "gpt-4o-mini",
     };
   }
 

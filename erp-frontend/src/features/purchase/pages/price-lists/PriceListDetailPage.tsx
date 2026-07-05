@@ -13,6 +13,26 @@ import { formatVND } from "@/utils/currency.helper";
 import { Button } from "../../../../components/ui/Button";
 import { Input } from "../../../../components/ui/input";
 
+const UOM_TRANSLATIONS: Record<string, string> = {
+  piece: "cái",
+  pcs: "cái",
+  box: "hộp",
+  pack: "gói",
+  bag: "bao/túi",
+  kilogram: "kg",
+  kg: "kg",
+  gram: "g",
+  liter: "lít",
+  meter: "mét",
+  set: "bộ",
+};
+
+function translateUom(uomName: string | null | undefined): string {
+  if (!uomName) return "—";
+  const key = uomName.trim().toLowerCase();
+  return UOM_TRANSLATIONS[key] || uomName;
+}
+
 export default function PriceListDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -397,7 +417,7 @@ export default function PriceListDetailPage() {
 
                           {/* Unit of measure */}
                           <td className="px-5 py-4 text-center text-xs text-gray-600">
-                            {selectedUom?.name ?? "—"}
+                            {translateUom(selectedUom?.name)}
                           </td>
 
                           {/* Minimum quantity */}

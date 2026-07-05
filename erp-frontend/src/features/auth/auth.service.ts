@@ -46,3 +46,7 @@ export async function changePassword(data: { oldPassword?: string; newPassword?:
   const res = await api.changePassword(data);
   return res.data;
 }
+export async function setupSignaturePin(pin: string) {
+  const res = await api.setupSignaturePin(pin);
+  return res.data;
+}

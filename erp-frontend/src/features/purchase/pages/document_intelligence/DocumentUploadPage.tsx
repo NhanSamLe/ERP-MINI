@@ -23,6 +23,7 @@ import {
   getDocumentResultThunk,
   confirmDocumentThunk,
   resetDocumentState,
+  setCurrentDocumentId,
 } from "../../store/documentIntelligence";
 import {
   OcrLineItem,
@@ -35,6 +36,7 @@ import {
 } from "../../store/documentIntelligence/documentIntelligence.types";
 import { documentIntelligenceApi } from "../../api/documentIntelligence.api";
 import { OcrStatus } from "../../constants/purchaseStatus.enum";
+import { translateUomName } from "../../../inventory/components/UomSelect";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const ACCEPTED_TYPES = ["application/pdf", "image/jpeg", "image/png"];
@@ -380,6 +382,7 @@ export default function DocumentUploadPage() {
   const [editInvoiceDate, setEditInvoiceDate] = useState("");
   const [editSubtotal, setEditSubtotal] = useState<number>(0);
   const [editTaxAmount, setEditTaxAmount] = useState<number>(0);
+  const [editDiscountAmount, setEditDiscountAmount] = useState<number>(0);
   const [editTotal, setEditTotal] = useState<number>(0);
   const [editItems, setEditItems] = useState<any[]>([]);
 
@@ -407,7 +410,7 @@ export default function DocumentUploadPage() {
         })
         .catch(() => setCurrencies([]));
       axiosClient.get("master-data/payment-terms")
-        .then((res) => setPaymentTerms(res.data ?? []))
+        .then((res) => setPaymentTerms(res.data?.data || res.data?.paymentTerms || res.data || []))
         .catch(() => setPaymentTerms([]));
     });
   }, []);
@@ -416,7 +419,7 @@ export default function DocumentUploadPage() {
   useEffect(() => {
     if (selectedPoId) {
       import("@/api/axiosClient").then(({ default: axiosClient }) => {
-        axiosClient.get(`purchase-orders/${selectedPoId}`)
+        axiosClient.get(`purchase-order/${selectedPoId}`)
           .then((res) => {
             const po = res.data?.data ?? res.data;
             if (po) {
@@ -469,24 +472,29 @@ export default function DocumentUploadPage() {
   // Tự động khớp các dòng PO khi poLines hoặc editItems thay đổi
   useEffect(() => {
     if (selectedPoId && editItems.length > 0 && poLines.length > 0) {
-      setEditItems((prev) =>
-        prev.map((item) => {
-          if (item.product_id && !item.po_line_id) {
-            const matched = poLines.find((pol) => pol.product_id === item.product_id);
-            if (matched) {
-              return {
-                ...item,
-                po_line_id: matched.id,
-                uom_id: matched.uom_id ?? item.uom_id,
-                tax_rate_id: matched.tax_rate_id ?? item.tax_rate_id,
-              };
-            }
+      let changed = false;
+      const next = editItems.map((item) => {
+        if (item.product_id && !item.po_line_id) {
+          const matched = poLines.find((pol) => Number(pol.product_id) === Number(item.product_id));
+          if (matched) {
+            changed = true;
+            return {
+              ...item,
+              po_line_id: matched.id,
+              uom_id: matched.uom_id ?? item.uom_id,
+              tax_rate_id: matched.tax_rate_id ?? item.tax_rate_id,
+              discount_percent: matched.discount_percent ?? item.discount_percent ?? 0,
+              discount_amount: matched.discount_amount ?? item.discount_amount ?? 0,
+            };
           }
-          return item;
-        })
-      );
+        }
+        return item;
+      });
+      if (changed) {
+        setEditItems(next);
+      }
     }
-  }, [selectedPoId, poLines]);
+  }, [selectedPoId, poLines, editItems]);
 
   // Populate editable fields when result arrives
   useEffect(() => {
@@ -497,6 +505,7 @@ export default function DocumentUploadPage() {
       setEditInvoiceDate(ocr.invoice_date ?? "");
       setEditSubtotal(ocr.subtotal ?? 0);
       setEditTaxAmount(ocr.tax_amount ?? 0);
+      setEditDiscountAmount(ocr.discount_amount ?? 0);
       setEditTotal(ocr.total ?? 0);
       
       const mapped = (ocr.items ?? []).map((item, idx) => {
@@ -633,6 +642,7 @@ export default function DocumentUploadPage() {
       setEditInvoiceDate("");
       setEditSubtotal(0);
       setEditTaxAmount(0);
+      setEditDiscountAmount(0);
       setEditTotal(0);
       setEditItems([]);
     }
@@ -711,6 +721,30 @@ export default function DocumentUploadPage() {
       discount_amount: Number(item.discount_amount ?? 0),
     }));
 
+    if (!vendorId) {
+      toast.error("Vui lòng chọn Nhà cung cấp!");
+      setShowConfirmModal(false);
+      return;
+    }
+
+    if (!selectedPaymentTermId) {
+      toast.error("Vui lòng chọn Điều khoản thanh toán!");
+      setShowConfirmModal(false);
+      return;
+    }
+
+    if (!selectedCurrencyId) {
+      toast.error("Vui lòng chọn Loại tiền tệ!");
+      setShowConfirmModal(false);
+      return;
+    }
+
+    if (items.some(item => !item.product_id)) {
+      toast.error("Vui lòng ánh xạ đầy đủ sản phẩm cho tất cả các dòng hàng!");
+      setShowConfirmModal(false);
+      return;
+    }
+
     const payload: ConfirmPayload = {
       vendor_id: vendorId,
       po_id: selectedPoId,
@@ -718,6 +752,7 @@ export default function DocumentUploadPage() {
       currency_id: selectedCurrencyId ? Number(selectedCurrencyId) : null,
       exchange_rate: Number(selectedExchangeRate) || 1.0,
       payment_term_id: selectedPaymentTermId ? Number(selectedPaymentTermId) : null,
+      discount_amount: editDiscountAmount,
       items,
     };
 
@@ -928,7 +963,7 @@ export default function DocumentUploadPage() {
 
               {/* Vendor match */}
               <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-sm font-medium text-gray-700 mb-1">Nhà cung cấp</p>
+                <p className="text-sm font-medium text-gray-700 mb-1">Nhà cung cấp <span className="text-red-500 font-bold">*</span></p>
                 {result.vendor_match?.matchedPartnerId ? (
                   <div className="flex items-center gap-2">
                     <CheckCircle className="w-4 h-4 text-green-500" />
@@ -1090,6 +1125,17 @@ export default function DocumentUploadPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Chiết khấu tổng đơn
+                  </label>
+                  <input
+                    type="number"
+                    value={editDiscountAmount}
+                    onChange={(e) => setEditDiscountAmount(Number(e.target.value))}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Tiền thuế
                   </label>
                   <input
@@ -1112,7 +1158,7 @@ export default function DocumentUploadPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tiền tệ
+                    Tiền tệ <span className="text-red-500 font-bold">*</span>
                   </label>
                   <select
                     value={selectedCurrencyId}
@@ -1147,7 +1193,7 @@ export default function DocumentUploadPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Điều khoản thanh toán
+                    Điều khoản thanh toán <span className="text-red-500 font-bold">*</span>
                   </label>
                   <select
                     value={selectedPaymentTermId}
@@ -1258,14 +1304,27 @@ export default function DocumentUploadPage() {
                               value={item.po_line_id ?? ""}
                               onChange={(e) => {
                                 const val = e.target.value ? Number(e.target.value) : null;
-                                updateItem(idx, "po_line_id", val);
                                 if (val) {
                                   const poLine = poLines.find((pl) => pl.id === val);
                                   if (poLine) {
-                                    updateItem(idx, "uom_id", poLine.uom_id ?? null);
-                                    updateItem(idx, "tax_rate_id", poLine.tax_rate_id ?? null);
-                                    updateItem(idx, "unit_price", Number(poLine.unit_price ?? 0));
+                                    setEditItems((prev) =>
+                                      prev.map((item, i) =>
+                                        i === idx
+                                          ? {
+                                              ...item,
+                                              po_line_id: val,
+                                              uom_id: poLine.uom_id ?? null,
+                                              tax_rate_id: poLine.tax_rate_id ?? null,
+                                              unit_price: Number(poLine.unit_price ?? 0),
+                                              discount_percent: Number(poLine.discount_percent ?? 0),
+                                              discount_amount: Number(poLine.discount_amount ?? 0),
+                                            }
+                                          : item
+                                      )
+                                    );
                                   }
+                                } else {
+                                  updateItem(idx, "po_line_id", null);
                                 }
                               }}
                               className="w-full px-2 py-1 border rounded focus:ring-1 focus:ring-orange-500 outline-none text-sm bg-white"
@@ -1288,7 +1347,7 @@ export default function DocumentUploadPage() {
                             <option value="">-- Chọn DVT --</option>
                             {uoms.map((u) => (
                               <option key={u.id} value={u.id}>
-                                {u.name}
+                                {translateUomName(u.name)}
                               </option>
                             ))}
                           </select>

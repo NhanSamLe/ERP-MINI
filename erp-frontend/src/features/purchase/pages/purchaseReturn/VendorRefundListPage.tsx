@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { Plus, RotateCw, Banknote } from "lucide-react";
+import { Plus, RotateCw, Banknote, ChevronLeft, ChevronRight } from "lucide-react";
 import { RootState, AppDispatch } from "../../../../store/store";
 import {
   fetchVendorRefundsThunk,
@@ -38,6 +38,13 @@ export default function VendorRefundListPage() {
     dispatch(fetchVendorRefundsThunk(undefined));
   }, [dispatch]);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter]);
+
   const filtered = vendorRefunds.filter((r) => {
     const matchSearch =
       !search ||
@@ -46,6 +53,12 @@ export default function VendorRefundListPage() {
     const matchStatus = !statusFilter || r.status === statusFilter;
     return matchSearch && matchStatus;
   });
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const paginated = filtered.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const handlePost = async () => {
     if (!postTarget) return;
@@ -148,7 +161,7 @@ export default function VendorRefundListPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filtered.map((r) => (
+                {paginated.map((r) => (
                   <tr
                     key={r.id}
                     className="hover:bg-orange-50/50 transition-colors cursor-pointer"
@@ -193,14 +206,45 @@ export default function VendorRefundListPage() {
           </div>
         )}
 
-        <div className="px-5 py-3 border-t border-orange-100 bg-orange-50/30">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-5 py-3 border-t border-orange-100 bg-orange-50/30 gap-3 text-sm text-gray-600">
           <p className="text-xs text-gray-500">
-            Hiển thị{" "}
-            <span className="font-semibold text-gray-700">
-              {filtered.length}
-            </span>{" "}
-            bản ghi
+            Hiển thị <strong>{filtered.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}–{Math.min(currentPage * itemsPerPage, filtered.length)}</strong> trên{" "}
+            <strong>{filtered.length}</strong> phiếu (Tổng cộng <strong>{vendorRefunds.length}</strong> bản ghi)
           </p>
+
+          {filtered.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="h-8 w-8 flex items-center justify-center rounded border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`h-8 min-w-[2rem] px-2 rounded border text-xs font-semibold transition-colors ${
+                    currentPage === page
+                      ? "bg-orange-500 border-orange-500 text-white"
+                      : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="h-8 w-8 flex items-center justify-center rounded border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

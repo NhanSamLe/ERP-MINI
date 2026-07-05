@@ -481,8 +481,8 @@ export const apPaymentService = {
          ai.invoice_date,
          ai.total_after_tax,
          COALESCE(SUM(apa.applied_amount), 0) AS allocated_amount,
-         COALESCE(dn.debit_amount, 0) AS debit_note_amount,
-         ai.total_after_tax - COALESCE(SUM(apa.applied_amount), 0) - COALESCE(dn.debit_amount, 0) AS unpaid_amount
+         COALESCE(MAX(dn.debit_amount), 0) AS debit_note_amount,
+         ai.total_after_tax - COALESCE(SUM(apa.applied_amount), 0) - COALESCE(MAX(dn.debit_amount), 0) AS unpaid_amount
        FROM ap_invoices ai
        LEFT JOIN ap_payment_allocations apa ON apa.ap_invoice_id = ai.id
        LEFT JOIN (
@@ -564,7 +564,7 @@ export const apPaymentService = {
         // Validate invoice: supplier_id trực tiếp từ ap_invoices (không JOIN PO, hỗ trợ cả invoice không có PO)
         const [invoice]: any = await sequelize.query(
           `SELECT ai.id,
-                  ai.total_after_tax - COALESCE(SUM(apa.applied_amount), 0) - COALESCE(dn.debit_amount, 0) AS unpaid_amount
+                  ai.total_after_tax - COALESCE(SUM(apa.applied_amount), 0) - COALESCE(MAX(dn.debit_amount), 0) AS unpaid_amount
            FROM ap_invoices ai
            LEFT JOIN ap_payment_allocations apa ON apa.ap_invoice_id = ai.id
            LEFT JOIN (

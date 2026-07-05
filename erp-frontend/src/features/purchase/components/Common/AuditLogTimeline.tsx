@@ -34,6 +34,136 @@ interface AuditLogTimelineProps {
   variant?: AuditLogVariant;
 }
 
+// ─── TRANSLATION HELPER ──────────────────────────────────────────────────────
+
+const TRANSLATION_MAP: Record<string, string> = {
+  // Statuses
+  draft: "Nháp",
+  waiting_approval: "Chờ duyệt",
+  approved: "Đã duyệt",
+  rejected: "Đã từ chối",
+  posted: "Đã ghi sổ",
+  completed: "Hoàn thành",
+  cancelled: "Đã hủy",
+  confirmed: "Đã xác nhận",
+  sent: "Đã gửi",
+  supplier_accepted: "NCC đã nhận",
+  partially_received: "Nhận một phần",
+  received: "Đã nhận",
+  pending: "Chờ đối chiếu",
+  matched: "Khớp",
+  mismatch: "Lệch",
+  // Other fields
+  status: "Trạng thái",
+  approval_status: "Trạng thái duyệt",
+  payment_status: "Trạng thái thanh toán",
+  allocation_status: "Trạng thái phân bổ",
+  recipient: "Người nhận",
+  sent_at: "Gửi lúc",
+};
+
+function formatStatus(statusStr: string | null | undefined): string {
+  if (!statusStr) return "";
+  if (statusStr.includes("/")) {
+    const parts = statusStr.split("/");
+    const translatedParts = parts.map(
+      (p) => TRANSLATION_MAP[p.toLowerCase()] || p
+    );
+    if (translatedParts[0] === translatedParts[1]) {
+      return translatedParts[0];
+    }
+    return `${translatedParts[0]} (${translatedParts[1]})`;
+  }
+  return TRANSLATION_MAP[statusStr.toLowerCase()] || statusStr;
+}
+
+function translateValue(key: string, val: any): string {
+  if (val === null || val === undefined) return "—";
+  const strVal = String(val).toLowerCase();
+  
+  if (key.includes("status") || key === "state" || TRANSLATION_MAP[strVal]) {
+    return TRANSLATION_MAP[strVal] || String(val);
+  }
+  
+  // Format date-time fields
+  if (
+    (key.includes("date") || key.includes("_at") || key.includes("time")) &&
+    typeof val === "string" &&
+    !isNaN(Date.parse(val))
+  ) {
+    try {
+      return new Date(val).toLocaleString("vi-VN");
+    } catch {
+      return String(val);
+    }
+  }
+  
+  return String(val);
+}
+
+function translateKey(key: string): string {
+  return TRANSLATION_MAP[key.toLowerCase()] || key.replace(/_/g, " ");
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  draft: "bg-gray-100 text-gray-600 border-gray-200",
+  waiting_approval: "bg-amber-50 text-amber-700 border-amber-200",
+  approved: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  rejected: "bg-red-50 text-red-600 border-red-200",
+  posted: "bg-blue-50 text-blue-700 border-blue-200",
+  completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  cancelled: "bg-red-50 text-red-700 border-red-200",
+  confirmed: "bg-teal-50 text-teal-700 border-teal-200",
+  sent: "bg-sky-50 text-sky-700 border-sky-200",
+  supplier_accepted: "bg-indigo-50 text-indigo-700 border-indigo-200",
+  partially_received: "bg-purple-50 text-purple-700 border-purple-200",
+  received: "bg-sky-50 text-sky-700 border-sky-200",
+};
+
+function renderStatusBadge(statusStr: string | null | undefined) {
+  if (!statusStr) return null;
+  
+  if (statusStr.includes("/")) {
+    const parts = statusStr.split("/");
+    const p1 = parts[0].toLowerCase();
+    const p2 = parts[1].toLowerCase();
+    const label1 = TRANSLATION_MAP[p1] || parts[0];
+    const label2 = TRANSLATION_MAP[p2] || parts[1];
+    
+    if (p1 === p2) {
+      const cls = STATUS_COLORS[p1] || "bg-gray-50 text-gray-600 border-gray-200";
+      return (
+        <span className={`inline-block px-1.5 py-0.5 rounded border text-[10px] font-semibold ${cls}`}>
+          {label1}
+        </span>
+      );
+    } else {
+      const cls1 = STATUS_COLORS[p1] || "bg-gray-50 text-gray-600 border-gray-200";
+      const cls2 = STATUS_COLORS[p2] || "bg-gray-50 text-gray-600 border-gray-200";
+      return (
+        <span className="inline-flex gap-1 items-center">
+          <span className={`px-1.5 py-0.5 rounded border text-[10px] font-semibold ${cls1}`}>
+            {label1}
+          </span>
+          <span className="text-[10px] text-gray-400 font-medium">/</span>
+          <span className={`px-1.5 py-0.5 rounded border text-[10px] font-semibold ${cls2}`}>
+            {label2}
+          </span>
+        </span>
+      );
+    }
+  }
+
+  const key = statusStr.toLowerCase();
+  const cls = STATUS_COLORS[key] || "bg-gray-50 text-gray-600 border-gray-200";
+  const label = TRANSLATION_MAP[key] || statusStr;
+  return (
+    <span className={`inline-block px-1.5 py-0.5 rounded border text-[10px] font-semibold ${cls}`}>
+      {label}
+    </span>
+  );
+}
+
 // ─── Action config per variant ────────────────────────────────────────────────
 
 const PAYMENT_ACTIONS: Record<
@@ -126,6 +256,11 @@ const PO_ACTIONS: Record<
     label: "PO đã hủy",
     color: "bg-red-100 text-red-700",
     dot: "border-red-400",
+  },
+  SEND_EMAIL: {
+    label: "Gửi Email",
+    color: "bg-teal-100 text-teal-700",
+    dot: "border-teal-400",
   },
 };
 
@@ -249,14 +384,10 @@ function InvoiceDetails({ log }: { log: AuditLogEntry }) {
               ? "bg-green-100 text-green-700"
               : log.matching_status === "mismatch"
                 ? "bg-red-100 text-red-700"
-                : "bg-gray-100 text-gray-600"
+                : "bg-amber-50 text-amber-700 border border-amber-200"
           }`}
         >
-          {log.matching_status === "matched"
-            ? "KHỚP"
-            : log.matching_status === "mismatch"
-              ? "LỆCH"
-              : log.matching_status.toUpperCase()}
+          {TRANSLATION_MAP[log.matching_status.toLowerCase()] || log.matching_status.toUpperCase()}
         </span>
       )}
       {log.override_reason && (
@@ -291,23 +422,28 @@ function PoDetails({ log }: { log: AuditLogEntry }) {
       {changedFields.slice(0, 4).map((key) => {
         const oldVal = (log.old_values ?? {})[key];
         const newVal = (log.new_values ?? {})[key];
+        const isStatusField = key === "status" || key === "approval_status" || key === "payment_status";
         return (
           <div key={key} className="flex items-center gap-1.5 text-xs">
             <span className="text-gray-500 capitalize">
-              {key.replace(/_/g, " ")}:
+              {translateKey(key)}:
             </span>
             {oldVal != null && (
-              <span className="line-through text-red-400">
-                {String(oldVal)}
-              </span>
+              isStatusField ? renderStatusBadge(String(oldVal)) : (
+                <span className="line-through text-red-400 font-medium">
+                  {translateValue(key, oldVal)}
+                </span>
+              )
             )}
             {oldVal != null && newVal != null && (
               <span className="text-gray-400">→</span>
             )}
             {newVal != null && (
-              <span className="text-green-600 font-medium">
-                {String(newVal)}
-              </span>
+              isStatusField ? renderStatusBadge(String(newVal)) : (
+                <span className="text-green-600 font-medium">
+                  {translateValue(key, newVal)}
+                </span>
+              )
             )}
           </div>
         );
@@ -370,13 +506,33 @@ export function AuditLogTimeline({
                 </span>
 
                 {/* Status transition (payment) */}
-                {log.old_status && log.new_status && (
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    <span className="font-mono">{log.old_status}</span>
-                    <span className="mx-1.5 text-gray-400">→</span>
-                    <span className="font-mono">{log.new_status}</span>
-                  </p>
-                )}
+                {log.old_status && log.new_status && (() => {
+                  const oldParts = log.old_status.split("/");
+                  const newParts = log.new_status.split("/");
+                  const statusChanged = oldParts[0] !== newParts[0];
+                  const approvalChanged = oldParts[1] !== newParts[1];
+                  
+                  return (
+                    <div className="space-y-1 mt-1">
+                      {statusChanged && (
+                        <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                          <span className="font-medium text-gray-400">Trạng thái:</span>
+                          {renderStatusBadge(oldParts[0])}
+                          <span className="text-gray-400">→</span>
+                          {renderStatusBadge(newParts[0])}
+                        </div>
+                      )}
+                      {approvalChanged && (
+                        <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                          <span className="font-medium text-gray-400">Phê duyệt:</span>
+                          {renderStatusBadge(oldParts[1])}
+                          <span className="text-gray-400">→</span>
+                          {renderStatusBadge(newParts[1])}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Variant-specific details */}
                 {variant === "payment" && <PaymentDetails log={log} />}
