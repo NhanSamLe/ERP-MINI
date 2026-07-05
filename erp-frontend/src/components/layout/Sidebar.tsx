@@ -363,12 +363,12 @@ const menuItems: MenuItem[] = [
         allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC", "CEO", "ADMIN"],
       },
       {
-        name: "Payroll Mapping",
+        name: "Hạch toán lương",
         path: "/hrm/payroll-mappings",
         allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC", "CEO", "ADMIN"],
       },
       {
-        name: "Cost Centers",
+        name: "Trung tâm chi phí",
         path: "/hrm/cost-centers",
         allowedRoles: ["HRMANAGER", "HR_STAFF", "ACCOUNT", "CHACC", "CEO", "ADMIN"],
       },
