@@ -102,7 +102,7 @@ export const apInvoiceService = {
     } else {
       where.branch_id = user.branch_id;
     }
- 
+
     if (user.role === "ACCOUNT") {
       where.created_by = user.id;
     }
@@ -875,75 +875,7 @@ export const apInvoiceService = {
         { transaction: t },
       );
 
-      // Kiểm tra kỳ kế toán đã khóa sổ hay chưa
-      await checkPeriodLocked(invoice.invoice_date ?? new Date(), t);
-
-      const journal = await GlJournal.findOne({
-        where: { code: "PURCHASE" },
-        transaction: t,
-      });
-      if (!journal) throw new Error("PURCHASE journal not found");
-
-      const entry = await GlEntry.create(
-        {
-          journal_id: journal.id,
-          entry_no: `GL-AP-${invoice.id}`,
-          entry_date: invoice.invoice_date ?? new Date(),
-          reference_type: "ap_invoice",
-          reference_id: invoice.id,
-          memo: `Ghi nhận công nợ phải trả ${invoice.invoice_no}`,
-          status: "posted",
-          branch_id: invoice.branch_id ?? null,
-        } as any,
-        { transaction: t },
-      );
-
-      // Lấy các tài khoản 156, 1331, 331 qua mapping động
-      const [INVENTORY_ACC_ID, VAT_INPUT_ACC_ID, AP_ACC_ID] = await Promise.all([
-        getMappedAccount(invoice.branch_id, "AP_EXPENSE_INVENTORY", "156", t),
-        getMappedAccount(invoice.branch_id, "AP_VAT", "1331", t),
-        getMappedAccount(invoice.branch_id, "AP_PAYABLE", "331", t),
-      ]);
-
-      const totalBeforeTax = Number(invoice.total_before_tax || 0);
-      const totalTax = Number(invoice.total_tax || 0);
-      const totalAfterTax = Number(invoice.total_after_tax || 0);
-
-      // Lấy supplier_id từ invoice trực tiếp (hỗ trợ cả invoice không có PO)
-      const supplierId =
-        invoice.supplier_id ?? (invoice as any).order?.supplier_id ?? null;
-
-      const lines: any[] = [];
-
-      if (totalBeforeTax !== 0) {
-        lines.push({
-          entry_id: entry.id,
-          account_id: INVENTORY_ACC_ID,
-          partner_id: supplierId,
-          debit: totalBeforeTax,
-          credit: 0,
-        });
-      }
-
-      if (totalTax !== 0) {
-        lines.push({
-          entry_id: entry.id,
-          account_id: VAT_INPUT_ACC_ID,
-          partner_id: supplierId,
-          debit: totalTax,
-          credit: 0,
-        });
-      }
-
-      lines.push({
-        entry_id: entry.id,
-        account_id: AP_ACC_ID,
-        partner_id: supplierId,
-        debit: 0,
-        credit: totalAfterTax,
-      });
-
-      await GlEntryLine.bulkCreate(lines, { transaction: t });
+      await this.postApInvoiceToGL(invoice, t);
       await t.commit();
 
       return this.getById(invoice.id, user);
@@ -953,14 +885,101 @@ export const apInvoiceService = {
     }
   },
 
+  async postApInvoiceToGL(invoice: ApInvoice, t: Transaction) {
+    if (invoice.status !== "posted" || invoice.approval_status !== "approved") {
+      throw new Error("Invoice must be approved & posted before GL posting");
+    }
+
+    // Tránh post trùng
+    const existed = await GlEntry.findOne({
+      where: { reference_type: "ap_invoice", reference_id: invoice.id },
+      transaction: t,
+    });
+    if (existed) return existed;
+
+    // Kiểm tra kỳ kế toán đã khóa sổ hay chưa
+    await checkPeriodLocked(invoice.invoice_date ?? new Date(), t);
+
+    const journal = await GlJournal.findOne({
+      where: { code: "PURCHASE" },
+      transaction: t,
+    });
+    if (!journal) throw new Error("PURCHASE journal not found");
+
+    const entry = await GlEntry.create(
+      {
+        journal_id: journal.id,
+        entry_no: `GL-AP-${invoice.id}`,
+        entry_date: invoice.invoice_date ?? new Date(),
+        reference_type: "ap_invoice",
+        reference_id: invoice.id,
+        memo: `Ghi nhận công nợ phải trả ${invoice.invoice_no}`,
+        status: "posted",
+        branch_id: invoice.branch_id ?? null,
+      } as any,
+      { transaction: t },
+    );
+
+    // Lấy các tài khoản 156, 1331, 331 qua mapping động
+    const [INVENTORY_ACC_ID, VAT_INPUT_ACC_ID, AP_ACC_ID] = await Promise.all([
+      getMappedAccount(invoice.branch_id, "AP_EXPENSE_INVENTORY", "156", t),
+      getMappedAccount(invoice.branch_id, "AP_VAT", "1331", t),
+      getMappedAccount(invoice.branch_id, "AP_PAYABLE", "331", t),
+    ]);
+
+    const totalBeforeTax = Number(invoice.total_before_tax || 0);
+    const totalTax = Number(invoice.total_tax || 0);
+    const totalAfterTax = Number(invoice.total_after_tax || 0);
+
+    // Lấy supplier_id từ invoice trực tiếp (hỗ trợ cả invoice không có PO)
+    let supplierId = invoice.supplier_id;
+    if (!supplierId) {
+      const order = (invoice as any).order || (invoice.po_id ? await PurchaseOrder.findByPk(invoice.po_id, { transaction: t }) : null);
+      supplierId = order?.supplier_id ?? null;
+    }
+
+    const lines: any[] = [];
+
+    if (totalBeforeTax !== 0) {
+      lines.push({
+        entry_id: entry.id,
+        account_id: INVENTORY_ACC_ID,
+        partner_id: supplierId,
+        debit: totalBeforeTax,
+        credit: 0,
+      });
+    }
+
+    if (totalTax !== 0) {
+      lines.push({
+        entry_id: entry.id,
+        account_id: VAT_INPUT_ACC_ID,
+        partner_id: supplierId,
+        debit: totalTax,
+        credit: 0,
+      });
+    }
+
+    lines.push({
+      entry_id: entry.id,
+      account_id: AP_ACC_ID,
+      partner_id: supplierId,
+      debit: 0,
+      credit: totalAfterTax,
+    });
+
+    await GlEntryLine.bulkCreate(lines, { transaction: t });
+    return entry;
+  },
+
   async reject(id: number, reason: string, user: any, app?: any) {
     if (user.role !== Role.CHACC && user.role !== "ADMIN" && user.role !== "CEO") {
       throw new Error("Only Chief Accountant can reject");
     }
- 
+
     const invoice = await ApInvoice.findByPk(id);
     if (!invoice) throw new Error("AP Invoice not found");
- 
+
     const companyBranchIds = await getCompanyBranchIds(user);
     if (user.role !== "ADMIN" && user.role !== "CEO" && invoice.branch_id !== user.branch_id) {
       throw new Error("You cannot reject invoice from another branch");
@@ -1128,7 +1147,7 @@ export const apInvoiceService = {
     } else {
       where.branch_id = user.branch_id;
     }
- 
+
     if (user.role === "ACCOUNT") where.created_by = user.id;
 
     // Existing filters

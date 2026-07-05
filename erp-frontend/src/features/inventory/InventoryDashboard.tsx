@@ -39,13 +39,12 @@ function StatCard({
   return (
     <div
       onClick={onClick}
-      className={`relative overflow-hidden bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex items-center gap-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-md group ${
-        onClick ? "cursor-pointer" : ""
-      }`}
+      className={`relative overflow-hidden bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex items-center gap-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-md group ${onClick ? "cursor-pointer" : ""
+        }`}
     >
       {/* Background soft gradient layer */}
       <div className={`absolute inset-0 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity duration-300 bg-gradient-to-br ${gradientClass}`} />
-      
+
       {/* Icon container */}
       <div
         className={`w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-sm transition-all duration-300 group-hover:scale-110 ${iconBgClass}`}
@@ -215,11 +214,11 @@ export default function InventoryDashboard() {
                     tickLine={false}
                     axisLine={false}
                   />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: "rgba(255, 255, 255, 0.95)", 
-                      borderRadius: "12px", 
-                      border: "1px solid #e2e8f0", 
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "rgba(255, 255, 255, 0.95)",
+                      borderRadius: "12px",
+                      border: "1px solid #e2e8f0",
                       boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)"
                     }}
                     formatter={(v: any) => [formatMoney(v), "Giá trị tồn kho"]} 
@@ -273,11 +272,10 @@ export default function InventoryDashboard() {
                         </div>
                       </div>
                       <Badge
-                        className={`text-xs border px-2.5 py-0.5 rounded-full font-bold shadow-none ${
-                          isCritical
-                            ? "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-50"
-                            : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50"
-                        }`}
+                        className={`text-xs border px-2.5 py-0.5 rounded-full font-bold shadow-none ${isCritical
+                          ? "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-50"
+                          : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50"
+                          }`}
                       >
                         Còn {days} ngày
                       </Badge>

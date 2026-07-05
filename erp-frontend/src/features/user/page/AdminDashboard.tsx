@@ -280,7 +280,7 @@ export default function AdminDashboard() {
                       border: "1px solid #e2e8f0",
                       boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)",
                     }}
-                    formatter={(v: number) => [v, "Người dùng"]}
+                    formatter={(v: any) => [v, "Người dùng"]}
                   />
                   <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={32}>
                     {roleChartData.map((entry, index) => {

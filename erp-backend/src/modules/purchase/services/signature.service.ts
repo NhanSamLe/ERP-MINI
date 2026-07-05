@@ -85,11 +85,26 @@ export const signatureService = {
       await po.save();
     } else if (documentType === "ap_invoice") {
       const invoice = targetDoc as ApInvoice;
-      invoice.approval_status = "approved";
-      invoice.status = "posted"; // Post vào sổ nhật ký kế toán sau khi duyệt
-      invoice.approved_by = userId;
-      invoice.approved_at = signedAt;
-      await invoice.save();
+      const t = await model.sequelize.transaction();
+      try {
+        await invoice.update(
+          {
+            approval_status: "approved",
+            status: "posted", // Post vào sổ nhật ký kế toán sau khi duyệt
+            approved_by: userId,
+            approved_at: signedAt,
+          },
+          { transaction: t }
+        );
+
+        const { apInvoiceService } = require("./apInvoice.service");
+        await apInvoiceService.postApInvoiceToGL(invoice, t);
+
+        await t.commit();
+      } catch (error) {
+        await t.rollback();
+        throw error;
+      }
     }
 
     return {
