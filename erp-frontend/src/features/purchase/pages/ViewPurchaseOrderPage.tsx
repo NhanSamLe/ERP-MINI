@@ -456,7 +456,9 @@ export default function ViewPurchaseOrderPage() {
                 </button>
               </>
             )}
-            {(finalPO?.status === "confirmed" || finalPO?.status === "sent") && (
+            {(finalPO?.status === "confirmed" || finalPO?.status === "sent") &&
+              currentUser &&
+              [Roles.PURCHASE, Roles.PURCHASEMANAGER].includes(currentUser.role.code as any) && (
               <button
                 disabled={sendingEmail}
                 onClick={handleSendEmail}

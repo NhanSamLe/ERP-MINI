@@ -380,7 +380,7 @@ export default function StockReportPage() {
                           <Cell key={i} fill={COLORS[i % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(v: number) => formatMoney(v)} />
+                      <Tooltip formatter={(v: any) => formatMoney(v)} />
                       <Legend />
                     </PieChart>
                   </ResponsiveContainer>

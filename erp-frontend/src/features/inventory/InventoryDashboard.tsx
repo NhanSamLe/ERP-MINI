@@ -222,7 +222,7 @@ export default function InventoryDashboard() {
                       border: "1px solid #e2e8f0", 
                       boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)"
                     }}
-                    formatter={(v: number) => [formatMoney(v), "Giá trị tồn kho"]} 
+                    formatter={(v: any) => [formatMoney(v), "Giá trị tồn kho"]} 
                   />
                   <Bar dataKey="value" fill="url(#chartBarGradient)" radius={[6, 6, 0, 0]} barSize={24} />
                 </BarChart>
