@@ -48,11 +48,11 @@ export default function EmployeePage() {
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const [openUserForm, setOpenUserForm] = useState(false);
-const [userForEmployee, setUserForEmployee] = useState<EmployeeDTO | null>(null);
-const [openResign, setOpenResign] = useState(false);
-const [resignEmp, setResignEmp] = useState<EmployeeDTO | null>(null);
-const [openRegisterFace, setOpenRegisterFace] = useState(false);
-const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
+  const [userForEmployee, setUserForEmployee] = useState<EmployeeDTO | null>(null);
+  const [openResign, setOpenResign] = useState(false);
+  const [resignEmp, setResignEmp] = useState<EmployeeDTO | null>(null);
+  const [openRegisterFace, setOpenRegisterFace] = useState(false);
+  const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
 
 
   const load = async () => {
@@ -77,38 +77,38 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
   }, [search]);
 
   const handleSubmit = async (data: EmployeeFormPayload) => {
-  try {
-    if (editing?.id) {
-      await updateEmployee(editing.id, data);
-      await load();
-      setOpenForm(false);
-      setEditing(null);
-      toast.success("Cập nhật thông tin nhân viên thành công!");
-    } else {
-      const newEmp = await createEmployee(data);
-      setOpenForm(false);
-      setEditing(null);
-      await load();
-
-      if (isHRStaff) {
-        toast.success("Thêm nhân viên mới thành công! Hồ sơ đang chờ HR Manager phê duyệt (kích hoạt).");
-      } else if (isAdminOrHRManager) {
-        toast.success("Thêm nhân viên thành công! Đang chuyển hướng để tạo tài khoản.");
-        nav("/hrm/users/create", {
-          state: {
-            employeeId: newEmp.id,
-            branchId: newEmp.branch_id,
-            fullName: newEmp.full_name,
-          },
-        });
+    try {
+      if (editing?.id) {
+        await updateEmployee(editing.id, data);
+        await load();
+        setOpenForm(false);
+        setEditing(null);
+        toast.success("Cập nhật thông tin nhân viên thành công!");
       } else {
-        toast.success("Thêm nhân viên mới thành công!");
+        const newEmp = await createEmployee(data);
+        setOpenForm(false);
+        setEditing(null);
+        await load();
+
+        if (isHRStaff) {
+          toast.success("Thêm nhân viên mới thành công! Hồ sơ đang chờ HR Manager phê duyệt (kích hoạt).");
+        } else if (isAdminOrHRManager) {
+          toast.success("Thêm nhân viên thành công! Đang chuyển hướng để tạo tài khoản.");
+          nav("/hrm/users/create", {
+            state: {
+              employeeId: newEmp.id,
+              branchId: newEmp.branch_id,
+              fullName: newEmp.full_name,
+            },
+          });
+        } else {
+          toast.success("Thêm nhân viên mới thành công!");
+        }
       }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Đã xảy ra lỗi");
     }
-  } catch (err: any) {
-    toast.error(err?.response?.data?.message || "Đã xảy ra lỗi");
-  }
-};
+  };
 
 
 
@@ -181,27 +181,27 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
     return pages;
   };
   const handleResign = async (data: {
-  resign_date: string;
-  resign_reason?: string;
-}) => {
-  if (!resignEmp) return;
+    resign_date: string;
+    resign_reason?: string;
+  }) => {
+    if (!resignEmp) return;
 
-  try {
-    await resignEmployee(resignEmp.id, data);
-    await load();
-    setOpenResign(false);
-    setResignEmp(null);
-  } catch (err: any) {
-    alert(err?.response?.data?.message || "Không thể cập nhật trạng thái thôi việc");
-  }
-};
+    try {
+      await resignEmployee(resignEmp.id, data);
+      await load();
+      setOpenResign(false);
+      setResignEmp(null);
+    } catch (err: any) {
+      alert(err?.response?.data?.message || "Không thể cập nhật trạng thái thôi việc");
+    }
+  };
 
   const handleApprove = async (emp: EmployeeDTO) => {
     if (!emp.id) return;
     if (!window.confirm(`Bạn có chắc chắn muốn duyệt hồ sơ nhân viên ${emp.full_name}?`)) return;
 
     try {
-      await updateEmployee(emp.id, { status: "active" });
+      await updateEmployee(emp.id, { status: "active" } as any);
       toast.success(`Phê duyệt nhân viên ${emp.full_name} thành công!`);
       await load();
     } catch (err: any) {
@@ -290,12 +290,12 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
                     <td className="px-4 py-3">{e.base_salary.toLocaleString()} ₫</td>
                     <td className="px-4 py-3">
                       {
-  e.status === "active"
-    ? "Đang làm việc"
-    : e.status === "inactive"
-    ? "Chờ duyệt"
-    : "Đã thôi việc"
-}
+                        e.status === "active"
+                          ? "Đang làm việc"
+                          : e.status === "inactive"
+                            ? "Chờ duyệt"
+                            : "Đã thôi việc"
+                      }
                     </td>
                     <td className="px-4 py-3 text-center">
                       {e.faces && e.faces.length > 0 ? (
@@ -421,11 +421,10 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
                     <button
                       key={pNum}
                       onClick={() => goToPage(pNum)}
-                      className={`min-w-[36px] h-9 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        pNum === currentPage
+                      className={`min-w-[36px] h-9 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${pNum === currentPage
                           ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/30"
                           : "bg-white text-gray-700 border border-gray-200 hover:border-orange-300 hover:bg-orange-50"
-                      }`}
+                        }`}
                     >
                       {pNum}
                     </button>
@@ -459,23 +458,23 @@ const [faceEmp, setFaceEmp] = useState<EmployeeDTO | null>(null);
         isHRStaff={isHRStaff}
       />
       <UserFormModal
-  open={openUserForm}
-  employee={userForEmployee}
-  onClose={async () => {
-    setOpenUserForm(false);
-    setUserForEmployee(null);
-    await load();
-  }}
-/>
-  <ResignEmployeeModal
-  open={openResign}
-  employeeName={resignEmp?.full_name}
-  onClose={() => {
-    setOpenResign(false);
-    setResignEmp(null);
-  }}
-  onSubmit={handleResign}
-/>
+        open={openUserForm}
+        employee={userForEmployee}
+        onClose={async () => {
+          setOpenUserForm(false);
+          setUserForEmployee(null);
+          await load();
+        }}
+      />
+      <ResignEmployeeModal
+        open={openResign}
+        employeeName={resignEmp?.full_name}
+        onClose={() => {
+          setOpenResign(false);
+          setResignEmp(null);
+        }}
+        onSubmit={handleResign}
+      />
       <RegisterFaceModal
         open={openRegisterFace}
         employee={faceEmp}
