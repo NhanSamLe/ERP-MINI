@@ -13,6 +13,8 @@ import { ocrConfig } from "./modules/document-intelligence/services/ocrConfig.se
 
 const app = express();
 
+app.set("trust proxy", true);
+
 app.use(
   cors({
     origin: env.cors.origins,

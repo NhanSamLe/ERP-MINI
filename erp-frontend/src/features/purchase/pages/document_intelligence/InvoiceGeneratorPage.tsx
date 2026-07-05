@@ -60,23 +60,25 @@ const PRESETS: SandboxScenario[] = [
     code: "TC-01",
     name: "Lavie Happy Path (Có PO)",
     description: "Mục tiêu: Hóa đơn nước Lavie, khớp 100% với đơn đặt hàng PO-2024-0123. AI tự động phê duyệt.",
-    vendor: "CDB Supplies Ltd",
-    taxCode: "012345678913",
-    address: "Phường Phú Định, Quận 8, Thành Phố HCM",
-    phone: "076840214",
-    email: "billing@lavie.com.vn",
-    buyer: "Công Ty Cổ Phần Thương Mại XYZ",
-    buyerTaxCode: "01259549871",
-    buyerAddress: "456 Lê Văn Việt, Q.9, TP.HCM",
-    poNo: "PO-20260704-0214",
-    invNo: "HD-2026-0055",
-    date: "04/06/2026",
+    vendor: "Công ty Cổ phần Công nghệ NVB",
+    taxCode: "0109088776",
+    address: "Số 15, Đường số 4, KĐT Him Lam, P. Tân Hưng, Quận 7, TP. HCM",
+    phone: "0707751852",
+    email: "nguyenhoanggiaphong12@gmail.com",
+    buyer: "Công ty Trách nhiệm Hữu hạn SuperShip",
+    buyerTaxCode: "1234567890",
+    buyerAddress: "219/4 Lê Văn Chí",
+    poNo: "Không có PO",
+    invNo: "HD-2026-0057",
+    date: "05/07/2026",
     series: "1C24TAA",
     templateNo: "01GTKT0/201",
     items: [
-      { name: "iPhone 15 Pro Max", unit: "Cái", qty: 4, price: 25000000, tax: 5, discount: 1 }
+      { name: "iPhone 16 Pro Max 256GB", unit: "Cái", qty: 5, price: 29500000, tax: 5, discount: 1 },
+      { name: "Laptop Dell XPS 13 9340", unit: "Cái", qty: 3, price: 38000000, tax: 5, discount: 1 }
     ],
-    notes: "Hóa đơn liên kết với Đơn Mua Hàng PO-20260704-0214. Giao đầy đủ hàng."
+    discount_rate: 1,
+    notes: "Giải trình: Hóa đơn liên kết với Đơn Mua Hàng PO-20260704-0214. Giao đầy đủ hàng."
   },
   {
     code: "TC-02",
@@ -405,24 +407,24 @@ export default function InvoiceGeneratorPage() {
     });
   };
 
-  // Tính toán số liệu
-  const subtotal = invoiceData.items.reduce((s, it) => {
+  // Tính toán số liệu (Làm tròn số nguyên cho khớp nghiệp vụ VND thực tế)
+  const subtotal = Math.round(invoiceData.items.reduce((s, it) => {
     const amountBeforeDiscount = (Number(it.qty) || 0) * (Number(it.price) || 0);
     const discountAmount = amountBeforeDiscount * ((Number(it.discount) || 0) / 100);
-    return s + (amountBeforeDiscount - discountAmount);
-  }, 0);
+    return s + Math.round(amountBeforeDiscount - discountAmount);
+  }, 0));
 
   const discountRate = Number(invoiceData.discount_rate) || 0;
-  const totalDiscountAmount = subtotal * (discountRate / 100);
+  const totalDiscountAmount = Math.round(subtotal * (discountRate / 100));
   const subtotalAfterDiscount = subtotal - totalDiscountAmount;
 
-  const taxAmount = invoiceData.items.reduce((s, it) => {
+  const taxAmount = Math.round(invoiceData.items.reduce((s, it) => {
     const amountBeforeDiscount = (Number(it.qty) || 0) * (Number(it.price) || 0);
     const discountAmount = amountBeforeDiscount * ((Number(it.discount) || 0) / 100);
-    const lineTotal = amountBeforeDiscount - discountAmount;
+    const lineTotal = Math.round(amountBeforeDiscount - discountAmount);
     const lineTotalAfterOverallDiscount = lineTotal * (1 - discountRate / 100);
-    return s + (lineTotalAfterOverallDiscount * (Number(it.tax) || 0)) / 100;
-  }, 0);
+    return s + Math.round((lineTotalAfterOverallDiscount * (Number(it.tax) || 0)) / 100);
+  }, 0));
 
   const grandTotal = subtotalAfterDiscount + taxAmount;
 
