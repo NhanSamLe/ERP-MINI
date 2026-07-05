@@ -46,6 +46,7 @@ export interface Rfq {
   discount_type?: "percentage" | "fixed";
   discount_percent: number;
   discount_amount: number;
+  discount_type?: "percentage" | "fixed";
   supplier_notes?: string | null;
   internal_notes?: string | null;
   buyer_id?: number | null;

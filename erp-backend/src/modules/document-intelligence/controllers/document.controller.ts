@@ -124,7 +124,7 @@ export const documentController = {
         await import("../../purchase/models/purchaseOrder.model");
 
       const where: any = {
-        status: { [Op.in]: ["confirmed", "partially_received"] },
+        status: { [Op.in]: ["confirmed", "sent", "supplier_accepted", "partially_received", "received"] },
       };
       if (supplierId) where.supplier_id = supplierId;
 

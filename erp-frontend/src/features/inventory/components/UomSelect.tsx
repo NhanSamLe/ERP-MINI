@@ -70,11 +70,27 @@ export function UomSelect({
       {!loading && options.length === 0 && <option value="">—</option>}
       {options.map((u) => (
         <option key={u.id} value={u.id}>
-          {u.name} ({u.code})
+          {translateUomName(u.name)} ({u.code})
         </option>
       ))}
     </select>
   );
+}
+
+export function translateUomName(name: string | null | undefined): string {
+  if (!name) return "";
+  const normalized = name.trim().toLowerCase();
+  if (normalized === "piece" || normalized === "pieces" || normalized === "pcs" || normalized === "pc") return "Cái";
+  if (normalized === "box" || normalized === "boxes") return "Hộp/Thùng";
+  if (normalized === "carton" || normalized === "cartons") return "Thùng";
+  if (normalized === "kilogram" || normalized === "kilograms" || normalized === "kg") return "Kg";
+  if (normalized === "gram" || normalized === "grams" || normalized === "g") return "Gram";
+  if (normalized === "pack" || normalized === "packs" || normalized === "pkg") return "Gói";
+  if (normalized === "bag" || normalized === "bags") return "Bao/Túi";
+  if (normalized === "meter" || normalized === "meters" || normalized === "m") return "Mét";
+  if (normalized === "pallet" || normalized === "pallets") return "Pallet";
+  if (normalized === "set" || normalized === "sets") return "Bộ";
+  return name;
 }
 
 /** Helper: build UOM options từ product data (dùng khi muốn giới hạn chỉ uom + purchaseUom) */

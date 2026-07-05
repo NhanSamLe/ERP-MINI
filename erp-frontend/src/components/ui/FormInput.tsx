@@ -14,6 +14,7 @@ interface FormInputProps {
   className?: string;
   textarea?: boolean;
   rows?: number;
+  maxLength?: number;
 }
 
 const baseInput = [
@@ -41,6 +42,7 @@ export function FormInput({
   className,
   textarea,
   rows = 4,
+  maxLength,
 }: FormInputProps) {
   const hasLeftIcon  = icon && iconPosition === "left";
   const hasRightIcon = icon && iconPosition === "right";
@@ -86,6 +88,7 @@ export function FormInput({
             required={required}
             disabled={disabled}
             readOnly={readOnly}
+            maxLength={maxLength}
             className={[
               baseInput,
               "h-9 px-3",

@@ -23,6 +23,7 @@ import {
 } from "@/features/inventory/store/stock/stockmove/stockMove.types";
 import { LocationSelect } from "../../LocationSelect";
 import { LotSelect } from "../../LotSelect";
+import { translateUomName } from "../../UomSelect";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../../../../../components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "../../../../../components/ui/Card";
 import { ArrowRightLeft, Calendar, Clipboard, Search, Trash2, ListCollapse } from "lucide-react";
@@ -136,7 +137,7 @@ export default function CreateTransferModal({
         product_id: full.id,
         name: full.name,
         sku: full.sku,
-        uom: full.uom?.name ?? full.uom?.code ?? "",
+        uom: translateUomName(full.uom?.name ?? full.uom?.code ?? ""),
         uom_id: full.uom_id ?? null,
         image: full.image_url ?? "",
         quantity: 1,
@@ -374,7 +375,7 @@ export default function CreateTransferModal({
                           <span className="font-semibold text-slate-800">{p.name}</span>
                         </td>
                         <td className="py-3 px-5 font-mono text-xs font-bold text-slate-455 uppercase">{p.sku}</td>
-                        <td className="py-3 px-5 text-slate-500 font-medium">{p.uom || "—"}</td>
+                        <td className="py-3 px-5 text-slate-500 font-medium">{translateUomName(p.uom) || "—"}</td>
                         <td className="py-3 px-5 text-right">
                           <input
                             type="number"

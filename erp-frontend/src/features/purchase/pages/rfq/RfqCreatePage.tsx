@@ -115,7 +115,7 @@ export default function RfqCreatePage() {
     dispatch(fetchAllUomsThunk());
     dispatch(fetchAllConversionsThunk());
     axiosClient.get("/master-data/payment-terms")
-      .then((res) => setPaymentTerms(res.data || []))
+      .then((res) => setPaymentTerms(res.data?.data || res.data || []))
       .catch((err) => console.error("Error fetching payment terms:", err));
     axiosClient.get("/master-data/currencies")
       .then((res) => {

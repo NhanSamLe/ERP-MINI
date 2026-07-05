@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
-import { Plus, RotateCw, FileSpreadsheet, Calendar, User, Eye, Trash2 } from "lucide-react";
+import { Plus, RotateCw, FileSpreadsheet, Calendar, User, Eye, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { RootState, AppDispatch } from "../../../../store/store";
 import { purchasePriceListApi, PurchasePriceList } from "../../api/purchasePriceList.api";
 import { loadPartners } from "@/features/partner/store/partner.thunks";
@@ -56,6 +56,13 @@ export default function PriceListListPage() {
     }
   };
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, supplierFilter]);
+
   const filteredLists = priceLists.filter((pl) => {
     const plName = pl.name.toLowerCase();
     const plCode = pl.code?.toLowerCase() ?? "";
@@ -64,6 +71,12 @@ export default function PriceListListPage() {
     
     return plName.includes(term) || plCode.includes(term) || supplierName.includes(term);
   });
+
+  const totalPages = Math.ceil(filteredLists.length / itemsPerPage);
+  const paginated = filteredLists.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   return (
     <div className="page-container p-6 bg-gray-50/50 min-h-screen">
@@ -166,7 +179,7 @@ export default function PriceListListPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredLists.map((pl) => (
+                {paginated.map((pl) => (
                   <tr
                     key={pl.id}
                     className="hover:bg-orange-50/20 transition-colors duration-100 cursor-pointer"
@@ -230,11 +243,45 @@ export default function PriceListListPage() {
           </div>
         )}
 
-        {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-3 border-t border-gray-100 bg-gray-50/40">
-          <p className="text-xs text-gray-400">
-            Hiển thị <span className="font-semibold text-gray-600">{filteredLists.length}</span> trên <span className="font-semibold text-gray-600">{priceLists.length}</span> bản ghi
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-6 py-3 border-t border-gray-100 bg-gray-50/40 gap-3 text-sm text-gray-600">
+          <p className="text-xs text-gray-500">
+            Hiển thị <strong>{filteredLists.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}–{Math.min(currentPage * itemsPerPage, filteredLists.length)}</strong> trên{" "}
+            <strong>{filteredLists.length}</strong> bảng giá (Tổng cộng <strong>{priceLists.length}</strong> bản ghi)
           </p>
+
+          {filteredLists.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="h-8 w-8 flex items-center justify-center rounded border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`h-8 min-w-[2rem] px-2 rounded border text-xs font-semibold transition-colors ${
+                    currentPage === page
+                      ? "bg-orange-500 border-orange-500 text-white"
+                      : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="h-8 w-8 flex items-center justify-center rounded border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

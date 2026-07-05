@@ -116,7 +116,7 @@ const documentIntelligenceSlice = createSlice({
       .addCase(getDocumentHistoryThunk.fulfilled, (state, action) => {
         state.loading = false;
         state.history = action.payload.data;
-        state.historyTotal = action.payload.total;
+        state.historyTotal = action.payload.pagination?.total ?? 0;
       })
       .addCase(getDocumentHistoryThunk.rejected, (state, action) => {
         state.loading = false;

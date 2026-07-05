@@ -127,7 +127,7 @@ export default function EditPurchaseOrderPage() {
     dispatch(fetchAllUomsThunk());
     dispatch(fetchAllConversionsThunk());
     axiosClient.get("/master-data/payment-terms")
-      .then((res) => setPaymentTerms(res.data || []))
+      .then((res) => setPaymentTerms(res.data?.data || res.data || []))
       .catch((err) => console.error("Error fetching payment terms:", err));
     axiosClient.get("/master-data/currencies")
       .then((res) => setCurrencies(res.data?.currencies || []))
@@ -422,7 +422,7 @@ export default function EditPurchaseOrderPage() {
 
           const lineDiscountPct = Number((l as any).discount_percent ?? 0);
           const lineDiscountAmt = Number((l as any).discount_amount ?? 0);
-          const lineDiscountType: "percentage" | "fixed" = (lineDiscountAmt > 0 && !lineDiscountPct) ? "fixed" : "percentage";
+          const lineDiscountType = ((lineDiscountAmt > 0 && !lineDiscountPct) ? "fixed" : "percentage") as "percentage" | "fixed";
 
           return {
             id: l.id ?? undefined,

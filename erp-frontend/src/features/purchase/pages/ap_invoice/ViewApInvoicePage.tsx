@@ -30,7 +30,12 @@ import {
   CheckCircle2,
   History,
   Link2,
+  PenTool,
 } from "lucide-react";
+import SignatureModal from "../../components/SignatureModal";
+import { apInvoiceApi } from "../../api/apInvoice.api";
+import { useApInvoiceExport } from "../../hooks/useApInvoiceExport";
+import { translateUomName } from "../../../inventory/components/UomSelect";
 
 import { useNavigate } from "react-router-dom";
 import { Roles } from "@/types/enum";
@@ -86,6 +91,28 @@ export default function ViewApInvoicePage() {
   };
 
   const invoice = selected;
+  const { exporting, exportToPDF } = useApInvoiceExport(invoice as any);
+  const [isSignModalOpen, setIsSignModalOpen] = useState(false);
+  const [signing, setSigning] = useState(false);
+
+  const handleSign = async (pin: string, signatureImage: string) => {
+    if (!invoice) return;
+    setSigning(true);
+    try {
+      await apInvoiceApi.sign(invoice.id, pin, signatureImage);
+      toast.success("Ký duyệt hóa đơn thành công!");
+      setIsSignModalOpen(false);
+      dispatch(getApInvoiceByIdThunk(invoice.id));
+      refreshAuditLogs();
+    } catch (error: any) {
+      const msg = error?.response?.data?.message || error?.message || "Ký duyệt hóa đơn thất bại";
+      toast.error(msg);
+      throw new Error(msg);
+    } finally {
+      setSigning(false);
+    }
+  };
+
   const po = invoice?.order;
 
   const invoiceTotalsBreakdown = useMemo(() => {
@@ -190,6 +217,8 @@ export default function ViewApInvoicePage() {
       draft: "bg-gray-50 text-gray-700 border-gray-200",
       waiting_approval: "bg-amber-50 text-amber-700 border-amber-200",
       confirmed: "bg-blue-50 text-blue-700 border-blue-200",
+      sent: "bg-orange-50 text-orange-700 border-orange-200",
+      supplier_accepted: "bg-teal-50 text-teal-700 border-teal-200",
       partially_received: "bg-purple-50 text-purple-700 border-purple-200",
       completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
       cancelled: "bg-red-50 text-red-700 border-red-200",
@@ -345,6 +374,16 @@ export default function ViewApInvoicePage() {
 
           {/* RIGHT ACTIONS */}
           <div className="flex gap-2.5 items-center justify-end flex-wrap">
+            {invoice && ["posted", "paid", "partially_paid"].includes(invoice.status) && (
+              <button
+                disabled={exporting}
+                onClick={() => exportToPDF()}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-red-200 bg-red-50 text-red-600 font-semibold text-sm shadow-sm hover:bg-red-100 transition disabled:opacity-60"
+              >
+                <FileText className="w-4 h-4" />
+                {exporting ? "Đang xuất..." : "Xuất PDF"}
+              </button>
+            )}
             {canSubmitForApproval && (
               <button
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500 text-white font-semibold text-sm shadow-sm hover:bg-orange-600 transition"
@@ -372,7 +411,7 @@ export default function ViewApInvoicePage() {
                 {/* APPROVE */}
                 <button
                   disabled={submitting || invoice.matching_status === "mismatch"}
-                  onClick={() => setOpenApproveModal(true)}
+                  onClick={() => setIsSignModalOpen(true)}
                   title={
                     invoice.matching_status === "mismatch"
                       ? "Cần ghi đè mismatch trước khi duyệt"
@@ -380,8 +419,8 @@ export default function ViewApInvoicePage() {
                   }
                   className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 text-white font-semibold text-sm shadow-sm hover:bg-emerald-600 transition disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <CheckCircle className="w-4 h-4" />
-                  Duyệt
+                  <PenTool className="w-4 h-4" />
+                  Ký duyệt
                 </button>
 
                 {/* REJECT */}
@@ -401,7 +440,7 @@ export default function ViewApInvoicePage() {
       {/* ================= INFO GRID ================= */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Invoice Info */}
-        <div className="bg-white rounded-2xl border-2 border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow">
+        <div className={`bg-white rounded-2xl border-2 border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow ${!po ? "lg:col-span-2" : ""}`}>
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
               <FileText className="w-5 h-5 text-blue-600" />
@@ -411,7 +450,7 @@ export default function ViewApInvoicePage() {
             </h2>
           </div>
 
-          <div className="space-y-4">
+          <div className={!po ? "grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1" : "space-y-4"}>
             <InfoRow
               icon={<Calendar className="w-4 h-4" />}
               label="Ngày hóa đơn"
@@ -556,6 +595,46 @@ export default function ViewApInvoicePage() {
         />
       </div>
 
+      {/* Verified Digital Signature */}
+      {invoice && (invoice as any).signatures?.length > 0 && (
+        <div className="bg-white rounded-2xl border-2 border-gray-100 p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
+              <PenTool className="w-5 h-5 text-orange-600" />
+            </div>
+            <h2 className="text-lg font-bold text-gray-900">
+              Thông tin chữ ký số điện tử xác thực
+            </h2>
+          </div>
+          <div className="p-5 flex flex-col md:flex-row items-center gap-6 bg-orange-50/10 rounded-xl border border-orange-100">
+            <div className="border border-gray-200 bg-white p-3 rounded-lg shadow-inner flex items-center justify-center w-full md:w-auto">
+              <img
+                src={(invoice as any).signatures[0].signature_image}
+                alt="Signature"
+                className="h-20 object-contain max-w-[200px]"
+              />
+            </div>
+            <div className="flex-1 space-y-2 text-sm w-full">
+              <div className="flex items-center gap-2 text-emerald-600 font-semibold">
+                <CheckCircle className="w-4 h-4" />
+                Hóa đơn đã được ký số điện tử bảo mật thành công bởi Kế toán trưởng
+              </div>
+              <div className="text-xs text-gray-500">
+                <p className="font-semibold text-gray-700">Mã băm tài liệu (Document Hash):</p>
+                <p className="font-mono bg-gray-50 p-2 rounded border border-gray-100 text-[10px] break-all select-all text-orange-600">
+                  {(invoice as any).signatures[0].hash_value}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500">
+                <p>Người ký: <span className="font-semibold text-gray-700">{(invoice as any).signatures[0].signer?.full_name}</span></p>
+                <p>Thời gian: <span className="font-semibold text-gray-700">{new Date((invoice as any).signatures[0].signed_at).toLocaleString("vi-VN")}</span></p>
+                <p className="col-span-2">IP Ký: <span className="font-semibold text-gray-700">{(invoice as any).signatures[0].signer_ip || "N/A"}</span></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ================= SUPPLIER INFO ================= */}
       {po?.supplier && (
         <div className="bg-gradient-to-br from-blue-50 to-blue-50/50 rounded-2xl border-2 border-blue-100 p-6 shadow-sm">
@@ -699,10 +778,12 @@ export default function ViewApInvoicePage() {
                       {/* QUANTITY + UOM */}
                       <td className="px-6 py-4 text-right">
                         <span className="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 text-sm font-semibold text-gray-700">
-                          {line.quantity}{" "}
-                          {(line as any).uom?.name ||
-                            (line as any).product?.uom?.name ||
-                            ""}
+                          {Number(line.quantity || 0)}{" "}
+                          {translateUomName(
+                            (line as any).uom?.name ||
+                              (line as any).product?.uom?.name ||
+                              ""
+                          )}
                         </span>
                       </td>
 
@@ -1217,6 +1298,13 @@ export default function ViewApInvoicePage() {
           </div>
         </div>
       )}
+      <SignatureModal
+        visible={isSignModalOpen}
+        onClose={() => setIsSignModalOpen(false)}
+        onConfirm={handleSign}
+        title="Ký duyệt Hóa đơn mua hàng AP Invoice"
+        loading={signing}
+      />
     </div>
   );
 }

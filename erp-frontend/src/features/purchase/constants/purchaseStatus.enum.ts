@@ -5,6 +5,8 @@ export const PurchaseOrderStatus = {
   DRAFT: "draft",
   WAITING_APPROVAL: "waiting_approval",
   CONFIRMED: "confirmed",
+  SENT: "sent",
+  SUPPLIER_ACCEPTED: "supplier_accepted",
   PARTIALLY_RECEIVED: "partially_received",
   RECEIVED: "received",
   COMPLETED: "completed",

@@ -23,6 +23,7 @@ import {
 } from "@/features/inventory/store/stock/stockmove/stockMove.types";
 import { LocationSelect } from "../../LocationSelect";
 import { LotSelect } from "../../LotSelect";
+import { translateUomName } from "../../UomSelect";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../../../../../components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "../../../../../components/ui/Card";
 import { ArrowRightLeft, Calendar, Clipboard, Search, Trash2, ListCollapse } from "lucide-react";
@@ -86,7 +87,7 @@ export default function EditTransferModal({
       name: line.product?.name ?? "Unknown",
       sku: line.product?.sku ?? "",
       image: line.product?.image_url ?? "",
-      uom: line.product?.uom?.name ?? line.product?.uom?.code ?? "",
+      uom: translateUomName(line.product?.uom?.name ?? line.product?.uom?.code ?? ""),
       uom_id: line.uom_id ?? line.product?.uom_id ?? null,
       uomOptions: [
         ...(line.product?.uom ? [line.product.uom] : []),
@@ -169,8 +170,9 @@ export default function EditTransferModal({
         product_id: p.id,
         name: p.name,
         sku: p.sku,
-        uom:
-          (p.uom as any)?.name ?? (p.uom as any)?.code ?? (p.uom as any) ?? "",
+        uom: translateUomName(
+          (p.uom as any)?.name ?? (p.uom as any)?.code ?? (p.uom as any) ?? ""
+        ),
         uom_id: (p as any).uom_id ?? null,
         uomOptions: [
           ...(p.uom ? [p.uom as any] : []),
@@ -408,7 +410,7 @@ export default function EditTransferModal({
                           <span className="font-semibold text-slate-800">{p.name}</span>
                         </td>
                         <td className="py-3 px-5 font-mono text-xs font-bold text-slate-455 uppercase">{p.sku}</td>
-                        <td className="py-3 px-5 text-slate-500 font-medium">{p.uom || "—"}</td>
+                        <td className="py-3 px-5 text-slate-500 font-medium">{translateUomName(p.uom) || "—"}</td>
                         <td className="py-3 px-5 text-right">
                           <input
                             type="number"

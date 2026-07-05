@@ -16,7 +16,7 @@ import { toast } from "react-toastify";
 import { fetchProductByIdThunk } from "../../../../products/store/product.thunks";
 import { StockMove } from "../../../store/stock/stockmove/stockMove.types";
 import { LocationSelect } from "../../LocationSelect";
-import { UomSelect } from "../../UomSelect";
+import { UomSelect, translateUomName } from "../../UomSelect";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../../../../../components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "../../../../../components/ui/Card";
 import { Package, Trash2, Calendar, Clipboard, ShoppingCart, ListCollapse } from "lucide-react";
@@ -103,7 +103,7 @@ export default function EditReceiptModal({
       name: line.product?.name ?? "",
       sku: line.product?.sku ?? "",
       image: line.product?.image_url ?? "",
-      uom: line.product?.uom?.name ?? line.product?.uom?.code ?? "",
+      uom: translateUomName(line.product?.uom?.name ?? line.product?.uom?.code ?? ""),
       uom_id: line.uom_id ?? line.product?.uom_id ?? null,
       uomOptions: [
         ...(line.product?.uom ? [line.product.uom] : []),
@@ -173,7 +173,7 @@ export default function EditReceiptModal({
               product_id: result.id,
               name: result.name,
               sku: result.sku,
-              uom: result.uom?.name ?? result.uom?.code ?? "",
+               uom: translateUomName(result.uom?.name ?? result.uom?.code ?? ""),
               uom_id: result.uom_id ?? null,
               uomOptions: [
                 ...(result.uom ? [result.uom] : []),
@@ -183,7 +183,7 @@ export default function EditReceiptModal({
                   : []),
               ],
               image: result.image_url,
-              quantity: line.qty_in_stock_uom ?? line.quantity,
+              quantity: Number(line.qty_in_stock_uom ?? line.quantity ?? 0),
             } as LineReceiptItem;
           }),
         );

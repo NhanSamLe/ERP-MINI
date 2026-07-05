@@ -19,6 +19,27 @@ import { FormSection } from "../../../../components/layout/FormSection";
 import { formatVND } from "@/utils/currency.helper";
 import { Roles } from "@/types/enum";
 
+const UOM_TRANSLATIONS: Record<string, string> = {
+  piece: "cái",
+  pcs: "cái",
+  box: "hộp/thùng",
+  carton: "thùng",
+  pack: "gói",
+  bag: "bao/túi",
+  kilogram: "kg",
+  kg: "kg",
+  gram: "g",
+  liter: "lít",
+  meter: "mét",
+  set: "bộ",
+};
+
+function translateUom(uomName: string | null | undefined): string {
+  if (!uomName) return "—";
+  const key = uomName.trim().toLowerCase();
+  return UOM_TRANSLATIONS[key] || uomName;
+}
+
 export default function PurchaseReturnDetailPage() {
   const { id } = useParams<{ id: string }>();
   const dispatch = useDispatch<AppDispatch>();
@@ -54,7 +75,7 @@ export default function PurchaseReturnDetailPage() {
         line_id: l.id,
         productName: l.product?.name ?? `Sản phẩm #${l.product_id}`,
         qty_returned: l.quantity_returned,
-        uomName: l.uom?.name ?? "—",
+        uomName: translateUom(l.uom?.name),
         qty_confirmed: l.quantity_returned,
         qty_rejected: 0,
       }))
@@ -365,16 +386,16 @@ export default function PurchaseReturnDetailPage() {
                       {line.product?.name ?? `Sản phẩm #${line.product_id}`}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {line.quantity_returned}
+                      {Number(line.quantity_returned || 0)}
                     </td>
                     <td className="px-4 py-3 text-left text-gray-600">
-                      {(line as any).uom?.name ?? "—"}
+                      {translateUom((line as any).uom?.name)}
                     </td>
                     <td className="px-4 py-3 text-right text-emerald-700 font-medium">
-                      {line.quantity_confirmed}
+                      {Number(line.quantity_confirmed || 0)}
                     </td>
                     <td className="px-4 py-3 text-right text-red-600 font-medium">
-                      {line.quantity_rejected}
+                      {Number(line.quantity_rejected || 0)}
                     </td>
                     <td className="px-4 py-3 text-right">
                       {formatVND(line.unit_price)}
@@ -599,7 +620,7 @@ export default function PurchaseReturnDetailPage() {
                       <td className="px-4 py-3 text-gray-500">{idx + 1}</td>
                       <td className="px-4 py-3 font-medium text-gray-900">{line.productName}</td>
                       <td className="px-4 py-3 text-right text-gray-700 font-semibold">{line.qty_returned}</td>
-                      <td className="px-4 py-3 text-left text-gray-500">{line.uomName}</td>
+                      <td className="px-4 py-3 text-left text-gray-500">{translateUom(line.uomName)}</td>
                       <td className="px-4 py-3">
                         <div className="flex justify-center">
                           <input

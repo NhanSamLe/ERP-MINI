@@ -22,6 +22,7 @@ export interface User {
   branch_id?: number;
   role: Role;
   is_active: boolean;
+  signature_pin?: string;
 }
 
 export interface LoginPayload {

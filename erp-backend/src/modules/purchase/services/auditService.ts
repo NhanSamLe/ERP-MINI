@@ -1,6 +1,4 @@
-import { PurchaseOrderAuditLog } from "../models/purchaseOrderAuditLog.model";
-import { PurchaseOrder } from "../models/purchaseOrder.model";
-import { User } from "../../../models";
+import { PurchaseOrder, User, PurchaseOrderAuditLog } from "../../../models";
 import { Op } from "sequelize";
 
 export interface AuditLogFilter {
@@ -245,5 +243,30 @@ export const auditService = {
     });
 
     return result;
+  },
+
+  /**
+   * Ghi log khi gửi email PO cho nhà cung cấp
+   */
+  async logSendEmail(po: any, supplierEmail: string, user: any): Promise<void> {
+    try {
+      await PurchaseOrderAuditLog.create({
+        po_id: po.id,
+        action: "SEND_EMAIL",
+        old_values: {
+          status: po.status,
+        },
+        new_values: {
+          status: "sent",
+          recipient: supplierEmail,
+          sent_at: new Date(),
+        },
+        changed_by: user.id,
+        changed_at: new Date(),
+        branch_id: po.branch_id,
+      });
+    } catch (error) {
+      console.error("Error logging PO email sending:", error);
+    }
   },
 };

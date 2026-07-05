@@ -37,6 +37,27 @@ const CONDITION_OPTIONS = [
   { value: "defective", label: "Lỗi sản xuất" },
 ];
 
+const UOM_TRANSLATIONS: Record<string, string> = {
+  piece: "cái",
+  pcs: "cái",
+  box: "hộp/thùng",
+  carton: "thùng",
+  pack: "gói",
+  bag: "bao/túi",
+  kilogram: "kg",
+  kg: "kg",
+  gram: "g",
+  liter: "lít",
+  meter: "mét",
+  set: "bộ",
+};
+
+function translateUom(uomName: string | null | undefined): string {
+  if (!uomName) return "—";
+  const key = uomName.trim().toLowerCase();
+  return UOM_TRANSLATIONS[key] || uomName;
+}
+
 export default function PurchaseReturnCreatePage() {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
@@ -116,7 +137,7 @@ export default function PurchaseReturnCreatePage() {
         quantity_returned: 1,
         po_quantity: Number(poLine.quantity ?? 0),
         uom_id: poLine.uom_id ?? null,
-        uom_name: poLine.uom?.name ?? "—",
+        uom_name: translateUom(poLine.uom?.name),
         qty_in_stock_uom: Number(poLine.qty_in_stock_uom ?? 0),
         unit_price: Number(poLine.unit_price ?? 0),
         line_total: Number(poLine.unit_price ?? 0),
@@ -390,7 +411,7 @@ export default function PurchaseReturnCreatePage() {
                   disabled={lines.some((l) => l.po_line_id === pl.id)}
                   className="w-full text-left px-3 py-2 text-sm bg-white border border-gray-200 rounded hover:bg-orange-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
-                  {pl.product?.name ?? `Sản phẩm #${pl.product_id}`} — Số lượng: {pl.quantity} {(pl as any).uom?.name || (pl as any).product?.uom?.name || ""} ×{" "}
+                  {pl.product?.name ?? `Sản phẩm #${pl.product_id}`} — Số lượng: {pl.quantity} {translateUom((pl as any).uom?.name || (pl as any).product?.uom?.name)} ×{" "}
                   {Number(pl.unit_price).toLocaleString("vi-VN")}
                 </button>
               ))}
@@ -456,7 +477,7 @@ export default function PurchaseReturnCreatePage() {
                     />
                   </td>
                   <td className="px-4 py-2 text-xs text-gray-600">
-                    {line.uom_name}
+                    {translateUom(line.uom_name)}
                   </td>
                   <td className="px-4 py-2">
                     <input

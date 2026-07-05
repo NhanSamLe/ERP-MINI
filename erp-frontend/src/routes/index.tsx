@@ -23,6 +23,7 @@ import LandingPage from "../features/landing/pages/LandingPage";
 import RegisterPage from "../features/landing/pages/RegisterPage";
 import OnboardingPage from "../features/onboarding/pages/OnboardingPage";
 import ProtectedRoute from "../components/ProtectedRoute";
+import PublicVerifySignaturePage from "../pages/PublicVerifySignaturePage";
 
 // const routes = [
 //   ...authRoutes,
@@ -88,6 +89,14 @@ const routes = [
   {
     path: "/kiosk",
     element: <KioskPage />,
+  },
+  {
+    path: "/public/verify/:hash",
+    element: <PublicVerifySignaturePage />,
+  },
+  {
+    path: "/public/verify",
+    element: <PublicVerifySignaturePage />,
   },
   {
     path: "/",

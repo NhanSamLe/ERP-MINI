@@ -17,6 +17,27 @@ import { FormSection } from "../../../../components/layout/FormSection";
 import { formatVND } from "@/utils/currency.helper";
 import { Roles } from "@/types/enum";
 
+const UOM_TRANSLATIONS: Record<string, string> = {
+  piece: "cái",
+  pcs: "cái",
+  box: "hộp/thùng",
+  carton: "thùng",
+  pack: "gói",
+  bag: "bao/túi",
+  kilogram: "kg",
+  kg: "kg",
+  gram: "g",
+  liter: "lít",
+  meter: "mét",
+  set: "bộ",
+};
+
+function translateUom(uomName: string | null | undefined): string {
+  if (!uomName) return "";
+  const key = uomName.trim().toLowerCase();
+  return UOM_TRANSLATIONS[key] || uomName;
+}
+
 export default function DebitNoteDetailPage() {
   const { id } = useParams<{ id: string }>();
   const dispatch = useDispatch<AppDispatch>();
@@ -193,7 +214,7 @@ export default function DebitNoteDetailPage() {
                       {line.product?.name ?? `Sản phẩm #${line.product_id}`}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {line.quantity} {(line as any).uom?.name || (line as any).product?.uom?.name || ""}
+                      {Number(line.quantity || 0)} {translateUom((line as any).uom?.name || (line as any).product?.uom?.name)}
                     </td>
                     <td className="px-4 py-3 text-right">
                       {formatVND(line.unit_price)}

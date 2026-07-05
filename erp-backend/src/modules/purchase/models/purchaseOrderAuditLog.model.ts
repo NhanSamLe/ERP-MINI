@@ -4,7 +4,7 @@ import { sequelize } from "../../../config/db";
 export interface PurchaseOrderAuditLogAttrs {
   id: number;
   po_id: number;
-  action: "CREATE" | "UPDATE" | "APPROVE" | "CANCEL";
+  action: "CREATE" | "UPDATE" | "APPROVE" | "CANCEL" | "SEND_EMAIL";
   old_values?: Record<string, any> | null;
   new_values?: Record<string, any> | null;
   changed_by: number;
@@ -23,7 +23,7 @@ export class PurchaseOrderAuditLog
 {
   public id!: number;
   public po_id!: number;
-  public action!: "CREATE" | "UPDATE" | "APPROVE" | "CANCEL";
+  public action!: "CREATE" | "UPDATE" | "APPROVE" | "CANCEL" | "SEND_EMAIL";
   public old_values?: Record<string, any> | null;
   public new_values?: Record<string, any> | null;
   public changed_by!: number;
@@ -44,7 +44,7 @@ PurchaseOrderAuditLog.init(
       allowNull: false,
     },
     action: {
-      type: DataTypes.ENUM("CREATE", "UPDATE", "APPROVE", "CANCEL"),
+      type: DataTypes.ENUM("CREATE", "UPDATE", "APPROVE", "CANCEL", "SEND_EMAIL"),
       allowNull: false,
     },
     old_values: {

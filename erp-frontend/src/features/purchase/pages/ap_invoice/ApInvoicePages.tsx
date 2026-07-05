@@ -11,6 +11,8 @@ import {
   AlertTriangle,
   Clock,
   Trash2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
@@ -198,6 +200,13 @@ export default function ApInvoicePages() {
     }
   };
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, sourceFilter]);
+
   const filteredInvoices = useMemo(() => {
     return list.filter((invoice: ApInvoice) => {
       const matchesSearch =
@@ -212,6 +221,14 @@ export default function ApInvoicePages() {
       return matchesSearch && matchesStatus && matchesSource;
     });
   }, [list, searchTerm, statusFilter, sourceFilter]);
+
+  const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage);
+  const paginatedInvoices = useMemo(() => {
+    return filteredInvoices.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage
+    );
+  }, [filteredInvoices, currentPage]);
 
   const handleExport = async () => {
     try {
@@ -445,7 +462,7 @@ export default function ApInvoicePages() {
               )}
 
               {!loading &&
-                filteredInvoices.map((invoice) => (
+                paginatedInvoices.map((invoice) => (
                   <tr
                     key={invoice.id}
                     className="hover:bg-orange-50/40 transition-colors"
@@ -525,9 +542,45 @@ export default function ApInvoicePages() {
             </tbody>
           </table>
 
-          <div className="px-6 py-4 border-t bg-orange-50/40 text-sm text-gray-600">
-            Hiển thị <strong>{filteredInvoices.length}</strong> /{" "}
-            <strong>{list.length}</strong> hóa đơn
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-6 py-4 border-t bg-orange-50/40 gap-3 text-sm text-gray-600">
+            <p>
+              Hiển thị <strong>{filteredInvoices.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}–{Math.min(currentPage * itemsPerPage, filteredInvoices.length)}</strong> trên{" "}
+              <strong>{filteredInvoices.length}</strong> hóa đơn (Tổng cộng <strong>{list.length}</strong> bản ghi)
+            </p>
+
+            {filteredInvoices.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="h-8 w-8 flex items-center justify-center rounded border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`h-8 min-w-[2rem] px-2 rounded border text-xs font-semibold transition-colors ${
+                      currentPage === page
+                        ? "bg-orange-500 border-orange-500 text-white"
+                        : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="h-8 w-8 flex items-center justify-center rounded border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

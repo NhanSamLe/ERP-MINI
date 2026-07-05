@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Eye, Download, Plus, Search, CreditCard } from "lucide-react";
+import { Eye, Download, Plus, Search, CreditCard, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { getAllApPaymentsThunk } from "../../store/apPayment/apPayment.thunks";
 import { ApPayment } from "../../store/apPayment/apPayment.types";
@@ -30,6 +30,13 @@ export default function ApPaymentPages() {
     dispatch(getAllApPaymentsThunk());
   }, [dispatch]);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
+
   const filteredPayments = useMemo(() => {
     return list.filter((payment: ApPayment) => {
       const matchesSearch = payment.payment_no
@@ -42,6 +49,14 @@ export default function ApPaymentPages() {
       return matchesSearch && matchesStatus;
     });
   }, [list, searchTerm, statusFilter]);
+
+  const totalPages = Math.ceil(filteredPayments.length / itemsPerPage);
+  const paginatedPayments = useMemo(() => {
+    return filteredPayments.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage
+    );
+  }, [filteredPayments, currentPage]);
 
   const handleExport = async () => {
     try {
@@ -239,7 +254,7 @@ export default function ApPaymentPages() {
               )}
 
               {!loading &&
-                filteredPayments.map((payment) => (
+                paginatedPayments.map((payment) => (
                   <tr
                     key={payment.id}
                     className="hover:bg-orange-50/40 transition-colors"
@@ -286,9 +301,45 @@ export default function ApPaymentPages() {
           </table>
 
           {/* ================= FOOTER ================= */}
-          <div className="px-6 py-4 border-t bg-orange-50/40 text-sm text-gray-600">
-            Hiển thị <strong>{filteredPayments.length}</strong> trên{" "}
-            <strong>{list.length}</strong> phiếu chi
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-6 py-4 border-t bg-orange-50/40 gap-3 text-sm text-gray-600">
+            <p>
+              Hiển thị <strong>{filteredPayments.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}–{Math.min(currentPage * itemsPerPage, filteredPayments.length)}</strong> trên{" "}
+              <strong>{filteredPayments.length}</strong> phiếu chi (Tổng cộng <strong>{list.length}</strong> bản ghi)
+            </p>
+
+            {filteredPayments.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="h-8 w-8 flex items-center justify-center rounded border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`h-8 min-w-[2rem] px-2 rounded border text-xs font-semibold transition-colors ${
+                      currentPage === page
+                        ? "bg-orange-500 border-orange-500 text-white"
+                        : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="h-8 w-8 flex items-center justify-center rounded border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

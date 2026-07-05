@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { purchaseOrderController } from "../controllers/purchaseOrder.controller";
+import { signatureController } from "../controllers/signature.controller";
 import { authMiddleware } from "../../../core/middleware/auth";
 import { upload } from "../../../core/middleware/upload";
 import { Role } from "../../../core/types/enum";
@@ -94,6 +95,11 @@ router.put(
   authMiddleware([Role.PURCHASEMANAGER]),
   purchaseOrderController.approvePO,
 );
+router.post(
+  "/:id/sign",
+  authMiddleware([Role.PURCHASEMANAGER]),
+  signatureController.signPurchaseOrder,
+);
 router.put(
   "/:id/cancel",
   authMiddleware([Role.PURCHASEMANAGER]),
@@ -124,6 +130,12 @@ router.delete(
   "/:id",
   authMiddleware([Role.PURCHASE]),
   purchaseOrderController.deletedPO,
+);
+
+router.post(
+  "/:id/send-email",
+  authMiddleware([Role.PURCHASE, Role.PURCHASEMANAGER]),
+  purchaseOrderController.sendPOEmail,
 );
 
 export default router;

@@ -75,3 +75,6 @@ export function updateUserInfo(data: { full_name?: string; email?: string; phone
 export function changePassword(data: { oldPassword?: string; newPassword?: string }){
   return axiosClient.put("/auth/change-password", data)
 }
+export function setupSignaturePin(pin: string) {
+  return axiosClient.put("/auth/signature-pin", { pin });
+}

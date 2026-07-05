@@ -13,6 +13,7 @@ import {
   fetchPurchaseOrderByIdThunk,
   submitPurchaseOrderThunk,
   fetchPurchaseOrderAuditLogsThunk,
+  sendPurchaseOrderEmailThunk,
 } from "../store/purchaseOrder.thunks";
 import { PurchaseOrderLine } from "../store";
 import { toast } from "react-toastify";
@@ -43,7 +44,11 @@ import {
   Hash,
   ChevronRight,
   Layers,
+  PenTool,
 } from "lucide-react";
+import SignatureModal from "../components/SignatureModal";
+import { purchaseOrderApi } from "../api/purchaseOrder.api";
+import { usePurchaseOrderExport } from "../hooks/usePurchaseOrderExport";
 
 interface LineItem {
   id?: number;
@@ -67,6 +72,25 @@ interface LineItem {
 }
 
 /* ─── Small helpers ─── */
+const UOM_TRANSLATIONS: Record<string, string> = {
+  piece: "cái",
+  pcs: "cái",
+  box: "hộp",
+  pack: "gói",
+  bag: "bao/túi",
+  kilogram: "kg",
+  kg: "kg",
+  gram: "g",
+  liter: "lít",
+  meter: "mét",
+  set: "bộ",
+};
+
+function translateUom(uomName: string | null | undefined): string {
+  if (!uomName) return "—";
+  const key = uomName.trim().toLowerCase();
+  return UOM_TRANSLATIONS[key] || uomName;
+}
 function InfoRow({
   icon,
   label,
@@ -166,6 +190,43 @@ export default function ViewPurchaseOrderPage() {
   }, [id]);
 
   const finalPO = purchaseOrder;
+  const { exporting, exportToPDF } = usePurchaseOrderExport(finalPO as any);
+  const [isSignModalOpen, setIsSignModalOpen] = useState(false);
+  const [signing, setSigning] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
+
+  const handleSendEmail = async () => {
+    if (!finalPO) return;
+    setSendingEmail(true);
+    try {
+      await dispatch(sendPurchaseOrderEmailThunk(finalPO.id)).unwrap();
+      toast.success("Đã gửi email đơn đặt hàng cho nhà cung cấp thành công!");
+      refreshAuditLogs();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+  const handleSign = async (pin: string, signatureImage: string) => {
+    if (!finalPO) return;
+    setSigning(true);
+    try {
+      await purchaseOrderApi.sign(finalPO.id, pin, signatureImage);
+      toast.success("Ký duyệt đơn hàng thành công!");
+      setIsSignModalOpen(false);
+      dispatch(fetchPurchaseOrderByIdThunk(finalPO.id));
+      refreshAuditLogs();
+    } catch (error: any) {
+      const msg = error?.response?.data?.message || error?.message || "Ký duyệt đơn hàng thất bại";
+      toast.error(msg);
+      throw new Error(msg);
+    } finally {
+      setSigning(false);
+    }
+  };
+
   const selectedBranchName =
     branches.find((b) => b.id === finalPO?.branch_id)?.name || "";
 
@@ -348,6 +409,16 @@ export default function ViewPurchaseOrderPage() {
             </span>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
+            {finalPO && ["confirmed", "partially_received", "completed"].includes(finalPO.status) && (
+              <button
+                onClick={() => exportToPDF(supplierInfo)}
+                disabled={exporting}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-600 font-medium text-xs hover:bg-red-100 transition disabled:opacity-50"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                {exporting ? "Đang xuất..." : "Xuất PDF"}
+              </button>
+            )}
             {finalPO?.status && <StatusBadge status={finalPO.status} />}
             {canSubmit && (
               <>
@@ -370,11 +441,11 @@ export default function ViewPurchaseOrderPage() {
             {canApproveReject && (
               <>
                 <button
-                  onClick={() => setConfirmApprove(true)}
+                  onClick={() => setIsSignModalOpen(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 text-white font-medium text-xs shadow-sm hover:bg-emerald-600 transition"
                 >
-                  <CheckCircle className="w-3.5 h-3.5" />
-                  Phê duyệt
+                  <PenTool className="w-3.5 h-3.5" />
+                  Ký duyệt
                 </button>
                 <button
                   onClick={() => setConfirmReject(true)}
@@ -384,6 +455,16 @@ export default function ViewPurchaseOrderPage() {
                   Hủy
                 </button>
               </>
+            )}
+            {(finalPO?.status === "confirmed" || finalPO?.status === "sent") && (
+              <button
+                disabled={sendingEmail}
+                onClick={handleSendEmail}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-medium text-xs shadow-sm disabled:opacity-50 transition"
+              >
+                <Mail className="w-3.5 h-3.5" />
+                {sendingEmail ? "Đang gửi..." : finalPO.status === "sent" ? "Gửi lại Email" : "Gửi Email"}
+              </button>
             )}
             <button
               onClick={() => navigate("/purchase/orders")}
@@ -489,11 +570,11 @@ export default function ViewPurchaseOrderPage() {
                           </td>
                           <td className="px-4 py-3 text-center">
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-gray-100 text-sm font-semibold text-gray-700">
-                              {line.quantity}
+                              {Number(line.quantity || 0)}
                             </span>
                           </td>
                           <td className="px-4 py-3 text-left text-gray-600">
-                            {(line as any).uom?.name ?? "—"}
+                            {translateUom((line as any).uom?.name)}
                           </td>
                           <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
                             {formatVND(line.sale_price || 0)}
@@ -660,6 +741,43 @@ export default function ViewPurchaseOrderPage() {
                 </div>
               ))}
             </div>
+
+            {/* Verified Digital Signature */}
+            {finalPO && (finalPO as any).signatures?.length > 0 && (
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <SectionHeader
+                  icon={<PenTool className="w-4 h-4" />}
+                  title="Thông tin chữ ký điện tử xác thực"
+                  subtitle="Chứng thư số nội bộ mã hóa SHA-256"
+                />
+                <div className="p-5 flex flex-col md:flex-row items-center gap-6 bg-orange-50/10">
+                  <div className="border border-gray-200 bg-white p-3 rounded-lg shadow-inner flex items-center justify-center w-full md:w-auto">
+                    <img
+                      src={(finalPO as any).signatures[0].signature_image}
+                      alt="Signature"
+                      className="h-20 object-contain max-w-[200px]"
+                    />
+                  </div>
+                  <div className="flex-1 space-y-2 text-sm w-full">
+                    <div className="flex items-center gap-2 text-emerald-600 font-semibold">
+                      <CheckCircle className="w-4 h-4" />
+                      Tài liệu đã được ký số điện tử bảo mật thành công
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      <p className="font-semibold text-gray-700">Mã băm tài liệu (Document Hash):</p>
+                      <p className="font-mono bg-gray-50 p-2 rounded border border-gray-100 text-[10px] break-all select-all text-orange-600">
+                        {(finalPO as any).signatures[0].hash_value}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500">
+                      <p>Người ký: <span className="font-semibold text-gray-700">{(finalPO as any).signatures[0].signer?.full_name}</span></p>
+                      <p>Thời gian: <span className="font-semibold text-gray-700">{new Date((finalPO as any).signatures[0].signed_at).toLocaleString("vi-VN")}</span></p>
+                      <p className="col-span-2">IP Ký: <span className="font-semibold text-gray-700">{(finalPO as any).signatures[0].signer_ip || "N/A"}</span></p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Tracking */}
             {finalPO && (
@@ -1025,6 +1143,14 @@ export default function ViewPurchaseOrderPage() {
           />
         </div>
       </Modal>
+
+      <SignatureModal
+        visible={isSignModalOpen}
+        onClose={() => setIsSignModalOpen(false)}
+        onConfirm={handleSign}
+        title="Ký duyệt Đơn đặt hàng PO"
+        loading={signing}
+      />
     </div>
   );
 }

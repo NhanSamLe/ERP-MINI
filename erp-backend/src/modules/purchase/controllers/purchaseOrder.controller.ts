@@ -235,4 +235,18 @@ export const purchaseOrderController = {
       });
     }
   },
+
+  async sendPOEmail(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const user = (req as any).user;
+      const result = await purchaseOrderService.sendPOEmail(id, user);
+      return res.status(200).json(result);
+    } catch (error: any) {
+      return res.status(400).json({
+        success: false,
+        message: error.message || "Lỗi khi gửi email đơn mua hàng",
+      });
+    }
+  },
 };

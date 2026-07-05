@@ -304,7 +304,7 @@ export function DataTable<T extends { id: number }>({
 
       {/* Pagination */}
       {sortedData.length > 0 && (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-1">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-5 py-3.5 border-t bg-orange-50/20">
           <p className="text-xs text-gray-500">
             Hiển thị{" "}
             <span className="font-semibold text-gray-700">

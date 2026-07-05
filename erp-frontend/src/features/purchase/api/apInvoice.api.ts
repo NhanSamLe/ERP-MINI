@@ -128,4 +128,12 @@ export const apInvoiceApi = {
     const res = await axiosClient.get(`ap/invoices/${id}/audit-logs`);
     return res.data.data;
   },
+
+  sign: async (id: number, pin: string, signature_image: string): Promise<any> => {
+    const res = await axiosClient.post(`ap/invoices/${id}/sign`, {
+      pin,
+      signature_image,
+    });
+    return res.data;
+  },
 };

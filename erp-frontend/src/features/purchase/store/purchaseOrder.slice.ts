@@ -13,6 +13,7 @@ import {
   searchPurchaseOrdersThunk,
   bulkApprovePurchaseOrdersThunk,
   bulkCancelPurchaseOrdersThunk,
+  sendPurchaseOrderEmailThunk,
 } from "./purchaseOrder.thunks";
 import {
   PurchaseOrder,
@@ -167,6 +168,21 @@ export const purchaseOrderSlice = createSlice({
       })
       .addCase(bulkCancelPurchaseOrdersThunk.rejected, (state, action) => {
         state.bulkActionLoading = false;
+        state.error = action.payload as string;
+      })
+      // ================= SEND EMAIL =================
+      .addCase(sendPurchaseOrderEmailThunk.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(sendPurchaseOrderEmailThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        state.selectedPO = action.payload.po;
+        state.items = state.items.map((po) =>
+          po.id === action.payload.po.id ? action.payload.po : po
+        );
+      })
+      .addCase(sendPurchaseOrderEmailThunk.rejected, (state, action) => {
+        state.loading = false;
         state.error = action.payload as string;
       });
   },

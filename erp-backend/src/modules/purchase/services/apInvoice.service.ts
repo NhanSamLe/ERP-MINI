@@ -7,6 +7,8 @@ import {
   TaxRate,
   PaymentTerm,
   Currency,
+  DocumentSignature,
+  Uom,
 } from "../../../models";
 import { User } from "../../auth/models/user.model";
 import { Branch } from "../../company/models/branch.model";
@@ -138,6 +140,11 @@ export const apInvoiceService = {
               as: "product",
               attributes: ["id", "name", "image_url"],
             },
+            {
+              model: Uom,
+              as: "uom",
+              attributes: ["id", "name"],
+            },
           ],
         },
         {
@@ -152,6 +159,17 @@ export const apInvoiceService = {
             {
               model: PurchaseOrderLine,
               as: "lines",
+            },
+          ],
+        },
+        {
+          model: DocumentSignature,
+          as: "signatures",
+          include: [
+            {
+              model: User,
+              as: "signer",
+              attributes: ["id", "full_name", "email"],
             },
           ],
         },
@@ -243,11 +261,17 @@ export const apInvoiceService = {
 
     // Auto-calculate due_date from payment_term_id if not provided
     let resolvedDueDate = input.due_date;
-    if (!resolvedDueDate && (input as any).payment_term_id) {
-      resolvedDueDate = await this.calculateDueDate(
-        input.invoice_date,
-        (input as any).payment_term_id,
-      );
+    if (!resolvedDueDate) {
+      if ((input as any).payment_term_id) {
+        resolvedDueDate = await this.calculateDueDate(
+          input.invoice_date,
+          (input as any).payment_term_id,
+        );
+      } else {
+        const d = new Date(input.invoice_date);
+        d.setDate(d.getDate() + 30);
+        resolvedDueDate = d;
+      }
     }
 
     await sequelize.transaction(async (t: Transaction) => {
@@ -387,30 +411,26 @@ export const apInvoiceService = {
     const po = await PurchaseOrder.findByPk(poId, {
       include: [{ model: PurchaseOrderLine, as: "lines" }],
     });
-    if (!po) throw { status: 404, message: "Purchase Order not found" };
+    if (!po) throw { status: 404, message: "Không tìm thấy đơn mua hàng" };
 
     if (po.branch_id !== user.branch_id) {
       throw {
         status: 403,
-        message: "You cannot create invoice for another branch",
+        message: "Bạn không thể tạo hóa đơn cho chi nhánh khác",
       };
     }
 
-    if (
-      po.status !== "confirmed" &&
-      po.status !== "partially_received" &&
-      po.status !== "completed"
-    ) {
+    const allowedStatuses = ["confirmed", "sent", "supplier_accepted", "partially_received", "received", "completed"];
+    if (!allowedStatuses.includes(po.status)) {
       throw {
         status: 400,
-        message:
-          "Only CONFIRMED, PARTIALLY_RECEIVED or COMPLETED Purchase Orders can create AP Invoice",
+        message: "Đơn mua hàng chưa được phê duyệt hoặc đã bị hủy, không thể tạo hóa đơn",
       };
     }
 
     const poLines = (po as any).lines ?? [];
     if (!poLines.length) {
-      throw { status: 400, message: "Purchase Order has no line items" };
+      throw { status: 400, message: "Đơn mua hàng không có danh mục hàng hóa" };
     }
 
     // ── Validate: total invoiced amount must not exceed PO total ──────────
@@ -606,14 +626,14 @@ export const apInvoiceService = {
     if (po.branch_id !== user.branch_id) {
       throw {
         status: 403,
-        message: "You cannot create invoice for another branch",
+        message: "Bạn không thể tạo hóa đơn cho chi nhánh khác",
       };
     }
-    if (!["confirmed", "partially_received", "completed"].includes(po.status)) {
+    const allowedStatuses = ["confirmed", "sent", "supplier_accepted", "partially_received", "received", "completed"];
+    if (!allowedStatuses.includes(po.status)) {
       throw {
         status: 400,
-        message:
-          "Only CONFIRMED, PARTIALLY_RECEIVED or COMPLETED POs can create AP Invoice",
+        message: "Đơn mua hàng chưa được phê duyệt hoặc đã bị hủy, không thể tạo hóa đơn",
       };
     }
 

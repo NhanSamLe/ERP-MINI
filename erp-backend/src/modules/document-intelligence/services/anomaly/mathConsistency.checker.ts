@@ -53,7 +53,7 @@ export class MathConsistencyChecker {
     }
 
     // --- 2.3: Total mismatch ---
-    const rawComputedTotal = ocrData.subtotal + ocrData.tax_amount;
+    const rawComputedTotal = ocrData.subtotal - (ocrData.discount_amount ?? 0) + ocrData.tax_amount;
     const totalDiff = Math.abs(rawComputedTotal - ocrData.total);
 
     if (totalDiff > 0.01) {
