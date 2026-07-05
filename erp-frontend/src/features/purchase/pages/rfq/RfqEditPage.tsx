@@ -133,6 +133,11 @@ export default function RfqEditPage() {
             setPageLoading(false);
             return;
           }
+          if (!["draft", "received"].includes(data.status) || data.approval_status === "approved") {
+            toast.error("Không thể chỉnh sửa RFQ đã được duyệt hoặc không còn ở trạng thái nháp/nhận phản hồi!");
+            navigate("/purchase/rfqs");
+            return;
+          }
           setSupplierId(data.supplier_id ?? "");
           setRfqDate(data.rfq_date?.split("T")[0] ?? "");
           setValidUntil(data.valid_until?.split("T")[0] ?? "");
