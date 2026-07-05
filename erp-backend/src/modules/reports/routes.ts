@@ -23,9 +23,10 @@ const financeRoles = authMiddleware([
   Role.ADMIN,
   Role.CEO,
 ]);
+const summaryRoles = authMiddleware([Role.CEO, Role.BRANCH_MANAGER]);
 
-router.get("/sales", ReportController.getSalesSummary);
-router.get("/purchase", ReportController.getPurchaseSummary);
+router.get("/sales", summaryRoles, ReportController.getSalesSummary);
+router.get("/purchase", summaryRoles, ReportController.getPurchaseSummary);
 
 // Inventory reports
 router.get(

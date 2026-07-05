@@ -29,8 +29,9 @@ export default function SaleOrderEditPage() {
 
   const isOwner = order.created_by === user?.id;
   const isSales = user?.role?.code === 'SALES';
+  const isAdmin = user?.role?.code === 'ADMIN';
   const isDraft = order.approval_status === 'draft';
-  const allowEdit = isSales && isOwner && isDraft;
+  const allowEdit = isAdmin || (isSales && isOwner && isDraft);
   const normalizedOrder = {
     id: order.id,
     customer_id: order.customer_id,

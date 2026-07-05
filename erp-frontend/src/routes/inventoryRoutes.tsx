@@ -42,11 +42,19 @@ const inventoryRoutes: RouteObject[] = [
   },
   {
     path: "/inventory/warehouses/create",
-    element: <WarehouseForm mode="create" />,
+    element: (
+      <ProtectedRoute allowedRoles={["ADMIN"]}>
+        <WarehouseForm mode="create" />
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/inventory/warehouses/:id/edit",
-    element: <WarehouseForm mode="edit" />,
+    element: (
+      <ProtectedRoute allowedRoles={["ADMIN"]}>
+        <WarehouseForm mode="edit" />
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/inventory/locations",

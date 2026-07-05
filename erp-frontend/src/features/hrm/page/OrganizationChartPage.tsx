@@ -25,8 +25,11 @@ export default function OrganizationChartPage() {
 
   const roleCode = auth?.role?.code;
   const userBranchId = auth?.branch?.id;
+  const isAdmin = roleCode === "ADMIN";
   const isCEO = roleCode === "CEO";
   const isBranchManager = roleCode === "BRANCH_MANAGER";
+  // ADMIN xem được như CEO: có quyền chọn bất kỳ chi nhánh nào
+  const canSelectAnyBranch = isCEO || isAdmin;
 
   const [branches, setBranches] = useState<any[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState<number | undefined>(undefined);
@@ -38,7 +41,7 @@ export default function OrganizationChartPage() {
 
   useEffect(() => {
     const init = async () => {
-      if (isCEO) {
+      if (canSelectAnyBranch) {
         const res = await BranchAPI.list().then(r => r.data);
         setBranches(res);
         if (res.length > 0) {
@@ -49,7 +52,7 @@ export default function OrganizationChartPage() {
       }
     };
     init();
-  }, [isCEO, isBranchManager, userBranchId]);
+  }, [canSelectAnyBranch, isBranchManager, userBranchId]);
 
   useEffect(() => {
     if (!selectedBranchId) return;
@@ -111,7 +114,7 @@ export default function OrganizationChartPage() {
     return map[status] || status;
   };
 
-  if (!isCEO && !isBranchManager) {
+  if (!canSelectAnyBranch && !isBranchManager) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center">
         <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md text-center">
@@ -168,7 +171,7 @@ export default function OrganizationChartPage() {
               </div>
             </div>
 
-            {isCEO && (
+            {canSelectAnyBranch && (
               <div className="relative">
                 <select
                   className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2.5 pr-10 text-sm font-medium text-gray-700 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all cursor-pointer shadow-sm"

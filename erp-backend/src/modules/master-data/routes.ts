@@ -7,6 +7,8 @@ import * as UomConversionController from "./controllers/uomConversion.controller
 import * as paymentTermController from "./controllers/paymentTerm.controller";
 const router = Router();
 
+const writeRoles = authMiddleware(["ADMIN"]);
+
 // Danh sách tiền tệ trong DB
 router.get("/currencies", authMiddleware([]),currencyController.getCurrencies);
 
@@ -35,35 +37,35 @@ router.get("/taxs/active", authMiddleware([]), taxController.getActiveTaxRates);
 router.get("/taxes/:id", authMiddleware([]), taxController.getTaxById);       
 
  // Thêm thuế mới
-router.post("/taxes", authMiddleware([]), taxController.createTaxRate);   
+router.post("/taxes", writeRoles, taxController.createTaxRate);
 
  // Cập nhật thông tin thuế
-router.put("/taxes/:id", authMiddleware([]), taxController.updateTaxRate);       
+router.put("/taxes/:id", writeRoles, taxController.updateTaxRate);
 
 // Xóa (hoặc chuyển inactive)
-router.delete("/taxes/:id", authMiddleware([]), taxController.deleteTaxRate);     
+router.delete("/taxes/:id", writeRoles, taxController.deleteTaxRate);
 
 // 📌 UOM Conversion CRUD
 router.get("/uoms/conversions", authMiddleware([]), UomConversionController.getAllConversions);
 router.get("/uoms/conversions/search", authMiddleware([]), UomConversionController.searchConversions);
-router.post("/uoms/conversions", authMiddleware([]), UomConversionController.createConversion);
-router.put("/uoms/conversions/:id", authMiddleware([]), UomConversionController.updateConversion);
-router.delete("/uoms/conversions/:id", authMiddleware([]), UomConversionController.deleteConversion);
+router.post("/uoms/conversions", writeRoles, UomConversionController.createConversion);
+router.put("/uoms/conversions/:id", writeRoles, UomConversionController.updateConversion);
+router.delete("/uoms/conversions/:id", writeRoles, UomConversionController.deleteConversion);
 
 router.get("/uoms", authMiddleware([]), uomController.getAllUoms);
 router.get("/uoms/search", authMiddleware([]), uomController.searchUoms);
 router.get("/uoms/:id", authMiddleware([]), uomController.getUomById);
-router.post("/uoms", authMiddleware([]), uomController.createUom);
-router.put("/uoms/:id", authMiddleware([]), uomController.updateUom);
-router.delete("/uoms/:id", authMiddleware([]), uomController.deleteUom);
+router.post("/uoms", writeRoles, uomController.createUom);
+router.put("/uoms/:id", writeRoles, uomController.updateUom);
+router.delete("/uoms/:id", writeRoles, uomController.deleteUom);
 
 // Payment Terms
 router.get("/payment-terms/active", authMiddleware([]), paymentTermController.getActivePaymentTerms);
 router.get("/payment-terms", authMiddleware([]), paymentTermController.getAllPaymentTerms);
 router.get("/payment-terms/:id", authMiddleware([]), paymentTermController.getPaymentTermById);
-router.post("/payment-terms", authMiddleware([]), paymentTermController.createPaymentTerm);
-router.put("/payment-terms/:id", authMiddleware([]), paymentTermController.updatePaymentTerm);
-router.delete("/payment-terms/:id", authMiddleware([]), paymentTermController.deletePaymentTerm);
+router.post("/payment-terms", writeRoles, paymentTermController.createPaymentTerm);
+router.put("/payment-terms/:id", writeRoles, paymentTermController.updatePaymentTerm);
+router.delete("/payment-terms/:id", writeRoles, paymentTermController.deletePaymentTerm);
 // 📌 Payment Terms
 import { PaymentTerm } from "./models/paymentTerm.model";
 router.get("/payment-terms", authMiddleware([]), async (req, res) => {

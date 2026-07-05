@@ -1,20 +1,21 @@
 import { Router } from "express";
 import * as branchController from "./controllers/branch.controller";
 import { authMiddleware } from "../../core/middleware/auth";
+import { Role } from "../../core/types/enum";
 
 const router = Router();
 
-// Tất cả route chi nhánh cần đăng nhập: controller dùng req.user.company_id để
-// scope dữ liệu theo công ty. Thiếu authMiddleware → req.user undefined →
-// createBranch luôn trả 400 "User không có company_id".
-router.get("/",  authMiddleware([]), branchController.getAllBranches);
-router.get("/:id", authMiddleware([]), branchController.getBranch);
-router.post("/", authMiddleware([]), branchController.createBranch);
-router.put("/:id", authMiddleware([]), branchController.updateBranch);
-router.patch("/:id/deactivate", authMiddleware([]), branchController.deactivateBranch);
-router.patch("/:id/activate",   authMiddleware([]), branchController.activateBranch);
+// Chi nhánh là dữ liệu nhạy cảm (mã số thuế, tài khoản ngân hàng) — chỉ CEO/ADMIN quản lý.
+const branchRoles = authMiddleware([Role.CEO]);
+
+router.get("/",  branchRoles, branchController.getAllBranches);
+router.get("/:id", branchRoles, branchController.getBranch);
+router.post("/", branchRoles, branchController.createBranch);
+router.put("/:id", branchRoles, branchController.updateBranch);
+router.patch("/:id/deactivate", branchRoles, branchController.deactivateBranch);
+router.patch("/:id/activate",   branchRoles, branchController.activateBranch);
 // (tuỳ chọn) xóa cứng: sẽ chặn khi còn dữ liệu liên quan
-router.delete("/:id", authMiddleware([]), branchController.deleteBranch);
+router.delete("/:id", branchRoles, branchController.deleteBranch);
 
 
 export default router;
