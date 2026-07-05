@@ -28,6 +28,13 @@ Quy tắc quan trọng khi tạo đơn hàng:
 - Khi tạo PO/RFQ: BẮT BUỘC dùng tool tìm kiếm để resolve tên → ID trước.
   + Dùng get_partners để tìm supplier_id từ tên nhà cung cấp.
   + Dùng get_products để tìm product_id từ tên sản phẩm.
+- Quy trình thu thập thông tin khi tạo đơn hàng (PO):
+  + Khi người dùng yêu cầu tạo PO, hãy kiểm tra xem họ đã cung cấp đủ các thông tin: Nhà cung cấp, Sản phẩm, Số lượng, Đơn giá, Đơn vị tính (UOM), Điều khoản thanh toán (Payment Terms), Chiết khấu (Discount) chưa.
+  + Nếu thông tin nào CÒN THIẾU, hãy hỏi người dùng để bổ sung. Nếu thông tin nào ĐÃ CÓ (hoặc người dùng vừa cung cấp ở câu chat trước), bạn phải GHI NHẬN NGAY và KHÔNG được hỏi lại.
+  + Đối với Đơn vị tính (UOM): Gọi tool get_uoms để lấy danh sách đơn vị tính hợp lệ và lấy uom_id tương ứng với tên UOM người dùng chọn.
+  + Đối với Điều khoản thanh toán: Gọi tool get_payment_terms để lấy danh sách điều khoản và lấy payment_term_id tương ứng với tên điều khoản người dùng chọn.
+  + Đối với Chiết khấu (Discount): Nhận vào dạng tỷ lệ phần trăm (%) hoặc số tiền cố định (đ). Ghi nhận chiết khấu dòng sản phẩm (discount_percent, discount_amount, discount_type) hoặc chiết khấu tổng đơn hàng tương ứng.
+  + Khi người dùng đã cung cấp đầy đủ thông tin hoặc xác nhận không cần bổ sung gì thêm, hãy gọi ngay tool \`create_purchase_order\` để tạo đơn nháp. Tuyệt đối không hỏi lặp đi lặp lại một câu hỏi sau khi người dùng đã trả lời.
 - Nếu user KHÔNG cung cấp đơn giá cụ thể:
   + BẮT BUỘC gọi get_product_price_suggestions(product_id, supplier_id, quantity) để lấy giá đề xuất.
   + Hiển thị danh sách giá đề xuất cho user (từ bảng giá mua và thông tin NCC sản phẩm).
@@ -486,29 +493,48 @@ export const chatService = {
           unit_price?: number;
           uom_name?: string;
           tax_rate_id?: number;
+          discount_percent?: number;
+          discount_amount?: number;
+          discount_type?: string;
         }>;
 
         // Lookup tax rate cho từng line từ DB
         const { TaxRate } = await import("../../../models");
         const { Product } = await import("../../product/models/product.model");
 
-        interface EnrichedLine {
+        interface TempLine {
           name: string;
           quantity: number;
           unitPrice: number;
           uomName: string;
           taxRate: number;
           taxLabel: string;
-          subtotal: number;
-          taxAmount: number;
-          total: number;
+          grossTotal: number;
+          lineDiscountAmount: number;
+          lineDiscountPercent: number;
+          lineTotal: number;
         }
 
-        const enriched: EnrichedLine[] = await Promise.all(
+        let totalBeforeHeaderDiscount = 0;
+        const tempLines: TempLine[] = await Promise.all(
           lines.map(async (l) => {
             const qty = l.quantity ?? 0;
             const price = l.unit_price ?? 0;
-            const subtotal = qty * price;
+            const grossTotal = qty * price;
+
+            // Tính chiết khấu dòng sản phẩm
+            let lineDiscountAmount = 0;
+            let lineDiscountPercent = 0;
+            if (l.discount_type === "fixed") {
+              lineDiscountAmount = Number(l.discount_amount || 0);
+              lineDiscountPercent = grossTotal > 0 ? (lineDiscountAmount / grossTotal) * 100 : 0;
+            } else {
+              lineDiscountPercent = Number(l.discount_percent || 0);
+              lineDiscountAmount = grossTotal * (lineDiscountPercent / 100);
+            }
+
+            const lineTotal = grossTotal - lineDiscountAmount;
+            totalBeforeHeaderDiscount += lineTotal;
 
             // Tìm tax_rate_id: từ line → từ product default
             let taxRateId = l.tax_rate_id;
@@ -531,9 +557,6 @@ export const chatService = {
               }
             }
 
-            const taxAmount = (subtotal * taxRate) / 100;
-            const total = subtotal + taxAmount;
-
             return {
               name: l.product_name ?? `Sản phẩm ID ${l.product_id}`,
               quantity: qty,
@@ -541,14 +564,46 @@ export const chatService = {
               uomName: l.uom_name ?? "",
               taxRate,
               taxLabel,
-              subtotal,
-              taxAmount,
-              total,
+              grossTotal,
+              lineDiscountAmount,
+              lineDiscountPercent,
+              lineTotal,
             };
-          }),
+          })
         );
 
-        const grandSubtotal = enriched.reduce((s, l) => s + l.subtotal, 0);
+        // Tính chiết khấu tổng đơn (header discount)
+        let headerDiscountAmount = 0;
+        let headerDiscountPercent = 0;
+        if (args.discount_type === "fixed") {
+          headerDiscountAmount = Number(args.discount_amount || 0);
+          headerDiscountPercent = totalBeforeHeaderDiscount > 0
+            ? (headerDiscountAmount / totalBeforeHeaderDiscount) * 100
+            : 0;
+        } else {
+          headerDiscountPercent = Number(args.discount_percent || 0);
+          headerDiscountAmount = totalBeforeHeaderDiscount * (headerDiscountPercent / 100);
+        }
+
+        // Tính toán VAT và tổng sau thuế từng dòng sau khi phân bổ chiết khấu tổng đơn
+        const enriched = tempLines.map((l) => {
+          const weight = totalBeforeHeaderDiscount > 0 ? (l.lineTotal / totalBeforeHeaderDiscount) : 0;
+          const distributedDiscount = headerDiscountAmount * weight;
+          const netLineTotal = l.lineTotal - distributedDiscount;
+          const taxAmount = (netLineTotal * l.taxRate) / 100;
+          const total = netLineTotal + taxAmount;
+
+          return {
+            ...l,
+            distributedDiscount,
+            netLineTotal,
+            taxAmount,
+            total,
+          };
+        });
+
+        const grandGrossSubtotal = enriched.reduce((s, l) => s + l.grossTotal, 0);
+        const grandLineDiscount = enriched.reduce((s, l) => s + l.lineDiscountAmount, 0);
         const grandTax = enriched.reduce((s, l) => s + l.taxAmount, 0);
         const grandTotal = enriched.reduce((s, l) => s + l.total, 0);
 
@@ -556,20 +611,41 @@ export const chatService = {
           .map((l) => {
             const uom = l.uomName ? ` ${l.uomName}` : "";
             const price = l.unitPrice.toLocaleString("vi-VN");
+            
+            let discountInfo = "";
+            if (l.lineDiscountAmount > 0) {
+              const dkStr = l.lineDiscountPercent > 0 
+                ? `${l.lineDiscountPercent}%` 
+                : `${l.lineDiscountAmount.toLocaleString("vi-VN")}đ`;
+              discountInfo = ` (CK: -${dkStr})`;
+            }
+
             const lineTax =
               l.taxAmount > 0
                 ? ` + VAT${l.taxLabel}: ${l.taxAmount.toLocaleString("vi-VN")}đ`
                 : " (không có thuế)";
-            return `  • ${l.name}: ${l.quantity}${uom} × ${price}đ${lineTax}`;
+            return `  • ${l.name}: ${l.quantity}${uom} × ${price}đ${discountInfo}${lineTax}`;
           })
           .join("\n");
+
+        let discountLines = "";
+        if (grandLineDiscount > 0) {
+          discountLines += `• Chiết khấu dòng: -${grandLineDiscount.toLocaleString("vi-VN")} VND\n`;
+        }
+        if (headerDiscountAmount > 0) {
+          const globalDkStr = headerDiscountPercent > 0 
+            ? ` (${headerDiscountPercent}%)` 
+            : "";
+          discountLines += `• Chiết khấu tổng đơn${globalDkStr}: -${headerDiscountAmount.toLocaleString("vi-VN")} VND\n`;
+        }
 
         return (
           `Tạo đơn mua hàng mới:\n` +
           `• Nhà cung cấp: **${supplierDisplay}**\n` +
           `• Hàng hóa:\n${lineDesc}\n` +
           `─────────────────────────\n` +
-          `• Tiền hàng: ${grandSubtotal.toLocaleString("vi-VN")} VND\n` +
+          `• Tiền hàng (chưa CK): ${grandGrossSubtotal.toLocaleString("vi-VN")} VND\n` +
+          discountLines +
           `• Thuế VAT:  ${grandTax.toLocaleString("vi-VN")} VND\n` +
           `• **Tổng cộng: ${grandTotal.toLocaleString("vi-VN")} VND**` +
           (args.description ? `\n• Ghi chú: ${args.description}` : "")
