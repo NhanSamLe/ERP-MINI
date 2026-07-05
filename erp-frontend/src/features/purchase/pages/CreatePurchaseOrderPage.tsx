@@ -110,6 +110,9 @@ export default function CreatePurchaseOrderPage() {
   const conversions = useSelector(
     (state: RootState) => (state as any).conversion?.UomConversions ?? [],
   );
+  
+  const selectedCurrency = currencies.find((c) => String(c.id) === currencyId);
+  const selectedCurrencyName = selectedCurrency ? `${selectedCurrency.code} (${selectedCurrency.name})` : "";
 
   useEffect(() => {
     dispatch(loadPartners({ type: "supplier" }));
@@ -966,8 +969,9 @@ export default function CreatePurchaseOrderPage() {
                       Tiền tệ
                     </label>
                     <Select
-                      value={currencyId}
+                      value={currencyId || undefined}
                       onValueChange={handleCurrencyChange}
+                      defaultLabel={selectedCurrencyName}
                     >
                       <SelectTrigger className="h-9 text-sm">
                         <SelectValue placeholder="Chọn tiền tệ..." />

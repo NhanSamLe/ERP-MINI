@@ -326,10 +326,10 @@ export const rfqService = {
       where: { id, branch_id: user.branch_id },
     });
     if (!rfq) throw { status: 404, message: "RFQ not found" };
-    if (!["draft", "received"].includes(rfq.status)) {
+    if (!["draft", "received"].includes(rfq.status) || rfq.approval_status === "approved") {
       throw {
         status: 400,
-        message: "Only draft or received RFQ can be updated",
+        message: "Cannot update RFQ that is approved or not in draft/received status",
       };
     }
 

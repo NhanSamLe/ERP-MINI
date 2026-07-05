@@ -1047,7 +1047,7 @@ export default function EditPurchaseOrderPage() {
                       Tiền tệ
                     </label>
                     <Select
-                      value={currencyId}
+                      value={currencyId || undefined}
                       onValueChange={handleCurrencyChange}
                       defaultLabel={selectedCurrencyName}
                     >

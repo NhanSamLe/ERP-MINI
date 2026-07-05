@@ -14,11 +14,19 @@ export default function PublicVerifySignaturePage() {
   const [searched, setSearched] = useState(false);
   const [confirmingPO, setConfirmingPO] = useState(false);
 
+  const getApiUrl = () => {
+    if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+      return "http://localhost:8888/api";
+    }
+    return `${window.location.origin}/api`;
+  };
+
   const handleConfirmPO = async () => {
     if (!hash) return;
     setConfirmingPO(true);
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:5000/api"}/public/verify-signature/${hash}/confirm-po`);
+      const response = await axios.post(`${getApiUrl()}/public/verify-signature/${hash}/confirm-po`);
       if (response.data?.success) {
         setResult((prev: any) => ({
           ...prev,
@@ -44,7 +52,7 @@ export default function PublicVerifySignaturePage() {
 
     try {
       // Gọi API công cộng từ Backend
-      const response = await axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:5000/api"}/public/verify-signature/${hashValue}`);
+      const response = await axios.get(`${getApiUrl()}/public/verify-signature/${hashValue}`);
       if (response.data?.success && response.data?.data) {
         setResult(response.data.data);
       } else {
