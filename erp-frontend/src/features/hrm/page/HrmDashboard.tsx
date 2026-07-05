@@ -15,19 +15,12 @@ import { confirmAction } from "../../../utils/alert";
 import {
   Users,
   Layers,
-  FileText,
   FileCheck,
   Calendar,
-  Clock,
-  Sparkles,
-  Plus,
   RefreshCw,
   Check,
   X,
   ChevronRight,
-  Smile,
-  CheckCircle2,
-  XCircle,
 } from "lucide-react";
 import {
   BarChart,
@@ -40,6 +33,7 @@ import {
   Cell,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 
 function StatCard({
   label,
@@ -48,6 +42,7 @@ function StatCard({
   gradientClass,
   iconBgClass,
   onClick,
+  delay = 0,
 }: {
   label: string;
   value: string | number;
@@ -55,24 +50,26 @@ function StatCard({
   gradientClass: string;
   iconBgClass: string;
   onClick?: () => void;
+  delay?: number;
 }) {
   return (
     <div
       onClick={onClick}
-      className={`relative overflow-hidden bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex items-center gap-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-md group ${
+      style={{ animationDelay: `${delay}ms`, animationFillMode: "forwards" }}
+      className={`opacity-0 animate-fade-in-up relative overflow-hidden bg-white rounded-lg p-5 border border-gray-200 shadow-sm flex items-center gap-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-orange-200 group ${
         onClick ? "cursor-pointer" : ""
       }`}
     >
-      <div className={`absolute inset-0 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity duration-300 bg-gradient-to-br ${gradientClass}`} />
+      <div className={`absolute inset-0 opacity-[0.01] group-hover:opacity-[0.03] transition-opacity duration-300 bg-gradient-to-br ${gradientClass}`} />
       
       <div
-        className={`w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-sm transition-all duration-300 group-hover:scale-110 ${iconBgClass}`}
+        className={`w-10 h-10 rounded-md flex items-center justify-center text-white shadow-sm transition-all duration-300 group-hover:scale-105 ${iconBgClass}`}
       >
         {icon}
       </div>
-      <div className="z-10">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{label}</p>
-        <p className="text-2xl font-extrabold text-gray-900 mt-1 tracking-tight">{value}</p>
+      <div className="z-10 min-w-0">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider truncate">{label}</p>
+        <p className="text-xl font-bold text-gray-900 mt-1 tracking-tight truncate">{value}</p>
       </div>
     </div>
   );
@@ -85,7 +82,7 @@ export default function HrmDashboard() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequestDTO[]>([]);
-  const [attendanceToday, setAttendanceToday] = useState<AttendanceDTO[]>([]);
+  const [, setAttendanceToday] = useState<AttendanceDTO[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadData = async () => {
@@ -150,7 +147,6 @@ export default function HrmDashboard() {
     }
   };
 
-  // Get current month birthdays
   const currentMonth = new Date().getMonth() + 1;
   const birthdayEmployees = employees.filter((emp) => {
     if (!emp.birth_date) return false;
@@ -158,7 +154,6 @@ export default function HrmDashboard() {
     return bMonth === currentMonth;
   });
 
-  // Department chart data
   const deptChartData = departments.map((dept) => {
     const count = employees.filter((emp) => emp.department_id === dept.id).length;
     return {
@@ -167,87 +162,114 @@ export default function HrmDashboard() {
     };
   }).filter((item) => item.value > 0);
 
-  // Status counters
   const activeEmployees = employees.filter((emp) => emp.status === "active").length;
   const pendingLeaves = leaveRequests.filter((req) => req.status === "pending").length;
 
-  const colors = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4"];
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white/95 backdrop-blur-md border border-gray-200 rounded-lg p-2.5 shadow-lg text-xs">
+          <p className="font-semibold text-gray-900 mb-1 border-b border-gray-100 pb-1">{label}</p>
+          <div className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+            <span className="text-gray-500">Nhân sự:</span>
+            <span className="font-semibold text-gray-900">{payload[0].value} người</span>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50/50">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-sm font-medium text-slate-500">Đang tải bảng điều khiển nhân sự...</p>
+          <div className="w-6 h-6 border-2 border-orange-200 border-t-orange-500 rounded-full animate-spin" />
+          <p className="text-xs font-medium text-slate-500">Đang tải bảng điều khiển nhân sự...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/40 p-6 md:p-8 space-y-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-            Bảng điều khiển Nhân sự (HRM Portal)
-          </h1>
-          <p className="text-sm font-medium text-slate-500 mt-1.5">
-            Tổng quan nhân sự, phòng ban, tình trạng chấm công và nghỉ phép
-          </p>
+    <div className="page-container">
+      {/* Standard ERP Page Header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 bg-white rounded-lg shadow-sm">
+        <div className="flex items-center gap-2.5">
+          <span className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
+            <Users className="w-4 h-4 text-orange-500" />
+          </span>
+          <div>
+            <h1 className="text-base font-semibold text-gray-900">
+              Bảng điều khiển Nhân sự (HRM Portal)
+            </h1>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Tổng quan nhân sự, phòng ban, tình trạng chấm công và nghỉ phép
+            </p>
+          </div>
         </div>
-        <button
+        <Button
+          variant="outline"
+          size="sm"
+          leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
           onClick={loadData}
-          className="flex items-center justify-center gap-2 p-2.5 text-gray-600 hover:text-gray-900 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow transition"
+          loading={loading}
         >
-          <RefreshCw className="w-4 h-4" />
-          <span className="text-sm font-semibold">Tải lại dữ liệu</span>
-        </button>
+          Tải lại dữ liệu
+        </Button>
       </div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      {/* Stats row with staggered entry animation */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Tổng nhân sự hoạt động"
           value={activeEmployees}
-          icon={<Users className="w-5 h-5" />}
+          icon={<Users className="w-4 h-4" />}
           gradientClass="from-indigo-500 to-indigo-600"
-          iconBgClass="bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-indigo-100"
+          iconBgClass="bg-indigo-500 shadow-sm"
           onClick={() => navigate("/hrm/employees")}
+          delay={0}
         />
         <StatCard
           label="Số phòng ban"
           value={departments.length}
-          icon={<Layers className="w-5 h-5" />}
+          icon={<Layers className="w-4 h-4" />}
           gradientClass="from-emerald-500 to-emerald-600"
-          iconBgClass="bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-emerald-100"
+          iconBgClass="bg-emerald-500 shadow-sm"
           onClick={() => navigate("/hrm/department")}
+          delay={75}
         />
         <StatCard
           label="Chờ duyệt nghỉ phép"
           value={pendingLeaves}
-          icon={<FileCheck className="w-5 h-5" />}
+          icon={<FileCheck className="w-4 h-4" />}
           gradientClass="from-amber-500 to-amber-600"
-          iconBgClass="bg-gradient-to-br from-amber-500 to-amber-600 shadow-amber-100"
+          iconBgClass="bg-amber-500 shadow-sm"
           onClick={() => navigate("/hrm/leave-requests")}
+          delay={150}
         />
         <StatCard
           label="Chức vụ công việc"
           value={positions.length}
-          icon={<Calendar className="w-5 h-5" />}
+          icon={<Calendar className="w-4 h-4" />}
           gradientClass="from-sky-500 to-sky-600"
-          iconBgClass="bg-gradient-to-br from-sky-500 to-sky-600 shadow-sky-100"
+          iconBgClass="bg-sky-500 shadow-sm"
           onClick={() => navigate("/hrm/position")}
+          delay={225}
         />
       </div>
 
       {/* Department Distribution Chart + Birthday and Shortcut list */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Headcount by department chart */}
-        <Card className="lg:col-span-2 border-gray-100 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md flex flex-col">
-          <CardHeader className="pb-4 border-b border-gray-50 bg-gray-50/20">
+        <Card 
+          className="lg:col-span-2 border-gray-200 shadow-sm overflow-hidden bg-white flex flex-col opacity-0 animate-fade-in-up"
+          style={{ animationDelay: "150ms", animationFillMode: "forwards" }}
+        >
+          <CardHeader className="pb-3 border-b border-gray-100 bg-gray-50/40">
             <div>
-              <CardTitle className="text-base font-semibold text-gray-800">
+              <CardTitle className="text-sm font-semibold text-gray-800">
                 Phân bổ nhân viên theo Phòng ban
               </CardTitle>
               <CardDescription className="text-xs text-gray-400 mt-0.5">
@@ -255,37 +277,37 @@ export default function HrmDashboard() {
               </CardDescription>
             </div>
           </CardHeader>
-          <CardContent className="p-6 flex-1 flex flex-col justify-center">
+          <CardContent className="p-4 flex-1 flex flex-col justify-center">
             {deptChartData.length === 0 ? (
-              <div className="h-48 flex items-center justify-center text-gray-400 italic text-sm">
+              <div className="h-48 flex items-center justify-center text-gray-400 italic text-xs">
                 Không có dữ liệu
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart
                   data={deptChartData}
-                  margin={{ top: 20, right: 8, left: 8, bottom: 20 }}
+                  margin={{ top: 10, right: 8, left: 8, bottom: 5 }}
                 >
                   <defs>
                     <linearGradient id="purpleGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.9}/>
-                      <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.2}/>
+                      <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.85}/>
+                      <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.15}/>
                     </linearGradient>
                     <linearGradient id="emeraldGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#10b981" stopOpacity={0.9}/>
-                      <stop offset="100%" stopColor="#10b981" stopOpacity={0.2}/>
+                      <stop offset="0%" stopColor="#10b981" stopOpacity={0.85}/>
+                      <stop offset="100%" stopColor="#10b981" stopOpacity={0.15}/>
                     </linearGradient>
                     <linearGradient id="indigoGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#6366f1" stopOpacity={0.9}/>
-                      <stop offset="100%" stopColor="#6366f1" stopOpacity={0.2}/>
+                      <stop offset="0%" stopColor="#6366f1" stopOpacity={0.85}/>
+                      <stop offset="100%" stopColor="#6366f1" stopOpacity={0.15}/>
                     </linearGradient>
                     <linearGradient id="amberGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.9}/>
-                      <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.2}/>
+                      <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.85}/>
+                      <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.15}/>
                     </linearGradient>
                     <linearGradient id="roseGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.9}/>
-                      <stop offset="100%" stopColor="#f43f5e" stopOpacity={0.2}/>
+                      <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.85}/>
+                      <stop offset="100%" stopColor="#f43f5e" stopOpacity={0.15}/>
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -301,16 +323,8 @@ export default function HrmDashboard() {
                     tickLine={false}
                     axisLine={false}
                   />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "rgba(255, 255, 255, 0.96)",
-                      borderRadius: "12px",
-                      border: "1px solid #e2e8f0",
-                      boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)",
-                    }}
-                    formatter={(v: number) => [v, "Nhân sự"]}
-                  />
-                  <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={28}>
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={20} isAnimationActive={true} animationDuration={1000}>
                     {deptChartData.map((entry, index) => {
                       const grads = [
                         "url(#purpleGrad)",
@@ -329,36 +343,39 @@ export default function HrmDashboard() {
         </Card>
 
         {/* Right side: Birthdays & Shortcuts */}
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-5">
           {/* Birthdays widget */}
-          <Card className="border-gray-100 shadow-sm bg-white/80 backdrop-blur-md overflow-hidden flex flex-col flex-1">
-            <CardHeader className="pb-4 border-b border-gray-50 bg-gray-50/20">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                <CardTitle className="text-base font-semibold text-gray-800">
-                  Sinh nhật tháng {currentMonth} 🎂
-                </CardTitle>
-              </div>
+          <Card 
+            className="border-gray-200 shadow-sm bg-white overflow-hidden flex flex-col flex-1 opacity-0 animate-fade-in-up"
+            style={{ animationDelay: "225ms", animationFillMode: "forwards" }}
+          >
+            <CardHeader className="pb-3 border-b border-gray-100 bg-gray-50/40">
+              <CardTitle className="text-sm font-semibold text-gray-800">
+                Sinh nhật tháng {currentMonth} 🎂
+              </CardTitle>
               <CardDescription className="text-xs text-gray-400 mt-0.5">
                 Các thành viên có ngày sinh trong tháng này
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-5 flex-1 max-h-[160px] overflow-y-auto">
+            <CardContent className="p-4 flex-1 max-h-[160px] overflow-y-auto">
               {birthdayEmployees.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-4 text-gray-400 text-xs italic">
-                  <Smile className="w-6 h-6 text-gray-300 mb-1" />
                   Không có sinh nhật trong tháng này
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {birthdayEmployees.map((emp) => (
                     <div
                       key={emp.id}
-                      className="flex items-center justify-between text-xs p-2.5 rounded-xl bg-slate-50 border border-slate-100"
+                      className="group flex items-center justify-between text-xs p-2.5 rounded-lg bg-slate-50 border border-slate-100 hover:border-orange-200 hover:bg-orange-50/20 transition-all duration-200"
                     >
-                      <span className="font-semibold text-slate-800">{emp.full_name}</span>
-                      <span className="text-slate-500 font-mono">
+                      <span className="font-semibold text-slate-800 flex items-center gap-1.5">
+                        <span className="inline-block transform group-hover:scale-125 transition-transform duration-300">🎂</span>
+                        {emp.full_name}
+                      </span>
+                      <span className="text-slate-500 font-mono flex items-center gap-1.5">
                         {emp.birth_date ? new Date(emp.birth_date).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" }) : "—"}
+                        <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 animate-balloon-float">🎈</span>
                       </span>
                     </div>
                   ))}
@@ -368,40 +385,43 @@ export default function HrmDashboard() {
           </Card>
 
           {/* Quick shortcuts widget */}
-          <Card className="border-gray-100 shadow-sm bg-white/80 backdrop-blur-md overflow-hidden">
-            <CardHeader className="pb-3 border-b border-gray-50 bg-gray-50/20">
-              <CardTitle className="text-sm font-bold text-gray-700 uppercase tracking-wider">
+          <Card 
+            className="border-gray-200 shadow-sm bg-white overflow-hidden opacity-0 animate-fade-in-up"
+            style={{ animationDelay: "300ms", animationFillMode: "forwards" }}
+          >
+            <CardHeader className="pb-2.5 border-b border-gray-100 bg-gray-50/40">
+              <CardTitle className="text-xs font-bold text-gray-500 uppercase tracking-widest">
                 Phím tắt nghiệp vụ HR
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-4 space-y-2">
+            <CardContent className="p-3 space-y-1.5">
               <button
                 onClick={() => navigate("/hrm/employees")}
-                className="w-full flex items-center justify-between text-xs p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 transition border border-slate-100 text-left font-semibold text-slate-700"
+                className="group w-full flex items-center justify-between text-xs p-2.5 rounded-md bg-slate-50 hover:bg-orange-50/50 hover:border-orange-200 transition-all border border-slate-100 text-left font-medium text-slate-700"
               >
                 <span>Thêm/Quản lý nhân viên</span>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
               </button>
               <button
                 onClick={() => navigate("/hrm/attendance")}
-                className="w-full flex items-center justify-between text-xs p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 transition border border-slate-100 text-left font-semibold text-slate-700"
+                className="group w-full flex items-center justify-between text-xs p-2.5 rounded-md bg-slate-50 hover:bg-orange-50/50 hover:border-orange-200 transition-all border border-slate-100 text-left font-medium text-slate-700"
               >
                 <span>Bảng chấm công tập trung</span>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
               </button>
               <button
                 onClick={() => navigate("/hrm/payroll")}
-                className="w-full flex items-center justify-between text-xs p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 transition border border-slate-100 text-left font-semibold text-slate-700"
+                className="group w-full flex items-center justify-between text-xs p-2.5 rounded-md bg-slate-50 hover:bg-orange-50/50 hover:border-orange-200 transition-all border border-slate-100 text-left font-medium text-slate-700"
               >
                 <span>Tính lương & Kỳ lương</span>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
               </button>
               <button
                 onClick={() => navigate("/hrm/payroll-configs")}
-                className="w-full flex items-center justify-between text-xs p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 transition border border-slate-100 text-left font-semibold text-slate-700"
+                className="group w-full flex items-center justify-between text-xs p-2.5 rounded-md bg-slate-50 hover:bg-orange-50/50 hover:border-orange-200 transition-all border border-slate-100 text-left font-medium text-slate-700"
               >
                 <span>Thiết lập công thức lương</span>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
               </button>
             </CardContent>
           </Card>
@@ -409,34 +429,39 @@ export default function HrmDashboard() {
       </div>
 
       {/* Pending Leave Requests list */}
-      <Card className="border-gray-100 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">
-        <CardHeader className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/20">
+      <Card 
+        className="border-gray-200 shadow-sm overflow-hidden bg-white opacity-0 animate-fade-in-up"
+        style={{ animationDelay: "375ms", animationFillMode: "forwards" }}
+      >
+        <CardHeader className="px-5 py-3 border-b border-gray-100 flex items-center justify-between bg-gray-50/40">
           <div>
-            <CardTitle className="text-base font-semibold text-gray-800">
+            <CardTitle className="text-sm font-semibold text-gray-800">
               Yêu cầu nghỉ phép chờ duyệt
             </CardTitle>
             <CardDescription className="text-xs text-gray-400 mt-0.5">
               Phê duyệt nhanh các đơn đăng ký nghỉ phép của nhân sự
             </CardDescription>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="xs"
             onClick={() => navigate("/hrm/leave-requests")}
-            className="flex items-center gap-1 text-xs text-indigo-600 font-semibold hover:text-indigo-800 transition"
+            rightIcon={<ChevronRight className="w-3 h-3" />}
           >
-            Xem tất cả <ChevronRight className="w-3.5 h-3.5" />
-          </button>
+            Xem tất cả
+          </Button>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50/80 text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-gray-100">
                 <tr>
-                  <th className="px-6 py-3 text-left">Nhân viên</th>
-                  <th className="px-6 py-3 text-left">Từ ngày</th>
-                  <th className="px-6 py-3 text-left">Đến ngày</th>
-                  <th className="px-6 py-3 text-left">Loại phép</th>
-                  <th className="px-6 py-3 text-left">Lý do</th>
-                  <th className="px-6 py-3 text-center">Hành động</th>
+                  <th className="px-4 py-2.5 text-left">Nhân viên</th>
+                  <th className="px-4 py-2.5 text-left">Từ ngày</th>
+                  <th className="px-4 py-2.5 text-left">Đến ngày</th>
+                  <th className="px-4 py-2.5 text-left">Loại phép</th>
+                  <th className="px-4 py-2.5 text-left">Lý do</th>
+                  <th className="px-4 py-2.5 text-center">Hành động</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -444,7 +469,7 @@ export default function HrmDashboard() {
                   <tr>
                     <td
                       colSpan={6}
-                      className="px-6 py-8 text-center text-gray-400 italic text-xs"
+                      className="px-4 py-8 text-center text-gray-400 italic text-xs"
                     >
                       Hiện không có yêu cầu nghỉ phép nào cần phê duyệt
                     </td>
@@ -454,46 +479,56 @@ export default function HrmDashboard() {
                     .filter((r) => r.status === "pending")
                     .slice(0, 5)
                     .map((req) => (
-                      <tr key={req.id} className="hover:bg-slate-50/30 transition-colors">
-                        <td className="px-6 py-4 font-semibold text-gray-800">
+                      <tr key={req.id} className="table-row-hover">
+                        <td className="px-4 py-3 font-semibold text-gray-800 text-xs">
                           {req.employee?.full_name || "Nhân viên"}
-                          <span className="block text-[10px] text-gray-400 font-mono">
+                          <span className="block text-[10px] text-gray-400 font-mono font-normal">
                             {req.employee?.emp_code}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-gray-600 font-mono text-xs">
+                        <td className="px-4 py-3 text-gray-600 font-mono text-xs">
                           {req.start_date}
                         </td>
-                        <td className="px-6 py-4 text-gray-600 font-mono text-xs">
+                        <td className="px-4 py-3 text-gray-600 font-mono text-xs">
                           {req.end_date}
                         </td>
-                        <td className="px-6 py-4 text-gray-600 capitalize">
-                          {req.leave_type === "annual"
-                            ? "Nghỉ phép năm"
-                            : req.leave_type === "sick"
-                            ? "Nghỉ bệnh"
-                            : req.leave_type === "unpaid"
-                            ? "Nghỉ không lương"
-                            : "Thai sản"}
+                        <td className="px-4 py-3 text-xs">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md font-semibold text-[10px] border ${
+                            req.leave_type === "annual"
+                              ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                              : req.leave_type === "sick"
+                              ? "bg-rose-50 text-rose-700 border-rose-200"
+                              : req.leave_type === "unpaid"
+                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                              : "bg-teal-50 text-teal-700 border-teal-200"
+                          }`}>
+                            {req.leave_type === "annual"
+                              ? "Nghỉ phép năm"
+                              : req.leave_type === "sick"
+                              ? "Nghỉ bệnh"
+                              : req.leave_type === "unpaid"
+                              ? "Nghỉ không lương"
+                              : "Thai sản"}
+                          </span>
                         </td>
-                        <td className="px-6 py-4 text-gray-500 italic max-w-xs truncate">
+                        <td className="px-4 py-3 text-gray-500 italic text-xs max-w-xs truncate">
                           {req.reason || "Không có lý do"}
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center justify-center gap-2">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-center gap-1">
                             <button
                               onClick={() => handleApproveLeave(req.id!, req.employee?.full_name || "")}
-                              className="p-1 text-emerald-600 hover:text-white hover:bg-emerald-500 rounded-lg border border-emerald-200 transition"
+                              className="p-1.5 rounded-md text-emerald-600 hover:bg-emerald-50 transition-colors"
                               title="Duyệt"
                             >
-                              <Check className="w-4 h-4" />
+                              <Check className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => handleRejectLeave(req.id!, req.employee?.full_name || "")}
-                              className="p-1 text-rose-600 hover:text-white hover:bg-rose-500 rounded-lg border border-rose-200 transition"
+                              className="p-1.5 rounded-md text-rose-600 hover:bg-rose-50 transition-colors"
                               title="Từ chối"
                             >
-                              <X className="w-4 h-4" />
+                              <X className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </td>
