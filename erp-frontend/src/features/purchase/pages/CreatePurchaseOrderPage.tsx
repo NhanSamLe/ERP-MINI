@@ -245,6 +245,9 @@ export default function CreatePurchaseOrderPage() {
       finalHeaderDiscountAmount = sumLineTotal * (headDiscountPct / 100);
     }
 
+    const selectedCurrency = currencies.find((c) => String(c.id) === currencyId);
+    const isVnd = !selectedCurrency || selectedCurrency.code === "VND";
+
     updatedLines.forEach(l => {
       const qty = l.quantity_in_stock_uom || l.quantity;
       const gross = (l.sale_price || 0) * qty;
@@ -260,13 +263,24 @@ export default function CreatePurchaseOrderPage() {
       const netLineTotal = lineTotalBeforeHeader - distributedDiscount;
       const taxAmount = netLineTotal * (l.tax_rate / 100);
       
-      l.tax_amount = taxAmount;
-      l.line_total = netLineTotal + taxAmount;
+      if (isVnd) {
+        l.tax_amount = Math.round(taxAmount);
+        l.line_total = Math.round(netLineTotal) + l.tax_amount;
+      } else {
+        l.tax_amount = taxAmount;
+        l.line_total = netLineTotal + taxAmount;
+      }
     });
 
-    const finalBeforeTax = sumLineTotal - finalHeaderDiscountAmount;
-    const finalTax = updatedLines.reduce((sum, l) => sum + l.tax_amount, 0);
-    const finalAfterTax = finalBeforeTax + finalTax;
+    let finalBeforeTax = sumLineTotal - finalHeaderDiscountAmount;
+    let finalTax = updatedLines.reduce((sum, l) => sum + (l.tax_amount || 0), 0);
+    let finalAfterTax = finalBeforeTax + finalTax;
+
+    if (isVnd) {
+      finalBeforeTax = Math.round(finalBeforeTax);
+      finalTax = Math.round(finalTax);
+      finalAfterTax = Math.round(finalAfterTax);
+    }
 
     setTotalBeforeTax(finalBeforeTax);
     setTotalOrderTax(finalTax);

@@ -25,7 +25,7 @@ export function convertToBase(rate: number | string, base: string): string {
 
 export function formatVND(value: number | null | undefined): string {
   if (value == null || value === 0) return "0 ₫";
-  const num = Number(value);
+  const num = Math.round(Number(value));
   return num.toLocaleString("vi-VN") + " ₫";
 }
 
@@ -41,11 +41,13 @@ export function formatMoney(
 
   if (Number.isNaN(num)) return "—";
 
+  const maxDecimals = currency.toUpperCase() === "VND" ? 0 : 2;
+
   // Format số theo locale VN, append currency code (không dùng symbol để nhất quán đa tiền tệ)
   return `${new Intl.NumberFormat(locale, {
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(num)} ${currency}`;
+    maximumFractionDigits: maxDecimals,
+  }).format(Math.round(num))} ${currency}`;
 }
 
 export function formatNumber(
