@@ -15,18 +15,35 @@ export interface GlAccountPayload {
 }
 
 export async function getAllGlAccounts(companyId: number, search?: string) {
-  const where: any = { company_id: companyId };
+  const where: any = {
+    [Op.or]: [
+      { company_id: companyId },
+      { company_id: null }
+    ]
+  };
   if (search) {
-    where[Op.or] = [
-      { code: { [Op.like]: `%${search}%` } },
-      { name: { [Op.like]: `%${search}%` } },
+    where[Op.and] = [
+      {
+        [Op.or]: [
+          { code: { [Op.like]: `%${search}%` } },
+          { name: { [Op.like]: `%${search}%` } },
+        ]
+      }
     ];
   }
   return GlAccount.findAll({ where, order: [["code", "ASC"]] });
 }
 
 export async function getGlAccountById(id: number, companyId: number) {
-  const row = await GlAccount.findOne({ where: { id, company_id: companyId } });
+  const row = await GlAccount.findOne({
+    where: {
+      id,
+      [Op.or]: [
+        { company_id: companyId },
+        { company_id: null }
+      ]
+    }
+  });
   if (!row) throw new Error("GL Account not found");
   return row;
 }
