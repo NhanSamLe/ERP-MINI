@@ -519,6 +519,27 @@ const writePurchaseTools: ITool[] = [
           type: "string",
           description: "Ghi chú đơn hàng",
         },
+        payment_term_id: {
+          type: "number",
+          description: "ID điều khoản thanh toán (tùy chọn) — tra cứu từ get_payment_terms",
+        },
+        payment_term_name: {
+          type: "string",
+          description: "Tên điều khoản thanh toán (tùy chọn) — dùng để hiển thị",
+        },
+        discount_percent: {
+          type: "number",
+          description: "Tỷ lệ chiết khấu tổng đơn (%) (tùy chọn)",
+        },
+        discount_amount: {
+          type: "number",
+          description: "Số tiền chiết khấu tổng đơn (tùy chọn)",
+        },
+        discount_type: {
+          type: "string",
+          enum: ["percentage", "fixed"],
+          description: "Loại chiết khấu tổng đơn: percentage (phần trăm) hoặc fixed (tiền cố định) (tùy chọn)",
+        },
         lines: {
           type: "array",
           description: "Danh sách sản phẩm",
@@ -541,11 +562,24 @@ const writePurchaseTools: ITool[] = [
               },
               uom_id: {
                 type: "number",
-                description: "ID đơn vị tính (tùy chọn)",
+                description: "ID đơn vị tính (tùy chọn) — tra cứu từ get_uoms",
               },
               tax_rate_id: {
                 type: "number",
                 description: "ID thuế suất (tùy chọn)",
+              },
+              discount_percent: {
+                type: "number",
+                description: "Tỷ lệ chiết khấu của dòng này (%) (tùy chọn)",
+              },
+              discount_amount: {
+                type: "number",
+                description: "Số tiền chiết khấu của dòng này (tùy chọn)",
+              },
+              discount_type: {
+                type: "string",
+                enum: ["percentage", "fixed"],
+                description: "Loại chiết khấu dòng: percentage hoặc fixed (tùy chọn)",
               },
             },
           },
@@ -561,6 +595,10 @@ const writePurchaseTools: ITool[] = [
           branch_id: context.branchId, // ← lấy từ JWT của user
           // order_date không truyền — backend tự set new Date() để tránh AI điền ngày sai
           ...(args.description && { description: args.description }),
+          ...(args.payment_term_id && { payment_term_id: args.payment_term_id }),
+          ...(args.discount_percent !== undefined && { discount_percent: args.discount_percent }),
+          ...(args.discount_amount !== undefined && { discount_amount: args.discount_amount }),
+          ...(args.discount_type && { discount_type: args.discount_type }),
           // Chỉ gửi fields API cần, bỏ display-only fields
           lines: (args.lines ?? []).map((l: any) => ({
             product_id: l.product_id,
@@ -568,6 +606,9 @@ const writePurchaseTools: ITool[] = [
             unit_price: l.unit_price,
             ...(l.uom_id && { uom_id: l.uom_id }),
             ...(l.tax_rate_id && { tax_rate_id: l.tax_rate_id }),
+            ...(l.discount_percent !== undefined && { discount_percent: l.discount_percent }),
+            ...(l.discount_amount !== undefined && { discount_amount: l.discount_amount }),
+            ...(l.discount_type && { discount_type: l.discount_type }),
           })),
         },
         context,
@@ -693,3 +734,42 @@ const writePurchaseTools: ITool[] = [
 
 // Export tất cả tools purchase (read + write)
 purchaseTools.push(...writePurchaseTools);
+
+const extraReadTools: ITool[] = [
+  {
+    name: "get_uoms",
+    description: "Truy vấn danh sách đơn vị tính (UOM) trong hệ thống để lấy ID và Code.",
+    parameters: {
+      type: "object",
+      properties: {}
+    },
+    async execute(args: any, context: ToolContext): Promise<ToolResult> {
+      try {
+        const { Uom } = await import("../../master-data/models/uom.model");
+        const uoms = await Uom.findAll();
+        return { success: true, data: uoms };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    }
+  },
+  {
+    name: "get_payment_terms",
+    description: "Truy vấn danh sách điều khoản thanh toán (Payment Terms) trong hệ thống.",
+    parameters: {
+      type: "object",
+      properties: {}
+    },
+    async execute(args: any, context: ToolContext): Promise<ToolResult> {
+      try {
+        const { PaymentTerm } = await import("../../master-data/models/paymentTerm.model");
+        const terms = await PaymentTerm.findAll();
+        return { success: true, data: terms };
+      } catch (err: any) {
+        return { success: false, error: err.message };
+      }
+    }
+  }
+];
+
+purchaseTools.push(...extraReadTools);
