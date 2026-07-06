@@ -110,8 +110,8 @@ export const praService = {
     if (Number(po.supplier_id) !== Number(payload.supplier_id)) {
       throw { status: 400, message: "Đơn mua hàng không khớp với Nhà cung cấp đã chọn" };
     }
-    if (!["confirmed", "partially_received", "completed"].includes(po.status)) {
-      throw { status: 400, message: "Đơn mua hàng phải ở trạng thái Đã xác nhận, Đã nhận hàng một phần hoặc Đã hoàn thành" };
+    if (!["confirmed", "received", "partially_received", "completed"].includes(po.status)) {
+      throw { status: 400, message: "Đơn mua hàng phải ở trạng thái Đã xác nhận, Đã nhận hàng, Đã nhận hàng một phần hoặc Đã hoàn thành" };
     }
 
     // Validate AP Invoice
@@ -189,8 +189,8 @@ export const praService = {
     if (Number(po.supplier_id) !== Number(payload.supplier_id)) {
       throw { status: 400, message: "Đơn mua hàng không khớp với Nhà cung cấp đã chọn" };
     }
-    if (!["confirmed", "partially_received", "completed"].includes(po.status)) {
-      throw { status: 400, message: "Đơn mua hàng phải ở trạng thái Đã xác nhận, Đã nhận hàng một phần hoặc Đã hoàn thành" };
+    if (!["confirmed", "received", "partially_received", "completed"].includes(po.status)) {
+      throw { status: 400, message: "Đơn mua hàng phải ở trạng thái Đã xác nhận, Đã nhận hàng, Đã nhận hàng một phần hoặc Đã hoàn thành" };
     }
 
     // Validate AP Invoice
