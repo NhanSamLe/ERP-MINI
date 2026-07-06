@@ -20,19 +20,15 @@ const PartnerList: FC = () => {
       : [];
 
   const [search, setSearch] = useState("");
-  const [type, setType] = useState<PartnerType | "">("");
   const [page, setPage] = useState(1);
   const pageSize = 10;
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  useEffect(() => {
-    const t = searchParams.get("type") as PartnerType | null;
-    if (t === "customer" || t === "supplier" || t === "internal") {
-      setType(t);
-    } else {
-      setType("");
-    }
-  }, [searchParams]);
+  const typeParam = searchParams.get("type");
+  const type: PartnerType | "" =
+    typeParam === "customer" || typeParam === "supplier" || typeParam === "internal"
+      ? typeParam
+      : "";
 
   useEffect(() => {
     dispatch(
@@ -66,7 +62,7 @@ const PartnerList: FC = () => {
 
   const clearFilters = () => {
     setSearch("");
-    setType("");
+    setSearchParams({});
   };
 
   const activeFiltersCount = [search, type].filter(Boolean).length;
@@ -164,7 +160,16 @@ const PartnerList: FC = () => {
           <select
             className="px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
             value={type}
-            onChange={(e) => setType(e.target.value as PartnerType | "")}
+            onChange={(e) => {
+              const val = e.target.value;
+              const params = new URLSearchParams(searchParams);
+              if (val) {
+                params.set("type", val);
+              } else {
+                params.delete("type");
+              }
+              setSearchParams(params);
+            }}
           >
             <option value="">Tất cả loại đối tác</option>
             <option value="customer">Khách hàng</option>
