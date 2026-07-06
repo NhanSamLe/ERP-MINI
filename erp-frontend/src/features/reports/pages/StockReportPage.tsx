@@ -309,7 +309,7 @@ export default function StockReportPage() {
                           )}
                         </td>
                         <td className="p-3 text-right font-mono">
-                          {Number(item.quantity).toFixed(2)}
+                          {Number(item.quantity)}
                         </td>
                         <td className="p-3 text-right font-mono text-gray-500 text-xs">
                           {item.unit_cost != null
@@ -440,7 +440,7 @@ export default function StockReportPage() {
                           {line.lot?.lot_no ?? "—"}
                         </td>
                         <td className="p-3 text-right font-mono">
-                          {Number(line.quantity).toFixed(2)}
+                          {Number(line.quantity)}
                         </td>
                       </tr>
                     ))}
