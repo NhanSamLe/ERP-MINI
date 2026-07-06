@@ -44,7 +44,14 @@ export const scoringRuleTableConfig = (
       key: "value",
       label: "Giá trị",
       width: "130px",
-      render: (v) => v || "-",
+      render: (v, item) => {
+        if (v === null || v === undefined || v === "") return "-";
+        const signal = signals.find((s) => s.key === item.field);
+        if (signal?.type === "number" && !isNaN(Number(v))) {
+          return Number(v).toLocaleString("vi-VN");
+        }
+        return v;
+      },
     },
     {
       key: "score",
@@ -52,6 +59,7 @@ export const scoringRuleTableConfig = (
       sortable: true,
       width: "80px",
       align: "right",
+      render: (v) => (v != null ? Number(v).toLocaleString("vi-VN") : "-"),
     },
     {
       key: "is_active",
