@@ -18,6 +18,18 @@ const RETURN_TYPE_OPTIONS = [
   { value: "replacement", label: "Đổi hàng (Đổi trả hàng)" },
 ];
 
+const PO_STATUS_MAP: Record<string, string> = {
+  draft: "Nháp",
+  waiting_approval: "Chờ duyệt",
+  confirmed: "Đã xác nhận",
+  sent: "Đã gửi",
+  supplier_accepted: "NCC chấp nhận",
+  partially_received: "Đã nhận hàng một phần",
+  received: "Đã nhận hàng",
+  completed: "Hoàn thành",
+  cancelled: "Đã hủy",
+};
+
 export default function PraCreatePage() {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
@@ -155,7 +167,7 @@ export default function PraCreatePage() {
               <option value="">— Chọn Đơn mua hàng —</option>
               {eligiblePOs.map((po) => (
                 <option key={po.id} value={po.id}>
-                  {po.po_no} — {po.status}
+                  {po.po_no} — {PO_STATUS_MAP[po.status] || po.status}
                 </option>
               ))}
             </select>

@@ -451,7 +451,7 @@ export default function ViewStockMovePage() {
                         </td>
                         <td className="py-3.5 px-6 text-right">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-extrabold text-xs font-mono">
-                            {line.quantity}
+                            {Number(line.quantity)}
                           </span>
                         </td>
                         <td className="py-3.5 px-6 text-slate-600 text-xs font-semibold">
