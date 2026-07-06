@@ -274,7 +274,7 @@ export default function PurchaseReturnEditPage() {
   }
 
   const eligiblePOs = purchaseOrders.filter((po) =>
-    ["confirmed", "partially_received", "completed"].includes(po.status),
+    ["confirmed", "received", "partially_received", "completed"].includes(po.status),
   );
 
   const poLines: PurchaseOrderLine[] = (selectedPO as any)?.lines ?? [];

@@ -89,7 +89,7 @@ export default function PraEditPage() {
 
   // Max return amount calculation
   const eligiblePOs = purchaseOrders.filter((po) =>
-    ["confirmed", "partially_received", "completed"].includes(po.status),
+    ["confirmed", "received", "partially_received", "completed"].includes(po.status),
   );
   const selectedPoObj = eligiblePOs.find((p) => p.id === purchaseOrderId);
   // PRA object has ap_invoice_id
@@ -239,7 +239,7 @@ export default function PraEditPage() {
             )}
             {purchaseOrders.length > 0 && eligiblePOs.length === 0 && (
               <p className="text-xs text-amber-600 mt-1">
-                Không có đơn mua hàng nào đủ điều kiện. Đơn mua hàng phải ở trạng thái Đã xác nhận / Đã nhận hàng một phần / Đã hoàn thành.
+                Không có đơn mua hàng nào đủ điều kiện. Đơn mua hàng phải ở trạng thái Đã xác nhận / Đã nhận hàng / Đã nhận hàng một phần / Đã hoàn thành.
               </p>
             )}
           </div>
