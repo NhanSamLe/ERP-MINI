@@ -16,6 +16,10 @@ const readRoles = authMiddleware([
   Role.PURCHASE,
   Role.SALESMANAGER,
   Role.PURCHASEMANAGER,
+  Role.ACCOUNT,
+  Role.CHACC,
+  Role.ADMIN,
+  Role.CEO,
 ]);
 const writeRoles = authMiddleware([Role.SALESMANAGER, Role.PURCHASEMANAGER]);
 const deleteRoles = authMiddleware([Role.ADMIN]);

@@ -322,23 +322,40 @@ export function DataTable<T extends { id: number }>({
               <ChevronLeft className="w-4 h-4" />
             </button>
 
-            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-              const page = i + 1;
-              return (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={[
-                    "h-8 min-w-[2rem] px-2 rounded border text-sm font-medium transition-colors",
-                    currentPage === page
-                      ? "bg-orange-500 border-orange-500 text-white"
-                      : "border-gray-300 text-gray-600 hover:bg-gray-50",
-                  ].join(" ")}
-                >
-                  {page}
-                </button>
-              );
-            })}
+            {(() => {
+              const maxButtons = 5;
+              let startPage = 1;
+              let endPage = totalPages;
+
+              if (totalPages > maxButtons) {
+                const half = Math.floor(maxButtons / 2);
+                startPage = Math.max(1, currentPage - half);
+                endPage = startPage + maxButtons - 1;
+
+                if (endPage > totalPages) {
+                  endPage = totalPages;
+                  startPage = Math.max(1, endPage - maxButtons + 1);
+                }
+              }
+
+              return Array.from({ length: endPage - startPage + 1 }, (_, i) => {
+                const page = startPage + i;
+                return (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={[
+                      "h-8 min-w-[2rem] px-2 rounded border text-sm font-medium transition-colors",
+                      currentPage === page
+                        ? "bg-orange-500 border-orange-500 text-white"
+                        : "border-gray-300 text-gray-600 hover:bg-gray-50",
+                    ].join(" ")}
+                  >
+                    {page}
+                  </button>
+                );
+              });
+            })()}
 
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}

@@ -439,13 +439,13 @@ export default function InvoiceGeneratorPage() {
     }
 
     const canvas = await html2canvas(element, {
-      scale: 1.5, // Giảm tỷ lệ canvas xuống 1.5 để nhẹ hơn mà vẫn cực kỳ sắc nét
+      scale: 2.5, // Tăng tỷ lệ canvas lên 2.5 để nét chữ cực kỳ sắc nét cho OCR đọc chuẩn
       useCORS: true,
       logging: false,
     });
 
-    // Chuyển sang định dạng JPEG với chất lượng nén 0.75 để tối ưu hóa dung lượng (giảm 95% kích thước so với PNG)
-    const imgData = canvas.toDataURL("image/jpeg", 0.75);
+    // Chuyển sang định dạng JPEG với chất lượng nén cao 0.95 để giữ nguyên độ sắc nét của chữ số
+    const imgData = canvas.toDataURL("image/jpeg", 0.95);
     const pdf = new jsPDF({
       orientation: "portrait",
       unit: "mm",
