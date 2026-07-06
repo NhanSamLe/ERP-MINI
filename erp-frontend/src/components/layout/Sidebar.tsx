@@ -413,7 +413,6 @@ const menuItems: MenuItem[] = [
     path: "/partners",
     allowedRoles: ["PURCHASE", "ADMIN", "PURCHASEMANAGER"],
     subItems: [
-      { name: "Tất cả đối tác", path: "/partners", allowedRoles: ["ADMIN"] },
       {
         name: "Khách hàng",
         path: "/partners?type=customer",
@@ -517,7 +516,20 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
     );
   };
 
-  const isSubItemActive = (path: string) => path && location.pathname === path;
+  const isSubItemActive = (path: string) => {
+    if (!path) return false;
+    if (path.includes("?")) {
+      const [pathName, queryStr] = path.split("?");
+      if (location.pathname !== pathName) return false;
+      const locationParams = new URLSearchParams(location.search);
+      const targetParams = new URLSearchParams(queryStr);
+      for (const [key, value] of targetParams.entries()) {
+        if (locationParams.get(key) !== value) return false;
+      }
+      return true;
+    }
+    return location.pathname === path;
+  };
 
   return (
     <aside className="w-64 h-full bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 flex flex-col overflow-hidden">
@@ -583,7 +595,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
                   <div className="mt-0.5 ml-3 pl-4 border-l border-gray-150 dark:border-slate-700 space-y-0.5">
                     {filteredSubs.map((sub) => {
                       const targetPath =
-                        sub.name === "Chart"
+                        sub.name === "Sơ đồ tổ chức"
                           ? defaultBranchId
                             ? `/hrm/organization/${defaultBranchId}`
                             : "/company/branches"
