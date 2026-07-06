@@ -1226,11 +1226,7 @@ export default function DocumentUploadPage() {
                       <th className="px-4 py-3 text-left font-semibold text-gray-700">
                         Sản phẩm hệ thống
                       </th>
-                      {selectedPoId && (
-                        <th className="px-4 py-3 text-left font-semibold text-gray-700">
-                          Dòng PO
-                        </th>
-                      )}
+
                       <th className="px-4 py-3 text-left font-semibold text-gray-700">
                         Đơn vị tính
                       </th>
@@ -1255,7 +1251,7 @@ export default function DocumentUploadPage() {
                     {editItems.length === 0 && (
                       <tr>
                         <td
-                          colSpan={selectedPoId ? 9 : 8}
+                          colSpan={8}
                           className="px-4 py-8 text-center text-gray-400"
                         >
                           Không có mặt hàng nào
@@ -1298,46 +1294,7 @@ export default function DocumentUploadPage() {
                             ))}
                           </select>
                         </td>
-                        {selectedPoId && (
-                          <td className="px-4 py-3 w-64 min-w-[200px]">
-                            <select
-                              value={item.po_line_id ?? ""}
-                              onChange={(e) => {
-                                const val = e.target.value ? Number(e.target.value) : null;
-                                if (val) {
-                                  const poLine = poLines.find((pl) => pl.id === val);
-                                  if (poLine) {
-                                    setEditItems((prev) =>
-                                      prev.map((item, i) =>
-                                        i === idx
-                                          ? {
-                                              ...item,
-                                              po_line_id: val,
-                                              uom_id: poLine.uom_id ?? null,
-                                              tax_rate_id: poLine.tax_rate_id ?? null,
-                                              unit_price: Number(poLine.unit_price ?? 0),
-                                              discount_percent: Number(poLine.discount_percent ?? 0),
-                                              discount_amount: Number(poLine.discount_amount ?? 0),
-                                            }
-                                          : item
-                                      )
-                                    );
-                                  }
-                                } else {
-                                  updateItem(idx, "po_line_id", null);
-                                }
-                              }}
-                              className="w-full px-2 py-1 border rounded focus:ring-1 focus:ring-orange-500 outline-none text-sm bg-white"
-                            >
-                              <option value="">-- Chọn dòng PO --</option>
-                              {poLines.map((pl) => (
-                                <option key={pl.id} value={pl.id}>
-                                  Dòng #{pl.id} - {pl.description || "PO Line"}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                        )}
+
                         <td className="px-4 py-3 w-36 min-w-[120px]">
                           <select
                             value={item.uom_id ?? ""}
