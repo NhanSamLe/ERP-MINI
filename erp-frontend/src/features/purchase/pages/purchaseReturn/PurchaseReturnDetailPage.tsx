@@ -74,9 +74,9 @@ export default function PurchaseReturnDetailPage() {
       (ret.lines ?? []).map((l: any) => ({
         line_id: l.id,
         productName: l.product?.name ?? `Sản phẩm #${l.product_id}`,
-        qty_returned: l.quantity_returned,
+        qty_returned: Number(l.quantity_returned || 0),
         uomName: translateUom(l.uom?.name),
-        qty_confirmed: l.quantity_returned,
+        qty_confirmed: Number(l.quantity_returned || 0),
         qty_rejected: 0,
       }))
     );
