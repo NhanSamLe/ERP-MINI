@@ -4,7 +4,6 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   getApPaymentByIdThunk,
   submitApPaymentThunk,
-  approveApPaymentThunk,
   rejectApPaymentThunk,
   getApPaymentAvailableAmountThunk,
   getApPaymentUnpaidInvoicesThunk,
@@ -24,7 +23,10 @@ import {
   History,
   Mail,
   Phone,
+  PenTool,
+  FileText,
 } from "lucide-react";
+import { useApPaymentExport } from "../../hooks/useApPaymentExport";
 import { toast } from "react-toastify";
 import { getErrorMessage } from "@/utils/ErrorHelper";
 import { Roles } from "@/types/enum";
@@ -34,6 +36,8 @@ import {
   ApPaymentStatus,
 } from "../../constants/purchaseStatus.enum";
 import { AuditLogCard, StatusBadge } from "../../components/Common";
+import SignatureModal from "@/features/purchase/components/SignatureModal";
+import { apPaymentApi } from "../../api/apPayment.api";
 
 export default function ViewApPaymentPage() {
   const { id } = useParams();
@@ -42,13 +46,17 @@ export default function ViewApPaymentPage() {
 
   const { selected: payment, loading } = useAppSelector((s) => s.apPayment);
   const { user } = useAppSelector((s) => s.auth);
+  const { exporting, exportToPDF } = useApPaymentExport(payment as any);
 
   const [submitting, setSubmitting] = useState(false);
   const [openReject, setOpenReject] = useState(false);
   const [openSubmitModal, setOpenSubmitModal] = useState(false);
-  const [openApproveModal, setOpenApproveModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [openAllocateModal, setOpenAllocateModal] = useState(false);
+
+  // Digital Signature Modal States
+  const [isSignModalOpen, setIsSignModalOpen] = useState(false);
+  const [signing, setSigning] = useState(false);
 
   // ✅ Phase 2: Audit log state
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
@@ -58,17 +66,14 @@ export default function ViewApPaymentPage() {
     if (id) dispatch(getApPaymentByIdThunk(Number(id)));
   }, [id, dispatch]);
 
-  // ✅ Phase 2 & 3: Load audit logs (extracted to reusable fn)
   const refreshAuditLogs = async () => {
     if (!id) return;
     try {
       setLoadingAuditLogs(true);
-      const logs = await dispatch(
-        getApPaymentAuditLogsThunk(Number(id)),
-      ).unwrap();
-      setAuditLogs(logs);
+      const res = await dispatch(getApPaymentAuditLogsThunk(Number(id))).unwrap();
+      setAuditLogs(res);
     } catch {
-      // silent — audit log không critical
+      /* silent */
     } finally {
       setLoadingAuditLogs(false);
     }
@@ -76,13 +81,15 @@ export default function ViewApPaymentPage() {
 
   useEffect(() => {
     refreshAuditLogs();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-32">
-        <Loader2 className="w-12 h-12 animate-spin text-blue-500 mb-4" />
-        <p className="text-gray-500 font-medium">Đang tải phiếu chi...</p>
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-2">
+        <Loader2 className="w-10 h-10 animate-spin text-orange-500" />
+        <p className="text-gray-500 text-sm font-medium">
+          Đang tải chi tiết phiếu chi...
+        </p>
       </div>
     );
   }
@@ -94,22 +101,31 @@ export default function ViewApPaymentPage() {
   }
 
   /* ================= PERMISSIONS ================= */
+  const isPaymentManager = user?.role.code === Roles.CHACC;
+  const isPaymentStaff   = user?.role.code === Roles.ACCOUNT;
+  const isPaymentCreator = payment.created_by === user?.id;
+  const isPaymentSameBranch = user?.branch?.id === (payment as any).branch_id;
+
+  // Nhân viên chỉ gửi duyệt khi chính mình tạo; Quản lý gửi được bất kỳ phiếu nào cùng chi nhánh
   const canSubmit =
-    user?.role.code === Roles.ACCOUNT &&
     payment.approval_status === ApprovalStatus.DRAFT &&
     payment.status === ApPaymentStatus.DRAFT &&
-    payment.created_by === user.id;
+    (
+      (isPaymentStaff && isPaymentCreator) ||
+      isPaymentManager
+    );
 
   const canApproveReject =
     user?.role.code === Roles.CHACC &&
-    payment.approval_status === ApprovalStatus.WAITING_APPROVAL &&
-    payment.created_by !== user.id;
+    payment.approval_status === ApprovalStatus.WAITING_APPROVAL;
 
   const canAllocate =
-    user?.role.code === Roles.ACCOUNT &&
     payment.status === ApPaymentStatus.POSTED &&
     payment.approval_status === ApprovalStatus.APPROVED &&
-    payment.created_by === user.id;
+    (
+      (isPaymentStaff && isPaymentCreator) ||
+      isPaymentManager
+    );
 
   /* ================= HANDLERS ================= */
   const handleSubmit = async () => {
@@ -119,6 +135,7 @@ export default function ViewApPaymentPage() {
       toast.success("Đã gửi duyệt phiếu chi");
       setOpenSubmitModal(false);
       refreshAuditLogs();
+      dispatch(getApPaymentByIdThunk(payment.id));
     } catch (e) {
       toast.error(getErrorMessage(e));
     } finally {
@@ -126,17 +143,20 @@ export default function ViewApPaymentPage() {
     }
   };
 
-  const handleApprove = async () => {
+  const handleSign = async (pin: string, signatureImage: string) => {
+    setSigning(true);
     try {
-      setSubmitting(true);
-      await dispatch(approveApPaymentThunk(payment.id)).unwrap();
-      toast.success("Đã phê duyệt phiếu chi");
-      setOpenApproveModal(false);
+      await apPaymentApi.sign(payment.id, pin, signatureImage);
+      toast.success("Ký duyệt phiếu chi thành công!");
+      setIsSignModalOpen(false);
+      dispatch(getApPaymentByIdThunk(payment.id));
       refreshAuditLogs();
-    } catch (e) {
-      toast.error(getErrorMessage(e));
+    } catch (error: any) {
+      const msg = error?.response?.data?.message || error?.message || "Ký duyệt phiếu chi thất bại";
+      toast.error(msg);
+      throw new Error(msg);
     } finally {
-      setSubmitting(false);
+      setSigning(false);
     }
   };
 
@@ -154,6 +174,7 @@ export default function ViewApPaymentPage() {
       setOpenReject(false);
       setRejectReason("");
       refreshAuditLogs();
+      dispatch(getApPaymentByIdThunk(payment.id));
     } catch (e) {
       toast.error(getErrorMessage(e));
     } finally {
@@ -204,11 +225,11 @@ export default function ViewApPaymentPage() {
             {canApproveReject && (
               <>
                 <button
-                  onClick={() => setOpenApproveModal(true)}
+                  onClick={() => setIsSignModalOpen(true)}
                   className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 text-white font-semibold text-sm shadow-md hover:bg-emerald-600"
                 >
-                  <CheckCircle className="w-4 h-4" />
-                  Duyệt
+                  <PenTool className="w-4 h-4" />
+                  Ký duyệt
                 </button>
 
                 <button
@@ -229,6 +250,20 @@ export default function ViewApPaymentPage() {
               >
                 <CreditCard className="w-4 h-4" />
                 Phân bổ cho hóa đơn
+              </button>
+            )}
+            {payment && ["posted", "completed"].includes(payment.status) && (
+              <button
+                disabled={exporting}
+                onClick={() => exportToPDF("vi")}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-red-200 bg-red-50 text-red-600 font-semibold text-sm shadow-sm hover:bg-red-100 transition disabled:opacity-60"
+              >
+                {exporting ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-red-600" />
+                ) : (
+                  <FileText className="w-4 h-4 text-red-600" />
+                )}
+                {exporting ? "Đang xuất..." : "Xuất PDF"}
               </button>
             )}
 
@@ -362,6 +397,47 @@ export default function ViewApPaymentPage() {
           empty="Đang chờ duyệt"
         />
       </div>
+
+      {/* Verified Digital Signature */}
+      {payment && payment.signatures && payment.signatures.length > 0 && (
+        <div className="bg-white rounded-2xl border-2 border-gray-100 p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
+              <PenTool className="w-5 h-5 text-orange-600" />
+            </div>
+            <h2 className="text-lg font-bold text-gray-900">
+              Thông tin chữ ký số điện tử xác thực
+            </h2>
+          </div>
+          <div className="p-5 flex flex-col md:flex-row items-center gap-6 bg-orange-50/10 rounded-xl border border-orange-100">
+            <div className="border border-gray-200 bg-white p-3 rounded-lg shadow-inner flex items-center justify-center w-full md:w-auto">
+              <img
+                src={payment.signatures[0].signature_image}
+                alt="Signature"
+                className="h-20 object-contain max-w-[200px]"
+              />
+            </div>
+            <div className="flex-1 space-y-2 text-sm w-full">
+              <div className="flex items-center gap-2 text-emerald-600 font-semibold">
+                <CheckCircle className="w-4 h-4" />
+                Phiếu chi đã được ký số điện tử bảo mật thành công bởi Kế toán trưởng
+              </div>
+              <div className="text-xs text-gray-500">
+                <p className="font-semibold text-gray-700">Mã băm tài liệu (Document Hash):</p>
+                <p className="font-mono bg-gray-50 p-2 rounded border border-gray-100 text-[10px] break-all select-all text-orange-600">
+                  {payment.signatures[0].hash_value}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500">
+                <p>Người ký: <span className="font-semibold text-gray-700">{payment.signatures[0].signer?.full_name}</span></p>
+                <p>Thời gian: <span className="font-semibold text-gray-700">{new Date(payment.signatures[0].signed_at).toLocaleString("vi-VN")}</span></p>
+                <p className="col-span-2">IP Ký: <span className="font-semibold text-gray-700">{payment.signatures[0].signer_ip || "N/A"}</span></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ================= REJECTION INFO ================= */}
       {payment.approval_status === ApprovalStatus.REJECTED &&
         payment.reject_reason && (
@@ -421,47 +497,6 @@ export default function ViewApPaymentPage() {
         </div>
       )}
 
-      {/* ================= APPROVE MODAL ================= */}
-      {openApproveModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-emerald-600" />
-              </div>
-              <h3 className="text-lg font-bold text-gray-900">
-                Phê duyệt phiếu chi này?
-              </h3>
-            </div>
-
-            <p className="text-sm text-gray-600 mb-6">
-              Hành động này sẽ phê duyệt phiếu chi và cho phép xử lý tiếp theo.
-            </p>
-
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setOpenApproveModal(false)}
-                className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50"
-              >
-                Hủy
-              </button>
-
-              <button
-                disabled={submitting}
-                onClick={handleApprove}
-                className={`px-4 py-2 rounded-xl font-semibold shadow-md transition ${
-                  submitting
-                    ? "bg-emerald-300 cursor-not-allowed"
-                    : "bg-emerald-500 hover:bg-emerald-600 text-white"
-                }`}
-              >
-                Xác nhận duyệt
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ================= REJECT MODAL ================= */}
       {openReject && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -470,155 +505,67 @@ export default function ViewApPaymentPage() {
               <div className="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center">
                 <XCircle className="w-6 h-6 text-red-600" />
               </div>
-              <div>
-                <h3 className="text-lg font-bold text-gray-900">
-                  Từ chối phiếu chi
-                </h3>
-                <p className="text-xs text-gray-500">
-                  Hành động này không thể hoàn tác
-                </p>
-              </div>
+              <h3 className="text-lg font-bold text-gray-900">
+                Từ chối phiếu chi?
+              </h3>
             </div>
 
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Lý do <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              rows={4}
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Vui lòng giải thích lý do từ chối phiếu chi này..."
-              className="w-full border border-gray-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-red-400 focus:border-transparent outline-none resize-none"
-            />
-            {rejectReason.trim() === "" && (
-              <p className="text-xs text-red-500 mt-1">Lý do là bắt buộc</p>
-            )}
+            <div className="space-y-4 mb-6">
+              <p className="text-sm text-gray-600">
+                Nhập lý do từ chối phê duyệt phiếu chi này:
+              </p>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Nhập lý do từ chối..."
+                className="w-full p-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
+                rows={3}
+              />
+            </div>
 
-            <div className="flex justify-end gap-3 mt-5">
+            <div className="flex justify-end gap-3">
               <button
                 onClick={() => {
                   setOpenReject(false);
                   setRejectReason("");
                 }}
-                className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition"
+                className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50"
               >
                 Hủy
               </button>
               <button
                 disabled={submitting || !rejectReason.trim()}
                 onClick={handleReject}
-                className={`px-4 py-2 rounded-xl font-semibold shadow-md transition flex items-center gap-2 ${
+                className={`px-4 py-2 rounded-xl font-semibold shadow-md transition ${
                   submitting || !rejectReason.trim()
-                    ? "bg-red-200 cursor-not-allowed text-white"
+                    ? "bg-red-350 cursor-not-allowed text-white"
                     : "bg-red-500 hover:bg-red-600 text-white"
                 }`}
               >
-                {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                {submitting ? "Đang từ chối..." : "Xác nhận từ chối"}
+                {submitting ? "Đang xử lý..." : "Từ chối"}
               </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* ================= ALLOCATE MODAL ================= */}
       {openAllocateModal && (
         <AllocateModal
-          paymentId={payment.id}
+          payment={payment}
           onClose={() => setOpenAllocateModal(false)}
-          onSuccess={refreshAuditLogs}
+          refreshPayment={() => dispatch(getApPaymentByIdThunk(payment.id))}
+          refreshAuditLogs={refreshAuditLogs}
         />
       )}
 
-      {/* ================= ALLOCATION STATUS PANEL ================= */}
-      {(payment as any).allocation_status && (
-        <div className="bg-white rounded-2xl border-2 border-gray-100 p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-900">
-              Trạng thái phân bổ
-            </h2>
-            <span
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
-                (payment as any).allocation_status === "fully_allocated"
-                  ? "bg-green-100 text-green-700"
-                  : (payment as any).allocation_status === "partially_allocated"
-                    ? "bg-amber-100 text-amber-700"
-                    : "bg-red-100 text-red-600"
-              }`}
-            >
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${
-                  (payment as any).allocation_status === "fully_allocated"
-                    ? "bg-green-500"
-                    : (payment as any).allocation_status ===
-                        "partially_allocated"
-                      ? "bg-amber-500"
-                      : "bg-red-500"
-                }`}
-              />
-              {(payment as any).allocation_status === "fully_allocated"
-                ? "Phân bổ toàn bộ"
-                : (payment as any).allocation_status === "partially_allocated"
-                  ? "Phân bổ một phần"
-                  : "Chưa phân bổ"}
-            </span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-            <div className="bg-blue-50 rounded-xl p-4">
-              <p className="text-xs text-blue-600 font-medium mb-1">
-                Số tiền thanh toán
-              </p>
-              <p className="text-lg font-bold text-blue-700">
-                {Number(payment.amount ?? 0).toLocaleString("vi-VN")} VND
-              </p>
-            </div>
-            {(payment as any).transaction_reference && (
-              <div className="bg-gray-50 rounded-xl p-4">
-                <p className="text-xs text-gray-500 font-medium mb-1">
-                  Tham chiếu giao dịch
-                </p>
-                <p className="font-semibold text-gray-800">
-                  {(payment as any).transaction_reference}
-                </p>
-              </div>
-            )}
-            {((payment as any).bankAccount || (payment as any).bank_account_id) && (
-              <div className="bg-gray-50 rounded-xl p-4">
-                <p className="text-xs text-gray-500 font-medium mb-1">
-                  Tài khoản ngân hàng
-                </p>
-                {(payment as any).bankAccount ? (
-                  <>
-                    <p className="font-semibold text-gray-800">
-                      {(payment as any).bankAccount.bank_name} - {(payment as any).bankAccount.account_number}
-                    </p>
-                    <p className="text-[10px] text-gray-400 font-semibold uppercase mt-0.5">
-                      {(payment as any).bankAccount.account_name}
-                    </p>
-                  </>
-                ) : (
-                  <p className="font-semibold text-gray-800">
-                    #{(payment as any).bank_account_id}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-          {(payment as any).allocation_status === "unallocated" && (
-            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-xs text-red-700 font-medium">
-                ⚠️ Khoản thanh toán này chưa được phân bổ cho bất kỳ hóa đơn nào. Vui lòng phân bổ để giảm công nợ nhà cung cấp.
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ================= AUDIT LOG ================= */}
-      <AuditLogCard
-        title="Lịch sử hoạt động"
-        logs={auditLogs}
-        loading={loadingAuditLogs}
-        variant="payment"
+      {/* ================= SIGNATURE MODAL ================= */}
+      <SignatureModal
+        visible={isSignModalOpen}
+        onClose={() => setIsSignModalOpen(false)}
+        onConfirm={handleSign}
+        title="Ký duyệt Phiếu chi AP Payment"
+        loading={signing}
       />
     </div>
   );
@@ -668,325 +615,193 @@ function UserCard({
         <>
           <p className="font-semibold">{user.full_name}</p>
           {user.email && <p className="text-sm text-gray-500">{user.email}</p>}
+          {user.phone && <p className="text-sm text-gray-500">{user.phone}</p>}
         </>
       ) : (
-        <p className="italic text-gray-400">{empty}</p>
+        <p className="text-sm text-gray-400 italic">{empty ?? "N/A"}</p>
       )}
     </div>
   );
 }
 
-/* ================= AUDIT ACTION BADGE ================= */
-const ACTION_STYLES: Record<string, string> = {
-  CREATE: "bg-blue-100 text-blue-700",
-  SUBMIT: "bg-yellow-100 text-yellow-700",
-  APPROVE: "bg-green-100 text-green-700",
-  REJECT: "bg-red-100 text-red-700",
-  ALLOCATE: "bg-purple-100 text-purple-700",
-  COMPLETE: "bg-emerald-100 text-emerald-700",
-};
+/* ================= ALLOCATE MODAL COMPONENT ================= */
 
-function AuditActionBadge({ action }: { action: string }) {
-  const cls = ACTION_STYLES[action] ?? "bg-gray-100 text-gray-700";
-  return (
-    <span
-      className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${cls}`}
-    >
-      {action}
-    </span>
-  );
-}
-
-/* ================= INVOICE STATUS BADGE ================= */
-const INVOICE_STATUS_STYLES: Record<string, string> = {
-  posted: "bg-orange-100 text-orange-700",
-  partially_paid: "bg-yellow-100 text-yellow-700",
-  paid: "bg-green-100 text-green-700",
-};
-
-function InvoiceStatusBadge({ status }: { status?: string }) {
-  if (!status) return null;
-  const cls = INVOICE_STATUS_STYLES[status] ?? "bg-gray-100 text-gray-600";
-  return (
-    <span
-      className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${cls}`}
-    >
-      {status.replace(/_/g, " ").toUpperCase()}
-    </span>
-  );
-}
-function AllocateModal({
-  paymentId,
-  onClose,
-  onSuccess,
-}: {
-  paymentId: number;
+interface AllocateModalProps {
+  payment: any;
   onClose: () => void;
-  onSuccess?: () => void;
-}) {
+  refreshPayment: () => void;
+  refreshAuditLogs: () => void;
+}
+
+function AllocateModal({
+  payment,
+  onClose,
+  refreshPayment,
+  refreshAuditLogs,
+}: AllocateModalProps) {
   const dispatch = useAppDispatch();
-
-  const [availableAmount, setAvailableAmount] = useState<number>(0);
-  const [localInvoices, setLocalInvoices] = useState<UnpaidInvoice[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [unpaidInvoices, setUnpaidInvoices] = useState<UnpaidInvoice[]>([]);
+  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [availableAmount, setAvailableAmount] = useState(0);
 
-  /* ===== LOAD DATA ===== */
+  // Local allocations state
+  const [allocations, setAllocations] = useState<Record<number, number>>({});
+
   useEffect(() => {
-    const load = async () => {
+    const loadData = async () => {
       try {
         setLoading(true);
-        const result = await dispatch(
-          getApPaymentAvailableAmountThunk(paymentId),
-        ).unwrap();
-        const invoices = await dispatch(
-          getApPaymentUnpaidInvoicesThunk(paymentId),
-        ).unwrap();
-        setAvailableAmount(Number(result.available_amount || 0));
-        setLocalInvoices(
-          invoices.map((i) => ({
-            ...i,
-            unpaid_amount: Number(i.unpaid_amount || 0),
-            total_after_tax: Number(i.total_after_tax || 0),
-            allocated_amount: Number(i.allocated_amount || 0),
-            allocate_amount: 0,
-          })),
-        );
+        const [avail, invoices] = await Promise.all([
+          dispatch(getApPaymentAvailableAmountThunk(payment.id)).unwrap(),
+          dispatch(getApPaymentUnpaidInvoicesThunk(payment.id)).unwrap(),
+        ]);
+        setAvailableAmount(Number(avail.available_amount || 0));
+        setUnpaidInvoices(invoices || []);
+
+        // Init allocations to 0
+        const init: Record<number, number> = {};
+        (invoices || []).forEach((inv: any) => {
+          init[inv.id] = 0;
+        });
+        setAllocations(init);
       } catch (e) {
-        toast.error(getErrorMessage(e));
-        onClose();
+        toast.error("Không thể tải danh sách hóa đơn chưa thanh toán");
       } finally {
         setLoading(false);
       }
     };
-    load();
-  }, [dispatch, paymentId, onClose]);
+    loadData();
+  }, [payment.id, dispatch]);
 
-  /* ===== CALCULATIONS ===== */
-  const totalAllocate = localInvoices.reduce(
-    (sum, i) => sum + Number(i.allocate_amount || 0),
-    0,
-  );
-  const remaining = Number(availableAmount || 0) - totalAllocate;
-  const invalid =
-    totalAllocate <= 0 ||
-    totalAllocate > Number(availableAmount || 0) ||
-    localInvoices.some(
-      (i) => i.allocate_amount! < 0 || i.allocate_amount! > Number(i.unpaid_amount || 0),
-    );
-
-  /* ===== HANDLERS ===== */
-  const handleChange = (id: number, value: string) => {
-    const num = parseFloat(value) || 0;
-    setLocalInvoices((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, allocate_amount: num } : i)),
-    );
+  const handleAmountChange = (invoiceId: number, val: string) => {
+    const num = Number(val) || 0;
+    setAllocations((prev) => ({
+      ...prev,
+      [invoiceId]: num,
+    }));
   };
 
-  // ✅ Phase 3: Fill max — tự động điền tối đa có thể cho từng invoice
-  const handleFillMax = () => {
-    let budget = Number(availableAmount || 0);
-    const nextInvoices = localInvoices.map((inv) => {
-      const unpaid = Number(inv.unpaid_amount || 0);
-      if (budget <= 0) return { ...inv, allocate_amount: 0 };
-      const fill = Math.min(unpaid, budget);
-      budget -= fill;
-      return { ...inv, allocate_amount: fill };
-    });
-    setLocalInvoices(nextInvoices);
+  const handleMax = (invoice: UnpaidInvoice) => {
+    const remainingToPay = invoice.unpaid_amount;
+    const currentlyAllocatedOthers = totalAllocated - (allocations[invoice.id] || 0);
+    const maxAllowedByAvailable = availableAmount - currentlyAllocatedOthers;
+    const finalAmount = Math.max(0, Math.min(remainingToPay, maxAllowedByAvailable));
+
+    setAllocations((prev) => ({
+      ...prev,
+      [invoice.id]: finalAmount,
+    }));
   };
+
+  const totalAllocated = Object.values(allocations).reduce((a, b) => a + b, 0);
+  const isOverAvailable = totalAllocated > availableAmount;
+
+  // Validate per line
+  let invalid = isOverAvailable || totalAllocated <= 0;
+  unpaidInvoices.forEach((inv) => {
+    const val = allocations[inv.id] || 0;
+    if (val < 0 || val > inv.unpaid_amount) {
+      invalid = true;
+    }
+  });
 
   const handleSubmit = async () => {
+    if (invalid) return;
+    const payload = Object.entries(allocations)
+      .filter(([_, amount]) => amount > 0)
+      .map(([invoiceId, amount]) => ({
+        invoice_id: Number(invoiceId),
+        amount,
+      }));
+
     try {
       setSubmitting(true);
-      const allocations = localInvoices
-        .filter((i) => i.allocate_amount! > 0)
-        .map((i) => ({ invoice_id: i.id, amount: i.allocate_amount }));
-
       await dispatch(
-        allocateApPaymentThunk({ paymentId, allocations }),
+        allocateApPaymentThunk({ paymentId: payment.id, allocations: payload }),
       ).unwrap();
-
-      toast.success("Phân bổ thanh công");
-      onSuccess?.();
+      toast.success("Phân bổ thanh toán thành công!");
+      refreshPayment();
+      refreshAuditLogs();
       onClose();
-      dispatch(getApPaymentByIdThunk(paymentId));
     } catch (e) {
-      const errMsg = getErrorMessage(e);
-      toast.error(errMsg);
-      alert("LỖI PHÂN BỔ: " + errMsg);
+      toast.error(getErrorMessage(e));
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
-        <div className="bg-white p-6 rounded-xl flex items-center gap-3">
-          <Loader2 className="animate-spin text-purple-500" />
-          <span className="text-sm font-medium text-gray-600">
-            Đang tải dữ liệu phân bổ...
-          </span>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-4xl p-6">
-        {submitting && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80 backdrop-blur-sm rounded-2xl">
-            <div className="flex flex-col items-center gap-3">
-              <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
-              <p className="text-sm font-semibold text-gray-700">
-                Đang phân bổ thanh toán...
-              </p>
-            </div>
-          </div>
-        )}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
+        <h3 className="text-xl font-bold text-gray-900 mb-2">
+          Phân bổ thanh toán cho Hóa đơn
+        </h3>
+        <p className="text-sm text-gray-500 mb-6">
+          Số tiền khả dụng để phân bổ:{" "}
+          <span className="font-bold text-orange-600">
+            {availableAmount.toLocaleString("vi-VN")} VND
+          </span>
+        </p>
 
-        {/* HEADER */}
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
-              <CreditCard className="w-5 h-5 text-purple-600" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-gray-900">
-                Phân bổ thanh toán
-              </h3>
-              <p className="text-xs text-gray-500">
-                Gán khoản thanh toán cho các hóa đơn còn nợ
-              </p>
-            </div>
+        {loading ? (
+          <div className="flex justify-center py-10">
+            <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
           </div>
-          <button
-            onClick={onClose}
-            disabled={submitting}
-            className="text-gray-400 hover:text-gray-600 text-xl font-bold disabled:opacity-50"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* SUMMARY BAR */}
-        <div className="grid grid-cols-3 gap-3 mb-5">
-          <div className="bg-blue-50 rounded-xl p-3 text-center">
-            <p className="text-xs text-blue-600 font-medium mb-0.5">
-              Khả dụng
-            </p>
-            <p className="text-lg font-bold text-blue-700">
-              {availableAmount.toLocaleString("vi-VN", {
-                minimumFractionDigits: 0,
-              })}
-            </p>
-          </div>
-          <div className="bg-purple-50 rounded-xl p-3 text-center">
-            <p className="text-xs text-purple-600 font-medium mb-0.5">
-              Đang phân bổ
-            </p>
-            <p className="text-lg font-bold text-purple-700">
-              {totalAllocate.toLocaleString("vi-VN", {
-                minimumFractionDigits: 0,
-              })}
-            </p>
-          </div>
-          <div
-            className={`rounded-xl p-3 text-center ${remaining < 0 ? "bg-red-50" : "bg-green-50"}`}
-          >
-            <p
-              className={`text-xs font-medium mb-0.5 ${remaining < 0 ? "text-red-600" : "text-green-600"}`}
-            >
-              Còn lại
-            </p>
-            <p
-              className={`text-lg font-bold ${remaining < 0 ? "text-red-700" : "text-green-700"}`}
-            >
-              {remaining.toLocaleString("vi-VN", { minimumFractionDigits: 0 })}
-            </p>
-          </div>
-        </div>
-
-        {/* FILL MAX BUTTON */}
-        <div className="flex justify-end mb-3">
-          <button
-            onClick={handleFillMax}
-            className="text-xs font-semibold text-purple-600 hover:text-purple-800 border border-purple-200 hover:border-purple-400 px-3 py-1.5 rounded-lg transition"
-          >
-            ⚡ Tự động điền tối đa
-          </button>
-        </div>
-
-        {/* TABLE */}
-        {localInvoices.length === 0 ? (
-          <div className="text-center py-10 text-gray-400 text-sm">
-            Không tìm thấy hóa đơn chưa thanh toán nào của nhà cung cấp này.
-          </div>
+        ) : unpaidInvoices.length === 0 ? (
+          <p className="text-center py-10 text-gray-500 text-sm">
+            Không tìm thấy hóa đơn nào chưa thanh toán của nhà cung cấp này.
+          </p>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-gray-100">
+          <div className="border border-gray-100 rounded-xl overflow-hidden mb-4">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b">
+              <thead className="bg-gray-50 text-gray-500 font-semibold border-b border-gray-100">
                 <tr>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600">
-                    Hóa đơn
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600">
-                    Trạng thái
-                  </th>
-                  <th className="px-4 py-3 text-right font-semibold text-gray-600">
-                    Tổng cộng
-                  </th>
-                  <th className="px-4 py-3 text-right font-semibold text-gray-600">
-                    Chưa thanh toán
-                  </th>
-                  <th className="px-4 py-3 text-right font-semibold text-gray-600">
-                    Phân bổ
-                  </th>
+                  <th className="px-4 py-3 text-left">Số hóa đơn</th>
+                  <th className="px-4 py-3 text-right">Tổng tiền</th>
+                  <th className="px-4 py-3 text-right">Còn lại</th>
+                  <th className="px-4 py-3 text-right w-48">Nhập số tiền phân bổ</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
-                {localInvoices.map((inv) => {
-                  const isOverAllocated =
-                    (inv.allocate_amount ?? 0) > inv.unpaid_amount;
+              <tbody className="divide-y divide-gray-100">
+                {unpaidInvoices.map((inv) => {
+                  const val = allocations[inv.id] || 0;
+                  const isLineOver = val > inv.unpaid_amount;
                   return (
-                    <tr
-                      key={inv.id}
-                      className="hover:bg-gray-50 transition-colors"
-                    >
+                    <tr key={inv.id} className="hover:bg-gray-50/50">
                       <td className="px-4 py-3 font-semibold text-gray-800">
                         {inv.invoice_no}
                       </td>
-                      <td className="px-4 py-3">
-                        <InvoiceStatusBadge status={(inv as any).status} />
+                      <td className="px-4 py-3 text-right font-medium text-gray-700">
+                        {Number(inv.total_after_tax).toLocaleString("vi-VN")} VND
                       </td>
-                      <td className="px-4 py-3 text-right text-gray-600">
-                        {Number(inv.total_after_tax).toLocaleString("vi-VN", {
-                          minimumFractionDigits: 0,
-                        })}
-                      </td>
-                      <td className="px-4 py-3 text-right font-medium text-orange-600">
-                        {Number(inv.unpaid_amount).toLocaleString("vi-VN", {
-                          minimumFractionDigits: 0,
-                        })}
+                      <td className="px-4 py-3 text-right font-medium text-gray-900">
+                        {Number(inv.unpaid_amount).toLocaleString("vi-VN")} VND
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <input
-                          type="number"
-                          min={0}
-                          max={inv.unpaid_amount}
-                          step="0.01"
-                          value={inv.allocate_amount ?? 0}
-                          onChange={(e) => handleChange(inv.id, e.target.value)}
-                          className={`w-32 border rounded-lg px-2 py-1.5 text-right text-sm focus:ring-2 outline-none transition ${
-                            isOverAllocated
-                              ? "border-red-400 focus:ring-red-300 bg-red-50"
-                              : "border-gray-300 focus:ring-purple-300"
-                          }`}
-                        />
-                        {isOverAllocated && (
-                          <p className="text-xs text-red-500 mt-0.5">
+                        <div className="flex items-center gap-1.5 justify-end">
+                          <input
+                            type="number"
+                            value={val || ""}
+                            onChange={(e) =>
+                              handleAmountChange(inv.id, e.target.value)
+                            }
+                            placeholder="0"
+                            className={`w-32 px-3 py-1.5 border rounded-lg text-right text-sm font-semibold focus:outline-none focus:ring-2 ${
+                              isLineOver
+                                ? "border-red-500 focus:ring-red-500/20"
+                                : "border-gray-200 focus:ring-purple-500/20 focus:border-purple-500"
+                            }`}
+                          />
+                          <button
+                            onClick={() => handleMax(inv)}
+                            className="text-xs font-semibold text-purple-600 hover:text-purple-700 bg-purple-50 px-2 py-1.5 rounded-lg border border-purple-100"
+                          >
+                            MAX
+                          </button>
+                        </div>
+                        {isLineOver && (
+                          <p className="text-[10px] text-red-500 font-semibold mt-1">
                             Vượt quá số tiền chưa thanh toán
                           </p>
                         )}

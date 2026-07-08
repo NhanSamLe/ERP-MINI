@@ -2,6 +2,7 @@ import { Router } from "express";
 import { apPaymentController } from "../controllers/apPayment.controller";
 import { authMiddleware } from "../../../core/middleware/auth";
 import { Role } from "../../../core/types/enum";
+import { signatureController } from "../controllers/signature.controller";
 
 const router = Router();
 
@@ -38,11 +39,11 @@ router.get(
   apPaymentController.getById,
 );
 
-router.post("/", authMiddleware([Role.ACCOUNT]), apPaymentController.create);
+router.post("/", authMiddleware([Role.ACCOUNT, Role.CHACC]), apPaymentController.create);
 
 router.post(
   "/:id/submit",
-  authMiddleware([Role.ACCOUNT]),
+  authMiddleware([Role.ACCOUNT, Role.CHACC]),
   apPaymentController.submitForApproval,
 );
 
@@ -56,6 +57,12 @@ router.put(
   "/:id/reject",
   authMiddleware([Role.CHACC]),
   apPaymentController.reject,
+);
+
+router.post(
+  "/:id/sign",
+  authMiddleware([Role.CHACC]),
+  signatureController.signApPayment,
 );
 
 export default router;

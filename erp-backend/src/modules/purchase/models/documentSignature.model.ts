@@ -3,7 +3,7 @@ import { sequelize } from "../../../config/db";
 
 export interface DocumentSignatureAttrs {
   id: number;
-  document_type: "purchase_order" | "ap_invoice" | "ap_payment";
+  document_type: "purchase_order" | "ap_invoice" | "ap_payment" | "stock_move";
   document_id: number;
   signer_id: number;
   signature_image: string; // Chuỗi Base64 hoặc link Cloudinary của nét vẽ chữ ký tay
@@ -19,7 +19,7 @@ export class DocumentSignature
   implements DocumentSignatureAttrs
 {
   public id!: number;
-  public document_type!: "purchase_order" | "ap_invoice" | "ap_payment";
+  public document_type!: "purchase_order" | "ap_invoice" | "ap_payment" | "stock_move";
   public document_id!: number;
   public signer_id!: number;
   public signature_image!: string;
@@ -32,7 +32,7 @@ DocumentSignature.init(
   {
     id: { type: DataTypes.BIGINT, autoIncrement: true, primaryKey: true },
     document_type: {
-      type: DataTypes.ENUM("purchase_order", "ap_invoice", "ap_payment"),
+      type: DataTypes.ENUM("purchase_order", "ap_invoice", "ap_payment", "stock_move"),
       allowNull: false,
     },
     document_id: { type: DataTypes.BIGINT, allowNull: false },

@@ -8,7 +8,7 @@ const router = Router();
 
 const accountRoles = authMiddleware([Role.ACCOUNT, Role.CHACC]);
 const readRoles = authMiddleware([Role.ACCOUNT, Role.CHACC, Role.PURCHASE, Role.PURCHASEMANAGER]);
-const accountOnly = authMiddleware([Role.ACCOUNT]);
+const accountOnly = authMiddleware([Role.ACCOUNT, Role.CHACC]);
 const chaccOnly = authMiddleware([Role.CHACC]);
 
 // ─── READ ──────────────────────────────────────────────────────────────────

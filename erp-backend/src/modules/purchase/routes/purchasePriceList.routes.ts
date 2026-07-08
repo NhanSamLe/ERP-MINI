@@ -9,6 +9,7 @@ const purchaseRoles = authMiddleware([
   Role.PURCHASE,
   Role.PURCHASEMANAGER,
   Role.ACCOUNT,
+  Role.CHACC,
 ]);
 const managerOnly = authMiddleware([Role.PURCHASEMANAGER]);
 

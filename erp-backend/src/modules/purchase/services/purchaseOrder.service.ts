@@ -241,7 +241,7 @@ export const purchaseOrderService = {
   },
 
   async create(data: any, user: any) {
-    const allowedRoles = ["PURCHASE", "ADMIN", "CEO"];
+    const allowedRoles = ["PURCHASE", "PURCHASEMANAGER", "ADMIN", "CEO"];
     if (!allowedRoles.includes(user.role)) {
       throw new Error("Bạn không có quyền tạo đơn mua hàng.");
     }
@@ -331,11 +331,21 @@ export const purchaseOrderService = {
         const taxRate = line.tax_rate_id ? await TaxRate.findByPk(line.tax_rate_id) : null;
         const rate = taxRate ? Number(taxRate.rate) : 0;
         const lineTax = (netLineTotal * rate) / 100;
-        const lineTotalAfterTax = netLineTotal + lineTax;
+        let lineTotalAfterTax = netLineTotal + lineTax;
 
-        totalBeforeTax += netLineTotal;
-        totalTax += lineTax;
-        totalAfterTax += lineTotalAfterTax;
+        // Check if Currency is VND (typically id=1, or check name/code. Let's fetch currency)
+        const selectedCurrency = data.currency_id ? await Currency.findByPk(data.currency_id) : null;
+        const isVnd = !selectedCurrency || selectedCurrency.code === "VND";
+
+        if (isVnd) {
+          totalBeforeTax += Math.round(netLineTotal);
+          totalTax += Math.round(lineTax);
+          totalAfterTax += Math.round(lineTotalAfterTax);
+        } else {
+          totalBeforeTax += netLineTotal;
+          totalTax += lineTax;
+          totalAfterTax += lineTotalAfterTax;
+        }
 
         const product = await productService.getById(line.product_id);
         const productStockUomId = product?.uom_id ?? null;
@@ -357,9 +367,9 @@ export const purchaseOrderService = {
             discount_percent: calc.discount_percent ?? 0,
             discount_amount: calc.discount_amount,
             ...(line.tax_rate_id != null && { tax_rate_id: line.tax_rate_id }),
-            line_total: netLineTotal,
-            line_tax: lineTax,
-            line_total_after_tax: lineTotalAfterTax,
+            line_total: isVnd ? Math.round(netLineTotal) : netLineTotal,
+            line_tax: isVnd ? Math.round(lineTax) : lineTax,
+            line_total_after_tax: isVnd ? Math.round(lineTotalAfterTax) : lineTotalAfterTax,
           },
           { transaction: t },
         );
@@ -387,7 +397,7 @@ export const purchaseOrderService = {
   },
 
   async update(id: number, data: PurchaseOrderUpdateDto, user: any) {
-    const allowedRoles = ["PURCHASE", "ADMIN", "CEO"];
+    const allowedRoles = ["PURCHASE", "PURCHASEMANAGER", "ADMIN", "CEO"];
     if (!allowedRoles.includes(user.role)) {
       throw new Error("Bạn không có quyền chỉnh sửa đơn mua hàng.");
     }
@@ -419,8 +429,24 @@ export const purchaseOrderService = {
       };
     }
 
-    if (po.created_by !== user.id)
+    if (user.role !== "PURCHASEMANAGER" && po.created_by !== user.id)
       throw new Error("Bạn chỉ có thể chỉnh sửa đơn mua hàng của mình");
+
+    const oldValues = {
+      po_no: po.po_no,
+      supplier_id: po.supplier_id,
+      payment_term_id: po.payment_term_id,
+      currency_id: po.currency_id,
+      exchange_rate: po.exchange_rate,
+      order_date: po.order_date,
+      description: po.description,
+      discount_percent: po.discount_percent,
+      discount_amount: po.discount_amount,
+      total_before_tax: po.total_before_tax,
+      total_tax: po.total_tax,
+      total_after_tax: po.total_after_tax,
+      status: po.status,
+    };
 
     await sequelize.transaction(async (t) => {
       // 1. Calculate each line's initial values (before header discount)
@@ -479,6 +505,9 @@ export const purchaseOrderService = {
       let totalTax = 0;
       let totalAfterTax = 0;
 
+      const selectedCurrency = data.currency_id ? await Currency.findByPk(data.currency_id) : null;
+      const isVnd = !selectedCurrency || selectedCurrency.code === "VND";
+
       for (const item of calculatedLines) {
         const line = item.line;
         const calc = item.calc;
@@ -493,9 +522,15 @@ export const purchaseOrderService = {
         const lineTax = (netLineTotal * rate) / 100;
         const lineTotalAfterTax = netLineTotal + lineTax;
 
-        totalBeforeTax += netLineTotal;
-        totalTax += lineTax;
-        totalAfterTax += lineTotalAfterTax;
+        if (isVnd) {
+          totalBeforeTax += Math.round(netLineTotal);
+          totalTax += Math.round(lineTax);
+          totalAfterTax += Math.round(lineTotalAfterTax);
+        } else {
+          totalBeforeTax += netLineTotal;
+          totalTax += lineTax;
+          totalAfterTax += lineTotalAfterTax;
+        }
 
         const product = await productService.getById(line.product_id);
         const productStockUomId = product?.uom_id ?? null;
@@ -519,9 +554,9 @@ export const purchaseOrderService = {
               ...(line.tax_rate_id != null && {
                 tax_rate_id: line.tax_rate_id,
               }),
-              line_total: netLineTotal,
-              line_tax: lineTax,
-              line_total_after_tax: lineTotalAfterTax,
+              line_total: isVnd ? Math.round(netLineTotal) : netLineTotal,
+              line_tax: isVnd ? Math.round(lineTax) : lineTax,
+              line_total_after_tax: isVnd ? Math.round(lineTotalAfterTax) : lineTotalAfterTax,
             },
             { where: { id: line.id, po_id: id }, transaction: t },
           );
@@ -539,9 +574,9 @@ export const purchaseOrderService = {
               ...(line.tax_rate_id != null && {
                 tax_rate_id: line.tax_rate_id,
               }),
-              line_total: netLineTotal,
-              line_tax: lineTax,
-              line_total_after_tax: lineTotalAfterTax,
+              line_total: isVnd ? Math.round(netLineTotal) : netLineTotal,
+              line_tax: isVnd ? Math.round(lineTax) : lineTax,
+              line_total_after_tax: isVnd ? Math.round(lineTotalAfterTax) : lineTotalAfterTax,
             },
             { transaction: t },
           );
@@ -558,13 +593,32 @@ export const purchaseOrderService = {
       );
     });
 
-    // ✅ query sau commit
-    return this.getPOById(id);
+    const updatedPo = await this.getPOById(id);
+    if (updatedPo) {
+      const newValues = {
+        po_no: updatedPo.po_no,
+        supplier_id: updatedPo.supplier_id,
+        payment_term_id: updatedPo.payment_term_id,
+        currency_id: updatedPo.currency_id,
+        exchange_rate: updatedPo.exchange_rate,
+        order_date: updatedPo.order_date,
+        description: updatedPo.description,
+        discount_percent: updatedPo.discount_percent,
+        discount_amount: updatedPo.discount_amount,
+        total_before_tax: updatedPo.total_before_tax,
+        total_tax: updatedPo.total_tax,
+        total_after_tax: updatedPo.total_after_tax,
+        status: updatedPo.status,
+      };
+      await auditService.logUpdate(updatedPo, oldValues, newValues, user);
+    }
+
+    return updatedPo;
   },
 
   async delete(id: number, user: any) {
     const po = await PurchaseOrder.findByPk(id);
-    const allowedRoles = ["PURCHASE", "ADMIN", "CEO"];
+    const allowedRoles = ["PURCHASE", "PURCHASEMANAGER", "ADMIN", "CEO"];
 
     if (!allowedRoles.includes(user.role)) {
       throw new Error("Bạn không có quyền xóa đơn mua hàng.");
@@ -689,7 +743,10 @@ export const purchaseOrderService = {
       throw new Error("Chỉ có thể gửi duyệt đơn mua hàng ở trạng thái nháp.");
     }
 
-    if (po.created_by !== user.id)
+    // Nhân viên chỉ submit phiếu do chính mình tạo;
+    // Trưởng phòng mua hàng (PURCHASEMANAGER) submit được bất kỳ PO nào cùng chi nhánh
+    const isManager = user.role === "PURCHASEMANAGER";
+    if (!isManager && po.created_by !== user.id)
       throw new Error("Chỉ người tạo mới có thể gửi duyệt đơn mua hàng.");
 
     po.status = "waiting_approval";
@@ -979,7 +1036,7 @@ export const purchaseOrderService = {
 
     const rate = taxRate ? Number(taxRate.rate) : 0;
     const grossTotal = Number(line.quantity) * Number(line.unit_price);
-    
+
     let discountAmount = 0;
     let discountPercent = 0;
 

@@ -4,21 +4,32 @@ import * as model from "../../../models/index";
 import { DocumentSignature } from "../models/documentSignature.model";
 import { PurchaseOrder } from "../models/purchaseOrder.model";
 import { ApInvoice } from "../models/apInvoice.model";
+import { StockMove } from "../../inventory/models/stockMove.model";
+import { stockMoveService } from "../../inventory/services/stockMove.service";
+import { ApPayment } from "../models/apPayment.model";
 
 export const signatureService = {
   /**
-   * Ký duyệt tài liệu (PO hoặc AP Invoice)
+  /**
+   * Ký duyệt tài liệu (PO, AP Invoice, hoặc Stock Move)
    */
   async signDocument(
     userId: number,
-    documentType: "purchase_order" | "ap_invoice" | "ap_payment",
+    documentType: "purchase_order" | "ap_invoice" | "ap_payment" | "stock_move",
     documentId: number,
     pin: string,
     signatureImage: string, // Base64 nét vẽ chữ ký tay
     ipAddress?: string
   ) {
     // 1. Kiểm tra User & PIN
-    const user = await model.User.findByPk(userId);
+    const user = await model.User.findByPk(userId, {
+      include: [
+        {
+          model: model.Role,
+          as: "role",
+        },
+      ],
+    });
     if (!user) {
       throw new Error("Không tìm thấy thông tin người dùng.");
     }
@@ -34,7 +45,7 @@ export const signatureService = {
     // 2. Tìm tài liệu và trích xuất thông tin
     let documentNo = "";
     let totalAmount = 0;
-    let targetDoc: PurchaseOrder | ApInvoice | null = null;
+    let targetDoc: any = null;
 
     if (documentType === "purchase_order") {
       targetDoc = await PurchaseOrder.findByPk(documentId);
@@ -52,6 +63,22 @@ export const signatureService = {
       }
       documentNo = targetDoc.invoice_no;
       totalAmount = Number(targetDoc.total_after_tax || 0);
+    } else if (documentType === "stock_move") {
+      targetDoc = await StockMove.findByPk(documentId);
+      if (!targetDoc) throw new Error("Không tìm thấy phiếu kho (Stock Move).");
+      if (targetDoc.status !== "waiting_approval") {
+        throw new Error("Phiếu kho phải ở trạng thái Chờ duyệt mới được phép ký.");
+      }
+      documentNo = targetDoc.move_no;
+      totalAmount = 0;
+    } else if (documentType === "ap_payment") {
+      targetDoc = await ApPayment.findByPk(documentId);
+      if (!targetDoc) throw new Error("Không tìm thấy phiếu chi (AP Payment).");
+      if (targetDoc.approval_status !== "waiting_approval") {
+        throw new Error("Phiếu chi phải ở trạng thái Chờ duyệt mới được phép ký.");
+      }
+      documentNo = targetDoc.payment_no;
+      totalAmount = Number(targetDoc.amount || 0);
     } else {
       throw new Error("Loại tài liệu ký duyệt không hợp lệ.");
     }
@@ -105,6 +132,11 @@ export const signatureService = {
         await t.rollback();
         throw error;
       }
+    } else if (documentType === "stock_move") {
+      await stockMoveService.approveStockMove(documentId, user);
+    } else if (documentType === "ap_payment") {
+      const { apPaymentService } = require("./apPayment.service");
+      await apPaymentService.approve(documentId, user);
     }
 
     return {
@@ -174,6 +206,40 @@ export const signatureService = {
           supplier_name: (invoice as any).supplier?.name || "N/A",
           order_date: invoice.invoice_date,
           status: invoice.status,
+        };
+      }
+    } else if (signature.document_type === "stock_move") {
+      const sm = await StockMove.findByPk(signature.document_id);
+      if (sm) {
+        docDetails = {
+          document_id: sm.id,
+          document_no: sm.move_no,
+          document_type: "Phiếu dịch chuyển kho (Stock Move)",
+          total_amount: 0,
+          supplier_name: "N/A",
+          order_date: sm.move_date,
+          status: sm.status,
+        };
+      }
+    } else if (signature.document_type === "ap_payment") {
+      const payment = await ApPayment.findByPk(signature.document_id, {
+        include: [
+          {
+            model: model.Partner,
+            as: "supplier",
+            attributes: ["name"],
+          },
+        ],
+      });
+      if (payment) {
+        docDetails = {
+          document_id: payment.id,
+          document_no: payment.payment_no,
+          document_type: "Phiếu chi (AP Payment)",
+          total_amount: payment.amount,
+          supplier_name: (payment as any).supplier?.name || "N/A",
+          order_date: payment.payment_date,
+          status: payment.status,
         };
       }
     }

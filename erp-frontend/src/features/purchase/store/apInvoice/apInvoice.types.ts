@@ -27,6 +27,12 @@ export interface Branch {
   bank_account: string;
   bank_name: string;
   status: "active" | "inactive";
+  company?: {
+    id: number;
+    code: string;
+    name: string;
+    tax_code?: string;
+  };
   created_at: string;
   updated_at: string;
 }

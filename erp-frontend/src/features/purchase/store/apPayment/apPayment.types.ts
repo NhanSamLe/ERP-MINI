@@ -61,6 +61,12 @@ export interface ApPayment {
     bank_account?: string;
     bank_name?: string;
     status: "active" | "inactive";
+    company?: {
+      id: number;
+      code: string;
+      name: string;
+      tax_code?: string;
+    };
   };
   bank_account_id?: number | null;
   bankAccount?: {
@@ -73,6 +79,21 @@ export interface ApPayment {
 
   created_at: string;
   updated_at: string;
+  signatures?: Array<{
+    id: number;
+    document_type: string;
+    document_id: number;
+    signer_id: number;
+    signature_image: string;
+    hash_value: string;
+    signer_ip?: string;
+    signed_at: string;
+    signer?: {
+      id: number;
+      full_name: string;
+      email: string;
+    };
+  }>;
 }
 
 export interface UnpaidInvoice {
@@ -81,7 +102,7 @@ export interface UnpaidInvoice {
   total_after_tax: number;
   allocated_amount: number;
   unpaid_amount: number;
-  allocate_amount: number;
+  allocate_amount?: number;
 }
 
 export interface AvailableAmount {

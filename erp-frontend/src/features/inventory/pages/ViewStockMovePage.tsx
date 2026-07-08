@@ -8,8 +8,10 @@ import {
   rejectStockMoveThunk,
   submitStockMoveThunk,
   receiveTransferThunk,
+  signStockMoveThunk,
 } from "../store";
 import { fetchWarehousesThunk } from "../store/stock/warehouse/warehouse.thunks";
+import SignatureModal from "@/features/purchase/components/SignatureModal";
 import { Button } from "../../../components/ui/Button";
 import { Textarea } from "../../../components/ui/textarea";
 import {
@@ -33,7 +35,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { ChevronLeft, Send, CheckCircle2, XCircle, Info, Warehouse, ListPlus, Notebook, ShieldAlert, FileCheck, Circle } from "lucide-react";
+import { ChevronLeft, Send, CheckCircle2, XCircle, Info, Warehouse, ListPlus, Notebook, ShieldAlert, FileCheck, Circle, Printer, FileDown, PenTool, ArrowLeft } from "lucide-react";
+import { useStockMoveExport } from "../hooks/useStockMoveExport";
 
 export interface UserInfo {
   id: number;
@@ -96,6 +99,9 @@ export default function ViewStockMovePage() {
   const [confirmReceive, setConfirmReceive] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const [showSignModal, setShowSignModal] = useState(false);
+
+  const { exporting, exportToPDF, printStockMove } = useStockMoveExport(data);
 
   let stockMoveBranchId: number | undefined = undefined;
   let destinationBranchId: number | undefined = undefined;
@@ -161,6 +167,23 @@ export default function ViewStockMovePage() {
       toast.success("Đã phê duyệt thành công!");
     } catch (err) {
       toast.error(getErrorMessage(err));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSignConfirm = async (pin: string, signatureImage: string) => {
+    if (!data) return;
+    setSubmitting(true);
+    try {
+      await dispatch(signStockMoveThunk({ id: data.id, pin, signatureImage })).unwrap();
+      const fresh = await dispatch(fetchStockMoveByIdThunk(data.id)).unwrap();
+      setData(mapToViewStockMove(fresh, warehouses));
+      setShowSignModal(false);
+      toast.success("Ký duyệt phiếu kho thành công!");
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+      throw err;
     } finally {
       setSubmitting(false);
     }
@@ -279,37 +302,57 @@ export default function ViewStockMovePage() {
         </div>
 
         <div className="flex items-center gap-2.5 self-end md:self-auto">
+          <Button
+            onClick={() => exportToPDF("vi")}
+            variant="outline"
+            leftIcon={<FileDown className="w-4 h-4" />}
+            loading={exporting === "pdf"}
+          >
+            Tải PDF
+          </Button>
+
           {data.status === "draft" &&
-            currentUser?.role.code === Roles.WHSTAFF &&
-            (data.creator?.id === currentUser?.id || !!data.reference_type) &&
             stockMoveBranchId === currentUser?.branch.id && (
-              <Button
-                onClick={() => setConfirmSubmit(true)}
-                variant="primary"
-                leftIcon={<Send className="w-4 h-4" />}
-              >
-                Gửi yêu cầu phê duyệt
-              </Button>
+              (() => {
+                const isWHManager = currentUser?.role.code === Roles.WHMANAGER;
+                const isWHStaff   = currentUser?.role.code === Roles.WHSTAFF;
+                const isCreator   = data.creator?.id === currentUser?.id;
+                // Nhân viên: phải là người tạo hoặc phiếu có reference (tự động sinh)
+                // Quản lý: gửi được bất kỳ phiếu nào cùng chi nhánh
+                const canSubmitMove =
+                  isWHManager ||
+                  (isWHStaff && (isCreator || !!data.reference_type));
+                if (!canSubmitMove) return null;
+                return (
+                  <Button
+                    onClick={() => setConfirmSubmit(true)}
+                    variant="primary"
+                    leftIcon={<Send className="w-4 h-4" />}
+                  >
+                    Gửi yêu cầu phê duyệt
+                  </Button>
+                );
+              })()
             )}
 
           {currentUser?.role.code === Roles.WHMANAGER &&
             data.status === "waiting_approval" &&
             stockMoveBranchId === currentUser?.branch.id && (
               <>
-                <Button
-                  onClick={() => setConfirmApprove(true)}
-                  variant="success"
-                  leftIcon={<CheckCircle2 className="w-4 h-4" />}
+                <button
+                  onClick={() => setShowSignModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 text-white font-medium text-xs shadow-sm hover:bg-emerald-600 transition"
                 >
-                  Phê duyệt phiếu
-                </Button>
-                <Button
+                  <PenTool className="w-3.5 h-3.5" />
+                  Ký duyệt
+                </button>
+                <button
                   onClick={() => setConfirmReject(true)}
-                  variant="danger"
-                  leftIcon={<XCircle className="w-4 h-4" />}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500 text-white font-medium text-xs shadow-sm hover:bg-red-600 transition"
                 >
-                  Hủy phiếu
-                </Button>
+                  <XCircle className="w-3.5 h-3.5" />
+                  Hủy
+                </button>
               </>
             )}
 
@@ -322,6 +365,14 @@ export default function ViewStockMovePage() {
               Nhận hàng (Xác nhận)
             </Button>
           )}
+
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-600 font-medium text-xs hover:bg-gray-50 transition"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Quay lại
+          </button>
         </div>
       </div>
 
@@ -579,6 +630,28 @@ export default function ViewStockMovePage() {
                   </div>
                 )}
               </div>
+
+              {data.signatures && data.signatures.length > 0 && (
+                <div className="border-t border-slate-100 pt-3 space-y-2">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Chữ ký số xác thực</span>
+                  <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-100 shadow-xxs space-y-2">
+                    <div className="flex justify-center border-b border-dashed border-emerald-100/50 pb-2 bg-white rounded-lg p-2">
+                      <img
+                        src={data.signatures[0].signature_image}
+                        alt="Signature"
+                        className="max-h-16 object-contain"
+                      />
+                    </div>
+                    <div className="text-[10px] text-emerald-800 space-y-1">
+                      <p className="truncate">Hash: <span className="font-mono text-[9px] font-bold">{data.signatures[0].hash_value}</span></p>
+                      <p>Ký bởi: <span className="font-semibold">{data.signatures[0].signer?.full_name}</span></p>
+                      <p>IP: <span className="font-semibold">{data.signatures[0].signer_ip || "N/A"}</span></p>
+                      <p>Thời gian: <span className="font-semibold">{formatDateTime(data.signatures[0].signed_at)}</span></p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="pt-3 border-t border-slate-150 space-y-2 text-xs">
                 <div className="flex justify-between items-center">
                   <span className="font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Ngày tạo</span>
@@ -782,6 +855,14 @@ export default function ViewStockMovePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <SignatureModal
+        visible={showSignModal}
+        onClose={() => setShowSignModal(false)}
+        onConfirm={handleSignConfirm}
+        loading={submitting}
+        title="Ký duyệt phiếu kho"
+      />
     </div>
   );
 }

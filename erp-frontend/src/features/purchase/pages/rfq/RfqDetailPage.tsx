@@ -169,7 +169,7 @@ export default function RfqDetailPage() {
 
     const isCreator = Number(rfq.created_by) === Number(user?.id);
 
-    if (["draft", "received"].includes(rfq.status) && role === Roles.PURCHASE && isCreator) {
+    if (["draft", "received"].includes(rfq.status) && (role === Roles.PURCHASE || role === Roles.PURCHASEMANAGER) && isCreator) {
       base.push({
         label: "Chỉnh sửa",
         variant: "outline" as const,
@@ -178,14 +178,14 @@ export default function RfqDetailPage() {
       });
     }
     // Nút Gửi RFQ chỉ hiện khi người tạo truy cập VÀ trạng thái duyệt đã là approved
-    if (rfq.status === "draft" && role === Roles.PURCHASE && isCreator && rfq.approval_status === "approved") {
+    if (rfq.status === "draft" && (role === Roles.PURCHASE || role === Roles.PURCHASEMANAGER) && isCreator && rfq.approval_status === "approved") {
       base.push({
         label: "Gửi RFQ",
         variant: "primary" as const,
         onClick: () => setModal("send"),
       });
     }
-    if (rfq.status === "sent" && role === Roles.PURCHASE && isCreator) {
+    if (rfq.status === "sent" && (role === Roles.PURCHASE || role === Roles.PURCHASEMANAGER) && isCreator) {
       base.push({
         label: "Đánh dấu đã nhận",
         variant: "primary" as const,
@@ -195,7 +195,7 @@ export default function RfqDetailPage() {
     if (rfq.status === "received" && isCreator) {
       // Only show these actions if NOT waiting for approval
       if (rfq.approval_status !== "waiting_approval") {
-        if (role === Roles.PURCHASE) {
+        if (role === Roles.PURCHASE || role === Roles.PURCHASEMANAGER) {
           base.push({
             label: "Tạo PO",
             variant: "success" as const,
@@ -215,7 +215,7 @@ export default function RfqDetailPage() {
       }
     }
     // Approval workflow buttons - Chỉ người tạo mới được gửi duyệt
-    if (rfq.approval_status === "draft" && role === Roles.PURCHASE && isCreator) {
+    if (rfq.approval_status === "draft" && (role === Roles.PURCHASE || role === Roles.PURCHASEMANAGER) && isCreator) {
       base.push({
         label: "Gửi duyệt",
         variant: "primary" as const,

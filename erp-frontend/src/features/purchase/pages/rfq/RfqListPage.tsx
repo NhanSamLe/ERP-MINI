@@ -322,7 +322,7 @@ export default function RfqListPage() {
                         </button>
                         {["draft", "received"].includes(rfq.status) &&
                           rfq.approval_status !== "waiting_approval" &&
-                          role === Roles.PURCHASE && (
+                          (role === Roles.PURCHASE || role === Roles.PURCHASEMANAGER) && (
                             <button
                               onClick={() =>
                                 navigate(`/purchase/rfqs/${rfq.id}/edit`)
@@ -345,7 +345,7 @@ export default function RfqListPage() {
                               </svg>
                             </button>
                           )}
-                        {rfq.status === "draft" && role === Roles.PURCHASE && (
+                        {rfq.status === "draft" && (role === Roles.PURCHASE || role === Roles.PURCHASEMANAGER) && (
                           <button
                             onClick={() => setDeleteTarget(rfq)}
                             className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"

@@ -8,6 +8,7 @@ import { StockMove } from "../models/stockMove.model";
 import { StockMoveLine } from "../models/stockMoveLine.model";
 import { Warehouse } from "../models/warehouse.model";
 import { StockReservation } from "../models/stockReservation.model";
+import { DocumentSignature } from "../../purchase/models/documentSignature.model";
 import { stockBalanceService } from "./stockBalance.service";
 import { stockReservationService } from "./stockReservation.service";
 import { productService } from "../../product/services/product.service";
@@ -24,6 +25,8 @@ import { warehouseService } from "./warehouse.service";
 import { sequelize } from "../../../config/db";
 import { checkPeriodLocked } from "../../finance/services/glJournal.service";
 import { getCompanyBranchIds } from "../../finance/services/companyScope.service";
+import { Branch } from "../../company/models/branch.model";
+import { Company } from "../../company/models/company.model";
 
 /**
  * Convert quantity từ line.uom_id sang product.uom_id (đơn vị lưu kho).
@@ -223,6 +226,27 @@ export const stockMoveService = {
           as: "approver",
           attributes: ["id", "email", "full_name", "phone", "avatar_url"],
         },
+        {
+          model: Branch,
+          as: "branch",
+          include: [
+            {
+              model: Company,
+              as: "company",
+            },
+          ],
+        },
+        {
+          model: DocumentSignature,
+          as: "signatures",
+          include: [
+            {
+              model: User,
+              as: "signer",
+              attributes: ["id", "email", "full_name"],
+            },
+          ],
+        },
       ],
     });
   },
@@ -338,7 +362,7 @@ export const stockMoveService = {
     if (!body.reference_id) {
       throw new Error("Reference ID is required to create a receipt.");
     }
-    const allowedRoles = [Role.WHSTAFF];
+    const allowedRoles = [Role.WHSTAFF, Role.WHMANAGER];
     if (!allowedRoles.includes(user.role)) {
       throw new Error("You do not have permission to create Stock Move Receipt");
     }
@@ -500,7 +524,7 @@ export const stockMoveService = {
         message: "Reference ID is required to create a issue.",
       };
     }
-    const allowedRoles = [Role.WHSTAFF];
+    const allowedRoles = [Role.WHSTAFF, Role.WHMANAGER];
     if (!allowedRoles.includes(user.role)) {
       throw new Error("You do not have permission to create Stock Move Issue");
     }
@@ -636,7 +660,7 @@ export const stockMoveService = {
   },
 
   async createPurchaseReturnIssue(purchaseReturnId: number, user: any) {
-    const allowedRoles = [Role.WHSTAFF];
+    const allowedRoles = [Role.WHSTAFF, Role.WHMANAGER];
     if (!allowedRoles.includes(user.role)) {
       throw new Error("You do not have permission to create Stock Move Issue");
     }
@@ -733,7 +757,7 @@ export const stockMoveService = {
 
   async createAdjustment(body: StockMoveAdjustmentDTO, user: any) {
     const warehouseId = body.warehouse_id;
-    const allowedRoles = [Role.WHSTAFF];
+    const allowedRoles = [Role.WHSTAFF, Role.WHMANAGER];
     if (!allowedRoles.includes(user.role)) {
       throw new Error(
         "You do not have permission to create Stock Move Adjustment.",
@@ -819,7 +843,7 @@ export const stockMoveService = {
   },
 
   async createTransfer(body: StockMoveTransferDTO, user: any) {
-    const allowedRoles = [Role.WHSTAFF];
+    const allowedRoles = [Role.WHSTAFF, Role.WHMANAGER];
     if (!allowedRoles.includes(user.role)) {
       throw new Error(
         "You do not have permission to create Stock Move Transfer",
@@ -919,7 +943,7 @@ export const stockMoveService = {
       };
     }
 
-    const allowedRoles = [Role.WHSTAFF];
+    const allowedRoles = [Role.WHSTAFF, Role.WHMANAGER];
     if (!allowedRoles.includes(user.role)) {
       throw new Error("You do not have permission to edit Stock Move Receipt");
     }
@@ -1068,7 +1092,7 @@ export const stockMoveService = {
       };
     }
 
-    const allowedRoles = [Role.WHSTAFF];
+    const allowedRoles = [Role.WHSTAFF, Role.WHMANAGER];
     if (!allowedRoles.includes(user.role)) {
       throw new Error("You do not have permission to edit Stock Move Issue");
     }
@@ -1284,7 +1308,7 @@ export const stockMoveService = {
   },
 
   async updateAdjustment(id: number, body: StockMoveAdjustmentDTO, user: any) {
-    const allowedRoles = [Role.WHSTAFF];
+    const allowedRoles = [Role.WHSTAFF, Role.WHMANAGER];
     if (!allowedRoles.includes(user.role)) {
       throw new Error(
         "You do not have permission to edit Stock Move Adjustment.",
@@ -1392,7 +1416,7 @@ export const stockMoveService = {
   },
 
   async updateTransfer(id: number, body: StockMoveTransferDTO, user: any) {
-    const allowedRoles = [Role.WHSTAFF];
+    const allowedRoles = [Role.WHSTAFF, Role.WHMANAGER];
     if (!allowedRoles.includes(user.role)) {
       throw new Error("You do not have permission to edit Stock Move Transfer");
     }
@@ -1481,7 +1505,7 @@ export const stockMoveService = {
   },
 
   async delete(id: number, user: any) {
-    const allowedRoles = [Role.WHSTAFF];
+    const allowedRoles = [Role.WHSTAFF, Role.WHMANAGER];
     if (!allowedRoles.includes(user.role)) {
       throw new Error("You do not have permission to delete");
     }
@@ -1651,6 +1675,17 @@ export const stockMoveService = {
         as: "approver",
         attributes: ["id", "email", "full_name", "phone", "avatar_url"],
       },
+      {
+        model: DocumentSignature,
+        as: "signatures",
+        include: [
+          {
+            model: User,
+            as: "signer",
+            attributes: ["id", "email", "full_name"],
+          },
+        ],
+      },
     ];
   },
 
@@ -1699,8 +1734,10 @@ export const stockMoveService = {
       throw new Error("Only draft stock moves can be submitted.");
     }
 
-    // Chỉ creator mới submit được (ngoại trừ phiếu tự động liên kết chứng từ)
-    if (stockMove.created_by !== user.id && !stockMove.reference_type) {
+    // Nhân viên chỉ submit phiếu do chính mình tạo (ngoại trừ phiếu tự động liên kết chứng từ);
+    // WHMANAGER submit được bất kỳ phiếu nào cùng chi nhánh
+    const isManager = (user as any).role === "WHMANAGER";
+    if (!isManager && stockMove.created_by !== user.id && !stockMove.reference_type) {
       throw new Error("Only the creator can submit this stock move.");
     }
 
@@ -1791,7 +1828,11 @@ export const stockMoveService = {
   },
 
   async approveStockMove(stockMoveId: number, user: any) {
-    if (user.role !== Role.WHMANAGER && user.role !== Role.ADMIN) {
+    let userRole = user.role;
+    if (typeof userRole === "object" && userRole !== null) {
+      userRole = userRole.code;
+    }
+    if (userRole !== Role.WHMANAGER && userRole !== Role.ADMIN) {
       throw new Error("You do not have permission to approve Stock Move.");
     }
     const move = await this.getById(stockMoveId);

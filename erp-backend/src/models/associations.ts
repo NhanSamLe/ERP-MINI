@@ -692,6 +692,15 @@ export function applyAssociations() {
     foreignKey: "approved_by",
   });
 
+  StockMove.belongsTo(Branch, {
+    foreignKey: "branch_id",
+    as: "branch",
+  });
+  Branch.hasMany(StockMove, {
+    foreignKey: "branch_id",
+    as: "stockMoves",
+  });
+
   // Warehouse ↔ StockBalance
   Warehouse.hasMany(StockBalance, {
     foreignKey: "warehouse_id",
@@ -1516,6 +1525,12 @@ export function applyAssociations() {
 
   DocumentSignature.belongsTo(ApInvoice, { foreignKey: "document_id", constraints: false, as: "apInvoice" });
   ApInvoice.hasMany(DocumentSignature, { foreignKey: "document_id", constraints: false, scope: { document_type: "ap_invoice" }, as: "signatures" });
+
+  DocumentSignature.belongsTo(StockMove, { foreignKey: "document_id", constraints: false, as: "stockMove" });
+  StockMove.hasMany(DocumentSignature, { foreignKey: "document_id", constraints: false, scope: { document_type: "stock_move" }, as: "signatures" });
+
+  DocumentSignature.belongsTo(ApPayment, { foreignKey: "document_id", constraints: false, as: "apPayment" });
+  ApPayment.hasMany(DocumentSignature, { foreignKey: "document_id", constraints: false, scope: { document_type: "ap_payment" }, as: "signatures" });
 }
 
 // ===============================

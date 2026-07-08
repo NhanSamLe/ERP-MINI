@@ -340,12 +340,21 @@ export default function ViewPurchaseOrderPage() {
     }
   };
 
+  const isPOManager = currentUser?.role.code === Roles.PURCHASEMANAGER;
+  const isPOStaff   = currentUser?.role.code === Roles.PURCHASE;
+  const isPOCreator = currentUser?.id === finalPO?.creator.id;
+  const isPOSameBranch = finalPO?.branch_id === currentUser?.branch.id;
+
+  // Nhân viên chỉ gửi duyệt khi chính mình tạo; Quản lý gửi được bất kỳ phiếu nào cùng chi nhánh
   const canSubmit =
     finalPO &&
     currentUser &&
-    currentUser.id === finalPO.creator.id &&
     finalPO.status === PurchaseOrderStatus.DRAFT &&
-    finalPO.branch_id === currentUser.branch.id;
+    isPOSameBranch &&
+    (
+      (isPOStaff && isPOCreator) ||
+      isPOManager
+    );
   const canApproveReject =
     currentUser?.role.code === Roles.PURCHASEMANAGER &&
     finalPO?.status === PurchaseOrderStatus.WAITING_APPROVAL &&

@@ -180,3 +180,16 @@ export const receiveTransferThunk = createAsyncThunk<
     return rejectWithValue(getErrorMessage(error));
   }
 });
+
+export const signStockMoveThunk = createAsyncThunk<
+  any,
+  { id: number; pin: string; signatureImage: string },
+  { rejectValue: string }
+>("stockMove/sign", async ({ id, pin, signatureImage }, { rejectWithValue }) => {
+  try {
+    const res = await stockMoveService.sign(id, pin, signatureImage);
+    return res;
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});

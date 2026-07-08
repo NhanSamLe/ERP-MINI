@@ -19,7 +19,7 @@ import { LocationSelect } from "../../LocationSelect";
 import { UomSelect, translateUomName } from "../../UomSelect";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../../../../../components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from "../../../../../components/ui/Card";
-import { Package, Trash2, Calendar, Clipboard, ShoppingCart, ListCollapse } from "lucide-react";
+import { Package, Trash2, Calendar, Clipboard, ShoppingCart, ListCollapse, Hash } from "lucide-react";
 
 export interface LineReceiptItem {
   id: number | undefined;
@@ -32,6 +32,11 @@ export interface LineReceiptItem {
   uomOptions?: Array<{ id: number; code: string; name: string }>;
   quantity: number;
   location_to_id?: number | null;
+  // Lot tracking fields
+  lot_id?: number | null;
+  lot_no?: string;
+  expiry_date?: string;
+  manufacture_date?: string;
 }
 
 export interface EditReceiptForm {
@@ -92,6 +97,7 @@ export default function EditReceiptModal({
   const selectedPurchaseOrder =
     purchaseOrder.items.find((p) => p.id === data?.reference_id)?.po_no || "";
 
+  // Map existing stock move lines (with lot data) when opening
   useEffect(() => {
     if (!open) return;
     setLineItems([]);
@@ -114,6 +120,15 @@ export default function EditReceiptModal({
       ],
       quantity: Number(line.quantity) ?? 0,
       location_to_id: line.location_to_id ?? null,
+      // Map lot data from existing line
+      lot_id: line.lot_id ?? null,
+      lot_no: line.lot?.lot_no ?? "",
+      expiry_date: line.lot?.expiry_date
+        ? line.lot.expiry_date.split("T")[0]
+        : "",
+      manufacture_date: line.lot?.manufacture_date
+        ? line.lot.manufacture_date.split("T")[0]
+        : "",
     }));
     setLineItems(items);
   }, [open, data]);
@@ -184,6 +199,10 @@ export default function EditReceiptModal({
               ],
               image: result.image_url,
               quantity: Number(line.qty_in_stock_uom ?? line.quantity ?? 0),
+              lot_id: null,
+              lot_no: "",
+              expiry_date: "",
+              manufacture_date: "",
             } as LineReceiptItem;
           }),
         );
@@ -201,6 +220,18 @@ export default function EditReceiptModal({
     setLineItems((prev) =>
       prev.map((item) =>
         item.product_id === id ? { ...item, quantity: value } : item,
+      ),
+    );
+  };
+
+  const handleLotChange = (
+    product_id: number,
+    field: "lot_no" | "expiry_date" | "manufacture_date",
+    value: string,
+  ) => {
+    setLineItems((prev) =>
+      prev.map((item) =>
+        item.product_id === product_id ? { ...item, [field]: value } : item,
       ),
     );
   };
@@ -245,7 +276,7 @@ export default function EditReceiptModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="w-full sm:max-w-4xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="w-full sm:max-w-5xl max-h-[85vh] overflow-y-auto">
         <DialogHeader className="pb-4 border-b border-slate-100 flex flex-row items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-orange-500 shadow-sm shrink-0">
             <Package className="w-5 h-5" />
@@ -354,29 +385,37 @@ export default function EditReceiptModal({
               <table className="w-full text-sm">
                 <thead className="bg-slate-50/80 text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-slate-100">
                   <tr>
-                    <th className="py-3.5 px-5 text-left">Sản phẩm</th>
-                    <th className="py-3.5 px-5 text-left">Mã SKU</th>
-                    <th className="py-3.5 px-5 text-left w-28">ĐVT</th>
-                    <th className="py-3.5 px-5 text-right w-24">SL</th>
-                    <th className="py-3.5 px-5 text-left w-40">Vị trí (Đến)</th>
-                    <th className="py-3.5 px-5 text-center w-14"></th>
+                    <th className="py-3.5 px-4 text-left min-w-[160px]">Sản phẩm</th>
+                    <th className="py-3.5 px-4 text-left w-24">Mã SKU</th>
+                    <th className="py-3.5 px-4 text-left w-28">ĐVT</th>
+                    <th className="py-3.5 px-4 text-right w-20">SL</th>
+                    <th className="py-3.5 px-4 text-left w-36">Vị trí (Đến)</th>
+                    <th className="py-3.5 px-4 text-left w-28">
+                      <div className="flex items-center gap-1">
+                        <Hash className="w-3 h-3" />
+                        Số lô
+                      </div>
+                    </th>
+                    <th className="py-3.5 px-4 text-left w-32">NSX</th>
+                    <th className="py-3.5 px-4 text-left w-32">HSD</th>
+                    <th className="py-3.5 px-4 text-center w-12"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {lineItems.length > 0 ? (
                     lineItems.map((p) => (
                       <tr key={p.product_id} className="hover:bg-slate-50/30 transition-colors align-middle">
-                        <td className="py-3 px-5 flex items-center gap-3">
+                        <td className="py-3 px-4 flex items-center gap-2.5">
                           {p.image && (
                             <img
                               src={p.image}
                               className="w-9 h-9 rounded-lg object-cover border border-slate-100 bg-slate-50 shadow-xxs shrink-0"
                             />
                           )}
-                          <span className="font-semibold text-slate-800">{p.name}</span>
+                          <span className="font-semibold text-slate-800 text-xs leading-tight">{p.name}</span>
                         </td>
-                        <td className="py-3 px-5 font-mono text-xs font-bold text-slate-455 uppercase">{p.sku}</td>
-                        <td className="py-3 px-5">
+                        <td className="py-3 px-4 font-mono text-xs font-bold text-slate-455 uppercase">{p.sku}</td>
+                        <td className="py-3 px-4">
                           <UomSelect
                             value={p.uom_id}
                             onChange={(uomId) =>
@@ -388,7 +427,7 @@ export default function EditReceiptModal({
                             }
                           />
                         </td>
-                        <td className="py-3 px-5 text-right">
+                        <td className="py-3 px-4 text-right">
                           <input
                             type="number"
                             value={p.quantity}
@@ -400,7 +439,7 @@ export default function EditReceiptModal({
                             }
                           />
                         </td>
-                        <td className="py-3 px-5">
+                        <td className="py-3 px-4">
                           <LocationSelect
                             warehouseId={
                               form.warehouse ? Number(form.warehouse) : null
@@ -419,7 +458,41 @@ export default function EditReceiptModal({
                             placeholder="— Chọn —"
                           />
                         </td>
-                        <td className="py-3 px-5 text-center">
+                        {/* Lot No */}
+                        <td className="py-3 px-4">
+                          <input
+                            type="text"
+                            value={p.lot_no ?? ""}
+                            placeholder="VD: LOT-001"
+                            className="w-full h-9 border border-slate-200 rounded-lg px-2.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
+                            onChange={(e) =>
+                              handleLotChange(p.product_id, "lot_no", e.target.value)
+                            }
+                          />
+                        </td>
+                        {/* Manufacture Date */}
+                        <td className="py-3 px-4">
+                          <input
+                            type="date"
+                            value={p.manufacture_date ?? ""}
+                            className="w-full h-9 border border-slate-200 rounded-lg px-2 text-xs focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
+                            onChange={(e) =>
+                              handleLotChange(p.product_id, "manufacture_date", e.target.value)
+                            }
+                          />
+                        </td>
+                        {/* Expiry Date */}
+                        <td className="py-3 px-4">
+                          <input
+                            type="date"
+                            value={p.expiry_date ?? ""}
+                            className="w-full h-9 border border-slate-200 rounded-lg px-2 text-xs focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
+                            onChange={(e) =>
+                              handleLotChange(p.product_id, "expiry_date", e.target.value)
+                            }
+                          />
+                        </td>
+                        <td className="py-3 px-4 text-center">
                           <button
                             className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-rose-600 bg-white hover:bg-rose-50 hover:border-rose-100 transition-colors shadow-sm"
                             onClick={() =>
@@ -436,7 +509,7 @@ export default function EditReceiptModal({
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={6} className="py-12 text-center text-slate-400 italic">
+                      <td colSpan={9} className="py-12 text-center text-slate-400 italic">
                         Chưa chọn đơn mua hàng hoặc chưa tải danh sách sản phẩm.
                       </td>
                     </tr>
