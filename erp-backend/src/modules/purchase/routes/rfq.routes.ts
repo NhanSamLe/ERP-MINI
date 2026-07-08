@@ -10,7 +10,7 @@ const purchaseRoles = authMiddleware([
   Role.PURCHASEMANAGER,
   Role.ACCOUNT,
 ]);
-const purchaseOnly = authMiddleware([Role.PURCHASE]);
+const purchaseOnly = authMiddleware([Role.PURCHASE, Role.PURCHASEMANAGER]);
 const managerOnly = authMiddleware([Role.PURCHASEMANAGER]);
 
 // ─── READ ──────────────────────────────────────────────────────────────────

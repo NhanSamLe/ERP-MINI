@@ -61,4 +61,9 @@ export const stockMoveService = {
     const res = await stockMoveApi.receiveTransfer(id);
     return res;
   },
+
+  sign: async (id: number, pin: string, signatureImage: string) => {
+    const res = await stockMoveApi.sign(id, pin, signatureImage);
+    return res;
+  },
 };

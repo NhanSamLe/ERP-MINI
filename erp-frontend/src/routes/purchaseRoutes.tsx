@@ -150,7 +150,7 @@ const purchaseRoutes: RouteObject[] = [
   {
     path: "purchase-orders/create",
     element: (
-      <ProtectedRoute allowedRoles={[Roles.PURCHASE]}>
+      <ProtectedRoute allowedRoles={[Roles.PURCHASE, Roles.PURCHASEMANAGER]}>
         <CreatePuchaseOrderPage />
       </ProtectedRoute>
     ),
@@ -159,7 +159,7 @@ const purchaseRoutes: RouteObject[] = [
   {
     path: "purchase-orders/edit/:id",
     element: (
-      <ProtectedRoute allowedRoles={[Roles.PURCHASE]}>
+      <ProtectedRoute allowedRoles={[Roles.PURCHASE, Roles.PURCHASEMANAGER]}>
         <EditPurchaseOrderPage />
       </ProtectedRoute>
     ),
@@ -262,7 +262,7 @@ const purchaseRoutes: RouteObject[] = [
   {
     path: "purchase/rfqs/create",
     element: (
-      <ProtectedRoute allowedRoles={[Roles.PURCHASE]}>
+      <ProtectedRoute allowedRoles={[Roles.PURCHASE, Roles.PURCHASEMANAGER]}>
         <RfqCreatePage />
       </ProtectedRoute>
     ),
@@ -270,7 +270,7 @@ const purchaseRoutes: RouteObject[] = [
   {
     path: "purchase/rfqs/:id/edit",
     element: (
-      <ProtectedRoute allowedRoles={[Roles.PURCHASE]}>
+      <ProtectedRoute allowedRoles={[Roles.PURCHASE, Roles.PURCHASEMANAGER]}>
         <RfqEditPage />
       </ProtectedRoute>
     ),

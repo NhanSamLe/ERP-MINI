@@ -97,4 +97,12 @@ export const stockMoveApi = {
 
   rejectStockMove: (id: number, rejectReason: string) =>
     axiosClient.put(`/stock-move/${id}/reject`, { rejectReason }),
+
+  sign: async (id: number, pin: string, signature_image: string): Promise<any> => {
+    const res = await axiosClient.post(`/stock-move/${id}/sign`, {
+      pin,
+      signature_image,
+    });
+    return res.data;
+  },
 };

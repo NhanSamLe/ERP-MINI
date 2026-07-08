@@ -9,6 +9,7 @@ import {
   Currency,
   DocumentSignature,
   Uom,
+  Company,
 } from "../../../models";
 import { User } from "../../auth/models/user.model";
 import { Branch } from "../../company/models/branch.model";
@@ -110,7 +111,11 @@ export const apInvoiceService = {
     return ApInvoice.findOne({
       where,
       include: [
-        { model: Branch, as: "branch" },
+        { 
+          model: Branch, 
+          as: "branch",
+          include: [{ model: Company, as: "company" }]
+        },
         {
           model: User,
           as: "creator",
@@ -275,6 +280,9 @@ export const apInvoiceService = {
     }
 
     await sequelize.transaction(async (t: Transaction) => {
+      const selectedCurrency = input.currency_id ? await Currency.findByPk(input.currency_id) : null;
+      const isVnd = !selectedCurrency || selectedCurrency.code === "VND";
+
       const invoice = await ApInvoice.create(
         {
           source: input.source,
@@ -296,9 +304,9 @@ export const apInvoiceService = {
           invoice_series: input.invoice_series ?? null,
           invoice_template: input.invoice_template ?? null,
           tax_code: input.tax_code ?? null,
-          total_before_tax: input.total_before_tax ?? 0,
-          total_tax: input.total_tax ?? 0,
-          total_after_tax: input.total_after_tax ?? 0,
+          total_before_tax: isVnd ? Math.round(input.total_before_tax ?? 0) : (input.total_before_tax ?? 0),
+          total_tax: isVnd ? Math.round(input.total_tax ?? 0) : (input.total_tax ?? 0),
+          total_after_tax: isVnd ? Math.round(input.total_after_tax ?? 0) : (input.total_after_tax ?? 0),
           matching_status: "pending",
         },
         { transaction: t },
@@ -310,6 +318,8 @@ export const apInvoiceService = {
         const qty = line.quantity;
         const price = line.unit_price;
         const lineTotal = line.line_total ?? qty * price;
+        const lineTax = line.line_tax ?? 0;
+        const lineTotalAfterTax = line.line_total_after_tax ?? (lineTotal + lineTax);
 
         await ApInvoiceLine.create(
           {
@@ -320,9 +330,9 @@ export const apInvoiceService = {
             unit_price: price,
             uom_id: line.uom_id ?? null,
             ...(line.tax_rate_id && { tax_rate_id: line.tax_rate_id }),
-            line_total: lineTotal,
-            line_tax: line.line_tax ?? 0,
-            line_total_after_tax: line.line_total_after_tax ?? lineTotal,
+            line_total: isVnd ? Math.round(lineTotal) : lineTotal,
+            line_tax: isVnd ? Math.round(lineTax) : lineTax,
+            line_total_after_tax: isVnd ? Math.round(lineTotalAfterTax) : lineTotalAfterTax,
             po_line_id: line.po_line_id ?? null,
             grn_line_id: line.grn_line_id ?? null,
           },
@@ -809,7 +819,10 @@ export const apInvoiceService = {
     if (apInvoice.status !== "draft") {
       throw new Error("Only draft invoice can be submitted.");
     }
-    if (apInvoice.created_by !== user.id) {
+    // Nhân viên chỉ submit phiếu do chính mình tạo;
+    // Kế toán trưởng (CHACC) submit được bất kỳ phiếu nào cùng chi nhánh
+    const isManager = user.role === "CHACC";
+    if (!isManager && apInvoice.created_by !== user.id) {
       throw new Error("Only the creator can submit");
     }
 

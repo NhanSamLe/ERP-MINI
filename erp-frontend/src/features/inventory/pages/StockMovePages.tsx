@@ -582,8 +582,18 @@ export default function StockMovePages() {
           product_id: p.product_id,
           quantity: p.quantity,
           uom: p.uom,
-          location_to_id: (p as any).location_to_id ?? null,
-          lot_id: (p as any).lot_id ?? null,
+          uom_id: p.uom_id ?? null,
+          location_to_id: p.location_to_id ?? null,
+          // Nếu có lot_id sẵn và không thay đổi lot_no thì giữ lot_id cũ
+          // Nếu nhập lot_no mới thì tạo lô mới qua new_lot
+          lot_id: p.lot_id && !p.lot_no ? p.lot_id : null,
+          new_lot: p.lot_no
+            ? {
+                lot_no: p.lot_no,
+                expiry_date: p.expiry_date || undefined,
+                manufacture_date: p.manufacture_date || undefined,
+              }
+            : null,
         })),
       };
       console.log("Payload:", payload);
@@ -1026,9 +1036,9 @@ export default function StockMovePages() {
                   setSelectedStockMove(item);
                   setConfirmOpen(true);
                 }}
-                canEdit={(item) => item.status === "draft" && role === Roles.WHSTAFF}
+                canEdit={(item) => item.status === "draft" && (role === Roles.WHSTAFF || role === Roles.WHMANAGER)}
                 canDelete={(item) =>
-                  item.status === "draft" && role === Roles.WHSTAFF
+                  item.status === "draft" && (role === Roles.WHSTAFF || role === Roles.WHMANAGER)
                 }
               />
             </div>

@@ -8,7 +8,7 @@ import { GlJournal } from "../../finance/models/glJournal.model";
 import { GlEntry } from "../../finance/models/glEntry.model";
 import { GlEntryLine } from "../../finance/models/glEntryLine.model";
 import { GlAccount } from "../../finance/models/glAccount.model";
-import { ApPaymentAllocation, Partner, sequelize, BankAccount } from "../../../models";
+import { ApPaymentAllocation, Partner, sequelize, BankAccount, Currency, Company, DocumentSignature } from "../../../models";
 import { Op, QueryTypes } from "sequelize";
 import { notificationService } from "../../../core/services/notification.service";
 import { getMappedAccount } from "../../finance/services/glAccount.service";
@@ -84,7 +84,11 @@ export const apPaymentService = {
     return ApPayment.findOne({
       where,
       include: [
-        { model: Branch, as: "branch" },
+        { 
+          model: Branch, 
+          as: "branch",
+          include: [{ model: Company, as: "company" }]
+        },
         {
           model: Partner,
           as: "supplier",
@@ -104,6 +108,17 @@ export const apPaymentService = {
           model: BankAccount,
           as: "bankAccount",
           required: false,
+        },
+        {
+          model: DocumentSignature,
+          as: "signatures",
+          include: [
+            {
+              model: User,
+              as: "signer",
+              attributes: ["id", "full_name", "email"],
+            },
+          ],
         },
       ],
     });
@@ -158,11 +173,15 @@ export const apPaymentService = {
 
     const paymentNo = await generatePaymentNo();
 
+    const selectedCurrency = payload.currency_id ? await Currency.findByPk(payload.currency_id) : null;
+    const isVnd = !selectedCurrency || selectedCurrency.code === "VND";
+    const finalAmount = isVnd ? Math.round(payload.amount) : payload.amount;
+
     const payment = await ApPayment.create({
       payment_no: paymentNo,
       supplier_id: payload.supplier_id,
       payment_date: payload.payment_date || new Date(),
-      amount: payload.amount,
+      amount: finalAmount,
       method: payload.method,
       status: "draft",
       approval_status: "draft",
@@ -201,7 +220,10 @@ export const apPaymentService = {
     const payment = await this.getById(id, user);
     if (!payment) throw new Error("AP Payment not found");
 
-    if (payment.created_by !== user.id) {
+    // Nhân viên chỉ submit phiếu do chính mình tạo;
+    // Kế toán trưởng (CHACC) submit được bất kỳ phiếu nào cùng chi nhánh
+    const isManager = user.role === "CHACC";
+    if (!isManager && payment.created_by !== user.id) {
       throw new Error("Only creator can submit payment");
     }
 
@@ -244,7 +266,12 @@ export const apPaymentService = {
   // ─── APPROVE ───────────────────────────────────────────────────────────────
 
   async approve(id: number, user: any, app?: any) {
-    if (user.role !== Role.CHACC && user.role !== "ADMIN" && user.role !== "CEO")
+    let userRole = user.role;
+    if (typeof userRole === "object" && userRole !== null) {
+      userRole = userRole.code;
+    }
+
+    if (userRole !== Role.CHACC && userRole !== "ADMIN" && userRole !== "CEO")
       throw new Error("Only Chief Accountant can approve");
  
     const t: Transaction = await sequelize.transaction();
@@ -253,7 +280,7 @@ export const apPaymentService = {
       if (!payment) throw new Error("AP Payment not found");
  
       const companyBranchIds = await getCompanyBranchIds(user);
-      if (user.role !== "ADMIN" && user.role !== "CEO" && payment.branch_id !== user.branch_id)
+      if (userRole !== "ADMIN" && userRole !== "CEO" && payment.branch_id !== user.branch_id)
         throw new Error("You cannot approve payment from another branch");
       if (!companyBranchIds.includes(payment.branch_id))
         throw new Error("You cannot approve payment for a different company");
@@ -376,7 +403,12 @@ export const apPaymentService = {
   // ─── REJECT ────────────────────────────────────────────────────────────────
 
   async reject(id: number, reason: string, user: any, app?: any) {
-    if (user.role !== Role.CHACC && user.role !== "ADMIN" && user.role !== "CEO") {
+    let userRole = user.role;
+    if (typeof userRole === "object" && userRole !== null) {
+      userRole = userRole.code;
+    }
+
+    if (userRole !== Role.CHACC && userRole !== "ADMIN" && userRole !== "CEO") {
       throw new Error("Only Chief Accountant can reject");
     }
  
@@ -384,7 +416,7 @@ export const apPaymentService = {
     if (!payment) throw new Error("AP Payment not found");
  
     const companyBranchIds = await getCompanyBranchIds(user);
-    if (user.role !== "ADMIN" && user.role !== "CEO" && payment.branch_id !== user.branch_id) {
+    if (userRole !== "ADMIN" && userRole !== "CEO" && payment.branch_id !== user.branch_id) {
       throw new Error("You cannot reject payment from another branch");
     }
     if (!companyBranchIds.includes(payment.branch_id)) {

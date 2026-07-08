@@ -221,5 +221,33 @@ export const StockMoveController = {
       });
     }
   },
+
+  async signStockMove(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const user = (req as any).user;
+      const { pin, signature_image } = req.body;
+
+      if (!pin || !signature_image) {
+        return res.status(400).json({ message: "Mã PIN và hình ảnh chữ ký là bắt buộc." });
+      }
+
+      const ipAddress = req.ip || req.headers["x-forwarded-for"] as string || "";
+
+      const { signatureService } = require("../../purchase/services/signature.service");
+      const result = await signatureService.signDocument(
+        user.id,
+        "stock_move",
+        id,
+        pin,
+        signature_image,
+        ipAddress
+      );
+
+      res.status(200).json({ success: true, data: result });
+    } catch (error: any) {
+      res.status(400).json({ success: false, message: error.message || "Ký duyệt phiếu kho thất bại." });
+    }
+  },
 };
 

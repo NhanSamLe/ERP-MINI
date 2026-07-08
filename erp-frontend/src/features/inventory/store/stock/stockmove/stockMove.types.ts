@@ -77,6 +77,21 @@ export interface StockMove {
     phone: string;
     avatar_url: string;
   };
+  signatures?: Array<{
+    id: number;
+    document_type: string;
+    document_id: number;
+    signer_id: number;
+    signature_image: string;
+    hash_value: string;
+    signer_ip?: string;
+    signed_at: string;
+    signer?: {
+      id: number;
+      full_name: string;
+      email: string;
+    };
+  }>;
 }
 
 export interface StockMoveCreate {
@@ -315,18 +330,37 @@ export interface StockMoveAdjustmentUpdate {
 export interface ViewStockMove extends StockMove {
   warehouse_from_name?: string;
   warehouse_to_name?: string;
+  warehouse_from_address?: string;
+  warehouse_to_address?: string;
   creator_name?: string;
   approver_name?: string;
   move_date_formatted?: string;
   status_label?: string;
+  branch?: {
+    id: number;
+    name: string;
+    code: string;
+    address: string;
+    company?: {
+      id: number;
+      code: string;
+      name: string;
+      tax_code?: string;
+      address?: string;
+      phone?: string;
+      email?: string;
+    };
+  };
 }
 
 export function mapToViewStockMove(raw: StockMove, warehouses: Warehouse[]) {
-  const warehouse_from_name =
-    warehouses.find((w) => w.id === raw.warehouse_from_id)?.name || undefined;
+  const whFrom = warehouses.find((w) => w.id === raw.warehouse_from_id);
+  const warehouse_from_name = whFrom?.name || undefined;
+  const warehouse_from_address = whFrom?.address || undefined;
 
-  const warehouse_to_name =
-    warehouses.find((w) => w.id === raw.warehouse_to_id)?.name || undefined;
+  const whTo = warehouses.find((w) => w.id === raw.warehouse_to_id);
+  const warehouse_to_name = whTo?.name || undefined;
+  const warehouse_to_address = whTo?.address || undefined;
 
   const enrichedLines = raw.lines?.map((line: StockMoveLine) => ({
     ...line,
@@ -335,7 +369,9 @@ export function mapToViewStockMove(raw: StockMove, warehouses: Warehouse[]) {
 
   return {
     warehouse_from_name,
+    warehouse_from_address,
     warehouse_to_name,
+    warehouse_to_address,
     lines: enrichedLines,
     ...raw,
   };

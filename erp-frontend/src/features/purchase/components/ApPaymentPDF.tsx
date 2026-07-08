@@ -7,8 +7,7 @@ import {
   Font,
   Image,
 } from "@react-pdf/renderer";
-import { ApInvoice } from "../store/apInvoice/apInvoice.types";
-import { translateUomName } from "../../inventory/components/UomSelect";
+import { ApPayment } from "../store/apPayment/apPayment.types";
 
 Font.register({
   family: "Roboto",
@@ -45,7 +44,7 @@ const S = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-start",
     borderBottomWidth: 2,
-    borderBottomColor: "#ea580c",
+    borderBottomColor: "#f97316",
     paddingBottom: 10,
     marginBottom: 14,
   },
@@ -53,7 +52,7 @@ const S = StyleSheet.create({
     fontSize: 13,
     fontWeight: "bold",
     letterSpacing: 1,
-    color: "#ea580c",
+    color: "#f97316",
   },
   companyBranch: { fontSize: 8, color: "#555", marginTop: 2 },
   invoiceTitleBlock: { alignItems: "flex-end" },
@@ -66,7 +65,7 @@ const S = StyleSheet.create({
   invoiceNoBox: {
     marginTop: 5,
     borderWidth: 1.5,
-    borderColor: "#ea580c",
+    borderColor: "#f97316",
     paddingVertical: 4,
     paddingHorizontal: 10,
   },
@@ -96,60 +95,42 @@ const S = StyleSheet.create({
     fontWeight: "bold",
     textTransform: "uppercase",
     letterSpacing: 0.4,
-    color: "#ea580c",
+    color: "#f97316",
   },
   partyBody: { paddingVertical: 7, paddingHorizontal: 8 },
   partyName: { fontSize: 9, fontWeight: "bold", marginBottom: 4 },
   partyRow: { fontSize: 8, color: "#555", marginTop: 2 },
   partyRowBold: { fontWeight: "bold", color: "#1a1a1a" },
-  table: { marginBottom: 14 },
-  tableHead: {
-    flexDirection: "row",
-    backgroundColor: "#ea580c",
-    paddingVertical: 6,
-    paddingHorizontal: 4,
+  
+  detailsBlock: {
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    padding: 10,
+    marginBottom: 14,
   },
-  thText: {
-    fontSize: 7,
+  detailsTitle: {
+    fontSize: 10,
     fontWeight: "bold",
-    color: "#ffffff",
+    color: "#f97316",
+    marginBottom: 8,
     textTransform: "uppercase",
-    letterSpacing: 0.3,
   },
-  tableRow: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
-    paddingVertical: 5,
-    paddingHorizontal: 4,
-    minHeight: 22,
-  },
-  tableRowEven: { backgroundColor: "#fffaf5" },
-  tdText: { fontSize: 8, color: "#1a1a1a" },
-  tdSub: { fontSize: 7, color: "#9ca3af", marginTop: 1 },
-  tdBold: { fontWeight: "bold" },
-  colNo: { width: 22 },
-  colProduct: { flex: 1 },
-  colUom: { width: 40, textAlign: "center" },
-  colQty: { width: 40, textAlign: "center" },
-  colPrice: { width: 80, textAlign: "right" },
-  colTax: { width: 40, textAlign: "center" },
-  colTotal: { width: 90, textAlign: "right" },
-  summaryWrap: { flexDirection: "row", justifyContent: "flex-end", marginBottom: 20 },
-  summaryBox: { width: 220 },
-  summaryRow: {
+  detailsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 4,
+    paddingVertical: 3,
     borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
+    borderBottomColor: "#f3f4f6",
   },
-  summaryLabel: { fontSize: 8, color: "#555" },
-  summaryVal: { fontSize: 8, fontWeight: "bold" },
+  detailsLabel: { fontSize: 8, color: "#555" },
+  detailsValue: { fontSize: 8, fontWeight: "bold" },
+  
+  summaryWrap: { flexDirection: "row", justifyContent: "flex-end", marginBottom: 20 },
+  summaryBox: { width: 220 },
   summaryTotalRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    backgroundColor: "#ea580c",
+    backgroundColor: "#f97316",
     paddingVertical: 7,
     paddingHorizontal: 8,
     marginTop: 4,
@@ -158,7 +139,7 @@ const S = StyleSheet.create({
   summaryTotalVal: { fontSize: 10, fontWeight: "bold", color: "#fff" },
   sigSection: {
     borderTopWidth: 1.5,
-    borderTopColor: "#ea580c",
+    borderTopColor: "#f97316",
     paddingTop: 14,
     marginTop: 4,
   },
@@ -208,25 +189,25 @@ const S = StyleSheet.create({
 });
 
 interface Props {
-  invoice: ApInvoice;
+  payment: ApPayment;
   lang?: "vi" | "en";
 }
 
-export function ApInvoicePDF({ invoice, lang = "vi" }: Props) {
+export function ApPaymentPDF({ payment, lang = "vi" }: Props) {
   const isVi = lang === "vi";
-  const currencyCode = invoice.currency?.code || "VND";
-  const currencySymbol = invoice.currency?.symbol || currencyCode;
 
   const fmtMoney = (v: number | string | null | undefined) =>
-    `${Number(v || 0).toLocaleString(isVi ? "vi-VN" : "en-US", { maximumFractionDigits: 2 })} ${currencySymbol}`;
+    `${Number(v || 0).toLocaleString(isVi ? "vi-VN" : "en-US", { maximumFractionDigits: 0 })} VND`;
 
-  const supplier = invoice.order?.supplier;
-  const creator = invoice.creator;
+  const supplier = payment.supplier;
+  const creator = payment.creator;
+  const branch = payment.branch;
+  const bankAccount = payment.bankAccount;
 
   // Lấy chữ ký từ model
-  const chaccSignature = (invoice as any).signatures?.find(
-    (s: any) => s.document_type === "ap_invoice"
-  );
+  const chaccSignature = (payment as any).signatures?.find(
+    (s: any) => s.document_type === "ap_payment" || s.document_type === "AP_PAYMENT"
+  ) || payment.signatures?.[0];
 
   // Sinh QR Code link xác thực công cộng
   const verifyUrl = `${window.location.origin}/public/verify-signature/${chaccSignature?.hash_value || ""}`;
@@ -242,38 +223,43 @@ export function ApInvoicePDF({ invoice, lang = "vi" }: Props) {
         {/* Header */}
         <View style={S.headerRow}>
           <View>
-            <Text style={S.companyName}>{invoice.branch?.company?.name || "ERP-MINI ENTERPRISE"}</Text>
-            <Text style={S.companyBranch}>Chi nhánh: {invoice.branch?.name || "Main"}</Text>
+            <Text style={S.companyName}>{branch?.company?.name || "ERP-MINI ENTERPRISE"}</Text>
+            <Text style={S.companyBranch}>Chi nhánh: {branch?.name || "Main Branch"}</Text>
             <Text style={[S.companyBranch, { marginTop: 4, fontSize: 9, fontWeight: "bold", color: "#3b82f6" }]}>
-              {isVi ? "HÓA ĐƠN ĐẦU VÀO (AP INVOICE)" : "AP INVOICE"}
+              {isVi ? "PHIẾU CHI MUA HÀNG (AP PAYMENT)" : "AP PAYMENT"}
             </Text>
           </View>
           <View style={S.invoiceTitleBlock}>
-            <Text style={S.invoiceTitle}>{isVi ? "HÓA ĐƠN" : "INVOICE"}</Text>
+            <Text style={S.invoiceTitle}>{isVi ? "PHIẾU CHI" : "PAYMENT"}</Text>
             <View style={S.invoiceNoBox}>
-              <Text style={S.invoiceNo}>{invoice.invoice_no}</Text>
+              <Text style={S.invoiceNo}>{payment.payment_no}</Text>
             </View>
             <Text style={S.invoiceDateText}>
-              {isVi ? "Ngày hóa đơn" : "Date"}: {invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleDateString(isVi ? "vi-VN" : "en-US") : "—"}
+              {isVi ? "Ngày thanh toán" : "Payment Date"}: {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString(isVi ? "vi-VN" : "en-US") : "—"}
             </Text>
           </View>
         </View>
 
         {/* Parties */}
         <View style={S.partiesRow}>
-          {/* Buyer */}
+          {/* Pay From */}
           <View style={S.partyBox}>
-            <Text style={S.partyTitle}>{isVi ? "Khách hàng mua (Bill To)" : "Bill To"}</Text>
+            <Text style={S.partyTitle}>{isVi ? "Đơn vị chi (Pay From)" : "Pay From"}</Text>
             <View style={S.partyBody}>
-              <Text style={S.partyName}>ERP-MINI Co., Ltd</Text>
-              <Text style={S.partyRow}>Email: <Text style={S.partyRowBold}>accounting@erp-mini.com</Text></Text>
-              <Text style={S.partyRow}>Người lập: <Text style={S.partyRowBold}>{creator?.full_name || "—"}</Text></Text>
+              <Text style={S.partyName}>{branch?.company?.name || "ERP-MINI Co., Ltd"}</Text>
+              {branch?.address && <Text style={S.partyRow}>{isVi ? "Địa chỉ" : "Address"}: <Text style={S.partyRowBold}>{branch.address}</Text></Text>}
+              {bankAccount && (
+                <Text style={S.partyRow}>
+                  {isVi ? "Tài khoản" : "Account"}: <Text style={S.partyRowBold}>{bankAccount.account_number} ({bankAccount.bank_name})</Text>
+                </Text>
+              )}
+              <Text style={S.partyRow}>{isVi ? "Người lập" : "Prepared By"}: <Text style={S.partyRowBold}>{creator?.full_name || "—"}</Text></Text>
             </View>
           </View>
 
-          {/* Supplier */}
+          {/* Supplier (Pay To) */}
           <View style={S.partyBox}>
-            <Text style={S.partyTitle}>{isVi ? "Đơn vị phát hành (Supplier)" : "Supplier"}</Text>
+            <Text style={S.partyTitle}>{isVi ? "Đơn vị nhận (Pay To)" : "Pay To"}</Text>
             <View style={S.partyBody}>
               <Text style={S.partyName}>{supplier?.name || "—"}</Text>
               {supplier?.phone && <Text style={S.partyRow}>SĐT: <Text style={S.partyRowBold}>{supplier.phone}</Text></Text>}
@@ -282,54 +268,33 @@ export function ApInvoicePDF({ invoice, lang = "vi" }: Props) {
           </View>
         </View>
 
-        {/* Table */}
-        <View style={S.table}>
-          <View style={S.tableHead}>
-            <Text style={[S.thText, S.colNo]}>#</Text>
-            <Text style={[S.thText, S.colProduct]}>{isVi ? "Mô tả sản phẩm" : "Item Description"}</Text>
-            <Text style={[S.thText, S.colUom]}>{isVi ? "ĐVT" : "Uom"}</Text>
-            <Text style={[S.thText, S.colQty]}>{isVi ? "SL" : "Qty"}</Text>
-            <Text style={[S.thText, S.colPrice]}>{isVi ? "Đơn giá" : "Price"}</Text>
-            <Text style={[S.thText, S.colTax]}>{isVi ? "Thuế" : "Tax"}</Text>
-            <Text style={[S.thText, S.colTotal]}>{isVi ? "Thành tiền" : "Total"}</Text>
+        {/* Details Block */}
+        <View style={S.detailsBlock}>
+          <Text style={S.detailsTitle}>{isVi ? "Chi tiết thanh toán" : "Payment Details"}</Text>
+          <View style={S.detailsRow}>
+            <Text style={S.detailsLabel}>{isVi ? "Mã phiếu chi" : "Payment No"}</Text>
+            <Text style={S.detailsValue}>{payment.payment_no}</Text>
           </View>
-
-          {(invoice.lines || []).map((line, idx) => {
-            const displayQty = line.quantity;
-            const rawUom = (line as any).uom?.name || (line as any).product?.uom?.name;
-            const uom = rawUom ? translateUomName(rawUom) : "—";
-            const product = line.product;
-
-            return (
-              <View key={idx} style={[S.tableRow, idx % 2 === 1 ? S.tableRowEven : {}]} wrap={false}>
-                <Text style={[S.tdText, S.colNo, { color: "#9ca3af" }]}>{idx + 1}</Text>
-                <View style={S.colProduct}>
-                  <Text style={[S.tdText, S.tdBold]}>{product?.name || line.description || "—"}</Text>
-                </View>
-                <Text style={[S.tdText, S.colUom]}>{uom}</Text>
-                <Text style={[S.tdText, S.tdBold, S.colQty]}>{displayQty}</Text>
-                <Text style={[S.tdText, S.colPrice]}>{fmtMoney(line.unit_price)}</Text>
-                <Text style={[S.tdText, S.colTax]}>{line.tax_rate_id ? "VAT" : "0%"}</Text>
-                <Text style={[S.tdText, S.tdBold, S.colTotal]}>{fmtMoney(line.line_total_after_tax)}</Text>
-              </View>
-            );
-          })}
+          <View style={S.detailsRow}>
+            <Text style={S.detailsLabel}>{isVi ? "Ngày thanh toán" : "Payment Date"}</Text>
+            <Text style={S.detailsValue}>{new Date(payment.payment_date).toLocaleDateString(isVi ? "vi-VN" : "en-US")}</Text>
+          </View>
+          <View style={S.detailsRow}>
+            <Text style={S.detailsLabel}>{isVi ? "Phương thức thanh toán" : "Payment Method"}</Text>
+            <Text style={S.detailsValue}>{payment.method.toUpperCase()}</Text>
+          </View>
+          <View style={S.detailsRow}>
+            <Text style={S.detailsLabel}>{isVi ? "Trạng thái phê duyệt" : "Approval Status"}</Text>
+            <Text style={S.detailsValue}>{payment.approval_status.toUpperCase()}</Text>
+          </View>
         </View>
 
         {/* Summary */}
         <View style={S.summaryWrap}>
           <View style={S.summaryBox}>
-            <View style={S.summaryRow}>
-              <Text style={S.summaryLabel}>{isVi ? "Cộng tiền chưa thuế" : "Subtotal"}</Text>
-              <Text style={S.summaryVal}>{fmtMoney(invoice.total_before_tax)}</Text>
-            </View>
-            <View style={S.summaryRow}>
-              <Text style={S.summaryLabel}>{isVi ? "Thuế GTGT" : "VAT Total"}</Text>
-              <Text style={S.summaryVal}>{fmtMoney(invoice.total_tax)}</Text>
-            </View>
             <View style={S.summaryTotalRow}>
-              <Text style={S.summaryTotalLabel}>{isVi ? "TỔNG CỘNG" : "GRAND TOTAL"}</Text>
-              <Text style={S.summaryTotalVal}>{fmtMoney(invoice.total_after_tax)}</Text>
+              <Text style={S.summaryTotalLabel}>{isVi ? "TỔNG SỐ TIỀN" : "TOTAL AMOUNT"}</Text>
+              <Text style={S.summaryTotalVal}>{fmtMoney(payment.amount)}</Text>
             </View>
           </View>
         </View>
@@ -339,7 +304,7 @@ export function ApInvoicePDF({ invoice, lang = "vi" }: Props) {
           <View style={S.sigGrid}>
             {/* Creator */}
             <View style={S.sigBox}>
-              <Text style={S.sigTitle}>{isVi ? "Người lập hóa đơn" : "Prepared By"}</Text>
+              <Text style={S.sigTitle}>{isVi ? "Người lập phiếu" : "Prepared By"}</Text>
               <View style={S.sigPlaceholder} />
               <Text style={S.sigName}>{creator?.full_name || "—"}</Text>
             </View>
@@ -359,7 +324,7 @@ export function ApInvoicePDF({ invoice, lang = "vi" }: Props) {
               ) : (
                 <View style={S.sigPlaceholder} />
               )}
-              <Text style={S.sigName}>{invoice.approver?.full_name || (chaccSignature ? "Kế toán trưởng đã ký" : "—")}</Text>
+              <Text style={S.sigName}>{payment.approver?.full_name || (chaccSignature ? "Kế toán trưởng đã ký" : "—")}</Text>
             </View>
           </View>
         </View>

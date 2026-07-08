@@ -54,4 +54,12 @@ export const apPaymentApi = {
     axiosClient
       .get(`/ap/payments/${id}/audit-logs`)
       .then((res) => res.data.data),
+
+  sign: async (id: number, pin: string, signatureImage: string): Promise<any> => {
+    const res = await axiosClient.post(`ap/payments/${id}/sign`, {
+      pin,
+      signature_image: signatureImage,
+    });
+    return res.data;
+  },
 };

@@ -125,7 +125,7 @@ export default function PraDetailPage() {
         onClick: () => navigate("/purchase/return-authorizations"),
       },
     ];
-    if (pra.status === "draft" && role === Roles.PURCHASE) {
+    if (pra.status === "draft" && (role === Roles.PURCHASE || role === Roles.PURCHASEMANAGER)) {
       base.push({
         label: "Chỉnh sửa",
         variant: "outline" as const,
@@ -133,7 +133,7 @@ export default function PraDetailPage() {
           navigate(`/purchase/return-authorizations/${pra.id}/edit`),
       });
     }
-    if (pra.status === "draft" && role === Roles.PURCHASE) {
+    if (pra.status === "draft" && (role === Roles.PURCHASE || role === Roles.PURCHASEMANAGER)) {
       base.push({
         label: "Nộp duyệt",
         variant: "primary" as const,

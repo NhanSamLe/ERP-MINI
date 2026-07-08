@@ -116,11 +116,6 @@ const menuItems: MenuItem[] = [
         allowedRoles: ["ACCOUNT", "CHACC"],
       },
       {
-        name: "Nhà cung cấp",
-        path: "/purchase/vendors",
-        allowedRoles: ["PURCHASE", "PURCHASEMANAGER"],
-      },
-      {
         name: "Yêu cầu báo giá",
         path: "/purchase/rfqs",
         allowedRoles: ["PURCHASE", "PURCHASEMANAGER"],

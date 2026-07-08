@@ -23,6 +23,12 @@ router.post(
   StockMoveController.approve
 );
 
+router.post(
+  "/:id/sign",
+  authMiddleware([Role.WHMANAGER]),
+  StockMoveController.signStockMove
+);
+
 router.put(
   "/:id/reject",
   authMiddleware([Role.WHMANAGER]),
@@ -31,61 +37,61 @@ router.put(
 
 router.post(
   "/receipt",
-  authMiddleware([Role.WHSTAFF]),
+  authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
   StockMoveController.createReceiptStockMove
 );
 
 router.post(
   "/issue",
-  authMiddleware([Role.WHSTAFF]),
+  authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
   StockMoveController.createIssuetStockMove
 );
 
 router.post(
   "/purchase-return/:returnId/issue",
-  authMiddleware([Role.WHSTAFF]),
+  authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
   StockMoveController.createPurchaseReturnIssue
 );
 
 router.post(
   "/transfer",
-  authMiddleware([Role.WHSTAFF]),
+  authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
   StockMoveController.createTransferStockMove
 );
 
 router.post(
   "/adjustment",
-  authMiddleware([Role.WHSTAFF]),
+  authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
   StockMoveController.createAdjustmentStockMove
 );
 
 router.put(
   "/receipt/:id",
-  authMiddleware([Role.WHSTAFF]),
+  authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
   StockMoveController.updateReceiptStockMove
 );
 
 router.put(
   "/issue/:id",
-  authMiddleware([Role.WHSTAFF]),
+  authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
   StockMoveController.updateIssueStockMove
 );
 
 router.put(
   "/transfer/:id",
-  authMiddleware([Role.WHSTAFF]),
+  authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
   StockMoveController.updateTransferStockMove
 );
 
 router.put(
   "/adjustment/:id",
-  authMiddleware([Role.WHSTAFF]),
+  authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
   StockMoveController.updateAdjustmentStockMove
 );
 
 router.delete(
   "/:id",
-  authMiddleware([Role.WHSTAFF]),
+  authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
   StockMoveController.deleteStockMove
 );
 
@@ -102,7 +108,7 @@ router.get(
 
 router.post(
   "/:id/submit",
-  authMiddleware([Role.WHSTAFF]),
+  authMiddleware([Role.WHSTAFF, Role.WHMANAGER]),
   StockMoveController.submitForApproval
 );
 

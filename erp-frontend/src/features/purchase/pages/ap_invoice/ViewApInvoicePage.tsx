@@ -177,16 +177,23 @@ export default function ViewApInvoicePage() {
     );
   }
 
+  const isInvoiceManager = user?.role.code === Roles.CHACC;
+  const isInvoiceStaff  = user?.role.code === Roles.ACCOUNT;
+  const isInvoiceCreator = invoice.created_by === user?.id;
+  const isSameBranch = user?.branch.id === invoice.branch_id;
+
+  // Nhân viên chỉ gửi duyệt khi chính mình tạo; Quản lý gửi được bất kỳ phiếu nào cùng chi nhánh
   const canSubmitForApproval =
-    user?.role.code === Roles.ACCOUNT &&
-    user?.branch.id === invoice.branch_id &&
-    invoice.created_by === user.id &&
-    invoice.approval_status === ApprovalStatus.DRAFT;
+    invoice.approval_status === ApprovalStatus.DRAFT &&
+    isSameBranch &&
+    (
+      (isInvoiceStaff && isInvoiceCreator) ||
+      isInvoiceManager
+    );
 
   const canApproveOrReject =
     user?.role.code === Roles.CHACC &&
     invoice.approval_status === ApprovalStatus.WAITING_APPROVAL &&
-    invoice.created_by !== user.id &&
     user?.branch.id === invoice.branch_id;
 
   const getInvoiceStatusBadge = (status: ApInvoiceStatus) => {
@@ -977,6 +984,46 @@ export default function ViewApInvoicePage() {
           </div>
         )}
       </div>
+
+      {/* Verified Digital Signature */}
+      {invoice && (invoice as any).signatures && (invoice as any).signatures.length > 0 && (
+        <div className="bg-white rounded-2xl border-2 border-gray-100 p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
+              <PenTool className="w-5 h-5 text-orange-600" />
+            </div>
+            <h2 className="text-lg font-bold text-gray-900">
+              Thông tin chữ ký số điện tử xác thực
+            </h2>
+          </div>
+          <div className="p-5 flex flex-col md:flex-row items-center gap-6 bg-orange-50/10 rounded-xl border border-orange-100">
+            <div className="border border-gray-200 bg-white p-3 rounded-lg shadow-inner flex items-center justify-center w-full md:w-auto">
+              <img
+                src={(invoice as any).signatures[0].signature_image}
+                alt="Signature"
+                className="h-20 object-contain max-w-[200px]"
+              />
+            </div>
+            <div className="flex-1 space-y-2 text-sm w-full">
+              <div className="flex items-center gap-2 text-emerald-600 font-semibold">
+                <CheckCircle className="w-4 h-4" />
+                Hóa đơn đã được ký số điện tử bảo mật thành công bởi Kế toán trưởng
+              </div>
+              <div className="text-xs text-gray-500">
+                <p className="font-semibold text-gray-700">Mã băm tài liệu (Document Hash):</p>
+                <p className="font-mono bg-gray-50 p-2 rounded border border-gray-100 text-[10px] break-all select-all text-orange-600">
+                  {(invoice as any).signatures[0].hash_value}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500">
+                <p>Người ký: <span className="font-semibold text-gray-700">{(invoice as any).signatures[0].signer?.full_name}</span></p>
+                <p>Thời gian: <span className="font-semibold text-gray-700">{new Date((invoice as any).signatures[0].signed_at).toLocaleString("vi-VN")}</span></p>
+                <p className="col-span-2">IP Ký: <span className="font-semibold text-gray-700">{(invoice as any).signatures[0].signer_ip || "N/A"}</span></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ================= OCR & MATCHING INFO ================= */}
       {(invoice.source === InvoiceSource.AI_OCR || invoice.matching_status) && (

@@ -66,6 +66,37 @@ export const signatureController = {
   },
 
   /**
+   * Ký duyệt Phiếu chi (AP Payment)
+   * POST /api/ap/payments/:id/sign
+   */
+  async signApPayment(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const user = (req as any).user;
+      const { pin, signature_image } = req.body;
+
+      if (!pin || !signature_image) {
+        return res.status(400).json({ message: "Mã PIN và hình ảnh chữ ký là bắt buộc." });
+      }
+
+      const ipAddress = req.ip || req.headers["x-forwarded-for"] as string || "";
+
+      const result = await signatureService.signDocument(
+        user.id,
+        "ap_payment",
+        id,
+        pin,
+        signature_image,
+        ipAddress
+      );
+
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Ký duyệt phiếu chi thất bại." });
+    }
+  },
+
+  /**
    * API Công khai - Tra cứu/Xác thực chữ ký từ mã băm
    * GET /api/public/verify-signature/:hash
    */

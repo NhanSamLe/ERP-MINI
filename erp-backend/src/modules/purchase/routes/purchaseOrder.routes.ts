@@ -15,6 +15,7 @@ router.get(
     Role.WHSTAFF,
     Role.WHMANAGER,
     Role.ACCOUNT,
+    Role.CHACC,
   ]),
   purchaseOrderController.getAllPO,
 );
@@ -31,19 +32,20 @@ router.get(
     Role.WHSTAFF,
     Role.WHMANAGER,
     Role.ACCOUNT,
+    Role.CHACC,
   ]),
   purchaseOrderController.search,
 );
 
 router.get(
   "/available-for-invoice",
-  authMiddleware([Role.PURCHASE, Role.ACCOUNT]),
+  authMiddleware([Role.PURCHASE, Role.PURCHASEMANAGER, Role.ACCOUNT, Role.CHACC]),
   purchaseOrderController.getAvailableForInvoice,
 );
 
 router.get(
   "/:id/invoice-summary",
-  authMiddleware([Role.PURCHASE, Role.ACCOUNT]),
+  authMiddleware([Role.PURCHASE, Role.PURCHASEMANAGER, Role.ACCOUNT, Role.CHACC]),
   purchaseOrderController.getPoInvoiceSummary,
 );
 
@@ -65,13 +67,14 @@ router.get(
     Role.WHSTAFF,
     Role.WHMANAGER,
     Role.ACCOUNT,
+    Role.CHACC,
   ]),
   purchaseOrderController.getPOById,
 );
 
 router.post(
   "/",
-  authMiddleware([Role.PURCHASE]),
+  authMiddleware([Role.PURCHASE, Role.PURCHASEMANAGER]),
   upload.fields([
     { name: "thumbnail", maxCount: 1 },
     { name: "gallery", maxCount: 10 },
@@ -80,13 +83,13 @@ router.post(
 );
 router.put(
   "/:id",
-  authMiddleware([Role.PURCHASE]),
+  authMiddleware([Role.PURCHASE, Role.PURCHASEMANAGER]),
   purchaseOrderController.update,
 );
 
 router.patch(
   "/:id/submit",
-  authMiddleware([Role.PURCHASE]),
+  authMiddleware([Role.PURCHASE, Role.PURCHASEMANAGER]),
   purchaseOrderController.submitForApproval,
 );
 
@@ -128,7 +131,7 @@ router.post(
 
 router.delete(
   "/:id",
-  authMiddleware([Role.PURCHASE]),
+  authMiddleware([Role.PURCHASE, Role.PURCHASEMANAGER]),
   purchaseOrderController.deletedPO,
 );
 
