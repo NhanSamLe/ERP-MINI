@@ -249,8 +249,8 @@ export const setupSignaturePin = async (req: Request, res: Response) => {
     if (!user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-    const { pin } = req.body;
-    const result = await authService.setupSignaturePin(user.id, { pin });
+    const { pin, password } = req.body;
+    const result = await authService.setupSignaturePin(user.id, { pin, password });
     res.status(200).json(result);
   } catch (error: any) {
     return res.status(400).json({ message: error.message || "Thiết lập mã PIN thất bại" });
