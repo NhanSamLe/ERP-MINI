@@ -405,13 +405,23 @@ export async function getUserForAttendance(userId: number) {
 
 export async function setupSignaturePin(
   userId: number,
-  data: { pin: string }
+  data: { pin: string; password?: string }
 ) {
   if (!data.pin || data.pin.length !== 6 || isNaN(Number(data.pin))) {
     throw new Error("Mã PIN phải bao gồm đúng 6 chữ số.");
   }
   const user = await model.User.findByPk(userId);
   if (!user) throw new Error("Không tìm thấy người dùng.");
+
+  if (user.signature_pin) {
+    if (!data.password) {
+      throw new Error("Vui lòng cung cấp mật khẩu tài khoản để xác nhận thay đổi.");
+    }
+    const isValid = await comparePassword(data.password, user.password_hash);
+    if (!isValid) {
+      throw new Error("Mật khẩu tài khoản không chính xác.");
+    }
+  }
 
   user.signature_pin = await hashPassword(data.pin);
   await user.save();

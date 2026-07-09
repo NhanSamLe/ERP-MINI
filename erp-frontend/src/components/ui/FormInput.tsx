@@ -1,3 +1,6 @@
+import React, { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
+
 interface FormInputProps {
   label?: string;
   type?: string;
@@ -44,8 +47,12 @@ export function FormInput({
   rows = 4,
   maxLength,
 }: FormInputProps) {
+  const [showPassword, setShowPassword] = useState(false);
+  const isPasswordType = type === "password";
+  const currentType = isPasswordType && showPassword ? "text" : type;
+
   const hasLeftIcon  = icon && iconPosition === "left";
-  const hasRightIcon = icon && iconPosition === "right";
+  const hasRightIcon = (icon && iconPosition === "right") || isPasswordType;
 
   return (
     <div className="space-y-1.5">
@@ -81,7 +88,7 @@ export function FormInput({
           />
         ) : (
           <input
-            type={type}
+            type={currentType}
             value={value}
             onChange={(e) => onChange?.(e.target.value)}
             placeholder={placeholder}
@@ -101,9 +108,19 @@ export function FormInput({
         )}
 
         {hasRightIcon && !textarea && (
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-            {icon}
-          </span>
+          isPasswordType ? (
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 focus:outline-none"
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          ) : (
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+              {icon}
+            </span>
+          )
         )}
       </div>
 

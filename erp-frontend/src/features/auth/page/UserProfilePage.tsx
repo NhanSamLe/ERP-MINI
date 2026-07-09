@@ -34,6 +34,7 @@ export default function UserProfile() {
   // Signature PIN State
   const [signaturePin, setSignaturePin] = useState("");
   const [confirmSignaturePin, setConfirmSignaturePin] = useState("");
+  const [signaturePinPassword, setSignaturePinPassword] = useState("");
   const [isSavingPin, setIsSavingPin] = useState(false);
 
   const handleSavePin = async () => {
@@ -45,15 +46,20 @@ export default function UserProfile() {
       toast.warning("Mã PIN xác nhận không khớp.");
       return;
     }
+    if (user?.signature_pin && !signaturePinPassword.trim()) {
+      toast.warning("Vui lòng nhập mật khẩu tài khoản để xác nhận.");
+      return;
+    }
     setIsSavingPin(true);
     try {
-      await setupSignaturePin(signaturePin);
+      await setupSignaturePin(signaturePin, user?.signature_pin ? signaturePinPassword : undefined);
       toast.success("Thiết lập mã PIN ký duyệt thành công!");
       if (user) {
         dispatch(setUser({ ...user, signature_pin: "SET" }));
       }
       setSignaturePin("");
       setConfirmSignaturePin("");
+      setSignaturePinPassword("");
     } catch (err: any) {
       toast.error(err?.response?.data?.message || err?.message || "Thiết lập mã PIN thất bại.");
     } finally {
@@ -405,6 +411,17 @@ export default function UserProfile() {
                     )}
 
                     <div className="space-y-5 max-w-lg">
+                      {user?.signature_pin && (
+                        <FormInput
+                          label="Mật khẩu tài khoản xác nhận"
+                          type="password"
+                          value={signaturePinPassword}
+                          onChange={setSignaturePinPassword}
+                          required
+                          className="text-sm rounded-xl border-slate-200/50 dark:border-slate-700/50 focus:ring-orange-500/20"
+                          placeholder="Nhập mật khẩu tài khoản hiện tại"
+                        />
+                      )}
                       <FormInput
                         label="Mã PIN ký duyệt mới (6 chữ số)"
                         type="password"
@@ -430,7 +447,7 @@ export default function UserProfile() {
 
                   {/* Form Actions */}
                   <div className="flex justify-end gap-3 pt-6 border-t border-slate-100 dark:border-slate-800">
-                    <Button variant="outline" onClick={() => { setSignaturePin(""); setConfirmSignaturePin(""); }} disabled={isSavingPin} className="rounded-full px-6 hover:scale-[1.01] active:scale-[0.98] transition-all duration-300">
+                    <Button variant="outline" onClick={() => { setSignaturePin(""); setConfirmSignaturePin(""); setSignaturePinPassword(""); }} disabled={isSavingPin} className="rounded-full px-6 hover:scale-[1.01] active:scale-[0.98] transition-all duration-300">
                       Hủy bỏ
                     </Button>
                     <Button variant="primary" onClick={handleSavePin} loading={isSavingPin} leftIcon={<Save className="w-4 h-4" />} className="rounded-full px-6 bg-orange-500 hover:bg-orange-600 hover:scale-[1.01] active:scale-[0.98] transition-all duration-300">
