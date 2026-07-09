@@ -52,7 +52,8 @@ export function FormInput({
   const currentType = isPasswordType && showPassword ? "text" : type;
 
   const hasLeftIcon  = icon && iconPosition === "left";
-  const hasRightIcon = (icon && iconPosition === "right") || isPasswordType;
+  const hasRightIcon = (icon && iconPosition === "right") || 
+  isPasswordType;
 
   return (
     <div className="space-y-1.5">
