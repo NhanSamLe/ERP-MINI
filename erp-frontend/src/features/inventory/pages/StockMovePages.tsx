@@ -52,7 +52,8 @@ import EditReceiptModal, {
 import { fetchPurchaseOrderByStatus } from "../../purchase/store/purchaseOrder.thunks";
 import EditTransferModal from "../components/Modal/TransferModal/EditTransferModal";
 import CreateTransferModal from "../components/Modal/TransferModal/CreateTransferModal";
-import { Trash2, Download, Package, Plus, Clock, FileCheck, CheckCircle2 } from "lucide-react";
+import { Trash2, Download, Package, Plus, Clock, FileCheck, CheckCircle2, Search, Filter, X } from "lucide-react";
+import StockMoveFilterPanel from "../components/StockMoveFilterPanel";
 import CreateAdjustmentModal from "../components/Modal/AdjustmentModal/CreateAdjustmentModal";
 import { getErrorMessage } from "@/utils/ErrorHelper";
 import EditAdjustmentModal from "../components/Modal/AdjustmentModal/EditAdjustmentModal";
@@ -86,9 +87,16 @@ export default function StockMovePages() {
   const user = useSelector((state: RootState) => state.auth.user);
   const saleOrder = useSelector((state: RootState) => state.saleOrder);
 
-  const [search] = useState("");
-  const [warehouseId, setWarehouseId] = useState<string>("");
-  const [type, setType] = useState("");
+  const [search, setSearch] = useState("");
+  const [showAdvancedFilter, setShowAdvancedFilter] = useState(false);
+  const [filters, setFilters] = useState<any>({
+    move_no: "",
+    warehouse_id: "",
+    type: "",
+    status: "",
+    date_from: "",
+    date_to: "",
+  });
 
   const [tab, setTab] = useState<"moves" | "returns">("moves");
   const [purchaseReturns, setPurchaseReturns] = useState<any[]>([]);
@@ -157,6 +165,7 @@ export default function StockMovePages() {
   const statusColorMap: Record<string, string> = {
     draft: "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-100",
     waiting_approval: "bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-50",
+    in_transit: "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50",
     posted: "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50",
     cancelled: "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-50",
   };
@@ -164,6 +173,7 @@ export default function StockMovePages() {
   const statusLabelMap: Record<string, string> = {
     draft: "Nháp",
     waiting_approval: "Chờ duyệt",
+    in_transit: "Đang vận chuyển",
     posted: "Đã duyệt",
     cancelled: "Đã hủy",
   };
@@ -216,19 +226,42 @@ export default function StockMovePages() {
     } else if (item.type === "adjustment") {
       warehouseName = fromName;
     }
+
     const matchSearch =
       search === "" ||
+      item.move_no.toLowerCase().includes(search.toLowerCase()) ||
       item.type.toLowerCase().includes(search.toLowerCase()) ||
       warehouseName.toLowerCase().includes(search.toLowerCase());
 
+    const matchMoveNo =
+      !filters.move_no ||
+      item.move_no.toLowerCase().includes(filters.move_no.toLowerCase());
+
     const matchWarehouse =
-      warehouseId === "" ||
-      item.warehouse_from_id === Number(warehouseId) ||
-      item.warehouse_to_id === Number(warehouseId);
+      !filters.warehouse_id ||
+      item.warehouse_from_id === Number(filters.warehouse_id) ||
+      item.warehouse_to_id === Number(filters.warehouse_id);
 
-    const matchType = type === "" || item.type === type;
+    const matchType = !filters.type || item.type === filters.type;
 
-    return matchSearch && matchWarehouse && matchType;
+    const matchStatus = !filters.status || item.status === filters.status;
+
+    let matchDate = true;
+    if (item.move_date) {
+      const moveTime = new Date(item.move_date).getTime();
+      if (filters.date_from) {
+        const fromTime = new Date(filters.date_from).setHours(0, 0, 0, 0);
+        if (moveTime < fromTime) matchDate = false;
+      }
+      if (filters.date_to) {
+        const toTime = new Date(filters.date_to).setHours(23, 59, 59, 999);
+        if (moveTime > toTime) matchDate = false;
+      }
+    } else if (filters.date_from || filters.date_to) {
+      matchDate = false;
+    }
+
+    return matchSearch && matchMoveNo && matchWarehouse && matchType && matchStatus && matchDate;
   });
 
   const handleExport = async () => {
@@ -970,34 +1003,65 @@ export default function StockMovePages() {
         ) : (
           <>
             {/* Filters Header */}
-            <div className="p-5 border-b border-slate-100 bg-slate-50/10 flex flex-col sm:flex-row items-center gap-4">
-              <div className="flex flex-wrap items-center gap-3 w-full">
-                <Select value={warehouseId} onValueChange={setWarehouseId}>
-                  <SelectTrigger className="w-full sm:w-[200px] h-10 bg-white border-slate-200 focus:ring-orange-500 focus:border-orange-500 rounded-lg">
-                    <SelectValue placeholder="Tất cả kho hàng" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={""}>Tất cả kho hàng</SelectItem>
-                    {warehouses.map((w) => (
-                      <SelectItem key={w.id} value={String(w.id)}>
-                        {w.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={type} onValueChange={setType}>
-                  <SelectTrigger className="w-full sm:w-[200px] h-10 bg-white border-slate-200 focus:ring-orange-500 focus:border-orange-500 rounded-lg">
-                    <SelectValue placeholder="Tất cả loại" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Tất cả loại</SelectItem>
-                    <SelectItem value="receipt">Nhập kho</SelectItem>
-                    <SelectItem value="issue">Xuất kho</SelectItem>
-                    <SelectItem value="transfer">Điều chuyển</SelectItem>
-                    <SelectItem value="adjustment">Kiểm kê</SelectItem>
-                  </SelectContent>
-                </Select>
+            <div className="p-5 border-b border-slate-100 bg-slate-50/10 flex flex-col gap-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex-1 max-w-md relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Tìm kiếm nhanh mã phiếu, loại..."
+                    className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  />
+                </div>
+                <div className="flex items-center gap-3">
+                  <Button
+                    onClick={() => setShowAdvancedFilter(!showAdvancedFilter)}
+                    variant={showAdvancedFilter ? "secondary" : "outline"}
+                    leftIcon={<Filter className="w-4 h-4" />}
+                  >
+                    Bộ lọc nâng cao
+                  </Button>
+                </div>
               </div>
+
+              {/* Advanced filter panel */}
+              {showAdvancedFilter && (
+                <div className="bg-white rounded-xl border border-gray-200 border-l-4 border-l-orange-400 shadow-sm overflow-hidden mt-2">
+                  <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50/60">
+                    <div className="flex items-center gap-2">
+                      <Filter className="w-4 h-4 text-orange-500" />
+                      <span className="text-sm font-semibold text-gray-700">
+                        Bộ lọc nâng cao
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setShowAdvancedFilter(false)}
+                      className="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="p-5">
+                    <StockMoveFilterPanel
+                      onSearch={(newFilters) => setFilters(newFilters)}
+                      onReset={() =>
+                        setFilters({
+                          move_no: "",
+                          warehouse_id: "",
+                          type: "",
+                          status: "",
+                          date_from: "",
+                          date_to: "",
+                        })
+                      }
+                      warehouses={warehouses}
+                      loading={loading}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Table wrapper */}

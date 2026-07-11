@@ -9,6 +9,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
+  Legend,
 } from "recharts";
 import {
   DashboardStats,
@@ -16,8 +17,8 @@ import {
   ExpiringLot,
   inventoryReportApi,
 } from "../reports/api/inventoryReport.api";
-import { formatMoney } from "@/utils/currency.helper";
-import { AlertTriangle, Package, Clock, FileCheck } from "lucide-react";
+import { formatMoney, formatNumber } from "@/utils/currency.helper";
+import { AlertTriangle, Package, Clock, FileCheck, ArrowDownToLine, ArrowUpFromLine, Filter, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/badge";
 
@@ -67,41 +68,49 @@ export default function InventoryDashboard() {
   const [lowStock, setLowStock] = useState<StockSummaryItem[]>([]);
   const [expiring, setExpiring] = useState<ExpiringLot[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fromMonth, setFromMonth] = useState("");
+  const [toMonth, setToMonth] = useState("");
+
+  const load = async (showSpinner = false) => {
+    if (showSpinner) setLoading(true);
+    try {
+      const params: any = {};
+      if (fromMonth) params.fromMonth = fromMonth;
+      if (toMonth) params.toMonth = toMonth;
+
+      const [s, summary, low, exp] = await Promise.all([
+        inventoryReportApi.getDashboardStats(params),
+        inventoryReportApi.getStockSummary(),
+        inventoryReportApi.getLowStock(),
+        inventoryReportApi.getExpiringLots(params),
+      ]);
+      setStats(s);
+      // Top 10 by total_value
+      const sorted = [...summary]
+        .filter((x) => Number(x.total_value ?? 0) > 0)
+        .sort(
+          (a, b) => Number(b.total_value ?? 0) - Number(a.total_value ?? 0),
+        )
+        .slice(0, 10);
+      setTopProducts(sorted);
+      setLowStock(low.slice(0, 10));
+      setExpiring(exp);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const [s, summary, low, exp] = await Promise.all([
-          inventoryReportApi.getDashboardStats(),
-          inventoryReportApi.getStockSummary(),
-          inventoryReportApi.getLowStock(),
-          inventoryReportApi.getExpiringLots(30),
-        ]);
-        setStats(s);
-        // Top 10 by total_value
-        const sorted = [...summary]
-          .filter((x) => Number(x.total_value ?? 0) > 0)
-          .sort(
-            (a, b) => Number(b.total_value ?? 0) - Number(a.total_value ?? 0),
-          )
-          .slice(0, 10);
-        setTopProducts(sorted);
-        setLowStock(low.slice(0, 10));
-        setExpiring(exp);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, []);
+    load(!stats);
+  }, [fromMonth, toMonth]);
 
   function daysUntil(dateStr: string) {
     return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000);
   }
 
-  if (loading) {
+  if (!stats) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50/50">
         <div className="flex flex-col items-center gap-3">
@@ -112,13 +121,11 @@ export default function InventoryDashboard() {
     );
   }
 
-  const chartData = topProducts.map((p) => {
-    const name = p.product?.name ?? "";
-    return {
-      name: name.length > 14 ? name.slice(0, 14) + "…" : name,
-      value: Number(p.total_value ?? 0),
-    };
-  });
+  const chartData = (stats.trends || []).map((t) => ({
+    name: t.month,
+    "Nhập kho": t.receipts,
+    "Xuất kho": t.issues,
+  }));
 
   return (
     <div className="min-h-screen bg-slate-50/40 p-6 md:p-8 space-y-8">
@@ -129,6 +136,53 @@ export default function InventoryDashboard() {
         <p className="text-sm font-medium text-slate-500 mt-1.5">
           Tổng quan thời gian thực về hoạt động & định giá kho hàng
         </p>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="bg-gradient-to-r from-slate-50/80 to-white/90 backdrop-blur-md p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all duration-300 hover:shadow-md">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+          <div className="flex items-center gap-2.5 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-xl w-fit">
+            <Filter className="w-4 h-4" />
+            <span className="text-xs font-bold uppercase tracking-wider">Lọc khoảng thời gian</span>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <div className="relative flex items-center">
+              <span className="text-xs font-bold text-slate-400 absolute left-3.5 z-10 pointer-events-none">Từ</span>
+              <input
+                type="month"
+                value={fromMonth}
+                onChange={(e) => setFromMonth(e.target.value)}
+                className="pl-10 pr-4 py-2 border border-slate-200/80 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500/80 bg-white hover:border-slate-300 transition-all font-semibold text-slate-700 shadow-2xs"
+              />
+            </div>
+            
+            <div className="h-0.5 w-3 bg-slate-300 rounded-full shrink-0" />
+            
+            <div className="relative flex items-center">
+              <span className="text-xs font-bold text-slate-400 absolute left-3.5 z-10 pointer-events-none">Đến</span>
+              <input
+                type="month"
+                value={toMonth}
+                onChange={(e) => setToMonth(e.target.value)}
+                className="pl-10 pr-4 py-2 border border-slate-200/80 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500/80 bg-white hover:border-slate-300 transition-all font-semibold text-slate-700 shadow-2xs"
+              />
+            </div>
+          </div>
+        </div>
+
+        {(fromMonth || toMonth) && (
+          <button
+            onClick={() => {
+              setFromMonth("");
+              setToMonth("");
+            }}
+            className="flex items-center justify-center gap-1.5 px-4 py-2 bg-rose-50 hover:bg-rose-100/80 active:bg-rose-100 text-rose-600 font-bold rounded-xl text-xs transition duration-200 border border-rose-100/50 shadow-2xs self-end sm:self-auto"
+          >
+            <X className="w-3.5 h-3.5" />
+            Xóa bộ lọc
+          </button>
+        )}
       </div>
 
       {/* Stat cards */}
@@ -173,10 +227,10 @@ export default function InventoryDashboard() {
           <CardHeader className="pb-4 border-b border-gray-50 bg-gray-50/20">
             <div>
               <CardTitle className="text-base font-semibold text-gray-800">
-                Top 10 sản phẩm theo giá trị tồn kho
+                Xu hướng nhập / xuất kho
               </CardTitle>
               <CardDescription className="text-xs text-gray-400 mt-0.5">
-                Các sản phẩm có giá trị tài sản tồn kho cao nhất
+                Số lượng chứng từ nhập kho và xuất kho đã duyệt theo tháng
               </CardDescription>
             </div>
           </CardHeader>
@@ -191,12 +245,6 @@ export default function InventoryDashboard() {
                   data={chartData}
                   margin={{ top: 20, right: 8, left: 8, bottom: 40 }}
                 >
-                  <defs>
-                    <linearGradient id="chartBarGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#6366f1" stopOpacity={0.9} />
-                      <stop offset="100%" stopColor="#4f46e5" stopOpacity={0.3} />
-                    </linearGradient>
-                  </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis
                     dataKey="name"
@@ -209,10 +257,10 @@ export default function InventoryDashboard() {
                   />
                   <YAxis
                     tick={{ fontSize: 11, fill: "#64748b" }}
-                    tickFormatter={(v) => formatMoney(v)}
-                    width={80}
+                    width={40}
                     tickLine={false}
                     axisLine={false}
+                    allowDecimals={false}
                   />
                   <Tooltip
                     contentStyle={{
@@ -221,9 +269,10 @@ export default function InventoryDashboard() {
                       border: "1px solid #e2e8f0",
                       boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)"
                     }}
-                    formatter={(v: any) => [formatMoney(v), "Giá trị tồn kho"]} 
                   />
-                  <Bar dataKey="value" fill="url(#chartBarGradient)" radius={[6, 6, 0, 0]} barSize={24} />
+                  <Legend verticalAlign="top" height={36} />
+                  <Bar dataKey="Nhập kho" fill="#10b981" radius={[4, 4, 0, 0]} barSize={16} />
+                  <Bar dataKey="Xuất kho" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={16} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -349,13 +398,13 @@ export default function InventoryDashboard() {
                           {item.warehouse?.name}
                         </td>
                         <td className="px-6 py-4 text-right font-mono text-rose-600 font-bold">
-                          {qty.toFixed(2)}
+                          {formatNumber(qty)}
                         </td>
                         <td className="px-6 py-4 text-right font-mono text-gray-500">
-                          {min.toFixed(2)}
+                          {formatNumber(min)}
                         </td>
                         <td className="px-6 py-4 text-right font-mono text-amber-600 font-bold bg-amber-50/10">
-                          -{shortage.toFixed(2)}
+                          -{formatNumber(shortage)}
                         </td>
                       </tr>
                     );

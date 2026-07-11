@@ -1,20 +1,24 @@
 import { useState, useEffect, useRef } from "react";
-import { Briefcase, User, Key, Mail, Phone, Lock, Save, Globe, Camera, Fingerprint, CheckCircle, AlertTriangle } from "lucide-react"; 
+import { Briefcase, User, Key, Mail, Phone, Lock, Save, Globe, Camera, Fingerprint, CheckCircle, AlertTriangle, PenTool } from "lucide-react"; 
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../../store/store";
 import { updateUserAvatarThunk, updateUserInfoThunk, changePasswordThunk, setUser } from "../store";
-import { setupSignaturePin } from "../auth.service";
+import { setupSignaturePin, setupSignatureTemplate } from "../auth.service";
 import { toast } from "react-toastify";
 import { Button } from "../../../components/ui/Button";
 import { FormInput } from "../../../components/ui/FormInput";
 import { ImageUpload } from "../../../components/ui/ImageUpload";
+import { useLocation } from "react-router-dom";
 
 export default function UserProfile() {
   const { user } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch<AppDispatch>();
+  const location = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [activeTab, setActiveTab] = useState<"info" | "password" | "signature">("info");
+  const [activeTab, setActiveTab] = useState<"info" | "password" | "signature">(
+    (location.state as any)?.activeTab || "info"
+  );
   const [imagePreview, setImagePreview] = useState(
     user?.avatar_url ?? `https://ui-avatars.com/api/?name=${user?.full_name}&background=f97316&color=fff&size=200`
   );
@@ -36,6 +40,12 @@ export default function UserProfile() {
   const [confirmSignaturePin, setConfirmSignaturePin] = useState("");
   const [signaturePinPassword, setSignaturePinPassword] = useState("");
   const [isSavingPin, setIsSavingPin] = useState(false);
+
+  // Signature Template State
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+  const [templatePassword, setTemplatePassword] = useState("");
 
   const handleSavePin = async () => {
     if (signaturePin.length !== 6 || isNaN(Number(signaturePin))) {
@@ -64,6 +74,119 @@ export default function UserProfile() {
       toast.error(err?.response?.data?.message || err?.message || "Thiết lập mã PIN thất bại.");
     } finally {
       setIsSavingPin(false);
+    }
+  };
+
+  // Initialize profile canvas if activeTab is "signature"
+  useEffect(() => {
+    if (activeTab !== "signature") return;
+    const timer = setTimeout(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * 2;
+      canvas.height = 150 * 2;
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `150px`;
+      ctx.scale(2, 2);
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = "#1e3a8a"; // Navy blue ink
+      ctx.lineWidth = 2.5;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, rect.width, 150);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [activeTab]);
+
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    ctx.beginPath();
+    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+    setIsDrawing(true);
+  };
+
+  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+    ctx.stroke();
+  };
+
+  const stopDrawing = () => {
+    setIsDrawing(false);
+  };
+
+  const startDrawingTouch = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    if (!canvas || e.touches.length === 0) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+    if (!touch) return;
+    ctx.beginPath();
+    ctx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+    setIsDrawing(true);
+  };
+
+  const drawTouch = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    if (!canvas || e.touches.length === 0) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+    if (!touch) return;
+    ctx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
+    ctx.stroke();
+  };
+
+  const clearCanvas = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  };
+
+  const handleSaveTemplate = async () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const signatureTemplate = canvas.toDataURL("image/png");
+    
+    if (user?.signature_pin && !templatePassword.trim()) {
+      toast.warning("Vui lòng nhập mật khẩu tài khoản để xác nhận.");
+      return;
+    }
+    
+    setIsSavingTemplate(true);
+    try {
+      await setupSignatureTemplate(signatureTemplate, user?.signature_pin ? templatePassword : undefined);
+      toast.success("Đăng ký chữ ký mẫu thành công!");
+      if (user) {
+        dispatch(setUser({ ...user, signature_template: signatureTemplate }));
+      }
+      setTemplatePassword("");
+      clearCanvas();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || "Đăng ký chữ ký mẫu thất bại.");
+    } finally {
+      setIsSavingTemplate(false);
     }
   };
 
@@ -453,6 +576,90 @@ export default function UserProfile() {
                     <Button variant="primary" onClick={handleSavePin} loading={isSavingPin} leftIcon={<Save className="w-4 h-4" />} className="rounded-full px-6 bg-orange-500 hover:bg-orange-600 hover:scale-[1.01] active:scale-[0.98] transition-all duration-300">
                       {user?.signature_pin ? "Cập nhật PIN" : "Cài đặt PIN"}
                     </Button>
+                  </div>
+
+                  {/* CHỮ KÝ MẪU SECTION */}
+                  <div className="pt-8 border-t border-slate-100 dark:border-slate-800 space-y-6">
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
+                        <PenTool className="w-4 h-4 text-orange-500" />
+                        Đăng ký Chữ ký mẫu
+                      </h3>
+                      <p className="text-xs text-slate-500 max-w-lg mb-4">
+                        Vẽ chữ ký của bạn vào khung bên dưới để sử dụng nhanh khi duyệt chứng từ (không cần vẽ lại mỗi lần ký).
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      {/* Drawing Canvas */}
+                      <div className="space-y-3">
+                        <label className="text-xs font-semibold text-slate-500">Khung vẽ chữ ký</label>
+                        <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs bg-white">
+                          <canvas
+                            ref={canvasRef}
+                            onMouseDown={startDrawing}
+                            onMouseMove={draw}
+                            onMouseUp={stopDrawing}
+                            onMouseLeave={stopDrawing}
+                            onTouchStart={startDrawingTouch}
+                            onTouchMove={drawTouch}
+                            onTouchEnd={stopDrawing}
+                            className="w-full h-[150px] cursor-crosshair touch-none"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={clearCanvas}
+                            className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-650 font-bold rounded-lg text-xs transition duration-200 border border-slate-200/50"
+                          >
+                            Xóa nét vẽ
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Current signature template & verification password */}
+                      <div className="space-y-4">
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-slate-500">Chữ ký mẫu hiện tại</label>
+                          <div className="border border-slate-200 rounded-xl p-3 bg-slate-50 flex items-center justify-center min-h-[150px] overflow-hidden">
+                            {user?.signature_template ? (
+                              <img
+                                src={user.signature_template}
+                                alt="Chữ ký mẫu"
+                                className="max-h-[120px] object-contain border border-dashed border-slate-300 rounded-lg p-1 bg-white"
+                              />
+                            ) : (
+                              <span className="text-xs text-slate-400 italic">Chưa đăng ký chữ ký mẫu</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {user?.signature_pin && (
+                          <FormInput
+                            label="Mật khẩu tài khoản xác nhận"
+                            type="password"
+                            value={templatePassword}
+                            onChange={setTemplatePassword}
+                            required
+                            className="text-sm rounded-xl border-slate-200/50 dark:border-slate-700/50 focus:ring-orange-500/20"
+                            placeholder="Nhập mật khẩu tài khoản"
+                          />
+                        )}
+
+                        <div className="flex justify-end pt-2">
+                          <Button
+                            variant="primary"
+                            onClick={handleSaveTemplate}
+                            loading={isSavingTemplate}
+                            leftIcon={<Save className="w-4 h-4" />}
+                            className="rounded-full px-6 bg-orange-500 hover:bg-orange-600 hover:scale-[1.01] active:scale-[0.98] transition-all duration-300"
+                          >
+                            Lưu chữ ký mẫu
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

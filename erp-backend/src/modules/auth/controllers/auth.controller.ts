@@ -256,3 +256,17 @@ export const setupSignaturePin = async (req: Request, res: Response) => {
     return res.status(400).json({ message: error.message || "Thiết lập mã PIN thất bại" });
   }
 };
+
+export const setupSignatureTemplate = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const { signatureTemplate, password } = req.body;
+    const result = await authService.setupSignatureTemplate(user.id, { signatureTemplate, password });
+    res.status(200).json(result);
+  } catch (error: any) {
+    return res.status(400).json({ message: error.message || "Thiết lập chữ ký mẫu thất bại" });
+  }
+};

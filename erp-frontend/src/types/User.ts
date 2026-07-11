@@ -23,6 +23,7 @@ export interface User {
   role: Role;
   is_active: boolean;
   signature_pin?: string;
+  signature_template?: string;
 }
 
 export interface LoginPayload {

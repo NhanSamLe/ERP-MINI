@@ -19,6 +19,27 @@ export const purchaseReportController = {
         baseWhere.branch_id = branchId;
       }
 
+      const fromMonthStr = typeof req.query.fromMonth === "string" ? req.query.fromMonth : undefined;
+      const toMonthStr = typeof req.query.toMonth === "string" ? req.query.toMonth : undefined;
+
+      console.log("[Purchase Dashboard Stats] Filters received:", { fromMonthStr, toMonthStr });
+
+      if (fromMonthStr || toMonthStr) {
+        baseWhere.order_date = {};
+        if (fromMonthStr) {
+          const parts = fromMonthStr.split("-");
+          const start = new Date(parseInt(parts[0] || "0"), parseInt(parts[1] || "1") - 1, 1, 0, 0, 0);
+          baseWhere.order_date[Op.gte] = start;
+        }
+        if (toMonthStr) {
+          const parts = toMonthStr.split("-");
+          const end = new Date(parseInt(parts[0] || "0"), parseInt(parts[1] || "1"), 1, 0, 0, 0);
+          baseWhere.order_date[Op.lt] = end;
+        }
+      }
+
+      console.log("[Purchase Dashboard Stats] baseWhere:", baseWhere);
+
       // 1. Thống kê thẻ KPI
       const allOrders = await PurchaseOrder.findAll({
         where: {
@@ -28,6 +49,8 @@ export const purchaseReportController = {
         attributes: ["id", "status", "total_after_tax", "order_date"],
         raw: true,
       });
+
+      console.log("[Purchase Dashboard Stats] Orders count fetched:", allOrders.length);
 
       const totalSpend = allOrders.reduce(
         (acc, order) => acc + parseFloat(String(order.total_after_tax ?? 0)),
@@ -47,26 +70,44 @@ export const purchaseReportController = {
         },
       });
 
-      // 2. Xu hướng chi tiêu mua hàng theo tháng (12 tháng gần nhất)
-      const last12Months: Record<string, { month: string; total: number; count: number }> = {};
-      const now = new Date();
-      for (let i = 11; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-        last12Months[key] = { month: key, total: 0, count: 0 };
+      // 2. Xu hướng chi tiêu mua hàng theo tháng
+      const trendsMonths: Record<string, { month: string; total: number; count: number }> = {};
+      if (fromMonthStr && toMonthStr) {
+        const startParts = fromMonthStr.split("-");
+        const endParts = toMonthStr.split("-");
+        let startY = parseInt(startParts[0] || "0");
+        let startM = parseInt(startParts[1] || "1") - 1;
+        const endY = parseInt(endParts[0] || "0");
+        const endM = parseInt(endParts[1] || "1") - 1;
+
+        const start = new Date(startY, startM, 1);
+        const end = new Date(endY, endM, 1);
+
+        while (start <= end) {
+          const key = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}`;
+          trendsMonths[key] = { month: key, total: 0, count: 0 };
+          start.setMonth(start.getMonth() + 1);
+        }
+      } else {
+        const now = new Date();
+        for (let i = 11; i >= 0; i--) {
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+          trendsMonths[key] = { month: key, total: 0, count: 0 };
+        }
       }
 
       allOrders.forEach((order) => {
         if (!order.order_date) return;
         const oDate = new Date(order.order_date);
         const key = `${oDate.getFullYear()}-${String(oDate.getMonth() + 1).padStart(2, "0")}`;
-        if (last12Months[key]) {
-          last12Months[key].total += parseFloat(String(order.total_after_tax ?? 0));
-          last12Months[key].count += 1;
+        if (trendsMonths[key]) {
+          trendsMonths[key].total += parseFloat(String(order.total_after_tax ?? 0));
+          trendsMonths[key].count += 1;
         }
       });
 
-      const trends = Object.values(last12Months);
+      const trends = Object.values(trendsMonths);
 
       // 3. Phân bố trạng thái đơn hàng (gồm cả cancelled để hiển thị đầy đủ)
       const statusOrders = await PurchaseOrder.findAll({

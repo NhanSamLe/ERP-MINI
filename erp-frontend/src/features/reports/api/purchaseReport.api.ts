@@ -38,8 +38,8 @@ export interface PurchaseDashboardStats {
 }
 
 export const purchaseReportApi = {
-  getDashboardStats: async (): Promise<PurchaseDashboardStats> => {
-    const res = await axiosClient.get("/reports/purchase/dashboard-stats");
+  getDashboardStats: async (params?: { fromMonth?: string; toMonth?: string }): Promise<PurchaseDashboardStats> => {
+    const res = await axiosClient.get("/reports/purchase/dashboard-stats", { params });
     return res.data;
   },
 };

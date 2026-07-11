@@ -309,7 +309,7 @@ export async function resetPassword(token: string, newPassword: string) {
 export async function getInforUser(userId: number) {
  const user = await model.User.findByPk(userId, {
       include: [{ model: model.Role, as: "role" } ,{ model: model.Branch, as: "branch" ,attributes: ["id","code","name","address"],},],
-      attributes: ["id", "username", "full_name", "email", "phone","avatar_url", "is_active", "signature_pin"],
+      attributes: ["id", "username", "full_name", "email", "phone","avatar_url", "is_active", "signature_pin", "signature_template"],
     });
   if (!user) {
     throw new Error("Không tìm thấy người dùng.");
@@ -343,7 +343,7 @@ export async function updateUserInfo(
 ) {
   const user = await model.User.findByPk(userId, {
       include: [{ model: model.Role, as: "role" } ,{ model: model.Branch, as: "branch" ,attributes: ["id","code","name","address"],},],
-      attributes: ["id", "username", "full_name", "email", "phone","avatar_url", "signature_pin"],
+      attributes: ["id", "username", "full_name", "email", "phone","avatar_url", "signature_pin", "signature_template"],
     });
   if (!user) throw new Error("Không tìm thấy người dùng.");
 
@@ -427,6 +427,29 @@ export async function setupSignaturePin(
   await user.save();
 
   return { message: "Thiết lập mã PIN ký duyệt thành công." };
+}
+
+export async function setupSignatureTemplate(
+  userId: number,
+  data: { signatureTemplate: string; password?: string }
+) {
+  const user = await model.User.findByPk(userId);
+  if (!user) throw new Error("Không tìm thấy người dùng.");
+
+  if (user.signature_pin) {
+    if (!data.password) {
+      throw new Error("Vui lòng cung cấp mật khẩu tài khoản để xác nhận thay đổi.");
+    }
+    const isValid = await comparePassword(data.password, user.password_hash);
+    if (!isValid) {
+      throw new Error("Mật khẩu tài khoản không chính xác.");
+    }
+  }
+
+  user.signature_template = data.signatureTemplate;
+  await user.save();
+
+  return { message: "Thiết lập chữ ký mẫu thành công." };
 }
 
 

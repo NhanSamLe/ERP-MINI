@@ -78,3 +78,6 @@ export function changePassword(data: { oldPassword?: string; newPassword?: strin
 export function setupSignaturePin(pin: string, password?: string) {
   return axiosClient.put("/auth/signature-pin", { pin, password });
 }
+export function setupSignatureTemplate(signatureTemplate: string, password?: string) {
+  return axiosClient.put("/auth/signature-template", { signatureTemplate, password });
+}
