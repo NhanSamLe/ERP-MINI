@@ -1,5 +1,8 @@
 import React, { useRef, useState, useEffect } from "react";
-import { X, RotateCcw, PenTool, Check } from "lucide-react";
+import { X, RotateCcw, PenTool, Check, AlertTriangle } from "lucide-react";
+import { useSelector } from "react-redux";
+import type { RootState } from "../../../store/store";
+import { useNavigate } from "react-router-dom";
 
 interface SignatureModalProps {
   visible: boolean;
@@ -16,6 +19,9 @@ export default function SignatureModal({
   title = "Ký duyệt điện tử",
   loading = false,
 }: SignatureModalProps) {
+  const { user } = useSelector((state: RootState) => state.auth);
+  const navigate = useNavigate();
+  const hasSetup = !!user?.signature_template && !!user?.signature_pin;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [pin, setPin] = useState<string[]>(Array(6).fill(""));
@@ -50,10 +56,19 @@ export default function SignatureModal({
       // Fill màu nền trắng
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, rect.width, 200);
+
+      // Load chữ ký mẫu nếu có
+      if (user?.signature_template) {
+        const img = new Image();
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, rect.width, 200);
+        };
+        img.src = user.signature_template;
+      }
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [visible]);
+  }, [visible, user?.signature_template]);
 
   if (!visible) return null;
 
@@ -204,72 +219,94 @@ export default function SignatureModal({
         </div>
 
         {/* Body */}
-        <div className="p-6 space-y-6">
-          {/* Canvas vẽ chữ ký */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-                Chữ ký tay của bạn <span className="text-red-500">*</span>
-              </label>
-              <button
-                onClick={clearCanvas}
-                className="inline-flex items-center gap-1 text-xs text-orange-500 hover:text-orange-600 font-medium"
-              >
-                <RotateCcw className="w-3 h-3" />
-                Vẽ lại
-              </button>
+        {!hasSetup ? (
+          <div className="p-6 space-y-4 text-center">
+            <div className="mx-auto w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-950/20 flex items-center justify-center border border-amber-200 dark:border-amber-900/50">
+              <AlertTriangle className="w-6 h-6 text-amber-500" />
             </div>
-            
-            <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl overflow-hidden bg-white shadow-inner">
-              <canvas
-                ref={canvasRef}
-                className="w-full cursor-crosshair touch-none"
-                style={{ height: "200px" }}
-                onMouseDown={startDrawing}
-                onMouseMove={draw}
-                onMouseUp={stopDrawing}
-                onMouseLeave={stopDrawing}
-                onTouchStart={startDrawingTouch}
-                onTouchMove={drawTouch}
-                onTouchEnd={stopDrawing}
-              />
+            <div className="space-y-2">
+              <h4 className="font-semibold text-gray-900 dark:text-white">
+                Chưa cấu hình thông tin ký duyệt
+              </h4>
+              <p className="text-xs text-gray-500 dark:text-gray-400 max-w-sm mx-auto leading-relaxed">
+                Để đảm bảo tính nhất quán pháp lý và tính bảo mật cao, bạn cần phải thiết lập <strong>mã PIN ký duyệt</strong> và <strong>chữ ký điện tử mẫu</strong> trong trang Hồ sơ cá nhân trước khi thực hiện ký duyệt tài liệu.
+              </p>
             </div>
-            <p className="text-[10px] text-gray-400 italic">
-              * Dùng chuột hoặc ngón tay (trên màn hình cảm ứng) để vẽ chữ ký của bạn vào khung trên.
-            </p>
           </div>
-
-          {/* PIN Code Verification */}
-          <div className="space-y-3">
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 text-center">
-              Nhập mã PIN ký duyệt (6 số) <span className="text-red-500">*</span>
-            </label>
-            
-            <div className="flex justify-center gap-2">
-              {pin.map((digit, idx) => (
-                <input
-                  key={idx}
-                  ref={(el) => {
-                    if (el) pinInputsRef.current[idx] = el;
-                  }}
-                  type="password"
-                  maxLength={1}
-                  value={digit}
-                  onChange={(e) => handlePinChange(e.target.value, idx)}
-                  onKeyDown={(e) => handleKeyDown(e, idx)}
-                  className="w-12 h-12 text-center text-xl font-bold text-gray-900 border border-gray-300 rounded-xl focus:border-orange-500 focus:ring-1 focus:ring-orange-500 bg-white shadow-sm transition"
+        ) : (
+          <div className="p-6 space-y-6">
+            {/* Canvas vẽ chữ ký */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                  Chữ ký tay của bạn <span className="text-red-500">*</span>
+                </label>
+                <button
+                  onClick={clearCanvas}
+                  className="inline-flex items-center gap-1 text-xs text-orange-500 hover:text-orange-600 font-medium"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  Vẽ lại
+                </button>
+              </div>
+              
+              <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl overflow-hidden bg-white shadow-inner">
+                <canvas
+                  ref={canvasRef}
+                  className="w-full cursor-crosshair touch-none"
+                  style={{ height: "200px" }}
+                  onMouseDown={startDrawing}
+                  onMouseMove={draw}
+                  onMouseUp={stopDrawing}
+                  onMouseLeave={stopDrawing}
+                  onTouchStart={startDrawingTouch}
+                  onTouchMove={drawTouch}
+                  onTouchEnd={stopDrawing}
                 />
-              ))}
+              </div>
+              {user?.signature_template ? (
+                <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                  ✓ Đã tự động tải chữ ký mẫu của bạn. Nhập mã PIN bên dưới để ký nhanh, hoặc bấm "Vẽ lại" để ký nét vẽ tay mới.
+                </p>
+              ) : (
+                <p className="text-[10px] text-gray-400 italic">
+                  * Dùng chuột hoặc ngón tay (trên màn hình cảm ứng) để vẽ chữ ký của bạn vào khung trên.
+                </p>
+              )}
             </div>
-          </div>
 
-          {/* Error Message */}
-          {errorMsg && (
-            <div className="text-sm font-medium text-red-500 text-center bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/50 py-2 rounded-xl">
-              {errorMsg}
+            {/* PIN Code Verification */}
+            <div className="space-y-3">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 text-center">
+                Nhập mã PIN ký duyệt (6 số) <span className="text-red-500">*</span>
+              </label>
+              
+              <div className="flex justify-center gap-2">
+                {pin.map((digit, idx) => (
+                  <input
+                    key={idx}
+                    ref={(el) => {
+                      if (el) pinInputsRef.current[idx] = el;
+                    }}
+                    type="password"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handlePinChange(e.target.value, idx)}
+                    onKeyDown={(e) => handleKeyDown(e, idx)}
+                    className="w-12 h-12 text-center text-xl font-bold text-gray-900 border border-gray-300 rounded-xl focus:border-orange-500 focus:ring-1 focus:ring-orange-500 bg-white shadow-sm transition"
+                  />
+                ))}
+              </div>
             </div>
-          )}
-        </div>
+
+            {/* Error Message */}
+            {errorMsg && (
+              <div className="text-sm font-medium text-red-500 text-center bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/50 py-2 rounded-xl">
+                {errorMsg}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950/20 flex justify-end gap-3">
@@ -281,23 +318,35 @@ export default function SignatureModal({
             Hủy bỏ
           </button>
           
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="px-5 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold text-sm shadow-md transition disabled:opacity-50 flex items-center gap-1.5"
-          >
-            {loading ? (
-              <>
-                <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                Đang xử lý...
-              </>
-            ) : (
-              <>
-                <Check className="w-4 h-4" />
-                Xác nhận ký
-              </>
-            )}
-          </button>
+          {!hasSetup ? (
+            <button
+              onClick={() => {
+                onClose();
+                navigate("/profile", { state: { activeTab: "signature" } });
+              }}
+              className="px-5 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold text-sm shadow-md transition flex items-center gap-1.5"
+            >
+              Cấu hình ngay
+            </button>
+          ) : (
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="px-5 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold text-sm shadow-md transition disabled:opacity-50 flex items-center gap-1.5"
+            >
+              {loading ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  Đang xử lý...
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4" />
+                  Xác nhận ký
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>

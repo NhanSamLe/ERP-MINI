@@ -27,6 +27,8 @@ import {
   FileText,
   CheckCircle2,
   XCircle,
+  Filter,
+  X,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/badge";
@@ -35,7 +37,10 @@ const STATUS_COLORS: Record<string, string> = {
   draft: "#94a3b8", // slate-400
   waiting_approval: "#f59e0b", // amber-500
   confirmed: "#3b82f6", // blue-500
+  sent: "#0ea5e9", // sky-500
+  supplier_accepted: "#8b5cf6", // violet-500
   partially_received: "#6366f1", // indigo-500
+  received: "#10b981", // emerald-500
   completed: "#10b981", // emerald-500
   cancelled: "#ef4444", // red-500
 };
@@ -44,7 +49,10 @@ const STATUS_LABELS: Record<string, string> = {
   draft: "Nháp",
   waiting_approval: "Chờ phê duyệt",
   confirmed: "Đã xác nhận",
+  sent: "Đã gửi",
+  supplier_accepted: "NCC đã xác nhận",
   partially_received: "Đã nhận một phần",
+  received: "Đã nhận hàng",
   completed: "Hoàn thành",
   cancelled: "Đã hủy",
 };
@@ -92,22 +100,29 @@ export default function PurchaseDashboard() {
   const navigate = useNavigate();
   const [data, setData] = useState<PurchaseDashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fromMonth, setFromMonth] = useState("");
+  const [toMonth, setToMonth] = useState("");
+
+  const load = async (showSpinner = false) => {
+    if (showSpinner) setLoading(true);
+    try {
+      const params: any = {};
+      if (fromMonth) params.fromMonth = fromMonth;
+      if (toMonth) params.toMonth = toMonth;
+      const res = await purchaseReportApi.getDashboardStats(params);
+      setData(res);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await purchaseReportApi.getDashboardStats();
-        setData(res);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, []);
+    load(!data);
+  }, [fromMonth, toMonth]);
 
-  if (loading || !data) {
+  if (!data) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50/50">
         <div className="flex flex-col items-center gap-3">
@@ -146,6 +161,53 @@ export default function PurchaseDashboard() {
           <Plus className="w-4.5 h-4.5" />
           Tạo đơn mua hàng mới
         </button>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="bg-gradient-to-r from-slate-50/80 to-white/90 backdrop-blur-md p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all duration-300 hover:shadow-md">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+          <div className="flex items-center gap-2.5 px-3 py-1.5 bg-orange-50 text-orange-600 rounded-xl w-fit">
+            <Filter className="w-4 h-4" />
+            <span className="text-xs font-bold uppercase tracking-wider">Lọc khoảng thời gian</span>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <div className="relative flex items-center">
+              <span className="text-xs font-bold text-slate-400 absolute left-3.5 z-10 pointer-events-none">Từ</span>
+              <input
+                type="month"
+                value={fromMonth}
+                onChange={(e) => setFromMonth(e.target.value)}
+                className="pl-10 pr-4 py-2 border border-slate-200/80 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500/80 bg-white hover:border-slate-300 transition-all font-semibold text-slate-700 shadow-2xs"
+              />
+            </div>
+            
+            <div className="h-0.5 w-3 bg-slate-300 rounded-full shrink-0" />
+            
+            <div className="relative flex items-center">
+              <span className="text-xs font-bold text-slate-400 absolute left-3.5 z-10 pointer-events-none">Đến</span>
+              <input
+                type="month"
+                value={toMonth}
+                onChange={(e) => setToMonth(e.target.value)}
+                className="pl-10 pr-4 py-2 border border-slate-200/80 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500/80 bg-white hover:border-slate-300 transition-all font-semibold text-slate-700 shadow-2xs"
+              />
+            </div>
+          </div>
+        </div>
+
+        {(fromMonth || toMonth) && (
+          <button
+            onClick={() => {
+              setFromMonth("");
+              setToMonth("");
+            }}
+            className="flex items-center justify-center gap-1.5 px-4 py-2 bg-rose-50 hover:bg-rose-100/80 active:bg-rose-100 text-rose-600 font-bold rounded-xl text-xs transition duration-200 border border-rose-100/50 shadow-2xs self-end sm:self-auto"
+          >
+            <X className="w-3.5 h-3.5" />
+            Xóa bộ lọc
+          </button>
+        )}
       </div>
 
       {/* KPI Cards */}

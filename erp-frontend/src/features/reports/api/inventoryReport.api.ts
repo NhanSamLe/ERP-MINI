@@ -36,6 +36,11 @@ export interface DashboardStats {
   low_stock_count: number;
   expiring_lots_count: number;
   pending_moves_count: number;
+  trends?: Array<{
+    month: string;
+    receipts: number;
+    issues: number;
+  }>;
 }
 
 export interface ExpiringLot {
@@ -46,8 +51,8 @@ export interface ExpiringLot {
 }
 
 export const inventoryReportApi = {
-  getDashboardStats: async (): Promise<DashboardStats> => {
-    const res = await axiosClient.get("/reports/inventory/dashboard-stats");
+  getDashboardStats: async (params?: { fromMonth?: string; toMonth?: string }): Promise<DashboardStats> => {
+    const res = await axiosClient.get("/reports/inventory/dashboard-stats", { params });
     return res.data;
   },
 
@@ -76,9 +81,9 @@ export const inventoryReportApi = {
     return res.data;
   },
 
-  getExpiringLots: async (days = 30): Promise<ExpiringLot[]> => {
+  getExpiringLots: async (params?: { days?: number; fromMonth?: string; toMonth?: string }): Promise<ExpiringLot[]> => {
     const res = await axiosClient.get("/reports/inventory/expiring-lots", {
-      params: { days },
+      params,
     });
     return res.data;
   },

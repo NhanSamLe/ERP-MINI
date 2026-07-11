@@ -254,26 +254,40 @@ export const inventoryReportController = {
     }
   },
 
-  /**
-   * GET /reports/inventory/expiring-lots?days=30
-   * Lots sắp hết hạn trong N ngày
-   */
   async expiringLots(req: Request, res: Response) {
     try {
-      const days = req.query.days ? Number(req.query.days) : 30;
-      const now = new Date();
-      const future = new Date();
-      future.setDate(future.getDate() + days);
+      const { days } = req.query;
+      const fromMonthStr = typeof req.query.fromMonth === "string" ? req.query.fromMonth : undefined;
+      const toMonthStr = typeof req.query.toMonth === "string" ? req.query.toMonth : undefined;
+      const whereClause: any = {};
+
+      if (fromMonthStr || toMonthStr) {
+        whereClause.expiry_date = {};
+        if (fromMonthStr) {
+          const parts = fromMonthStr.split("-");
+          const start = new Date(parseInt(parts[0] || "0"), parseInt(parts[1] || "1") - 1, 1, 0, 0, 0);
+          whereClause.expiry_date[Op.gte] = start;
+        }
+        if (toMonthStr) {
+          const parts = toMonthStr.split("-");
+          const end = new Date(parseInt(parts[0] || "0"), parseInt(parts[1] || "1"), 1, 0, 0, 0);
+          whereClause.expiry_date[Op.lt] = end;
+        }
+      } else {
+        const d = days ? Number(days) : 30;
+        const now = new Date();
+        const future = new Date();
+        future.setDate(future.getDate() + d);
+        whereClause.expiry_date = {
+          [Op.between]: [
+            now.toISOString().split("T")[0] as string,
+            future.toISOString().split("T")[0] as string,
+          ],
+        };
+      }
 
       const data = await StockLot.findAll({
-        where: {
-          expiry_date: {
-            [Op.between]: [
-              now.toISOString().split("T")[0] as string,
-              future.toISOString().split("T")[0] as string,
-            ],
-          },
-        },
+        where: whereClause,
         include: [
           { model: Product, as: "product", attributes: ["id", "name", "sku"] },
         ],
@@ -293,6 +307,10 @@ export const inventoryReportController = {
   async dashboardStats(req: Request, res: Response) {
     try {
       const user = (req as any).user;
+      const fromMonthStr = typeof req.query.fromMonth === "string" ? req.query.fromMonth : undefined;
+      const toMonthStr = typeof req.query.toMonth === "string" ? req.query.toMonth : undefined;
+
+      console.log("[Inventory Dashboard Stats] Filters received:", { fromMonthStr, toMonthStr });
 
       const warehouseIds = await Warehouse.findAll({
         where: { branch_id: user.branch_id },
@@ -324,37 +342,132 @@ export const inventoryReportController = {
         return minQty > 0 && parseFloat(String(b.quantity)) < minQty;
       }).length;
 
-      // Lots sắp hết hạn (30 ngày)
-      const now = new Date();
-      const future = new Date();
-      future.setDate(future.getDate() + 30);
+      // Lots sắp hết hạn
+      const lotWhere: any = {};
+      if (fromMonthStr || toMonthStr) {
+        lotWhere.expiry_date = {};
+        if (fromMonthStr) {
+          const parts = fromMonthStr.split("-");
+          const start = new Date(parseInt(parts[0] || "0"), parseInt(parts[1] || "1") - 1, 1, 0, 0, 0);
+          lotWhere.expiry_date[Op.gte] = start;
+        }
+        if (toMonthStr) {
+          const parts = toMonthStr.split("-");
+          const end = new Date(parseInt(parts[0] || "0"), parseInt(parts[1] || "1"), 1, 0, 0, 0);
+          lotWhere.expiry_date[Op.lt] = end;
+        }
+      } else {
+        const now = new Date();
+        const future = new Date();
+        future.setDate(future.getDate() + 30);
+        lotWhere.expiry_date = {
+          [Op.between]: [
+            now.toISOString().split("T")[0] as string,
+            future.toISOString().split("T")[0] as string,
+          ],
+        };
+      }
+
       const expiringCount = await StockLot.count({
-        where: {
-          expiry_date: {
-            [Op.between]: [
-              now.toISOString().split("T")[0] as string,
-              future.toISOString().split("T")[0] as string,
-            ],
-          },
-        },
+        where: lotWhere,
       });
 
       // Phiếu kho chờ duyệt
+      const moveWhere: any = {
+        status: "waiting_approval",
+        [Op.or]: [
+          { warehouse_from_id: { [Op.in]: warehouseIds } },
+          { warehouse_to_id: { [Op.in]: warehouseIds } },
+        ],
+      };
+
+      if (fromMonthStr || toMonthStr) {
+        moveWhere.move_date = {};
+        if (fromMonthStr) {
+          const parts = fromMonthStr.split("-");
+          const start = new Date(parseInt(parts[0] || "0"), parseInt(parts[1] || "1") - 1, 1, 0, 0, 0);
+          moveWhere.move_date[Op.gte] = start;
+        }
+        if (toMonthStr) {
+          const parts = toMonthStr.split("-");
+          const end = new Date(parseInt(parts[0] || "0"), parseInt(parts[1] || "1"), 1, 0, 0, 0);
+          moveWhere.move_date[Op.lt] = end;
+        }
+      }
+
       const pendingMoves = await StockMove.count({
-        where: {
-          status: "waiting_approval",
-          [Op.or]: [
-            { warehouse_from_id: { [Op.in]: warehouseIds } },
-            { warehouse_to_id: { [Op.in]: warehouseIds } },
-          ],
-        },
+        where: moveWhere,
       });
+
+      // 5. Xu hướng nhập/xuất kho theo tháng
+      const trendsMonths: Record<string, { month: string; receipts: number; issues: number }> = {};
+      if (fromMonthStr && toMonthStr) {
+        const startParts = fromMonthStr.split("-");
+        const endParts = toMonthStr.split("-");
+        let startY = parseInt(startParts[0] || "0");
+        let startM = parseInt(startParts[1] || "1") - 1;
+        const endY = parseInt(endParts[0] || "0");
+        const endM = parseInt(endParts[1] || "1") - 1;
+
+        const start = new Date(startY, startM, 1);
+        const end = new Date(endY, endM, 1);
+
+        while (start <= end) {
+          const key = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}`;
+          trendsMonths[key] = { month: key, receipts: 0, issues: 0 };
+          start.setMonth(start.getMonth() + 1);
+        }
+      } else {
+        const now = new Date();
+        for (let i = 11; i >= 0; i--) {
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+          trendsMonths[key] = { month: key, receipts: 0, issues: 0 };
+        }
+      }
+
+      const moveWhereClause: any = {
+        status: "posted",
+        [Op.or]: [
+          { warehouse_from_id: { [Op.in]: warehouseIds } },
+          { warehouse_to_id: { [Op.in]: warehouseIds } },
+        ],
+      };
+      if (fromMonthStr) {
+        const parts = fromMonthStr.split("-");
+        moveWhereClause.move_date = { ...moveWhereClause.move_date, [Op.gte]: new Date(parseInt(parts[0] || "0"), parseInt(parts[1] || "1") - 1, 1) };
+      }
+      if (toMonthStr) {
+        const parts = toMonthStr.split("-");
+        moveWhereClause.move_date = { ...moveWhereClause.move_date, [Op.lt]: new Date(parseInt(parts[0] || "0"), parseInt(parts[1] || "1"), 1) };
+      }
+
+      const moves = await StockMove.findAll({
+        where: moveWhereClause,
+        attributes: ["type", "move_date"],
+        raw: true,
+      });
+
+      moves.forEach((m) => {
+        const d = new Date(m.move_date);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        if (trendsMonths[key]) {
+          if (m.type === "receipt") {
+            trendsMonths[key].receipts += 1;
+          } else if (m.type === "issue") {
+            trendsMonths[key].issues += 1;
+          }
+        }
+      });
+
+      const trends = Object.values(trendsMonths);
 
       res.json({
         total_stock_value: totalValue,
         low_stock_count: lowStockCount,
         expiring_lots_count: expiringCount,
         pending_moves_count: pendingMoves,
+        trends,
       });
     } catch (err: any) {
       res.status(500).json({ message: err.message });

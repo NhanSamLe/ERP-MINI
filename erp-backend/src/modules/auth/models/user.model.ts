@@ -17,6 +17,7 @@ export interface UserAttrs {
   avatar_public_id?: string| null;  
   employee_id?: number | null;
   signature_pin?: string | null;
+  signature_template?: string | null;
 }
 
 type UserCreation = Optional<UserAttrs, "id">;
@@ -37,6 +38,7 @@ export class User extends Model<UserAttrs, UserCreation> implements UserAttrs {
   public avatar_public_id?: string | null; 
   public employee_id?: number | null;
   public signature_pin?: string | null;
+  public signature_template?: string | null;
 }
 
 User.init(
@@ -56,6 +58,7 @@ User.init(
     avatar_public_id: { type: DataTypes.STRING(255), allowNull: true },
     employee_id: { type: DataTypes.BIGINT, allowNull: true },
     signature_pin: { type: DataTypes.STRING(255), allowNull: true },
+    signature_template: { type: DataTypes.TEXT, allowNull: true },
   },
   { sequelize, tableName: "users", timestamps: true , createdAt: "created_at", updatedAt: "updated_at"}
 );

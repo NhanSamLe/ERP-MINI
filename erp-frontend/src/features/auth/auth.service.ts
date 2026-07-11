@@ -50,3 +50,7 @@ export async function setupSignaturePin(pin: string, password?: string) {
   const res = await api.setupSignaturePin(pin, password);
   return res.data;
 }
+export async function setupSignatureTemplate(signatureTemplate: string, password?: string) {
+  const res = await api.setupSignatureTemplate(signatureTemplate, password);
+  return res.data;
+}

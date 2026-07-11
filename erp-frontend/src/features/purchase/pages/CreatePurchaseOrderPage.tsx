@@ -70,6 +70,26 @@ interface LineItem {
   price_source?: "price_list" | "supplier_info" | "cost_price" | "manual";
 }
 
+const UOM_TRANSLATIONS: Record<string, string> = {
+  piece: "cái",
+  pcs: "cái",
+  box: "hộp/thùng",
+  pack: "gói",
+  bag: "bao/túi",
+  kilogram: "kg",
+  kg: "kg",
+  gram: "g",
+  liter: "lít",
+  meter: "mét",
+  set: "bộ",
+};
+
+function translateUom(uomName: string | null | undefined): string {
+  if (!uomName) return "—";
+  const key = uomName.trim().toLowerCase();
+  return UOM_TRANSLATIONS[key] || uomName;
+}
+
 export default function CreatePurchaseOrderPage() {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
@@ -110,7 +130,7 @@ export default function CreatePurchaseOrderPage() {
   const conversions = useSelector(
     (state: RootState) => (state as any).conversion?.UomConversions ?? [],
   );
-  
+
   const selectedCurrency = currencies.find((c) => String(c.id) === currencyId);
   const selectedCurrencyName = selectedCurrency ? `${selectedCurrency.code} (${selectedCurrency.name})` : "";
 
@@ -262,7 +282,7 @@ export default function CreatePurchaseOrderPage() {
       const distributedDiscount = finalHeaderDiscountAmount * weight;
       const netLineTotal = lineTotalBeforeHeader - distributedDiscount;
       const taxAmount = netLineTotal * (l.tax_rate / 100);
-      
+
       if (isVnd) {
         l.tax_amount = Math.round(taxAmount);
         l.line_total = Math.round(netLineTotal) + l.tax_amount;
@@ -347,7 +367,7 @@ export default function CreatePurchaseOrderPage() {
     });
     setPriceInputs(newPriceInputs);
   };
-  
+
   const handleCurrencyChange = async (newCurrencyId: string) => {
     setCurrencyId(newCurrencyId);
     const selected = currencies.find((c) => String(c.id) === newCurrencyId);
@@ -509,12 +529,12 @@ export default function CreatePurchaseOrderPage() {
         const qtyInStockUom =
           newUomId && line.stock_uom_id && newUomId !== line.stock_uom_id
             ? previewQtyInStockUom(
-                line.quantity,
-                newUomId,
-                line.stock_uom_id,
-                conversions,
-                Number(line.product_id),
-              )
+              line.quantity,
+              newUomId,
+              line.stock_uom_id,
+              conversions,
+              Number(line.product_id),
+            )
             : line.quantity;
         updated.quantity_in_stock_uom = qtyInStockUom;
         const selectedUom = uoms.find((u: Uom) => u.id === newUomId);
@@ -543,15 +563,15 @@ export default function CreatePurchaseOrderPage() {
         const newQty = Number(value) || 1;
         const qtyInStockUom =
           updated.uom_id &&
-          updated.stock_uom_id &&
-          updated.uom_id !== updated.stock_uom_id
+            updated.stock_uom_id &&
+            updated.uom_id !== updated.stock_uom_id
             ? previewQtyInStockUom(
-                newQty,
-                updated.uom_id,
-                updated.stock_uom_id,
-                conversions,
-                Number(updated.product_id),
-              )
+              newQty,
+              updated.uom_id,
+              updated.stock_uom_id,
+              conversions,
+              Number(updated.product_id),
+            )
             : newQty;
         updated.quantity_in_stock_uom = qtyInStockUom;
       }
@@ -1199,13 +1219,13 @@ export default function CreatePurchaseOrderPage() {
                                 >
                                   {validUoms.map((u: Uom) => (
                                     <option key={u.id} value={u.id}>
-                                      {u.name}
+                                      {translateUom(u.name)}
                                     </option>
                                   ))}
                                 </select>
                               ) : (
                                 <span className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded-md">
-                                  {line.uom_name || "—"}
+                                  {translateUom(line.uom_name)}
                                 </span>
                               )}
                             </td>
@@ -1227,15 +1247,14 @@ export default function CreatePurchaseOrderPage() {
                                 </div>
                                 {line.price_source && (
                                   <span
-                                    className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium border ${
-                                      line.price_source === "price_list"
-                                        ? "bg-emerald-50 text-emerald-600 border-emerald-100"
-                                        : line.price_source === "supplier_info"
-                                          ? "bg-blue-50 text-blue-600 border-blue-100"
-                                          : line.price_source === "cost_price"
-                                            ? "bg-amber-50 text-amber-600 border-amber-100"
-                                            : "bg-gray-100 text-gray-500 border-gray-200"
-                                    }`}
+                                    className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium border ${line.price_source === "price_list"
+                                      ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                                      : line.price_source === "supplier_info"
+                                        ? "bg-blue-50 text-blue-600 border-blue-100"
+                                        : line.price_source === "cost_price"
+                                          ? "bg-amber-50 text-amber-600 border-amber-100"
+                                          : "bg-gray-100 text-gray-500 border-gray-200"
+                                      }`}
                                   >
                                     {line.price_source === "price_list"
                                       ? "Bảng giá mua"
