@@ -14,5 +14,6 @@ router.post("/entries", authMiddleware(["ACCOUNT", "CHACC", "ADMIN"]), glJournal
 router.put("/entries/:id/status", authMiddleware(["CHACC", "ADMIN"]), glJournalController.updateEntryStatus);
 router.get("/reports/trial-balance", authMiddleware(["ACCOUNT", "CHACC", "ADMIN", "CEO"]), glJournalController.getTrialBalance);
 router.get("/reports/profit-loss", authMiddleware(["ACCOUNT", "CHACC", "ADMIN", "CEO"]), glJournalController.getProfitLoss);
+router.get("/reports/payroll-by-department", authMiddleware(["ACCOUNT", "CHACC", "ADMIN", "CEO"]), glJournalController.getPayrollByDepartment);
 
 export default router;

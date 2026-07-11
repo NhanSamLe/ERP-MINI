@@ -17,6 +17,7 @@ import { Plus, Target, FlaskConical } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ActionConfirmModal } from "@/components/common";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { NumberField } from "@/components/ui/NumberField";
 
 const VALUELESS_OPERATORS = new Set(["is_true", "is_false", "not_empty", "empty"]);
 
@@ -241,10 +242,16 @@ export default function ScoringRulePage() {
                         <option key={option.value} value={option.value}>{option.label}</option>
                       ))}
                     </select>
+                  ) : currentSignal?.type === "number" ? (
+                    <NumberField
+                      value={form.value === "" || form.value == null ? null : Number(form.value)}
+                      onChange={(v) => updateForm("value", v == null ? "" : String(v))}
+                      placeholder="Nhập giá trị"
+                    />
                   ) : (
                     <input
                       className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none"
-                      type={currentSignal?.type === "number" ? "number" : "text"}
+                      type="text"
                       value={form.value || ""}
                       onChange={(e) => updateForm("value", e.target.value)}
                       placeholder={currentSignal?.type === "multi_select" ? "VD: 1,2,3" : "Nhập giá trị"}
@@ -255,11 +262,10 @@ export default function ScoringRulePage() {
 
               <label className="space-y-1">
                 <span className="text-xs font-medium text-gray-600">Điểm cộng/trừ</span>
-                <input
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none"
-                  type="number"
-                  value={form.score}
-                  onChange={(e) => updateForm("score", Number(e.target.value))}
+                <NumberField
+                  value={form.score == null ? null : Number(form.score)}
+                  onChange={(v) => updateForm("score", v == null ? 0 : v)}
+                  placeholder="10"
                 />
               </label>
 
@@ -308,7 +314,18 @@ export default function ScoringRulePage() {
                 <div className={`mt-3 rounded-lg border px-3 py-2 text-sm ${preview.matched ? "border-green-200 bg-green-50 text-green-700" : "border-gray-200 bg-white text-gray-600"}`}>
                   <div className="font-medium">{preview.message}</div>
                   <div className="mt-1 text-xs">
-                    Giá trị thực tế: {String(preview.actual_value ?? "-")} | Tác động điểm: {preview.score_delta}
+                    Giá trị thực tế: {
+                      preview.actual_value !== null &&
+                      preview.actual_value !== undefined &&
+                      typeof preview.actual_value !== "boolean" &&
+                      !isNaN(Number(preview.actual_value))
+                        ? Number(preview.actual_value).toLocaleString("vi-VN")
+                        : String(preview.actual_value ?? "-")
+                    } | Tác động điểm: {
+                      preview.score_delta != null && !isNaN(Number(preview.score_delta))
+                        ? (preview.score_delta > 0 ? "+" : "") + Number(preview.score_delta).toLocaleString("vi-VN")
+                        : String(preview.score_delta)
+                    }
                   </div>
                 </div>
               )}

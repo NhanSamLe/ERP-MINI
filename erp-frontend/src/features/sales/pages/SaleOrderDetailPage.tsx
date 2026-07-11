@@ -338,15 +338,7 @@ export default function SaleOrderDetailPage() {
         {/* Table — 7 cols: # | Sản phẩm | ĐVT | SL | Đơn giá | Thuế | Thành tiền */}
         <div className="overflow-x-auto">
           <table className="w-full text-sm table-fixed">
-            <colgroup>
-              <col style={{ width: "40px" }} />    {/* # */}
-              <col />                               {/* Sản phẩm — flex */}
-              <col style={{ width: "72px" }} />    {/* ĐVT */}
-              <col style={{ width: "72px" }} />    {/* SL */}
-              <col style={{ width: "150px" }} />   {/* Đơn giá */}
-              <col style={{ width: "80px" }} />    {/* Thuế */}
-              <col style={{ width: "150px" }} />   {/* Thành tiền */}
-            </colgroup>
+            <colgroup><col style={{ width: "40px" }} /><col /><col style={{ width: "72px" }} /><col style={{ width: "72px" }} /><col style={{ width: "150px" }} /><col style={{ width: "80px" }} /><col style={{ width: "150px" }} /></colgroup>
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50/80">
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">#</th>

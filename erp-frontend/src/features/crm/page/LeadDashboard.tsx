@@ -116,8 +116,8 @@ export default function LeadDashboard() {
           { header: "Điểm", key: "lead_score", width: 10 },
           { header: "Hạng điểm", key: "score_grade", width: 12 },
           { header: "Người phụ trách", key: "assignedUser", width: 25, formatter: (v: any) => v?.full_name || "-" },
-          { header: "Qualified lúc", key: "qualified_at", width: 18, formatter: (v: any) => (v ? new Date(v).toLocaleString("vi-VN") : "") },
-          { header: "Qualified bởi", key: "qualified_by", width: 15 },
+          { header: "Đạt chất lượng lúc", key: "qualified_at", width: 18, formatter: (v: any) => (v ? new Date(v).toLocaleString("vi-VN") : "") },
+          { header: "Đạt chất lượng bởi", key: "qualified_by", width: 15 },
           { header: "Ngày thua", key: "lost_at", width: 18, formatter: (v: any) => (v ? new Date(v).toLocaleString("vi-VN") : "") },
           { header: "Lý do thua", key: "lost_reason", width: 30 },
           { header: "Liên hệ lần đầu", key: "contacted_at", width: 18, formatter: (v: any) => (v ? new Date(v).toLocaleString("vi-VN") : "") },
@@ -260,12 +260,18 @@ export default function LeadDashboard() {
       key: "expected_timeline",
       label: "Thời gian dự kiến",
       sortable: true,
-      render: (row) =>
-        row.expected_timeline ? (
+      render: (row) => {
+        const TIMELINE_LABELS: Record<string, string> = {
+          this_week: "Tuần này",
+          this_month: "Tháng này",
+          next_quarter: "Quý tới",
+        };
+        return row.expected_timeline ? (
           <span className="text-sm text-gray-700">
-            {row.expected_timeline.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+            {TIMELINE_LABELS[row.expected_timeline] || row.expected_timeline}
           </span>
-        ) : <span className="text-gray-400">—</span>,
+        ) : <span className="text-gray-400">—</span>;
+      },
     },
     {
       key: "assigned_to",

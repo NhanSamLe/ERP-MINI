@@ -12,6 +12,7 @@ import {
   fetchLeadById,
 } from "../store/lead/lead.thunks";
 import * as activityService from "../service/activity.service";
+import * as leadApi from "../api/lead.api";
 import { FormInput } from "@/components/ui/FormInput";
 import { Button } from "@/components/ui/Button";
 import { toast } from "react-toastify";
@@ -48,8 +49,20 @@ export default function LeadDetailPage() {
   const [evalEdit, setEvalEdit] = useState(false);
 
   const [basicForm, setBasicForm] = useState<UpdateLeadBasicDto>({
-    name: "", email: "", phone: "", source: "", company_name: "", job_title: "", industry: "", company_size: "", annual_revenue: null,
+    name: "", email: "", phone: "", source: "", source_id: null, company_name: "", job_title: "", industry: "", company_size: "", annual_revenue: null,
   });
+
+  const [sourceOptions, setSourceOptions] = useState<{ id: number; label: string }[]>([]);
+
+  useEffect(() => {
+    leadApi.getAllLeadSources()
+      .then((res) => {
+        const data = res.data.data;
+        if (Array.isArray(data))
+          setSourceOptions(data.map((item: any) => ({ id: item.id, label: item.name })));
+      })
+      .catch(() => {});
+  }, []);
 
   const [evalForm, setEvalForm] = useState<UpdateLeadEvaluationDto>({
     leadId, has_budget: undefined, ready_to_buy: undefined, expected_timeline: "", notes: "",
@@ -91,6 +104,7 @@ export default function LeadDetailPage() {
       email: lead.email ?? "",
       phone: lead.phone ?? "",
       source: lead.source ?? "",
+      source_id: lead.source_id ?? null,
       company_name: lead.company_name ?? "",
       job_title: lead.job_title ?? "",
       industry: lead.industry ?? "",
@@ -326,8 +340,8 @@ export default function LeadDetailPage() {
                   <InfoItem label="Chi nhánh" value={lead.branch_id ? `#${lead.branch_id}` : "—"} />
                   <InfoItem label="Liên hệ lần đầu" value={fmtDateTime(lead.contacted_at)} />
                   <InfoItem label="Hoạt động gần nhất" value={fmtDateTime(lead.last_activity_date)} />
-                  <InfoItem label="Qualified lúc" value={fmtDateTime(lead.qualified_at)} />
-                  <InfoItem label="Qualified bởi" value={lead.qualified_by ? `#${lead.qualified_by}` : "—"} />
+                  <InfoItem label="Đạt chất lượng lúc" value={fmtDateTime(lead.qualified_at)} />
+                  <InfoItem label="Đạt chất lượng bởi" value={lead.qualified_by ? `#${lead.qualified_by}` : "—"} />
                   <InfoItem label="Ngày tạo" value={fmtDateTime(lead.created_at)} />
                   <InfoItem label="Cập nhật" value={fmtDateTime(lead.updated_at)} />
                 </div>
@@ -336,7 +350,23 @@ export default function LeadDetailPage() {
                   <FormInput label="Tên" value={basicForm.name ?? ""} onChange={(v) => setBasicForm({ ...basicForm, name: v })} />
                   <FormInput label="Email" value={basicForm.email ?? ""} onChange={(v) => setBasicForm({ ...basicForm, email: v })} />
                   <FormInput label="SĐT" value={basicForm.phone ?? ""} onChange={(v) => setBasicForm({ ...basicForm, phone: v })} />
-                  <FormInput label="Nguồn" value={basicForm.source ?? ""} onChange={(v) => setBasicForm({ ...basicForm, source: v })} />
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">Nguồn</label>
+                    <select
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
+                      value={basicForm.source_id ?? ""}
+                      onChange={(e) => {
+                        const id = e.target.value ? parseInt(e.target.value) : null;
+                        const src = sourceOptions.find((o) => o.id === id);
+                        setBasicForm({ ...basicForm, source_id: id, source: src?.label || "" });
+                      }}
+                    >
+                      <option value="">-- Chọn nguồn --</option>
+                      {sourceOptions.map((o) => (
+                        <option key={o.id} value={o.id}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
                   <FormInput label="Công ty" value={basicForm.company_name ?? ""} onChange={(v) => setBasicForm({ ...basicForm, company_name: v })} />
                   <FormInput label="Chức vụ" value={basicForm.job_title ?? ""} onChange={(v) => setBasicForm({ ...basicForm, job_title: v })} />
                   <FormInput label="Ngành" value={basicForm.industry ?? ""} onChange={(v) => setBasicForm({ ...basicForm, industry: v })} />
@@ -378,7 +408,15 @@ export default function LeadDetailPage() {
                   <InfoItem label="Sẵn sàng mua" value={
                     lead.ready_to_buy == null ? "—" : lead.ready_to_buy ? "Có" : "Không"
                   } />
-                  <InfoItem label="Thời gian dự kiến" value={lead.expected_timeline || "—"} />
+                  <InfoItem label="Thời gian dự kiến" value={
+                    lead.expected_timeline ? (
+                      {
+                        this_week: "Tuần này",
+                        this_month: "Tháng này",
+                        next_quarter: "Quý tới",
+                      }[lead.expected_timeline] || lead.expected_timeline
+                    ) : "—"
+                  } />
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -412,8 +450,19 @@ export default function LeadDetailPage() {
                       <option value="false">Không</option>
                     </select>
                   </div>
-                  <FormInput label="Thời gian dự kiến" value={evalForm.expected_timeline ?? ""}
-                    onChange={(v) => setEvalForm({ ...evalForm, expected_timeline: v })} />
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">Thời gian dự kiến</label>
+                    <select
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
+                      value={evalForm.expected_timeline ?? ""}
+                      onChange={(e) => setEvalForm({ ...evalForm, expected_timeline: e.target.value })}
+                    >
+                      <option value="">Không xác định</option>
+                      <option value="this_week">Tuần này</option>
+                      <option value="this_month">Tháng này</option>
+                      <option value="next_quarter">Quý tới</option>
+                    </select>
+                  </div>
                 </div>
               )}
             </CardContent>

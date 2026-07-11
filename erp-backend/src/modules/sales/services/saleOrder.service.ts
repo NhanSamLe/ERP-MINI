@@ -404,7 +404,7 @@ export const saleOrderService = {
    * CREATE — Sales (Atomic Transaction)
    * ---------------------------------------------------- */
   async create(data: any, user: any, app?: any) {
-    return await sequelize.transaction(async (t) => {
+    const createdOrder = await sequelize.transaction(async (t) => {
       const quotation = data.quotation_id
         ? await Quotation.findByPk(data.quotation_id, { transaction: t })
         : null;
@@ -484,6 +484,8 @@ export const saleOrderService = {
 
       return order;
     });
+
+    return await this.getById(createdOrder.id, user);
   },
 
   /** -----------------------------------------------------
@@ -606,8 +608,9 @@ export const saleOrderService = {
         { transaction: t }
       );
 
-      return order;
     });
+
+    return await this.getById(id, user);
   },
 
   /** -----------------------------------------------------
