@@ -15,7 +15,7 @@ import { exportExcelReport } from "@/utils/excel/exportExcelReport";
 const STAGE_TABS = [
   { label: "Tất cả",     value: "" },
   { label: "Mới",        value: "new" },
-  { label: "Qualified",  value: "qualified" },
+  { label: "Đạt chất lượng",  value: "qualified" },
   { label: "Thua",       value: "lost" },
 ];
 
@@ -28,8 +28,23 @@ const getStageBadge = (stage: string) => {
   return map[stage] || "bg-gray-100 text-gray-800";
 };
 
-const formatStage = (stage: string) =>
-  stage.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+const formatStage = (stage: string) => {
+  const map: Record<string, string> = {
+    new: "Mới",
+    qualified: "Đạt chất lượng",
+    lost: "Thua",
+  };
+  return map[stage] || stage;
+};
+
+const formatScoreGrade = (grade?: string | null) => {
+  const map: Record<string, string> = {
+    cold: "Lạnh",
+    warm: "Ấm",
+    hot: "Nóng",
+  };
+  return grade ? map[grade] || grade : "";
+};
 
 // Column width constants for consistent sizing
 const COLUMN_MIN_WIDTHS = {
@@ -47,6 +62,7 @@ export default function LeadDashboard() {
   const [stageFilter, setStageFilter] = useState("");
   const [search, setSearch] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null);
+  const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -85,6 +101,7 @@ export default function LeadDashboard() {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setImporting(true);
     try {
       await importLeads(file);
       toast.success("Import Leads thành công!");
@@ -93,6 +110,7 @@ export default function LeadDashboard() {
     } catch (err: any) {
       toast.error(err.message || "Lỗi khi import leads");
     } finally {
+      setImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
@@ -111,10 +129,10 @@ export default function LeadDashboard() {
           { header: "Chức vụ", key: "job_title", width: 20 },
           { header: "Ngành", key: "industry", width: 18 },
           { header: "Quy mô", key: "company_size", width: 15 },
-          { header: "Doanh thu năm", key: "annual_revenue", width: 18 },
-          { header: "Giai đoạn", key: "stage", width: 15, formatter: (v: any) => String(v).toUpperCase() },
+          { header: "Doanh thu năm", key: "annual_revenue", width: 18, format: "currency", align: "right" },
+          { header: "Giai đoạn", key: "stage", width: 15, formatter: (v: any) => formatStage(String(v)) },
           { header: "Điểm", key: "lead_score", width: 10 },
-          { header: "Hạng điểm", key: "score_grade", width: 12 },
+          { header: "Hạng điểm", key: "score_grade", width: 12, formatter: (v: any) => (v ? formatScoreGrade(String(v)) : "") },
           { header: "Người phụ trách", key: "assignedUser", width: 25, formatter: (v: any) => v?.full_name || "-" },
           { header: "Đạt chất lượng lúc", key: "qualified_at", width: 18, formatter: (v: any) => (v ? new Date(v).toLocaleString("vi-VN") : "") },
           { header: "Đạt chất lượng bởi", key: "qualified_by", width: 15 },
@@ -214,7 +232,7 @@ export default function LeadDashboard() {
         return (
           <div className="flex items-center gap-2">
             <span className="font-semibold text-gray-900">{row.lead_score ?? 0}</span>
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}>{grade.toUpperCase()}</span>
+            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}>{formatScoreGrade(grade)}</span>
           </div>
         );
       },
@@ -322,9 +340,9 @@ export default function LeadDashboard() {
             </Button>
 
             {/* Import */}
-            <input type="file" hidden ref={fileInputRef} onChange={handleFileChange} accept=".xlsx, .xls" />
-            <Button variant="outline" size="sm" leftIcon={<Upload className="w-3.5 h-3.5" />} onClick={handleImport}>
-              Nhập Excel
+            <input type="file" hidden ref={fileInputRef} onChange={handleFileChange} accept=".xlsx, .xls" disabled={importing} />
+            <Button variant="outline" size="sm" leftIcon={<Upload className="w-3.5 h-3.5" />} onClick={handleImport} loading={importing} disabled={importing}>
+              {importing ? "Đang nhập..." : "Nhập Excel"}
             </Button>
 
             {/* Export */}
@@ -351,7 +369,7 @@ export default function LeadDashboard() {
           {[
             { label: "Tất cả",    count: counts.all,       color: "bg-white border-gray-200",        text: "text-gray-700" },
             { label: "Mới",       count: counts.new,       color: "bg-white border-blue-100",        text: "text-blue-700" },
-            { label: "Qualified", count: counts.qualified, color: "bg-white border-emerald-100",     text: "text-emerald-700" },
+            { label: "Đạt chất lượng", count: counts.qualified, color: "bg-white border-emerald-100",     text: "text-emerald-700" },
             { label: "Thua",      count: counts.lost,      color: "bg-white border-red-100",         text: "text-red-700" },
           ].map((c) => (
             <div key={c.label} className={`${c.color} border rounded-lg px-4 py-3`}>

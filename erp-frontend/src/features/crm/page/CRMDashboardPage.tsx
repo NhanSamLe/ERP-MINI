@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import axiosClient from "../../../api/axiosClient";
+import { formatVND } from "@/utils/currency.helper";
 import {
   ChartPanel,
   ChartTooltip,
@@ -460,7 +461,7 @@ export default function CRMDashboardPage() {
               : recent.opportunities.slice(0, 5).map((item) => ({
                   id: item.id,
                   title: item.name,
-                  subtitle: `${Number(item.expected_value).toLocaleString("vi-VN")} ₫`,
+                  subtitle: formatVND(item.expected_value),
                   badge: STAGE_LABELS[item.stage] || item.stage,
                 }))}
           />

@@ -7,6 +7,7 @@ import {
   Font,
 } from "@react-pdf/renderer";
 import { ArInvoiceDto } from "../../dto/invoice.dto";
+import { formatCurrency } from "@/utils/currency.helper";
 
 /* ─── Register Roboto (Unicode – supports Vietnamese & Latin) ──── */
 Font.register({
@@ -388,8 +389,12 @@ export function InvoicePDF({ invoice, lang = "vi" }: Props) {
   const exchangeRate   = Number(invoice.exchange_rate || 1);
   const isForeign      = currencyCode !== "VND";
 
+  // formatCurrency/formatVND (helper) đều hard-code locale "vi-VN"; PDF này hỗ trợ
+  // song ngữ nên chỉ dùng helper khi lang === "vi", giữ nguyên logic "en-US" gốc.
   const fmtMoney = (v: number | null | undefined) =>
-    `${Number(v || 0).toLocaleString(lang === "vi" ? "vi-VN" : "en-US", { maximumFractionDigits: 2 })} ${currencySymbol}`;
+    lang === "vi"
+      ? formatCurrency(v, currencySymbol)
+      : `${Number(v || 0).toLocaleString("en-US", { maximumFractionDigits: 2 })} ${currencySymbol}`;
   const fmtVND = (v: number) =>
     `≈ ${Math.round(v).toLocaleString(lang === "vi" ? "vi-VN" : "en-US")} VND`;
 

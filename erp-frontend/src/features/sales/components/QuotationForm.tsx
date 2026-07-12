@@ -16,7 +16,7 @@ import { SearchSelectionModal } from "@/components/common/SearchSelectionModal";
 import { ActionConfirmModal } from "@/components/common";
 import QuantityControl from "./QuantityControl";
 import { NumberField } from "@/components/ui/NumberField";
-import { formatVND } from "@/utils/currency.helper";
+import { formatVND, formatCurrency } from "@/utils/currency.helper";
 import { toDateInputValue } from "@/utils/time.helper";
 import { useSaleOrderCalculation } from "../hook/useSaleOrderCalculation";
 import { Uom, UomConversion } from "@/features/master-data/dto/uom.dto";
@@ -132,7 +132,7 @@ export default function QuotationForm({
   const currencyCode = selectedCurrency?.code || "VND";
   const currencySymbol = selectedCurrency?.symbol || "VND";
   const formatDocMoney = (value: number | null | undefined) =>
-    `${Number(value || 0).toLocaleString("vi-VN", { maximumFractionDigits: 2 })} ${currencySymbol}`;
+    formatCurrency(value, currencySymbol);
 
   const formatQty = (value: number) =>
     Number(value).toLocaleString("vi-VN", { maximumFractionDigits: 4 });

@@ -293,6 +293,9 @@ export function applyAssociations() {
   // Lead được gán cho 1 User (nhân viên sale)
   Lead.belongsTo(User, { foreignKey: "assigned_to", as: "assignedUser" });
   User.hasMany(Lead, { foreignKey: "assigned_to", as: "leads" });
+  // Lead thuộc về 1 chi nhánh
+  Lead.belongsTo(Branch, { foreignKey: "branch_id", as: "branch" });
+  Branch.hasMany(Lead, { foreignKey: "branch_id", as: "leads" });
   // lead duoc qualified boi 1 user
   Lead.belongsTo(User, { foreignKey: "qualified_by", as: "qualifiedByUser" });
   User.hasMany(Lead, { foreignKey: "qualified_by", as: "qualifiedLeads" });

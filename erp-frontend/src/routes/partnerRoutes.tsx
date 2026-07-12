@@ -43,7 +43,7 @@ const partnerRoutes: RouteObject[] = [
       {
         path: ":id", // /partners/:id
         element: (
-          <ProtectedRoute allowedRoles={["ADMIN"]}>
+          <ProtectedRoute allowedRoles={["ADMIN", "SALES", "PURCHASE", "SALESMANAGER", "PURCHASEMANAGER"]}>
             <PartnerForm />
           </ProtectedRoute>
         ),

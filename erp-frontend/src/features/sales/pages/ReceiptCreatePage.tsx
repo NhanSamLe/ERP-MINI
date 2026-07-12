@@ -4,7 +4,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { createReceipt, fetchCustomersWithDebt, fetchUnpaidInvoices } from "../store/receipt.slice";
 import { CreateReceiptDto } from "../dto/receipt.dto";
 import PageHeader from "@/components/layout/PageHeader";
-import { formatVND } from "@/utils/currency.helper";
+import { formatVND, formatNumberInput, parseNumberInput } from "@/utils/currency.helper";
 import { AlertCircle, CheckSquare, Search, Wallet } from "lucide-react";
 import { SearchSelectionModal } from "@/components/common/SearchSelectionModal";
 
@@ -79,8 +79,8 @@ export default function ReceiptCreatePage() {
   };
 
   const handleAmountChange = (value: string) => {
-    const clean = value.replace(/\D/g, "");
-    setForm({ ...form, amount: clean });
+    const parsed = parseNumberInput(value);
+    setForm({ ...form, amount: parsed != null ? String(parsed) : "" });
     // If user manually types, we could optionally clear selections or keep them?
     // Let's keep selections but maybe show a warning if they don't match? 
     // For simplicity, just update amount.
@@ -186,7 +186,7 @@ export default function ReceiptCreatePage() {
               <div className="relative">
                 <input
                   type="text"
-                  value={form.amount ? Number(form.amount).toLocaleString('vi-VN') : ""}
+                  value={formatNumberInput(form.amount)}
                   onChange={(e) => handleAmountChange(e.target.value)}
                   placeholder="0"
                   className="w-full pl-4 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 font-bold text-lg text-gray-900 outline-none"

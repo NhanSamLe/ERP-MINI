@@ -8,6 +8,7 @@ import { StandardFormLayout, FormSection } from "@/components/layout";
 import { StatusBadge } from "@/components/common";
 import { Phone, Clock, Mic, FileText, PhoneCall } from "lucide-react";
 import { ActivityRelatedSummary } from "../components/ActivityRelatedSummary";
+import { formatNumberInput, parseNumberInput } from "@/utils/currency.helper";
 
 const RESULT_OPTIONS: { value: ResultType; label: string }[] = [
   { value: "connected",    label: "Đã kết nối" },
@@ -170,10 +171,10 @@ export default function CallUpdatePage() {
               <Clock className="w-3.5 h-3.5" /> Thời lượng (giây)
             </label>
             <input
-              type="number"
-              min={0}
-              value={duration}
-              onChange={e => setDuration(e.target.value.replace(/\D/g, ""))}
+              type="text"
+              inputMode="numeric"
+              value={formatNumberInput(duration)}
+              onChange={e => setDuration(parseNumberInput(e.target.value)?.toString() ?? "")}
               placeholder="VD: 120"
               className="h-9 w-full rounded-md border border-gray-200 px-3 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-orange-400"
             />

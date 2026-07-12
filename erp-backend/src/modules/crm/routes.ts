@@ -50,51 +50,6 @@ router.delete("/opportunities/:oppId", crmRoles, opportunityController.deleteOpp
 
 
 
-// // Activity Routes
-// // ---- CREATE ----
-// router.post("/activities/call",     crmRoles, activityController.createCallActivity);
-// router.post("/activities/email",    crmRoles, activityController.createEmailActivity);
-// router.post("/activities/meeting",  crmRoles, activityController.createMeetingActivity);
-// router.post("/activities/task",     crmRoles, activityController.createTaskActivity);
-
-// // ---- UPDATE COMMON ----
-// router.put("/activities/:id", crmRoles, activityController.updateActivity);
-
-// // ---- UPDATE DETAIL ----
-// router.put("/activities/call/:id",    crmRoles, activityController.updateCallDetail);
-// router.put("/activities/email/:id",   crmRoles, activityController.updateEmailDetail);
-// router.put("/activities/meeting/:id", crmRoles, activityController.updateMeetingDetail);
-
-// // ---- TASK STATUS ----
-// router.patch("/activities/task/start/:id",    crmRoles, activityController.startTask);
-// router.patch("/activities/task/complete/:id", crmRoles, activityController.completeTask);
-
-// // ---- COMPLETE ACTIVITY (general) ----
-// router.patch("/activities/complete/:id", crmRoles, activityController.completeActivity);
-
-// // ---- REASSIGN ----
-// router.patch("/activities/reassign/:id", crmRoles, activityController.reassignActivity);
-
-// // ---- DETAIL ----
-// router.get("/activities/call/:id",    crmRoles, activityController.getCallActivityDetail);
-// router.get("/activities/email/:id",   crmRoles, activityController.getEmailActivityDetail);
-// router.get("/activities/meeting/:id", crmRoles, activityController.getMeetingActivityDetail);
-// router.get("/activities/task/:id",    crmRoles, activityController.getTaskActivityDetail);
-
-// // ---- LIST ----
-// router.get("/activities",        crmRoles, activityController.getAllActivities);
-// router.get("/activities/my",     crmRoles, activityController.getMyActivities);
-// router.get("/activities/today",  crmRoles, activityController.getTodayActivities);
-
-// // ---- LIST BY ENTITY ----
-// router.get("/activities/for/:type/:id", crmRoles, activityController.getActivitiesFor);
-// router.get("/activities/timeline/:type/:id", crmRoles, activityController.getTimeline);
-
-// // ---- DELETE ----
-// router.delete("/activities/:id", crmRoles, activityController.deleteActivity);
-
-
-
 // // ---- CREATE (Priority: Specific types first) ----
 router.post("/activities/call", crmRoles, activityController.createCallActivity);
 router.post("/activities/email", crmRoles, activityController.createEmailActivity);

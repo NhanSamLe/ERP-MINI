@@ -10,7 +10,7 @@ import {
 } from "@/features/sales/store/saleOrder.slice";
 import { ActionConfirmModal, StatusBadge } from "@/components/common";
 import { StandardFormLayout, FormSection } from "@/components/layout";
-import { formatVND } from "@/utils/currency.helper";
+import { formatVND, formatCurrency } from "@/utils/currency.helper";
 import { toast } from "react-toastify";
 import { getErrorMessage } from "@/utils/ErrorHelper";
 import {
@@ -73,7 +73,7 @@ export default function SaleOrderDetailPage() {
   const currencySymbol = order.currency?.symbol || currencyCode;
   const exchangeRate = Number(order.exchange_rate || 1);
   const formatOrderMoney = (value: number | null | undefined) =>
-    `${Number(value || 0).toLocaleString("vi-VN", { maximumFractionDigits: 2 })} ${currencySymbol}`;
+    formatCurrency(value, currencySymbol);
   const isRejected = order.approval_status === "rejected";
   const roleCode = user.role?.code;
   const isSalesOwner = roleCode === "SALES" && order.created_by === user.id;

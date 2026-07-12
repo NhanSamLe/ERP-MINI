@@ -72,9 +72,29 @@ function formatDisplayValue(value?: string | number | null) {
   return String(value);
 }
 
-function formatMoney(value?: number | null) {
-  if (value === undefined || value === null) return "--";
-  return value.toLocaleString("vi-VN");
+function formatRevenue(value?: string | number | null) {
+  if (value === undefined || value === null || value === "") return "--";
+  const numericValue = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(numericValue)) return String(value);
+  return numericValue.toLocaleString("vi-VN", { maximumFractionDigits: 0 });
+}
+
+function formatLeadStage(stage?: string | null) {
+  const map: Record<string, string> = {
+    new: "Mới",
+    qualified: "Đạt chất lượng",
+    lost: "Thua",
+  };
+  return stage ? map[stage] || stage : "--";
+}
+
+function formatScoreGrade(grade?: string | null) {
+  const map: Record<string, string> = {
+    cold: "Lạnh",
+    warm: "Ấm",
+    hot: "Nóng",
+  };
+  return grade ? map[grade] || grade : "--";
 }
 
 function InfoItem({
@@ -361,7 +381,7 @@ export default function OpportunityCreatePage() {
                         <h3 className="truncate text-base font-semibold text-gray-900">{selectedLead.name}</h3>
                       </div>
                       <span className="rounded-full bg-orange-100 px-2.5 py-1 text-xs font-medium text-orange-700">
-                        {selectedLead.stage}
+                        {formatLeadStage(selectedLead.stage)}
                       </span>
                     </div>
 
@@ -372,10 +392,10 @@ export default function OpportunityCreatePage() {
                       <InfoItem icon={<Briefcase className="h-4 w-4" />} label="Chức vụ" value={selectedLead.job_title} />
                       <InfoItem
                         icon={<BadgeCheck className="h-4 w-4" />}
-                        label="Điểm/grade"
-                        value={`${selectedLead.lead_score ?? "--"} / ${selectedLead.score_grade ?? "--"}`}
+                        label="Điểm/hạng"
+                        value={`${selectedLead.lead_score ?? "--"} / ${formatScoreGrade(selectedLead.score_grade)}`}
                       />
-                      <InfoItem icon={<DollarSign className="h-4 w-4" />} label="Doanh thu năm" value={formatMoney(selectedLead.annual_revenue)} />
+                      <InfoItem icon={<DollarSign className="h-4 w-4" />} label="Doanh thu năm" value={formatRevenue(selectedLead.annual_revenue)} />
                     </div>
                   </div>
                 )}

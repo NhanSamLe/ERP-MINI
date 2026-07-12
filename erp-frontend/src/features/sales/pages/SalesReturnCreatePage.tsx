@@ -7,6 +7,7 @@ import { createRma, submitRma } from "../service/salesReturn.service";
 import { SaleOrderDto } from "../dto/saleOrder.dto";
 import { ReturnType } from "../dto/salesReturn.dto";
 import { StatusBadge } from "@/components/common";
+import { formatCurrency } from "@/utils/currency.helper";
 
 const fmtDate = (value?: string | null) =>
   value ? new Date(value).toLocaleDateString("vi-VN") : "-";
@@ -108,9 +109,7 @@ export default function SalesReturnCreatePage() {
     ? `${orderDetail.currency.code}${orderDetail.currency.symbol ? ` (${orderDetail.currency.symbol})` : ""}`
     : "VND";
   const fmtDocMoney = (value?: number | null) =>
-    value != null
-      ? `${Number(value).toLocaleString("vi-VN", { maximumFractionDigits: 2 })} ${currencyCode}`
-      : "-";
+    value != null ? formatCurrency(value, currencyCode) : "-";
 
   return (
     <div className="page-container">

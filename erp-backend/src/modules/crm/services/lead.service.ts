@@ -1,6 +1,7 @@
 import * as model from "../../../models/index";
 import { Lead } from "../../../models/index";
 import { Op } from "sequelize";
+import { sequelize } from "../../../config/db";
 import { ActivityType, ActivityRelatedType, PartnerStatus, LeadStage } from "../../../core/types/enum";
 import { addTimeline } from "./timeLine.service"
 import * as XLSX from "xlsx";
@@ -68,7 +69,8 @@ export async function getTodayLeads(role: string, userId?: number) {
     include: [
       { model: model.User, as: "assignedUser", attributes: ["id", "full_name", "email"] },
       { model: model.LeadSource, as: "leadSource" },
-      { model: model.Partner, as: "customer" }
+      { model: model.Partner, as: "customer" },
+      { model: model.Branch, as: "branch", attributes: ["id", "name", "code"] },
     ],
     order: [["created_at", "DESC"]],
   });
@@ -81,6 +83,7 @@ export async function getMyLeads(userId: number) {
       { model: model.User, as: "assignedUser", attributes: ["id", "full_name", "email"] },
       { model: model.LeadSource, as: "leadSource" },
       { model: model.Partner, as: "customer" },
+      { model: model.Branch, as: "branch", attributes: ["id", "name", "code"] },
     ],
     order: [["updated_at", "DESC"]],
   });
@@ -102,6 +105,11 @@ export async function getLeadById(leadId: number, user?: any) {
       {
         model: model.Partner,
         as: "customer",
+      },
+      {
+        model: model.Branch,
+        as: "branch",
+        attributes: ["id", "name", "code"],
       },
       {
         model: model.Opportunity,
@@ -525,31 +533,51 @@ export async function importLeadsFromExcel(fileBuffer: Buffer, user: any, app: a
     return undefined;
   };
 
-  const leadsToCreate = [];
+  // Cache tên → id Lead Source đã tra/tạo trong lượt import này, tránh query lặp lại.
+  const sourceCache = new Map<string, number>();
+  const resolveSourceId = async (rawName: string): Promise<number> => {
+    const key = rawName.trim().toLowerCase();
+    const cached = sourceCache.get(key);
+    if (cached) return cached;
+
+    let found = await model.LeadSource.findOne({
+      where: sequelize.where(sequelize.fn("LOWER", sequelize.col("name")), key),
+    });
+    if (!found) {
+      found = await model.LeadSource.create({ name: rawName.trim(), description: null, is_active: true });
+    }
+    sourceCache.set(key, found.id);
+    return found.id;
+  };
+
+  const leadsToCreate: any[] = [];
   const errors = [];
 
   for (let i = 0; i < jsonData.length; i++) {
     const row = jsonData[i];
-    const name = row["Name"] || row["name"] || row["Tên"];
-    const email = row["Email"] || row["email"];
-    const phone = row["Phone"] || row["phone"] || row["SĐT"];
-    const source = row["Source"] || row["source"] || "Excel Import";
-    const company_name = getCell(row, ["Company", "Company Name", "Công ty", "Cong ty", "Tên công ty", "Ten cong ty"]);
-    const job_title = getCell(row, ["Job Title", "Chức vụ", "Chuc vu", "Title"]);
-    const industry = getCell(row, ["Industry", "Ngành", "Nganh", "Ngành nghề", "Nganh nghe"]);
-    const company_size = getCell(row, ["Company Size", "Quy mô", "Quy mo", "Size"]);
-    const annualRevenue = getCell(row, ["Annual Revenue", "Doanh thu", "Doanh thu năm", "Doanh thu nam"]);
+    const name = getCell(row, ["Name", "Tên Lead", "Ten Lead", "Tên", "Ten"]);
+    const email = getCell(row, ["Email"]);
+    const phone = getCell(row, ["Phone", "SĐT", "SDT", "Số điện thoại", "So dien thoai"]);
+    const sourceName = getCell(row, ["Source", "Nguồn Lead", "Nguon Lead", "Nguồn", "Nguon"]) || "Excel Import";
+    const company_name = getCell(row, ["Company", "Company Name", "Tên Công Ty", "Công ty", "Cong ty", "Tên công ty", "Ten cong ty"]);
+    const job_title = getCell(row, ["Job Title", "Chức Vụ", "Chức vụ", "Chuc vu", "Title"]);
+    const industry = getCell(row, ["Industry", "Ngành Nghề", "Ngành", "Nganh", "Ngành nghề", "Nganh nghe"]);
+    const company_size = getCell(row, ["Company Size", "Quy Mô", "Quy mô", "Quy mo", "Size"]);
+    const annualRevenue = getCell(row, ["Annual Revenue", "Doanh Thu/Năm (VNĐ)", "Doanh thu", "Doanh thu năm", "Doanh thu nam"]);
 
     if (!name) {
       errors.push(`Dòng ${i + 2}: Thiếu tên Lead`);
       continue;
     }
 
+    const source_id = await resolveSourceId(String(sourceName));
+
     leadsToCreate.push({
       name,
       email,
       phone,
-      source,
+      source: String(sourceName),
+      source_id,
       company_name,
       job_title,
       industry,

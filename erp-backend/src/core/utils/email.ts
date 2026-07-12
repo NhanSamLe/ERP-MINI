@@ -182,11 +182,20 @@ export async function sendEmail2(
   html?: string,
   cc?: string | null,
   bcc?: string | null,
-  attachments?: EmailAttachment[]
+  attachments?: EmailAttachment[],
+  fromDisplay?: string | null
 ) {
   try {
+    // Hệ thống chỉ có 1 tài khoản SMTP dùng chung, nên email luôn được gửi thật
+    // qua tài khoản đó (from header phải khớp domain đã xác thực SMTP để tránh bị
+    // đánh spam). Tên hiển thị lấy theo email của nhân viên phụ trách (fromDisplay)
+    // để người nhận biết ai đang liên hệ, và đặt replyTo = email đó để khi khách
+    // hàng bấm Reply, thư sẽ về đúng hộp mail của nhân viên phụ trách thay vì hộp
+    // mail hệ thống chung.
+    const displayName = fromDisplay || "ERP System";
     const info = await transporter.sendMail({
-      from: `"ERP System" <${env.mail.user}>`,
+      from: `"${displayName}" <${env.mail.user}>`,
+      ...(fromDisplay ? { replyTo: fromDisplay } : {}),
       to,
       ...(cc ? { cc } : {}),
       ...(bcc ? { bcc } : {}),

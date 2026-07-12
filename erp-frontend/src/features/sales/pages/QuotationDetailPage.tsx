@@ -7,7 +7,7 @@ import {
 } from "../store/quotation.slice";
 import { ActionConfirmModal, StatusBadge } from "@/components/common";
 import { StandardFormLayout, FormSection } from "@/components/layout";
-import { formatVND } from "@/utils/currency.helper";
+import { formatVND, formatCurrency } from "@/utils/currency.helper";
 import {
   Package, User, CreditCard, Phone, Mail, MapPin,
   FileText, Clock, CheckCircle2, AlertTriangle,
@@ -86,7 +86,7 @@ export default function QuotationDetailPage() {
   const currencySymbol = q.currency?.symbol || currencyCode;
   const exchangeRate = Number(q.exchange_rate || 1);
   const formatQuoteMoney = (value: number | null | undefined) =>
-    `${Number(value || 0).toLocaleString("vi-VN", { maximumFractionDigits: 2 })} ${currencySymbol}`;
+    formatCurrency(value, currencySymbol);
   const canAccept = q.approval_status === "approved" && q.status !== "accepted" && (isSalesOwner || isSalesManager);
   const canConvert = q.status === "accepted" && (isSalesOwner || isSalesManager);
 

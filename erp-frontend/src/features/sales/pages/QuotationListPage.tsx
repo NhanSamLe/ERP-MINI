@@ -8,6 +8,7 @@ import {
   FileText, Plus, Search, ChevronLeft, ChevronRight,
   Eye, Calendar, User, Package, Loader2, Inbox,
 } from "lucide-react";
+import { formatCurrency } from "@/utils/currency.helper";
 
 const fmtDate = (d?: string | null) =>
   d ? new Date(d).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
@@ -23,7 +24,7 @@ const STATUS_TABS = [
 
 const ITEMS_PER_PAGE = 15;
 const formatQuotationMoney = (q: QuotationDto) =>
-  `${Number(q.total_after_tax || 0).toLocaleString("vi-VN", { maximumFractionDigits: 2 })} ${q.currency?.symbol || q.currency?.code || "VND"}`;
+  formatCurrency(q.total_after_tax, q.currency?.symbol || q.currency?.code || "VND");
 
 export default function QuotationListPage() {
   const dispatch  = useAppDispatch();

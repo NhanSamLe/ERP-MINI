@@ -11,6 +11,8 @@ import {
 } from "../store/receipt.slice";
 import { ActionConfirmModal, StatusBadge } from "@/components/common";
 import { StandardFormLayout, FormSection } from "@/components/layout";
+import { NumberField } from "@/components/ui/NumberField";
+import { formatCurrency } from "@/utils/currency.helper";
 import {
   Wallet, User, CreditCard, Phone,
   FileText, AlertTriangle, CheckCircle2, Clock, UserCheck, Loader2,
@@ -73,7 +75,7 @@ export default function ReceiptDetailPage() {
   const currencyCode = receipt.currency?.code || "VND";
   const exchangeRate = Number(receipt.exchange_rate || 1);
   const fmtMoney = (v: number | null | undefined) =>
-    `${Number(v || 0).toLocaleString("vi-VN", { maximumFractionDigits: 2 })} ${currencySymbol}`;
+    formatCurrency(v, currencySymbol);
 
   const isAccountant = ["ACCOUNT", "BRANCH_MANAGER", "CEO", "ADMIN"].includes(user?.role?.code ?? "");
   const isChiefAcc = ["CHACC", "BRANCH_MANAGER", "CEO", "ADMIN"].includes(user?.role?.code ?? "");
@@ -543,17 +545,15 @@ export default function ReceiptDetailPage() {
                           </div>
                         </div>
                         <div className="relative">
-                          <input
-                            type="number"
+                          <NumberField
                             placeholder="0"
-                            min="0"
+                            min={0}
                             max={unpaidAmt}
-                            value={cur || ""}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value) || 0;
-                              setAlloc((prev) => ({ ...prev, [inv.invoice_id]: val }));
+                            value={cur || null}
+                            onChange={(val) => {
+                              setAlloc((prev) => ({ ...prev, [inv.invoice_id]: val ?? 0 }));
                             }}
-                            className={`w-full pl-3 pr-14 h-9 text-sm rounded-md border font-mono focus:outline-none focus:ring-2 ${isAlloc ? "border-orange-300 focus:ring-orange-400" : "border-gray-300 focus:ring-gray-400"}`}
+                            className={`pl-3 pr-14 h-9 font-mono ${isAlloc ? "border-orange-300 focus:ring-orange-400" : ""}`}
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-semibold">{currencySymbol}</span>
                         </div>

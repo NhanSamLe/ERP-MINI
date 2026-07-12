@@ -19,7 +19,7 @@ import { NumberField } from "@/components/ui/NumberField";
 import { useSaleOrderForm } from "../hook/useSaleOrderForm";
 import { StandardFormLayout, FormSection } from "@/components/layout";
 import { SearchSelectionModal } from "@/components/common/SearchSelectionModal";
-import { formatVND } from "@/utils/currency.helper";
+import { formatVND, formatCurrency } from "@/utils/currency.helper";
 
 interface SaleOrderFormDto {
   id?: number;
@@ -74,7 +74,7 @@ export default function SaleOrderForm({
   const currencyCode = selectedCurrency?.code || "VND";
   const currencySymbol = selectedCurrency?.symbol || "VND";
   const formatDocMoney = (value: number | null | undefined) =>
-    `${Number(value || 0).toLocaleString("vi-VN", { maximumFractionDigits: 2 })} ${currencySymbol}`;
+    formatCurrency(value, currencySymbol);
   const formatQty = (value: number) =>
     Number(value).toLocaleString("vi-VN", { maximumFractionDigits: 4 });
   const getUomConversionHint = (line: any) => {

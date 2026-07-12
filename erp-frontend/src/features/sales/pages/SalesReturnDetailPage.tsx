@@ -30,6 +30,7 @@ import {
   inspectReturn,
   submitRma,
 } from "../service/salesReturn.service";
+import { formatCurrency } from "@/utils/currency.helper";
 
 type ReturnLineDraft = {
   id?: number;
@@ -61,7 +62,7 @@ const fmtDate = (value?: string | null) =>
   value ? new Date(value).toLocaleDateString("vi-VN") : "—";
 
 const fmtMoney = (value?: number | null, currency = "VND") =>
-  value != null ? `${Number(value).toLocaleString("vi-VN", { maximumFractionDigits: 2 })} ${currency}` : "—";
+  value != null ? formatCurrency(value, currency) : "—";
 
 export default function SalesReturnDetailPage() {
   const navigate = useNavigate();

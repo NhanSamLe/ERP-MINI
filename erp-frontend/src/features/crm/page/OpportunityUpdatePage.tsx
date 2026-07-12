@@ -12,6 +12,7 @@ import * as pipelineApi from "../api/pipeline.api";
 import { Currency } from "../../master-data/dto/currency.dto";
 import * as currencyService from "../../master-data/service/currency.service";
 import { FormInput } from "@/components/ui/FormInput";
+import { NumberField } from "@/components/ui/NumberField";
 import { Button } from "@/components/ui/Button";
 import { toast } from "react-toastify";
 import { formatStageProbability } from "../helpers/pipeline.helpers";
@@ -223,8 +224,23 @@ export default function OpportunityUpdatePage() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <FormInput label="Tên cơ hội kinh doanh" value={form.name} onChange={(v) => updateField("name", v)} required />
-            <FormInput label="Giá trị kỳ vọng" value={form.expected_value} onChange={(v) => updateField("expected_value", v)} type="number" />
-            <FormInput label="Xác suất (%)" value={form.probability} onChange={(v) => updateField("probability", v)} type="number" />
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">Giá trị kỳ vọng</label>
+              <NumberField
+                value={form.expected_value === "" ? null : Number(form.expected_value)}
+                onChange={(v) => updateField("expected_value", v == null ? "" : String(v))}
+                placeholder="50.000.000"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">Xác suất (%)</label>
+              <NumberField
+                variant="percent"
+                value={form.probability === "" ? null : Number(form.probability)}
+                onChange={(v) => updateField("probability", v == null ? "" : String(v))}
+                placeholder="50"
+              />
+            </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">Tiền tệ</label>
               <select

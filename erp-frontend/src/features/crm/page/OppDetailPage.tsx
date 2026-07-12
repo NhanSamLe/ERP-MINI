@@ -8,9 +8,11 @@ import {
   markLost,
   markWon,
   deleteOpportunity,
+  reassignOpportunity,
 } from "../store/opportunity/opportunity.thunks";
 import * as activityService from "../service/activity.service";
 import * as pipelineApi from "../api/pipeline.api";
+import * as userService from "@/features/user/user.service";
 import { Activity, TimelineEvent } from "../dto/activity.dto";
 import { PipelineStage } from "../dto/pipeline.dto";
 import { Currency } from "../../master-data/dto/currency.dto";
@@ -19,17 +21,18 @@ import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "react-toastify";
 import { Button } from "@/components/ui/Button";
-import { ActionConfirmModal } from "@/components/common";
+import { ActionConfirmModal, SearchSelectionModal } from "@/components/common";
 import ActivityBoard from "../components/ActivityBoard";
 import { CompactTimeline } from "../components/TimelineCard";
 import InfoItem from "../components/InfoItem";
 import OppStageActions from "../components/OppStageActions";
 import StatCards from "../components/StatCards";
-import { ArrowLeft, User, ChevronRight, GitBranch, Edit, Plus, ExternalLink } from "lucide-react";
+import { ArrowLeft, User, ChevronRight, GitBranch, Edit, Plus, ExternalLink, UserCog } from "lucide-react";
 import { formatVND, formatPercent, formatCurrency } from "@/utils/currency.helper";
 import { formatStageProbability } from "../helpers/pipeline.helpers";
 import { QuotationDto } from "@/features/sales/dto/quotation.dto";
 import * as quotationService from "@/features/sales/service/quotation.service";
+import { User as UserType } from "@/types/User";
 
 export default function OppDetailPage() {
   const { id } = useParams();
@@ -38,6 +41,8 @@ export default function OppDetailPage() {
   const dispatch = useAppDispatch();
 
   const opp = useAppSelector((s: RootState) => s.opportunity.detail);
+  const currentUser = useAppSelector((s: RootState) => s.auth.user);
+  const canReassign = ["SALESMANAGER", "ADMIN"].includes(currentUser?.role?.code ?? "");
 
   const [activities, setActivities] = useState<Activity[]>([]);
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
@@ -45,6 +50,35 @@ export default function OppDetailPage() {
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [quotations, setQuotations] = useState<QuotationDto[]>([]);
+  const [showReassign, setShowReassign] = useState(false);
+  const [salesUsers, setSalesUsers] = useState<UserType[]>([]);
+  const [reassignLoading, setReassignLoading] = useState(false);
+
+  useEffect(() => {
+    if (!canReassign) return;
+    userService.getAllUsers()
+      .then((users: UserType[]) => {
+        setSalesUsers(users.filter((u) =>
+          ["SALES", "SALESMANAGER"].includes(u.role?.code) &&
+          u.branch?.id === currentUser?.branch_id
+        ));
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canReassign]);
+
+  const handleReassign = async (newUserId: number) => {
+    setReassignLoading(true);
+    try {
+      await dispatch(reassignOpportunity({ oppId, newUserId })).unwrap();
+      toast.success("Đã chuyển giao Opportunity thành công");
+      setShowReassign(false);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || error?.message || "Chuyển giao thất bại");
+    } finally {
+      setReassignLoading(false);
+    }
+  };
 
   useEffect(() => {
     dispatch(fetchOpportunityDetail(oppId));
@@ -195,6 +229,17 @@ export default function OppDetailPage() {
               Tạo Báo giá
             </Button>
 
+            {canReassign && (
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={<UserCog className="w-3.5 h-3.5" />}
+                onClick={() => setShowReassign(true)}
+              >
+                Chuyển giao
+              </Button>
+            )}
+
             <OppStageActions
               currentStageId={opp.pipeline_stage_id}
               stages={stages}
@@ -286,7 +331,9 @@ export default function OppDetailPage() {
                       cancelled: "Huỷ",
                     };
                     const qCurrency = q.currency;
-                    const totalFmt = `${Number(q.total_after_tax).toLocaleString("vi-VN")} ${qCurrency?.symbol ?? "VND"}`;
+                    const totalFmt = qCurrency?.symbol
+                      ? formatCurrency(q.total_after_tax, qCurrency.symbol)
+                      : formatVND(q.total_after_tax);
 
                     return (
                       <div key={q.id} className="flex items-center justify-between py-3 px-1 hover:bg-gray-50 rounded transition group">
@@ -467,6 +514,25 @@ export default function OppDetailPage() {
         variant="danger"
         onConfirm={handleDelete}
       />
+
+      {canReassign && (
+        <SearchSelectionModal
+          isOpen={showReassign}
+          onClose={() => setShowReassign(false)}
+          title="Chuyển giao cơ hội kinh doanh"
+          description={`Chọn nhân viên bán hàng để tiếp nhận deal "${opp.name}"`}
+          items={salesUsers}
+          searchKeys={["full_name", "email", "username"]}
+          isSelected={(u) => u.id === opp.owner_id}
+          onSelect={(u) => !reassignLoading && handleReassign(u.id)}
+          renderItem={(u) => (
+            <div>
+              <p className="text-sm font-medium text-gray-800">{u.full_name || u.username}</p>
+              <p className="text-xs text-gray-400">{u.email} · {u.role?.name}</p>
+            </div>
+          )}
+        />
+      )}
     </div>
   );
 }

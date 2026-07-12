@@ -67,6 +67,7 @@ export interface Lead {
   company_size?: string | null;
   annual_revenue?: number | null;
   branch_id?: number | null;
+  branch?: { id: number; name: string; code?: string } | null;
   customer_id?: number | null;
   customer?: Partner | null;
   lead_score?: number | null;

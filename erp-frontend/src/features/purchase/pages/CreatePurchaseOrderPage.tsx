@@ -728,27 +728,28 @@ export default function CreatePurchaseOrderPage() {
               Chiết khấu tổng đơn
             </label>
             <div className="flex items-center gap-1.5">
-              <input
-                type="number"
-                min={0}
-                value={
-                  headerDiscountType === "fixed"
-                    ? (headerDiscountAmount || "")
-                    : (headerDiscountPercent || "")
-                }
-                onChange={(e) => {
-                  const val = e.target.value === "" ? 0 : Number(e.target.value);
-                  if (headerDiscountType === "fixed") {
-                    setHeaderDiscountAmount(val);
-                    recalcTotals(lines, headerDiscountType, headerDiscountPercent, val);
-                  } else {
-                    setHeaderDiscountPercent(val);
-                    recalcTotals(lines, headerDiscountType, val, headerDiscountAmount);
+              <div className="w-full">
+                <NumberField
+                  variant={headerDiscountType === "fixed" ? "thousand" : "percent"}
+                  value={
+                    headerDiscountType === "fixed"
+                      ? (headerDiscountAmount || null)
+                      : (headerDiscountPercent || null)
                   }
-                }}
-                className="w-full h-8 text-right border border-gray-300 rounded-lg px-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono"
-                placeholder="0"
-              />
+                  onChange={(v) => {
+                    const val = v ?? 0;
+                    if (headerDiscountType === "fixed") {
+                      setHeaderDiscountAmount(val);
+                      recalcTotals(lines, headerDiscountType, headerDiscountPercent, val);
+                    } else {
+                      setHeaderDiscountPercent(val);
+                      recalcTotals(lines, headerDiscountType, val, headerDiscountAmount);
+                    }
+                  }}
+                  className="font-mono"
+                  placeholder="0"
+                />
+              </div>
               <select
                 value={headerDiscountType}
                 onChange={(e) => {
@@ -1270,43 +1271,44 @@ export default function CreatePurchaseOrderPage() {
 
                             {/* Qty */}
                             <td className="px-4 py-3 text-center">
-                              <input
-                                type="number"
-                                min={1}
-                                value={line.quantity}
-                                onChange={(e) =>
-                                  updateLine(
-                                    line.id,
-                                    "quantity",
-                                    Number(e.target.value),
-                                  )
-                                }
-                                className="w-20 text-center border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
-                              />
+                              <div className="w-24 mx-auto">
+                                <NumberField
+                                  value={line.quantity}
+                                  min={1}
+                                  onChange={(v) =>
+                                    updateLine(
+                                      line.id,
+                                      "quantity",
+                                      v ?? 1,
+                                    )
+                                  }
+                                  className="text-center"
+                                />
+                              </div>
                             </td>
 
                             {/* Discount */}
                             <td className="px-4 py-3 text-center">
                               <div className="flex items-center justify-center gap-1">
-                                <input
-                                  type="number"
-                                  min={0}
-                                  value={
-                                    line.discount_type === "fixed"
-                                      ? (line.discount_amount ?? "")
-                                      : (line.discount_percent ?? "")
-                                  }
-                                  onChange={(e) => {
-                                    const val = e.target.value === "" ? 0 : Number(e.target.value);
-                                    if (line.discount_type === "fixed") {
-                                      updateLine(line.id, "discount_amount", val);
-                                    } else {
-                                      updateLine(line.id, "discount_percent", val);
+                                <div className="w-24">
+                                  <NumberField
+                                    variant={line.discount_type === "fixed" ? "thousand" : "percent"}
+                                    value={
+                                      line.discount_type === "fixed"
+                                        ? (line.discount_amount ?? null)
+                                        : (line.discount_percent ?? null)
                                     }
-                                  }}
-                                  className="w-20 text-center border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
-                                  placeholder="0"
-                                />
+                                    onChange={(v) => {
+                                      const val = v ?? 0;
+                                      if (line.discount_type === "fixed") {
+                                        updateLine(line.id, "discount_amount", val);
+                                      } else {
+                                        updateLine(line.id, "discount_percent", val);
+                                      }
+                                    }}
+                                    placeholder="0"
+                                  />
+                                </div>
                                 <select
                                   value={line.discount_type || "percentage"}
                                   onChange={(e) => {

@@ -11,6 +11,7 @@ import {
   Building2, Briefcase, BarChart3, TrendingUp, Layers, Zap,
 } from "lucide-react";
 import * as leadApi from "../api/lead.api";
+import { formatNumberInput, parseNumberInput } from "@/utils/currency.helper";
 
 // ─── Reusable field wrapper ───────────────────────────────────────────────────
 
@@ -274,14 +275,13 @@ export default function LeadCreatePage() {
                         inputMode="numeric"
                         value={revenueDisplay}
                         onChange={(e) => {
-                          const raw = e.target.value.replace(/\./g, "").replace(/[^0-9]/g, "");
-                          const num = raw ? parseInt(raw, 10) : null;
-                          setForm((p) => ({ ...p, annual_revenue: num }));
-                          setRevenueDisplay(raw ? Number(raw).toLocaleString("vi-VN") : "");
+                          const formatted = formatNumberInput(e.target.value);
+                          setRevenueDisplay(formatted);
+                          setForm((p) => ({ ...p, annual_revenue: parseNumberInput(formatted) }));
                         }}
                         onBlur={() => {
                           if (form.annual_revenue != null)
-                            setRevenueDisplay(form.annual_revenue.toLocaleString("vi-VN"));
+                            setRevenueDisplay(formatNumberInput(form.annual_revenue));
                         }}
                         placeholder="5.000.000.000"
                         className={inputCls() + " pl-8"}

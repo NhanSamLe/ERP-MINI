@@ -12,6 +12,7 @@ import {
   fetchSaleOrders,
 } from "@/features/sales/store/saleOrder.slice";
 import { ActionConfirmModal } from "@/components/common";
+import { formatCurrency } from "@/utils/currency.helper";
 
 interface Props {
   items: SaleOrderDto[];
@@ -31,7 +32,7 @@ export default function SaleOrderTable({ items }: Props) {
 
   const refresh = () => dispatch(fetchSaleOrders());
   const formatOrderMoney = (item: SaleOrderDto) =>
-    `${Number(item.total_after_tax || 0).toLocaleString("vi-VN", { maximumFractionDigits: 2 })} ${item.currency?.symbol || item.currency?.code || "VND"}`;
+    formatCurrency(item.total_after_tax, item.currency?.symbol || item.currency?.code || "VND");
 
   if (items.length === 0) {
     return (

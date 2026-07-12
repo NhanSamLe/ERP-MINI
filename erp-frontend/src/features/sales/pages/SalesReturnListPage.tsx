@@ -14,6 +14,7 @@ import { StatusBadge } from "@/components/common";
 import { useAppSelector } from "@/store/hooks";
 import { approveRma, getRmas, submitRma } from "../service/salesReturn.service";
 import { SalesReturnAuthorizationDto } from "../dto/salesReturn.dto";
+import { formatVND } from "@/utils/currency.helper";
 
 const RETURN_TYPE_LABEL: Record<string, string> = {
   credit_note: "Chứng từ ghi có",
@@ -22,7 +23,7 @@ const RETURN_TYPE_LABEL: Record<string, string> = {
 };
 
 const fmtMoney = (value?: number | null) =>
-  value != null ? `${Number(value).toLocaleString("vi-VN")} ₫` : "-";
+  value != null ? formatVND(value) : "-";
 
 export default function SalesReturnListPage() {
   const user = useAppSelector((state) => state.auth.user);

@@ -1,4 +1,4 @@
-import { formatVND } from "@/utils/currency.helper";
+import { formatVND, formatCurrency } from "@/utils/currency.helper";
 import { ArInvoiceDto } from "../../dto/invoice.dto";
 import InvoiceExportToolbar from "./InvoiceExportToolbar";
 
@@ -12,7 +12,7 @@ export default function InvoiceDetailLines({ invoice }: Props) {
   const exchangeRate   = Number(invoice.exchange_rate || 1);
 
   const fmtMoney = (v: number | null | undefined) =>
-    `${Number(v || 0).toLocaleString("vi-VN", { maximumFractionDigits: 2 })} ${currencySymbol}`;
+    formatCurrency(v, currencySymbol);
 
   return (
     <div>

@@ -7,7 +7,6 @@ import { Opportunity } from "../dto/opportunity.dto";
 import { Pipeline, PipelineStage } from "../dto/pipeline.dto";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
-import { formatStageProbability } from "../helpers/pipeline.helpers";
 import { formatVND } from "@/utils/currency.helper";
 import { exportExcelReport } from "@/utils/excel/exportExcelReport";
 import * as pipelineApi from "../api/pipeline.api";
@@ -403,17 +402,16 @@ export default function OpportunityBoardPage() {
                     <span className="text-sm font-semibold text-gray-800">{stage.name}</span>
                     <span className="text-xs text-gray-400">({list.length})</span>
                   </div>
-                  <span className="text-xs text-gray-500 font-mono">{formatVND(total)}</span>
+                  <span className="text-xs text-gray-500 font-mono whitespace-nowrap flex-shrink-0">{formatVND(total)}</span>
                 </div>
 
                 {/* Stage info badges */}
-                <div className="px-4 py-1.5 flex items-center gap-2">
-                  {formatStageProbability(stage.probability) && (
-                    <span className="text-xs text-gray-400">{formatStageProbability(stage.probability)} xác suất</span>
-                  )}
-                  {stage.is_won && <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">THẮNG</span>}
-                  {stage.is_lost && <span className="text-[10px] font-semibold bg-red-100 text-red-600 px-1.5 py-0.5 rounded">THUA</span>}
-                </div>
+                {!!(stage.is_won || stage.is_lost) && (
+                  <div className="px-4 py-1.5 flex items-center gap-2">
+                    {stage.is_won && <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">THẮNG</span>}
+                    {stage.is_lost && <span className="text-[10px] font-semibold bg-red-100 text-red-600 px-1.5 py-0.5 rounded">THUA</span>}
+                  </div>
+                )}
 
                 {/* Cards */}
                 <div className="flex-1 overflow-y-auto p-3 space-y-2.5" style={{ maxHeight: "55vh" }}>

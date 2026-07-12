@@ -118,7 +118,7 @@ export const purchaseOrderService = {
         {
           model: Partner,
           as: "supplier",
-          attributes: ["id", "name", "code"],
+          attributes: ["id", "name"],
         },
         {
           model: User,
@@ -177,7 +177,7 @@ export const purchaseOrderService = {
         {
           model: Partner,
           as: "supplier",
-          attributes: ["id", "name", "code"],
+          attributes: ["id", "name"],
         },
         {
           model: User,
@@ -201,7 +201,7 @@ export const purchaseOrderService = {
         {
           model: Partner,
           as: "supplier",
-          attributes: ["id", "name", "code"],
+          attributes: ["id", "name"],
         },
       ],
       where: { status: { [Op.in]: statusList }, branch_id: user.branch_id },
@@ -222,7 +222,7 @@ export const purchaseOrderService = {
         {
           model: Partner,
           as: "supplier",
-          attributes: ["id", "name", "code", "tax_code", "email", "phone", "address"],
+          attributes: ["id", "name", "tax_code", "email", "phone", "address"],
         },
         {
           model: User,

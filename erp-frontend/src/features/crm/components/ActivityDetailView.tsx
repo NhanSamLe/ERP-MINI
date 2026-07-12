@@ -275,7 +275,7 @@ export function ActivityDetailView({ type }: { type: ActivityType }) {
               )}
               {editable && (
                 <Button variant="outline" leftIcon={<Pencil className="h-4 w-4" />} onClick={() => navigate(`${meta.editPrefix}/${activityId}/edit`)}>
-                  Sửa
+                  {type === "email" ? "Soạn nội dung email" : "Sửa"}
                 </Button>
               )}
               <Button variant="danger" leftIcon={<Trash2 className="h-4 w-4" />} onClick={handleDelete}>

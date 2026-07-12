@@ -79,18 +79,11 @@ export const useNotifications = () => {
         socket.on("new_notification", (notification: Notification) => {
             console.log("📬 New notification received:", notification);
 
-            // Thêm vào đầu danh sách
+            // Thêm vào đầu danh sách + cập nhật chuông thông báo.
+            // Không tự toast ở đây: hành động vừa thực hiện (import, tạo, xóa...)
+            // đã tự hiển thị toast kết quả riêng, toast ở đây sẽ bị trùng lặp.
             setNotifications((prev) => [notification, ...prev]);
             setUnreadCount((prev) => prev + 1);
-
-            // Hiển thị toast
-            toast.info(notification.title, {
-                position: "top-right",
-                autoClose: 5000,
-            });
-
-            // Có thể phát âm thanh ở đây
-            // new Audio("/notification-sound.mp3").play();
         });
 
         return () => {

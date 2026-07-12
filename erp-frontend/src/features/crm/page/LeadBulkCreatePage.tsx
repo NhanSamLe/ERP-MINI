@@ -7,6 +7,7 @@ import {
 import { toast } from "react-toastify";
 import * as leadApi from "../api/lead.api";
 import { getAllLeadSources } from "../api/lead.api";
+import { formatNumberInput, parseNumberInput } from "@/utils/currency.helper";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -112,6 +113,14 @@ export default function LeadBulkCreatePage() {
   // ── Refs ────────────────────────────────────────────────────────────────────
   const cellRefs    = useRef<Map<string, HTMLInputElement | HTMLSelectElement>>(new Map());
   const skipSelReset = useRef(false); // prevent onFocus from resetting selection after programmatic focus
+  const isDragging   = useRef(false); // true while mouse button held down and dragging across cells
+
+  // ── End drag-select on mouse up anywhere in the document ────────────────────
+  useEffect(() => {
+    const onMouseUp = () => { isDragging.current = false; };
+    document.addEventListener("mouseup", onMouseUp);
+    return () => document.removeEventListener("mouseup", onMouseUp);
+  }, []);
 
   // ── Load lead sources ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -198,6 +207,8 @@ export default function LeadBulkCreatePage() {
                          o.label.toLowerCase().includes(val.toLowerCase())
                 );
                 if (m) val = m.value;
+              } else if (col.type === "number") {
+                val = parseNumberInput(val)?.toString() ?? "";
               }
               next[tRow] = { ...next[tRow]!, [col.key]: val };
             });
@@ -275,15 +286,31 @@ export default function LeadBulkCreatePage() {
     setSelCursor({ row: rowIdx, col: colIdx });
   }, []);
 
-  // ── Shift+Click to extend selection ─────────────────────────────────────────
+  // ── Mouse down: start drag-select, or Shift+Click to extend selection ───────
   const handleCellMouseDown = useCallback(
     (rowIdx: number, colIdx: number) => (e: React.MouseEvent) => {
       if (e.shiftKey && selAnchor) {
         skipSelReset.current = true;
         setSelCursor({ row: rowIdx, col: colIdx });
+        return;
       }
+      // Start a fresh drag-select from this cell (Excel-style click & drag)
+      isDragging.current = true;
+      skipSelReset.current = true;
+      setSelAnchor({ row: rowIdx, col: colIdx });
+      setSelCursor({ row: rowIdx, col: colIdx });
     },
     [selAnchor]
+  );
+
+  // ── Mouse enter while dragging: extend selection to this cell ───────────────
+  const handleCellMouseEnter = useCallback(
+    (rowIdx: number, colIdx: number) => () => {
+      if (isDragging.current) {
+        setSelCursor({ row: rowIdx, col: colIdx });
+      }
+    },
+    []
   );
 
   // ── Keyboard handler ─────────────────────────────────────────────────────────
@@ -625,13 +652,15 @@ export default function LeadBulkCreatePage() {
                     const commonProps = {
                       ref: setCellRef(row._id, col.key) as any,
                       onFocus:     handleCellFocus(rowIdx, colIdx),
-                      onMouseDown: handleCellMouseDown(rowIdx, colIdx),
                       onKeyDown:   handleCellKeyDown(rowIdx, colIdx),
                       onPaste:     handlePaste(rowIdx, colIdx) as any,
                     };
 
                     return (
-                      <td key={col.key} className={tdClass} title={cellErr}>
+                      <td key={col.key} className={tdClass} title={cellErr}
+                        onMouseDown={handleCellMouseDown(rowIdx, colIdx)}
+                        onMouseEnter={handleCellMouseEnter(rowIdx, colIdx)}
+                      >
                         {col.type === "select" ? (
                           <select {...commonProps} value={row[col.key]}
                             onChange={(e) => updateCell(row._id, col.key, e.target.value)}
@@ -650,9 +679,16 @@ export default function LeadBulkCreatePage() {
                               <option key={s.id} value={String(s.id)}>{s.name}</option>
                             ))}
                           </select>
+                        ) : col.type === "number" ? (
+                          <input {...commonProps} type="text"
+                            inputMode="decimal"
+                            value={formatNumberInput(row[col.key])}
+                            onChange={(e) => updateCell(row._id, col.key, parseNumberInput(e.target.value)?.toString() ?? "")}
+                            placeholder={col.required ? "Nhập..." : ""}
+                            className={inputClass + " text-right"}
+                          />
                         ) : (
                           <input {...commonProps} type="text"
-                            inputMode={col.type === "number" ? "numeric" : "text"}
                             value={row[col.key]}
                             onChange={(e) => updateCell(row._id, col.key, e.target.value)}
                             placeholder={col.required ? "Nhập..." : ""}

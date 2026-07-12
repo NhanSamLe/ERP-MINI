@@ -14,6 +14,7 @@ import { Link } from "react-router-dom";
 import { Lead } from "../dto/lead.dto";
 import { Opportunity } from "../dto/opportunity.dto";
 import { Partner } from "../../partner/store/partner.types";
+import { formatVND } from "@/utils/currency.helper";
 
 interface Props {
   relatedType: "lead" | "opportunity" | "customer";
@@ -146,8 +147,9 @@ export function RelatedInfoCard({ relatedType, lead, opportunity, customer }: Pr
               <BadgeDollarSign className="w-4 h-4" />
               Giá trị:{" "}
               <span className="font-medium">
-                {Number(opp.expected_value).toLocaleString("vi-VN")}{" "}
-                {opp.currency?.symbol || opp.currency?.code || ""}
+                {opp.currency?.code && opp.currency.code !== "VND"
+                  ? `${Number(opp.expected_value).toLocaleString("vi-VN")} ${opp.currency.symbol || opp.currency.code}`
+                  : formatVND(opp.expected_value)}
               </span>
             </div>
           )}

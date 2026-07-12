@@ -9,7 +9,7 @@ import {
 } from "@/features/sales/store/invoice.slice";
 import { ActionConfirmModal, StatusBadge } from "@/components/common";
 import { StandardFormLayout, FormSection } from "@/components/layout";
-import { formatVND } from "@/utils/currency.helper";
+import { formatVND, formatCurrency } from "@/utils/currency.helper";
 import InvoiceExportToolbar from "../components/ar.components.ts/InvoiceExportToolbar";
 import {
   FileText, User, CreditCard, Phone, Mail, MapPin,
@@ -60,7 +60,7 @@ export default function InvoiceDetailPage() {
   const currencySymbol = invoice.currency?.symbol || currencyCode;
   const exchangeRate = Number(invoice.exchange_rate || 1);
   const fmtMoney = (v: number | null | undefined) =>
-    `${Number(v || 0).toLocaleString("vi-VN", { maximumFractionDigits: 2 })} ${currencySymbol}`;
+    formatCurrency(v, currencySymbol);
 
   const roleCode = user.role?.code;
   const isAccountant = ["ACCOUNT", "BRANCH_MANAGER", "CEO", "ADMIN"].includes(roleCode ?? "");

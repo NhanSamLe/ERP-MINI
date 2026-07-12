@@ -362,7 +362,8 @@ export async function sendEmailForActivity(
       email.html_body || undefined,
       email.cc || null,
       email.bcc || null,
-      attachments
+      attachments,
+      email.email_from || null
     );
     await email.update({ status: "sent", message_id: info.messageId });
 

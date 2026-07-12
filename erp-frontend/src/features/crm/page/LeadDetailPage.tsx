@@ -7,18 +7,22 @@ import {
   convertLead,
   markLeadLost,
   reopenLead,
+  reassignLead,
   deleteLead,
   fetchAllLeads,
   fetchLeadById,
 } from "../store/lead/lead.thunks";
 import * as activityService from "../service/activity.service";
 import * as leadApi from "../api/lead.api";
+import * as userService from "@/features/user/user.service";
 import { FormInput } from "@/components/ui/FormInput";
+import { NumberField } from "@/components/ui/NumberField";
 import { Button } from "@/components/ui/Button";
+import { formatVND } from "@/utils/currency.helper";
 import { toast } from "react-toastify";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Separator } from "@/components/ui/separator";
-import { ActionConfirmModal } from "@/components/common";
+import { ActionConfirmModal, SearchSelectionModal } from "@/components/common";
 import { CompactTimeline } from "../components/TimelineCard";
 import InfoItem from "../components/InfoItem";
 import ActivityBoard from "../components/ActivityBoard";
@@ -26,9 +30,10 @@ import StatCards from "../components/StatCards";
 import { Lead, UpdateLeadBasicDto, UpdateLeadEvaluationDto } from "../dto/lead.dto";
 import { Opportunity } from "../dto/opportunity.dto";
 import { Activity, TimelineEvent } from "../dto/activity.dto";
+import { User as UserType } from "@/types/User";
 import {
   ArrowLeft, Edit2, Check, X, Trash2, RefreshCw,
-  TrendingUp, User, ChevronRight,
+  TrendingUp, User, ChevronRight, UserCog,
 } from "lucide-react";
 
 export default function LeadDetailPage() {
@@ -40,6 +45,8 @@ export default function LeadDetailPage() {
   const leadState = useAppSelector((s) => s.lead);
   const currentLead = leadState?.currentLead;
   const allLeads = leadState?.allLeads ?? [];
+  const currentUser = useAppSelector((s) => s.auth.user);
+  const canReassign = ["SALESMANAGER", "ADMIN"].includes(currentUser?.role?.code ?? "");
 
   const lead: Lead | undefined =
     currentLead?.id === leadId ? currentLead : allLeads.find((l) => l?.id === leadId);
@@ -77,6 +84,36 @@ export default function LeadDetailPage() {
   const [showReopen, setShowReopen] = useState(false);
   const [showLost, setShowLost] = useState(false);
   const [lostReason, setLostReason] = useState("");
+  const [reopenLoading, setReopenLoading] = useState(false);
+  const [showReassign, setShowReassign] = useState(false);
+  const [salesUsers, setSalesUsers] = useState<UserType[]>([]);
+  const [reassignLoading, setReassignLoading] = useState(false);
+
+  useEffect(() => {
+    if (!canReassign) return;
+    userService.getAllUsers()
+      .then((users: UserType[]) => {
+        setSalesUsers(users.filter((u) =>
+          ["SALES", "SALESMANAGER"].includes(u.role?.code) &&
+          u.branch?.id === currentUser?.branch_id
+        ));
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canReassign]);
+
+  const handleReassign = async (newUserId: number) => {
+    setReassignLoading(true);
+    try {
+      await dispatch(reassignLead({ leadId, newUserId })).unwrap();
+      toast.success("Đã chuyển giao Lead thành công");
+      setShowReassign(false);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || error?.message || "Chuyển giao thất bại");
+    } finally {
+      setReassignLoading(false);
+    }
+  };
 
   const loadActivities = async () => {
     try {
@@ -181,12 +218,15 @@ export default function LeadDetailPage() {
   };
 
   const handleReopen = async () => {
+    setReopenLoading(true);
     try {
       await dispatch(reopenLead(leadId)).unwrap();
       toast.success("Đã mở lại Lead");
       setShowReopen(false);
-    } catch {
-      toast.error("Thao tác thất bại");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || error?.message || "Thao tác thất bại");
+    } finally {
+      setReopenLoading(false);
     }
   };
 
@@ -209,8 +249,8 @@ export default function LeadDetailPage() {
   const fmtDateTime = (value?: string | Date | null) =>
     value ? new Date(value).toLocaleString("vi-VN") : "—";
   const fmtMoney = (value?: number | null) =>
-    value == null ? "—" : Number(value).toLocaleString("vi-VN");
-  const scoreGradeLabel: Record<string, string> = { cold: "Cold", warm: "Warm", hot: "Hot" };
+    value == null ? "—" : formatVND(value);
+  const scoreGradeLabel: Record<string, string> = { cold: "Lạnh", warm: "Ấm", hot: "Nóng" };
   const scoreGradeClass: Record<string, string> = {
     cold: "bg-slate-100 text-slate-700",
     warm: "bg-amber-100 text-amber-700",
@@ -220,7 +260,7 @@ export default function LeadDetailPage() {
     const score = lead.lead_score ?? 0;
     const matchedFields = new Set(scoreReasons.map((reason) => reason.field));
     if (score >= 75) {
-      if (!lead.contacted_at) return "Khuyến nghị: đây là Lead mức Hot, cần liên hệ trong vòng 2 giờ.";
+      if (!lead.contacted_at) return "Khuyến nghị: đây là Lead mức Nóng, cần liên hệ trong vòng 2 giờ.";
       if (matchedFields.has("activity.meeting.completed_count")) return "Khuyến nghị: cuộc họp đã hoàn thành, có thể tạo Cơ hội hoặc Báo giá nếu nhu cầu đã rõ.";
       return "Khuyến nghị: ưu tiên theo dõi trong ngày và thống nhất bước tiếp theo với khách hàng.";
     }
@@ -290,6 +330,12 @@ export default function LeadDetailPage() {
                 Mở lại
               </Button>
             )}
+            {canReassign && (
+              <Button variant="outline" size="sm" leftIcon={<UserCog className="w-3.5 h-3.5" />}
+                onClick={() => setShowReassign(true)}>
+                Chuyển giao
+              </Button>
+            )}
             <Button variant="danger" size="sm" leftIcon={<Trash2 className="w-3.5 h-3.5" />}
               onClick={() => setShowDelete(true)}>
               Xóa
@@ -337,7 +383,7 @@ export default function LeadDetailPage() {
                   <InfoItem label="Ngành" value={lead.industry || "—"} />
                   <InfoItem label="Quy mô" value={lead.company_size || "—"} />
                   <InfoItem label="Doanh thu năm" value={fmtMoney(lead.annual_revenue)} />
-                  <InfoItem label="Chi nhánh" value={lead.branch_id ? `#${lead.branch_id}` : "—"} />
+                  <InfoItem label="Chi nhánh" value={lead.branch?.name ?? (lead.branch_id ? `#${lead.branch_id}` : "—")} />
                   <InfoItem label="Liên hệ lần đầu" value={fmtDateTime(lead.contacted_at)} />
                   <InfoItem label="Hoạt động gần nhất" value={fmtDateTime(lead.last_activity_date)} />
                   <InfoItem label="Đạt chất lượng lúc" value={fmtDateTime(lead.qualified_at)} />
@@ -371,7 +417,14 @@ export default function LeadDetailPage() {
                   <FormInput label="Chức vụ" value={basicForm.job_title ?? ""} onChange={(v) => setBasicForm({ ...basicForm, job_title: v })} />
                   <FormInput label="Ngành" value={basicForm.industry ?? ""} onChange={(v) => setBasicForm({ ...basicForm, industry: v })} />
                   <FormInput label="Quy mô" value={basicForm.company_size ?? ""} onChange={(v) => setBasicForm({ ...basicForm, company_size: v })} />
-                  <FormInput label="Doanh thu năm" type="number" value={basicForm.annual_revenue?.toString() ?? ""} onChange={(v) => setBasicForm({ ...basicForm, annual_revenue: v ? Number(v) : null })} />
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-gray-700">Doanh thu năm</label>
+                    <NumberField
+                      value={basicForm.annual_revenue ?? null}
+                      onChange={(v) => setBasicForm({ ...basicForm, annual_revenue: v })}
+                      placeholder="0"
+                    />
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -579,7 +632,7 @@ export default function LeadDetailPage() {
                       <p className="text-xs text-gray-500 mt-0.5">
                         {o.currency?.code && o.currency.code !== "VND"
                           ? `${Number(o.expected_value || 0).toLocaleString("vi-VN")} ${o.currency.symbol || o.currency.code}`
-                          : `${Number(o.expected_value || 0).toLocaleString("vi-VN")} VND`}
+                          : formatVND(o.expected_value)}
                       </p>
                     </div>
                     <ChevronRight className="w-4 h-4 text-gray-400" />
@@ -637,6 +690,7 @@ export default function LeadDetailPage() {
         description={`Mở lại lead "${lead.name}" để tiếp tục theo dõi?`}
         confirmText="Mở lại"
         variant="primary"
+        loading={reopenLoading}
         onConfirm={handleReopen}
       />
 
@@ -660,6 +714,25 @@ export default function LeadDetailPage() {
         variant="danger"
         onConfirm={handleMarkLost}
       />
+
+      {canReassign && (
+        <SearchSelectionModal
+          isOpen={showReassign}
+          onClose={() => setShowReassign(false)}
+          title="Chuyển giao khách hàng tiềm năng"
+          description={`Chọn nhân viên bán hàng để tiếp nhận lead "${lead.name}"`}
+          items={salesUsers}
+          searchKeys={["full_name", "email", "username"]}
+          isSelected={(u) => u.id === lead.assigned_to}
+          onSelect={(u) => !reassignLoading && handleReassign(u.id)}
+          renderItem={(u) => (
+            <div>
+              <p className="text-sm font-medium text-gray-800">{u.full_name || u.username}</p>
+              <p className="text-xs text-gray-400">{u.email} · {u.role?.name}</p>
+            </div>
+          )}
+        />
+      )}
     </div>
   );
 }
