@@ -12,6 +12,7 @@ import { Uom } from "@/features/master-data/dto/uom.dto";
 import { formatVND } from "@/utils/currency.helper";
 import { Button } from "../../../../components/ui/Button";
 import { Input } from "../../../../components/ui/input";
+import { Roles } from "@/types/enum";
 
 const UOM_TRANSLATIONS: Record<string, string> = {
   piece: "cái",
@@ -37,6 +38,7 @@ export default function PriceListDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
+  const role = useSelector((state: RootState) => state.auth.user?.role.code);
 
   const [priceList, setPriceList] = useState<PurchasePriceList | null>(null);
   const [loading, setLoading] = useState(false);
@@ -179,9 +181,9 @@ export default function PriceListDetailPage() {
   const startEditItem = (item: PurchasePriceListItem) => {
     setEditingItemId(item.id);
     setEditingItemData({
-      min_quantity: item.min_quantity,
-      unit_price: item.unit_price,
-      discount_percent: item.discount_percent,
+      min_quantity: item.min_quantity != null ? Number(item.min_quantity) : 1,
+      unit_price: item.unit_price != null ? Number(item.unit_price) : 0,
+      discount_percent: item.discount_percent != null ? Number(item.discount_percent) : 0,
       lead_time_days: item.lead_time_days,
       uom_id: item.uom_id,
     });
@@ -231,17 +233,27 @@ export default function PriceListDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={handleToggleActive}
-            className={`inline-flex items-center gap-1.5 h-9 px-4 rounded-xl text-sm font-semibold border transition shadow-sm ${
+          {role === Roles.PURCHASEMANAGER ? (
+            <button
+              onClick={handleToggleActive}
+              className={`inline-flex items-center gap-1.5 h-9 px-4 rounded-xl text-sm font-semibold border transition shadow-sm ${
+                isActive 
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100" 
+                  : "bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100"
+              }`}
+            >
+              {isActive ? <ToggleRight className="w-5 h-5 text-emerald-500" /> : <ToggleLeft className="w-5 h-5 text-gray-400" />}
+              {isActive ? "Hoạt động" : "Không hoạt động"}
+            </button>
+          ) : (
+            <span className={`inline-flex items-center gap-1.5 h-9 px-4 rounded-xl text-sm font-semibold border ${
               isActive 
-                ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100" 
-                : "bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100"
-            }`}
-          >
-            {isActive ? <ToggleRight className="w-5 h-5 text-emerald-500" /> : <ToggleLeft className="w-5 h-5 text-gray-400" />}
-            {isActive ? "Hoạt động" : "Không hoạt động"}
-          </button>
+                ? "bg-emerald-50 border-emerald-100 text-emerald-600" 
+                : "bg-gray-50 border-gray-100 text-gray-400"
+            }`}>
+              {isActive ? "Hoạt động" : "Không hoạt động"}
+            </span>
+          )}
         </div>
       </div>
 
@@ -250,13 +262,15 @@ export default function PriceListDetailPage() {
         <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden space-y-4">
           <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/60 flex items-center justify-between">
             <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Thông tin chung</span>
-            <button
-              onClick={() => setIsEditingHeader(!isEditingHeader)}
-              className="text-xs text-orange-500 hover:text-orange-600 font-semibold flex items-center gap-1"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-              {isEditingHeader ? "Hủy" : "Chỉnh sửa"}
-            </button>
+            {role === Roles.PURCHASEMANAGER && (
+              <button
+                onClick={() => setIsEditingHeader(!isEditingHeader)}
+                className="text-xs text-orange-500 hover:text-orange-600 font-semibold flex items-center gap-1"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                {isEditingHeader ? "Hủy" : "Chỉnh sửa"}
+              </button>
+            )}
           </div>
           
           <div className="p-5 space-y-4">
@@ -321,8 +335,9 @@ export default function PriceListDetailPage() {
         {/* Right Column: Pricing Items */}
         <div className="space-y-5 min-w-0">
           {/* Product Search Box */}
-          <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-visible p-5 flex items-center gap-3">
-            <div className="relative flex-1" ref={dropdownRef}>
+          {role === Roles.PURCHASEMANAGER && (
+            <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-visible p-5 flex items-center gap-3">
+              <div className="relative flex-1" ref={dropdownRef}>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -364,6 +379,7 @@ export default function PriceListDetailPage() {
               )}
             </div>
           </div>
+        )}
 
           {/* Pricing Table */}
           <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
@@ -388,7 +404,7 @@ export default function PriceListDetailPage() {
                       <th className="px-5 py-3 text-right">Đơn giá</th>
                       <th className="px-5 py-3 text-center">Chiết khấu</th>
                       <th className="px-5 py-3 text-center">Thời gian giao hàng (Ngày)</th>
-                      <th className="px-5 py-3 text-right">Thao tác</th>
+                      {role === Roles.PURCHASEMANAGER && <th className="px-5 py-3 text-right">Thao tác</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -485,45 +501,47 @@ export default function PriceListDetailPage() {
                           </td>
 
                           {/* Actions */}
-                          <td className="px-5 py-4 text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              {isEditing ? (
-                                <>
-                                  <button
-                                    onClick={() => handleSaveItem(item.id)}
-                                    className="p-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200 transition"
-                                    title="Lưu"
-                                  >
-                                    <Check className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => setEditingItemId(null)}
-                                    className="p-1 rounded bg-gray-50 hover:bg-gray-100 text-gray-400 border border-gray-200 transition"
-                                    title="Hủy"
-                                  >
-                                    <X className="w-4 h-4" />
-                                  </button>
-                                </>
-                              ) : (
-                                <>
-                                  <button
-                                    onClick={() => startEditItem(item)}
-                                    className="p-1.5 rounded-lg text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition"
-                                    title="Chỉnh sửa"
-                                  >
-                                    <Edit3 className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteItem(item.id)}
-                                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition"
-                                    title="Xóa"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          </td>
+                          {role === Roles.PURCHASEMANAGER && (
+                            <td className="px-5 py-4 text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                {isEditing ? (
+                                  <>
+                                    <button
+                                      onClick={() => handleSaveItem(item.id)}
+                                      className="p-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200 transition"
+                                      title="Lưu"
+                                    >
+                                      <Check className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => setEditingItemId(null)}
+                                      className="p-1 rounded bg-gray-50 hover:bg-gray-100 text-gray-400 border border-gray-200 transition"
+                                      title="Hủy"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button
+                                      onClick={() => startEditItem(item)}
+                                      className="p-1.5 rounded-lg text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition"
+                                      title="Chỉnh sửa"
+                                    >
+                                      <Edit3 className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteItem(item.id)}
+                                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition"
+                                      title="Xóa"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          )}
                         </tr>
                       );
                     })}
