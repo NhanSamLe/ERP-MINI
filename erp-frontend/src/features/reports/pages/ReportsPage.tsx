@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileText, TrendingUp, BarChart3, Users, Briefcase, Calendar, Download, Eye, DollarSign } from "lucide-react";
+import { FileText, TrendingUp, BarChart3, Users, Briefcase, Calendar, Download, Eye, DollarSign, Building2 } from "lucide-react";
 import { Button } from "../../../components/ui/Button";
 import { toast } from "react-toastify";
 
