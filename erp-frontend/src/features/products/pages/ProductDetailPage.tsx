@@ -364,7 +364,7 @@ export default function ProductDetailPage() {
                             : "—"}
                         </td>
                         <td className="py-2.5 pr-4 text-gray-500">
-                          {s.min_order_qty ?? "—"}
+                          {s.min_order_qty != null ? Number(s.min_order_qty) : "—"}
                         </td>
                         <td className="py-2.5 text-gray-500">
                           {s.lead_time_days != null

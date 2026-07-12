@@ -3,6 +3,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { AppDispatch, RootState } from "../../../store/store";
 import { requestPasswordReset } from "../../auth/auth.service";
+import { BranchAPI } from "../../company/api/branch.api";
+import { departmentApi } from "../../hrm/api/department.api";
 import {
   fetchAllUsers,
   fetchAllRoles,
@@ -81,10 +83,13 @@ export default function AdminDashboard() {
   const { branches } = useSelector((state: RootState) => state.branch);
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedBranch, setSelectedBranch] = useState<number | "">("");
+  const [departments, setDepartments] = useState<any[]>([]);
 
   useEffect(() => {
     dispatch(fetchAllUsers());
     dispatch(fetchAllRoles());
+    departmentApi.getAll().then((res) => setDepartments(res || [])).catch(() => {});
   }, [dispatch]);
 
   const handleToggleStatus = async (user: User) => {
@@ -138,9 +143,19 @@ export default function AdminDashboard() {
     }
   };
 
-  // Process data for role chart
+  // Lọc danh sách người dùng theo Chi nhánh
+  const filteredUsersByBranch = users.filter((u) => {
+    return !selectedBranch || u.branch?.id === Number(selectedBranch);
+  });
+
+  // Lọc danh sách phòng ban theo Chi nhánh
+  const branchDepartments = departments.filter((dept) => {
+    return !selectedBranch || dept.branch_id === Number(selectedBranch);
+  });
+
+  // Process data for role chart using filtered users
   const roleChartData = roles.map((role) => {
-    const count = users.filter((u) => u.role?.id === role.id).length;
+    const count = filteredUsersByBranch.filter((u) => u.role?.id === role.id).length;
     return {
       name: role.name,
       value: count,
@@ -148,7 +163,7 @@ export default function AdminDashboard() {
   }).filter((item) => item.value > 0);
 
   // Filter users for search listing
-  const filteredUsers = users
+  const filteredUsers = filteredUsersByBranch
     .filter((u) => {
       const matchText = (u.full_name || u.username || u.email || "").toLowerCase();
       return matchText.includes(searchTerm.toLowerCase());
@@ -160,46 +175,69 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-slate-50/40 p-6 md:p-8 space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 border border-gray-100 rounded-2xl shadow-sm">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
             Hệ thống Quản trị (Admin Control)
           </h1>
-          <p className="text-sm font-medium text-slate-500 mt-1.5">
+          <p className="text-xs font-medium text-slate-500 mt-1">
             Quản lý người dùng, phân quyền và giám sát hoạt động hệ thống ERP
           </p>
         </div>
-        <button
-          onClick={() => {
-            dispatch(fetchAllUsers());
-            dispatch(fetchAllRoles());
-          }}
-          className="flex items-center justify-center gap-2 p-2.5 text-gray-600 hover:text-gray-900 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow transition"
-        >
-          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-          <span className="text-sm font-semibold">Tải lại dữ liệu</span>
-        </button>
+
+        {/* Bộ lọc */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Chi nhánh:</span>
+            <select
+              className="text-xs border rounded-xl px-3 py-1.5 bg-white text-gray-700 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-semibold"
+              value={selectedBranch}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSelectedBranch(val ? Number(val) : "");
+              }}
+            >
+              <option value="">Tất cả chi nhánh</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            onClick={() => {
+              dispatch(fetchAllUsers());
+              dispatch(fetchAllRoles());
+            }}
+            className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-gray-600 hover:text-gray-900 bg-white border border-gray-200 rounded-xl shadow-none hover:bg-slate-50 transition"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            <span className="text-xs font-bold uppercase tracking-wider">Tải lại dữ liệu</span>
+          </button>
+        </div>
       </div>
 
       {/* Stats row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <StatCard
           label="Tổng người dùng"
-          value={users.length}
+          value={filteredUsersByBranch.length}
           icon={<Users className="w-5 h-5" />}
           gradientClass="from-indigo-500 to-indigo-600"
           iconBgClass="bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-indigo-100"
         />
         <StatCard
           label="Người dùng đang hoạt động"
-          value={users.filter((u) => u.is_active).length}
+          value={filteredUsersByBranch.filter((u) => u.is_active).length}
           icon={<UserCheck className="w-5 h-5" />}
           gradientClass="from-emerald-500 to-emerald-600"
           iconBgClass="bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-emerald-100"
         />
         <StatCard
           label="Tài khoản bị khóa"
-          value={users.filter((u) => !u.is_active).length}
+          value={filteredUsersByBranch.filter((u) => !u.is_active).length}
           icon={<UserX className="w-5 h-5" />}
           gradientClass="from-rose-500 to-rose-600"
           iconBgClass="bg-gradient-to-br from-rose-500 to-rose-600 shadow-rose-100"
@@ -380,6 +418,38 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Departments in Branch Section */}
+      <Card className="border-gray-100 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">
+        <CardHeader className="px-6 py-4 border-b border-gray-100 bg-gray-50/20">
+          <CardTitle className="text-base font-semibold text-gray-800">
+            {selectedBranch 
+              ? `Các phòng ban thuộc Chi nhánh: ${branches.find(b => b.id === Number(selectedBranch))?.name || ""}` 
+              : "Tổng quan phòng ban trên toàn hệ thống"}
+          </CardTitle>
+          <CardDescription className="text-xs text-gray-400 mt-0.5">
+            Danh sách phòng ban đăng ký thuộc chi nhánh đang chọn lọc
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-6">
+          {branchDepartments.length === 0 ? (
+            <div className="text-center text-gray-400 italic text-sm py-4">
+              Không có phòng ban nào thuộc chi nhánh này
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {branchDepartments.map((dept) => {
+                return (
+                  <div key={dept.id} className="p-4 border rounded-xl bg-slate-50/50 hover:bg-indigo-50/10 hover:border-indigo-100 transition-all duration-200">
+                    <p className="font-bold text-gray-900 text-sm">{dept.name}</p>
+                    <p className="text-[11px] text-gray-400 font-mono mt-0.5">Mã: {dept.code}</p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Recent Users List Widget */}
       <Card className="border-gray-100 shadow-sm overflow-hidden bg-white/80 backdrop-blur-md">

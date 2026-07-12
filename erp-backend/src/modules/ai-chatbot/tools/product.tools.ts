@@ -72,31 +72,44 @@ export const productTools: ITool[] = [
           await import("../../product/models/productCategory.model");
         const { Uom } = await import("../../master-data/models/uom.model");
 
-        const productWhere: any = {};
-        if (args.name) productWhere.name = { [Op.like]: `%${args.name}%` };
+        const include: any[] = [];
 
-        const categoryWhere: any = {};
-        if (args.category_name)
-          categoryWhere.name = { [Op.like]: `%${args.category_name}%` };
+        if (args.category_name) {
+          const categoryWhere = { name: { [Op.like]: `%${args.category_name}%` } };
+          include.push({
+            model: ProductCategory,
+            as: "category",
+            where: categoryWhere,
+            attributes: ["id", "name"],
+            required: true,
+          });
+        } else {
+          include.push({
+            model: ProductCategory,
+            as: "category",
+            attributes: ["id", "name"],
+            required: false,
+          });
+        }
 
-        const data = await Product.findAll({
-          where: Object.keys(productWhere).length ? productWhere : undefined,
-          include: [
-            {
-              model: ProductCategory,
-              as: "category",
-              where: Object.keys(categoryWhere).length
-                ? categoryWhere
-                : undefined,
-              attributes: ["id", "name"],
-            },
-            { model: Uom, as: "uom", attributes: ["id", "code", "name"] },
-          ],
-          // Không trả về sale_price để AI không nhầm dùng giá bán để mua hàng
+        include.push({
+          model: Uom,
+          as: "uom",
+          attributes: ["id", "code", "name"],
+        });
+
+        const queryOptions: any = {
+          include,
           attributes: ["id", "name", "sku", "min_stock_qty", "tax_rate_id"],
           order: [["name", "ASC"]],
           limit: 50,
-        });
+        };
+
+        if (args.name) {
+          queryOptions.where = { name: { [Op.like]: `%${args.name}%` } };
+        }
+
+        const data = await Product.findAll(queryOptions);
 
         return {
           success: true,

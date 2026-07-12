@@ -6,11 +6,11 @@ import { StockMove } from "../../inventory/models/stockMove.model";
 import { productService } from "../../product/services/product.service";
 import { UomConversion } from "../../master-data/models/uomConversion.model";
 import { JwtPayload } from "../../../core/types/jwt";
+import { Partner } from "../../partner/models/partner.model";
 import {
   ApInvoice,
   ApInvoiceLine,
   Branch,
-  Partner,
   Product,
   sequelize,
   TaxRate,
@@ -118,7 +118,7 @@ export const purchaseOrderService = {
         {
           model: Partner,
           as: "supplier",
-          attributes: ["id", "name"],
+          attributes: ["id", "name", "tax_code"],
         },
         {
           model: User,
@@ -177,7 +177,7 @@ export const purchaseOrderService = {
         {
           model: Partner,
           as: "supplier",
-          attributes: ["id", "name"],
+          attributes: ["id", "name", "tax_code"],
         },
         {
           model: User,
@@ -201,7 +201,7 @@ export const purchaseOrderService = {
         {
           model: Partner,
           as: "supplier",
-          attributes: ["id", "name"],
+          attributes: ["id", "name", "tax_code"],
         },
       ],
       where: { status: { [Op.in]: statusList }, branch_id: user.branch_id },
