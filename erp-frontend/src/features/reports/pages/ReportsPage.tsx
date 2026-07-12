@@ -167,6 +167,23 @@ export default function ReportsPage() {
             />
           </div>
         </div>
+
+        {/* Module 4: Ban giám đốc (CEO Only) */}
+        <div>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-orange-500" />
+            Quản trị & Điều hành (CEO Management)
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <ReportCard
+              title="Phân tích hiệu quả Chi nhánh"
+              description="Báo cáo đối sánh kết quả kinh doanh: Doanh thu bán hàng, Chi phí mua hàng, Quỹ lương thực tế và Số lượng nhân sự theo từng chi nhánh."
+              icon={<Building2 className="w-4 h-4" />}
+              viewPath="/reports/branch-analysis"
+              onExport={() => simulateExport("Phân tích hiệu quả Chi nhánh")}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ import {
 } from "../store/attendance/attendance.thunks";
 import { AttendanceDTO } from "../dto/attendance.dto";
 import AttendanceFormModal from "../components/AttendanceFormModal";
+import HolidayModal from "../components/HolidayModal";
 import {
   Plus,
   Pencil,
@@ -17,6 +18,7 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
+  Calendar,
 } from "lucide-react";
 import { fetchEmployees } from "../store/employee/employee.thunks";
 import {fetchAllBranchesThunk  } from "../../company/store/branch.thunks";
@@ -26,6 +28,7 @@ const AttendancePage: React.FC = () => {
   const { list, loading } = useAppSelector((state) => state.attendance);
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [holidayModalOpen, setHolidayModalOpen] = useState(false);
   const [editing, setEditing] = useState<AttendanceDTO | null>(null);
   const [search, setSearch] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState<string>("all");
@@ -181,13 +184,22 @@ const AttendancePage: React.FC = () => {
             </p>
           </div>
 
-          <button
-            onClick={handleAdd}
-            className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-5 py-2.5 flex items-center gap-2 rounded-xl shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 hover:from-orange-600 hover:to-orange-700 transition-all duration-200 font-medium"
-          >
-            <Plus className="w-5 h-5" />
-            Thêm bản ghi chấm công
-          </button>
+          <div className="flex flex-wrap gap-3 w-full sm:w-auto">
+            <button
+              onClick={() => setHolidayModalOpen(true)}
+              className="bg-white border border-slate-300 text-slate-700 px-5 py-2.5 flex items-center gap-2 rounded-xl shadow-sm hover:bg-slate-50 transition-all duration-200 font-medium"
+            >
+              <Calendar className="w-5 h-5 text-orange-500" />
+              Tạo ngày nghỉ lễ
+            </button>
+            <button
+              onClick={handleAdd}
+              className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-5 py-2.5 flex items-center gap-2 rounded-xl shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 hover:from-orange-600 hover:to-orange-700 transition-all duration-200 font-medium"
+            >
+              <Plus className="w-5 h-5" />
+              Thêm bản ghi chấm công
+            </button>
+          </div>
         </div>
       </div>
 
@@ -361,6 +373,8 @@ const AttendancePage: React.FC = () => {
                             ? "bg-red-100 text-red-700"
                             : item.status === "late"
                             ? "bg-yellow-100 text-yellow-700"
+                            : item.status === "holiday"
+                            ? "bg-purple-100 text-purple-700"
                             : "bg-gray-100 text-gray-700"
                         }`}
                       >
@@ -370,6 +384,8 @@ const AttendancePage: React.FC = () => {
                           ? "Vắng mặt"
                           : item.status === "late"
                           ? "Đi muộn"
+                          : item.status === "holiday"
+                          ? "Nghỉ lễ"
                           : item.status}
                       </span>
                     </td>
@@ -471,6 +487,15 @@ const AttendancePage: React.FC = () => {
         onClose={() => setModalOpen(false)}
         initialValue={editing}
         onSubmit={handleSubmit}
+      />
+
+      <HolidayModal
+        open={holidayModalOpen}
+        onClose={() => setHolidayModalOpen(false)}
+        onSuccess={() => {
+          // Refresh attendance list after bulk holiday creation
+          dispatch(fetchAttendances({}));
+        }}
       />
     </div>
   );

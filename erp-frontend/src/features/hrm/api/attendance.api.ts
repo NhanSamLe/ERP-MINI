@@ -21,4 +21,8 @@ export const attendanceApi = {
   remove(id: number) {
     return apiClient.delete(`/attendance/${id}`);
   },
+
+  createHolidayBulk(data: { startDate: string; endDate: string; holidayName: string; branch_id?: number }) {
+    return apiClient.post("/attendance/holiday", data);
+  },
 };

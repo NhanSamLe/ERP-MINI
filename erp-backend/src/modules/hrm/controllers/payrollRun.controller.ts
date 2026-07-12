@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import * as payrollRunService from "../services/payrollRun.service";
 import * as model from "../../../models/index";
 import { calculatePayrollRun } from "../services/payrollRun.service";
+import { generatePayslipPdf, generatePayrollRunPdf } from "../services/payrollPdf.service";
+import { sendEmail2 } from "../../../core/utils/email";
 
 export const getPayrollRuns = async (req: Request, res: Response) => {
   try {
@@ -164,6 +166,15 @@ export const getPayrollEvidence = async (req: Request, res: Response) => {
   try {
     const runId = Number(req.params.runId);
     const employeeId = Number(req.params.employeeId);
+    const userJwt = (req as any).user;
+
+    const isHrOrAdmin = ["HRMANAGER", "HR_STAFF", "CHACC", "ADMIN", "CEO"].includes(userJwt?.role);
+    if (!isHrOrAdmin) {
+      const user = await model.User.findByPk(userJwt.id);
+      if (!user || (user as any).employee_id !== employeeId) {
+        return res.status(403).json({ message: "Bạn không có quyền xem chứng từ của nhân viên này." });
+      }
+    }
 
     const data = await payrollRunService.getPayrollEvidence(runId, employeeId);
     return res.json(data);
@@ -203,5 +214,110 @@ export const rejectPayrollRun = async (req: Request, res: Response) => {
     return res.json(row);
   } catch (err: any) {
     return res.status(400).json({ message: err.message });
+  }
+};
+
+export const getPayslipPdf = async (req: Request, res: Response) => {
+  try {
+    const runLineId = Number(req.params.id);
+    const userJwt = (req as any).user;
+
+    const line = await model.PayrollRunLine.findByPk(runLineId);
+    if (!line) {
+      return res.status(404).json({ message: "Không tìm thấy dòng bảng lương" });
+    }
+
+    const isHrOrAdmin = ["HRMANAGER", "HR_STAFF", "CHACC", "ADMIN", "CEO"].includes(userJwt?.role);
+    if (!isHrOrAdmin) {
+      const user = await model.User.findByPk(userJwt.id);
+      if (!user || (user as any).employee_id !== line.employee_id) {
+        return res.status(403).json({ message: "Bạn không có quyền xem phiếu lương này." });
+      }
+    }
+
+    const pdfBuffer = await generatePayslipPdf(runLineId);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename=payslip-${runLineId}.pdf`);
+    return res.end(pdfBuffer);
+  } catch (err: any) {
+    console.error("Error generating payslip PDF:", err);
+    return res.status(400).json({ message: err.message || "Không thể tạo file PDF" });
+  }
+};
+
+export const sendPayslipsEmail = async (req: Request, res: Response) => {
+  try {
+    const runId = Number(req.params.id);
+    const run = await model.PayrollRun.findByPk(runId, {
+      include: [{ model: model.PayrollPeriod, as: "period" }]
+    });
+    if (!run) {
+      return res.status(404).json({ message: "Không tìm thấy kỳ lương" });
+    }
+
+    const lines = await model.PayrollRunLine.findAll({
+      where: { run_id: runId },
+      include: [
+        {
+          model: model.Employee,
+          as: "employee",
+          include: [{ model: model.User, as: "user" }]
+        }
+      ]
+    });
+
+    let sentCount = 0;
+    for (const line of lines) {
+      const emp = (line as any).employee;
+      const email = emp?.email || emp?.user?.email;
+      if (!email) {
+        console.warn(`Employee ${emp?.full_name} has no email, skipping.`);
+        continue;
+      }
+
+      const pdfBuffer = await generatePayslipPdf(line.id);
+      const periodCode = (run as any).period?.period_code || "";
+      const subject = `[ERP Mini] Phieu thanh toan luong ky ${periodCode} - ${emp.full_name}`;
+      const text = `Kính gửi ${emp.full_name},\n\nHệ thống xin gửi bạn phiếu thanh toán lương chi tiết cho kỳ lương ${periodCode}.\nChi tiết vui lòng xem trong file PDF đính kèm.\n\nTrân trọng,\nBan Nhân sự.`;
+
+      await sendEmail2(
+        email,
+        subject,
+        text,
+        undefined, // html
+        null, // cc
+        null, // bcc
+        [
+          {
+            filename: `payslip-${periodCode}-${emp.emp_code}.pdf`,
+            content: pdfBuffer,
+            contentType: "application/pdf"
+          }
+        ]
+      );
+      sentCount++;
+    }
+
+    return res.json({ success: true, count: sentCount, message: `Đã gửi thành công ${sentCount} email phiếu lương cho nhân viên.` });
+  } catch (err: any) {
+    console.error("Error sending payslip emails:", err);
+    return res.status(400).json({ message: err.message || "Không thể gửi email phiếu lương" });
+  }
+};
+
+export const getPayrollRunPdf = async (req: Request, res: Response) => {
+  try {
+    const runId = Number(req.params.id);
+    const branchId = req.query.branch_id ? Number(req.query.branch_id) : undefined;
+    const departmentId = req.query.department_id ? Number(req.query.department_id) : undefined;
+
+    const pdfBuffer = await generatePayrollRunPdf(runId, branchId, departmentId);
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename=payroll-run-${runId}-combined.pdf`);
+    return res.send(pdfBuffer);
+  } catch (err: any) {
+    console.error("Error generating payroll run PDF:", err);
+    return res.status(400).json({ message: err.message || "Không thể xuất PDF bảng lương" });
   }
 };

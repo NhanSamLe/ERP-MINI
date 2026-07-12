@@ -15,6 +15,7 @@ import PayrollMappingPage from "../features/hrm/page/PayrollMappingPage";
 import CostCenterPage from "../features/hrm/page/CostCenterPage";
 import PayrollConfigPage from "../features/hrm/page/PayrollConfigPage";
 import HrmDashboard from "../features/hrm/page/HrmDashboard";
+import MyPayrollPage from "../features/hrm/page/MyPayrollPage";
 
 // Danh sách role khớp với components/layout/Sidebar.tsx (mục "Nhân sự & Lương")
 const HRM_GROUP_ROLES = [
@@ -148,6 +149,14 @@ const hrmRoutes: RouteObject[] = [
     element: (
       <ProtectedRoute allowedRoles={["HRMANAGER", "HR_STAFF", "CHACC", "ADMIN"]}>
         <PayrollConfigPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/hrm/my-payroll",
+    element: (
+      <ProtectedRoute allowedRoles={HRM_GROUP_ROLES}>
+        <MyPayrollPage />
       </ProtectedRoute>
     ),
   },

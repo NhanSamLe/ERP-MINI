@@ -27,6 +27,7 @@ const summaryRoles = authMiddleware([Role.CEO, Role.BRANCH_MANAGER]);
 
 router.get("/sales", summaryRoles, ReportController.getSalesSummary);
 router.get("/purchase", summaryRoles, ReportController.getPurchaseSummary);
+router.get("/branch-analysis", authMiddleware(["CEO", "ADMIN"]), ReportController.getBranchAnalysis);
 
 // Inventory reports
 router.get(

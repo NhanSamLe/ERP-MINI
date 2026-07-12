@@ -41,6 +41,7 @@ import {
   ClipboardList,
   Info,
   XCircle,
+  Download,
 } from "lucide-react";
 
 const statusLabel: Record<string, string> = {
@@ -48,6 +49,7 @@ const statusLabel: Record<string, string> = {
   absent: "Vắng mặt",
   leave: "Nghỉ phép",
   late: "Muộn",
+  holiday: "Nghỉ lễ",
 };
 
 const statusPillClass = (s: string) => {
@@ -59,6 +61,8 @@ const statusPillClass = (s: string) => {
     return "bg-blue-100 text-blue-700 border border-blue-200";
   if (s === "late")
     return "bg-amber-100 text-amber-700 border border-amber-200";
+  if (s === "holiday")
+    return "bg-purple-100 text-purple-700 border border-purple-200";
   return "bg-gray-100 text-gray-700 border border-gray-200";
 };
 type AnyObj = Record<string, any>;
@@ -206,6 +210,58 @@ const PayrollRunPage: React.FC = () => {
   const [evidenceEmployeeId, setEvidenceEmployeeId] = useState<number | null>(
     null
   );
+  const [sendingEmails, setSendingEmails] = useState(false);
+  const [downloadingAllPdf, setDownloadingAllPdf] = useState(false);
+  const [lineBranchFilter, setLineBranchFilter] = useState<string>("");
+  const [lineDeptFilter, setLineDeptFilter] = useState<string>("");
+  const [branches, setBranches] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (showLinesModal) {
+      setLineBranchFilter("");
+      setLineDeptFilter("");
+      apiClient.get("/company/branches")
+        .then(res => setBranches(res.data || []))
+        .catch(err => console.error("Error fetching branches:", err));
+      
+      apiClient.get("/hrm/departments")
+        .then(res => setDepartments(res.data || []))
+        .catch(err => console.error("Error fetching departments:", err));
+    }
+  }, [showLinesModal]);
+
+  const handleDownloadAllPdf = async () => {
+    if (!currentRun?.id) return;
+    try {
+      setDownloadingAllPdf(true);
+      let url = `/hrm/payroll-runs/${currentRun.id}/pdf`;
+      const queryParts: string[] = [];
+      if (lineBranchFilter) queryParts.push(`branch_id=${lineBranchFilter}`);
+      if (lineDeptFilter) queryParts.push(`department_id=${lineDeptFilter}`);
+      if (queryParts.length > 0) {
+        url += `?${queryParts.join("&")}`;
+      }
+
+      const res = await apiClient.get(url, {
+        responseType: "blob",
+      });
+      const blob = new Blob([res.data], { type: "application/pdf" });
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.setAttribute("download", `bang-luong-tong-hop-${currentRun.period?.period_code || currentRun.id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success("Tải PDF bảng lương tổng hợp thành công!");
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Tải PDF bảng lương tổng hợp thất bại");
+    } finally {
+      setDownloadingAllPdf(false);
+    }
+  };
 
   const openEvidence = async (employeeId: number) => {
     if (!currentRun?.id) return;
@@ -239,6 +295,46 @@ console.log("attendance keys:", Object.keys(res.data || {}));
     setEvidenceError(null);
     setEvidenceLoading(false);
     setEvidenceEmployeeId(null);
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!evidence?.lineId) {
+      toast.error("Không tìm thấy dòng bảng lương tương ứng để xuất PDF");
+      return;
+    }
+    try {
+      const res = await apiClient.get(`/hrm/payroll-runs/lines/${evidence.lineId}/pdf`, {
+        responseType: "blob",
+      });
+      const blob = new Blob([res.data], { type: "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `phieu-luong-${evidence.employee.full_name}-${evidence.period.period_code}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success("Tải PDF phiếu lương thành công!");
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Tải PDF phiếu lương thất bại");
+    }
+  };
+
+  const handleSendEmails = async () => {
+    if (!currentRun?.id) return;
+    if (!window.confirm("Bạn có chắc chắn muốn gửi email phiếu lương đính kèm PDF cho tất cả nhân viên không?")) return;
+    
+    try {
+      setSendingEmails(true);
+      const res = await apiClient.post(`/hrm/payroll-runs/${currentRun.id}/send-emails`);
+      toast.success(res.data?.message || "Đã gửi email phiếu lương thành công!");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Gửi email phiếu lương thất bại");
+    } finally {
+      setSendingEmails(false);
+    }
   };
 
   // load list
@@ -1077,16 +1173,46 @@ console.log("attendance keys:", Object.keys(res.data || {}));
 
               {/* Lines table */}
               <div className="bg-white border-2 border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-5 py-3 border-b-2 border-gray-200">
+                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-5 py-3 border-b-2 border-gray-200 flex flex-wrap items-center justify-between gap-4">
                   <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                     <Users className="w-4 h-4 text-gray-600" />
                     Danh sách dòng lương
                     {currentRun.lines && currentRun.lines.length > 0 && (
                       <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">
-                        {currentRun.lines.length}
+                        {(currentRun.lines || []).filter((line: any) => {
+                          const emp = line.employee;
+                          if (lineBranchFilter && Number(emp?.branch_id) !== Number(lineBranchFilter)) return false;
+                          if (lineDeptFilter && Number(emp?.department_id) !== Number(lineDeptFilter)) return false;
+                          return true;
+                        }).length} / {currentRun.lines.length}
                       </span>
                     )}
                   </h3>
+
+                  {/* Dropdown Filters for Branch & Department */}
+                  <div className="flex gap-3 text-xs">
+                    <select
+                      value={lineBranchFilter}
+                      onChange={(e) => setLineBranchFilter(e.target.value)}
+                      className="border border-gray-300 rounded px-2.5 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium cursor-pointer"
+                    >
+                      <option value="">Tất cả Chi nhánh</option>
+                      {branches.map((b: any) => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={lineDeptFilter}
+                      onChange={(e) => setLineDeptFilter(e.target.value)}
+                      className="border border-gray-300 rounded px-2.5 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium cursor-pointer"
+                    >
+                      <option value="">Tất cả Phòng ban</option>
+                      {departments.map((d: any) => (
+                        <option key={d.id} value={d.id}>{d.name}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -1106,27 +1232,32 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                     </thead>
 
                     <tbody className="divide-y divide-gray-200">
-                      {!currentRun.lines || currentRun.lines.length === 0 ? (
-                        <tr>
-                          <td colSpan={3} className="px-5 py-12">
-                            <div className="flex flex-col items-center gap-3">
-                              <div className="p-3 bg-gray-100 rounded-full">
-                                <Users className="w-8 h-8 text-gray-400" />
-                              </div>
-                              <p className="text-sm font-medium text-gray-500">
-                                Chưa có dòng lương nào
-                              </p>
-                              {isHRStaff && currentRun.status === "draft" && (
-                                <p className="text-xs text-gray-400">
-                                  Sử dụng biểu mẫu phía trên để thêm dòng lương
-                                </p>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ) : (
-                        currentRun.lines.map(
-                          (line: PayrollRunLineDTO, index: number) => (
+                      {(() => {
+                        const filteredLines = (currentRun.lines || []).filter((line: any) => {
+                          const emp = line.employee;
+                          if (lineBranchFilter && Number(emp?.branch_id) !== Number(lineBranchFilter)) return false;
+                          if (lineDeptFilter && Number(emp?.department_id) !== Number(lineDeptFilter)) return false;
+                          return true;
+                        });
+
+                        if (filteredLines.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan={3} className="px-5 py-12">
+                                <div className="flex flex-col items-center gap-3">
+                                  <div className="p-3 bg-gray-100 rounded-full">
+                                    <Users className="w-8 h-8 text-gray-400" />
+                                  </div>
+                                  <p className="text-sm font-medium text-gray-500">
+                                    Không tìm thấy dòng lương nào khớp bộ lọc
+                                  </p>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        }
+
+                        return filteredLines.map((line: PayrollRunLineDTO, index: number) => (
                             <tr
                               key={line.id}
                               className={`hover:bg-gray-50 transition-colors ${
@@ -1203,8 +1334,8 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                               </td>
                             </tr>
                           )
-                        )
-                      )}
+                          );
+                        })()}
                     </tbody>
                   </table>
                 </div>
@@ -1254,6 +1385,31 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                       className="px-5 py-2.5 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-all shadow-lg flex items-center gap-2 text-sm"
                     >
                       Nộp duyệt
+                    </button>
+                  )}
+
+                {isHRStaff &&
+                  currentRun.lines &&
+                  currentRun.lines.length > 0 && (
+                    <button
+                      onClick={handleSendEmails}
+                      disabled={sendingEmails}
+                      className="px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition-all shadow-lg flex items-center gap-2 text-sm disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${sendingEmails ? "animate-spin" : ""}`} />
+                      {sendingEmails ? "Đang gửi..." : "Gửi Email Phiếu Lương"}
+                    </button>
+                  )}
+
+                {currentRun.lines &&
+                  currentRun.lines.length > 0 && (
+                    <button
+                      onClick={handleDownloadAllPdf}
+                      disabled={downloadingAllPdf}
+                      className="px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold transition-all shadow-lg flex items-center gap-2 text-sm disabled:opacity-50"
+                    >
+                      <Download className="w-4 h-4" />
+                      {downloadingAllPdf ? "Đang tải..." : "Tải PDF Tổng Hợp"}
                     </button>
                   )}
               </div>
@@ -1666,6 +1822,16 @@ console.log("attendance keys:", Object.keys(res.data || {}));
 
                 {/* Evidence modal footer */}
                 <div className="border-t border-gray-200 bg-white px-6 py-4 flex justify-end gap-3">
+                  {evidence && (
+                    <button
+                      type="button"
+                      onClick={handleDownloadPdf}
+                      className="px-5 py-2.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-semibold hover:shadow-lg hover:shadow-orange-500/20 transition-all flex items-center gap-2 text-sm"
+                    >
+                      <Download className="w-4 h-4" />
+                      Tải PDF phiếu lương
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={closeEvidence}

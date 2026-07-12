@@ -372,6 +372,10 @@ const menuItems: MenuItem[] = [
         path: "/hrm/payroll-configs",
         allowedRoles: ["HRMANAGER", "HR_STAFF", "CHACC", "ADMIN"],
       },
+      {
+        name: "Lương của tôi",
+        path: "/hrm/my-payroll",
+      },
     ],
   },
   {
@@ -399,6 +403,11 @@ const menuItems: MenuItem[] = [
         name: "Báo cáo tài chính",
         path: "/reports/financial",
         allowedRoles: ["CEO", "BRANCH_MANAGER"],
+      },
+      {
+        name: "Phân tích chi nhánh",
+        path: "/reports/branch-analysis",
+        allowedRoles: ["CEO", "ADMIN"],
       },
     ],
   },

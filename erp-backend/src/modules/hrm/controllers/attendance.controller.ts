@@ -185,3 +185,17 @@ export async function checkInAI(req: Request, res: Response) {
     return res.status(500).json({ error: error.message || "Internal server error" });
   }
 }
+
+export async function createHolidayBulk(req: Request, res: Response) {
+  try {
+    const { startDate, endDate, holidayName, branch_id } = req.body;
+    if (!startDate || !endDate || !holidayName) {
+      return res.status(400).json({ error: "Ngày bắt đầu, Ngày kết thúc và Tên ngày lễ là bắt buộc." });
+    }
+    const data = await service.createHolidayBulk(startDate, endDate, holidayName, branch_id ? Number(branch_id) : undefined);
+    res.json(data);
+  } catch (e: unknown) {
+    const err = e as Error;
+    res.status(400).json({ error: err.message });
+  }
+}

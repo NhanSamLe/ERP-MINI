@@ -1,6 +1,7 @@
 import { Op } from "sequelize";
 import * as model from "../../../models/index";
 import { PAYROLL_RULE } from "../constants/payrollRule";
+import { sendEmail2 } from "../../../core/utils/email";
 import dayjs from "dayjs";
 import { notificationService } from "../../../core/services/notification.service";
 import { getPayrollConfigMap } from "./payrollConfig.service";
@@ -185,6 +186,7 @@ export async function postPayrollRun(id: number, transaction?: any) {
     const insCompSocial = Number(configMap.INS_COMP_SOCIAL_RATE || 0.175);
     const insCompHealth = Number(configMap.INS_COMP_HEALTH_RATE || 0.03);
     const insCompUnemp = Number(configMap.INS_COMP_UNEMP_RATE || 0.01);
+    const lateFinePerDay = Number(configMap.LATE_FINE_PER_DAY || 50000);
     const branchRecord = await model.Branch.findByPk(period.branch_id, {
       attributes: ["id", "company_id"],
       transaction: t,
@@ -353,7 +355,7 @@ export async function postPayrollRun(id: number, transaction?: any) {
       const salaryDefaultCode = getSystemDefaultExpenseCode(emp?.department_id);
 
       // Debit salary expense (Gross - Late Deduction)
-      const lateDeduction = Number(line.late_days || 0) * 50000; // 50k fine per late day
+      const lateDeduction = Number(line.late_days || 0) * lateFinePerDay;
       const netSalaryExpense = gross - lateDeduction;
 
       if (netSalaryExpense > 0) {
@@ -667,12 +669,31 @@ export async function calculatePayrollRun(runId: number, user: any) {
       let presentDays = 0;
       let absentDays = 0;
       let leaveDays = 0;
+      let paidLeaveDays = 0;
       let lateDays = 0;
 
       for (const a of rows) {
-        if (a.status === "present") presentDays++;
-        else if (a.status === "leave") leaveDays++;
-        else if (a.status === "late") lateDays++;
+        if (a.status === "present") {
+          presentDays++;
+        } else if (a.status === "leave") {
+          leaveDays++;
+          const note = a.note || "";
+          if (note.includes("Annual Leave")) {
+            paidLeaveDays++;
+          } else if (note.includes("Unpaid Leave") || note.includes("Sick Leave") || note.includes("Maternity Leave")) {
+            // Unpaid by company (Sick/Maternity is paid by BHXH directly)
+          } else {
+            // Fallback to global config
+            if (paidLeave) {
+              paidLeaveDays++;
+            }
+          }
+        } else if (a.status === "holiday") {
+          leaveDays++;
+          paidLeaveDays++;
+        } else if (a.status === "late") {
+          lateDays++;
+        }
       }
 
       // Tính số ngày nghỉ không phép theo công thức trừ lùi động
@@ -682,8 +703,7 @@ export async function calculatePayrollRun(runId: number, user: any) {
       const dailyRate =
         Number(emp.base_salary || 0) / standardWorkDays;
 
-      const paidLeaveDays = paidLeave ? leaveDays : 0;
-      // Trả lương cho cả ngày đi muộn
+      // Trả lương cho cả ngày đi muộn và ngày nghỉ phép hưởng lương
       const paidDays = presentDays + lateDays + paidLeaveDays;
 
       const basePay = dailyRate * paidDays;
@@ -828,21 +848,46 @@ export async function getPayrollEvidence(runId: number, employeeId: number) {
   const dependentDeductionVal = Number(configMap.DEPENDENT_DEDUCTION || 4400000);
 
   // 4) summary
-  const presentDays = attendance.filter((a: any) => a.status === "present").length;
-  const leaveDays = attendance.filter((a: any) => a.status === "leave").length;
-  const lateDays = attendance.filter((a: any) => a.status === "late").length;
-  
+  let presentDays = 0;
+  let leaveDays = 0;
+  let paidLeaveDays = 0;
+  let lateDays = 0;
+  let holidayDays = 0;
+
+  for (const a of attendance as any[]) {
+    if (a.status === "present") {
+      presentDays++;
+    } else if (a.status === "leave") {
+      leaveDays++;
+      const note = a.note || "";
+      if (note.includes("Annual Leave")) {
+        paidLeaveDays++;
+      } else if (note.includes("Unpaid Leave") || note.includes("Sick Leave") || note.includes("Maternity Leave")) {
+        // Unpaid by company
+      } else {
+        if (paidLeave) {
+          paidLeaveDays++;
+        }
+      }
+    } else if (a.status === "holiday") {
+      leaveDays++;
+      paidLeaveDays++;
+      holidayDays++;
+    } else if (a.status === "late") {
+      lateDays++;
+    }
+  }
+
   // Tính số ngày nghỉ không phép theo công thức trừ lùi động
   const calculatedAbsent = standardWorkDays - (presentDays + lateDays + leaveDays);
   const absentDays = Math.max(0, calculatedAbsent);
 
-  const summary = { presentDays, leaveDays, absentDays, lateDays };
+  const summary = { presentDays, leaveDays, absentDays, lateDays, holidayDays };
 
   // 5) breakdown giống logic calculate
   const baseSalary = Number((employee as any).base_salary || 0);
   const dailyRateRaw = baseSalary / standardWorkDays;
 
-  const paidLeaveDays = paidLeave ? leaveDays : 0;
   const paidDays = presentDays + lateDays + paidLeaveDays;
 
   const basePayRaw = dailyRateRaw * paidDays;
@@ -895,6 +940,7 @@ export async function getPayrollEvidence(runId: number, employeeId: number) {
   const diff = storedAmount === null ? null : Math.round(net - storedAmount);
 
   return {
+    lineId: line ? line.id : null,
     run: {
       id: (run as any).id,
       run_no: (run as any).run_no,
@@ -1062,6 +1108,59 @@ export async function approvePayrollRun(id: number, user: any, app?: any) {
 
       // CEO duyệt xong tự động ghi sổ hạch toán
       await postPayrollRun(id, t);
+
+      // Gửi email lệnh chi cho CEO và Kế toán trưởng
+      setImmediate(async () => {
+        try {
+          const runDetail = await model.PayrollRun.findByPk(id, {
+            include: [
+              { model: model.PayrollPeriod, as: "period" },
+              { model: model.PayrollRunLine, as: "lines" }
+            ]
+          });
+          if (!runDetail) return;
+          
+          const periodCode = (runDetail as any).period?.period_code || "";
+          const runNo = (runDetail as any).run_no || "";
+          
+          let totalNet = 0;
+          const lines = (runDetail as any).lines || [];
+          for (const line of lines) {
+            totalNet += Number(line.net_amount || line.amount || 0);
+          }
+          
+          // Tìm email của CEO, Kế toán trưởng (CHACC) và Admin
+          const roles = await model.Role.findAll({
+            where: {
+              code: ["CEO", "CHACC", "ADMIN"]
+            }
+          });
+          const roleIds = roles.map(r => r.id);
+
+          const adminsAndAccs = await model.User.findAll({
+            where: {
+              role_id: roleIds
+            }
+          });
+          
+          const emails = adminsAndAccs.map(u => u.email).filter(Boolean) as string[];
+          if (emails.length > 0) {
+            const subject = `[ERP Mini] Lenh chi tien - Xac nhan thanh toan luong ky ${periodCode}`;
+            const text = `Kính gửi CEO và Kế toán trưởng,\n\nBảng lương kỳ ${periodCode} (Mã chạy lương: ${runNo}) đã được CEO phê duyệt chính thức.\nHệ thống đã hạch toán định khoản lương tự động vào Sổ cái.\n\nKính đề nghị Bộ phận Kế toán thực hiện lệnh chuyển khoản thanh toán thực tế cho CBNV.\n- Tổng số tiền thực nhận chi trả: ${totalNet.toLocaleString("vi-VN")} VND\n- Số lượng nhân viên thụ hưởng: ${lines.length} người\n\nTrân trọng,\nHệ thống ERP Mini.`;
+            
+            for (const email of emails) {
+              await sendEmail2(
+                email,
+                subject,
+                text
+              );
+            }
+            console.log(`📧 Sent payment notification email to: ${emails.join(", ")}`);
+          }
+        } catch (emailErr) {
+          console.error("Error sending CEO approval notification emails:", emailErr);
+        }
+      });
     } else {
       throw new Error("Trạng thái bảng lương không hợp lệ để duyệt");
     }

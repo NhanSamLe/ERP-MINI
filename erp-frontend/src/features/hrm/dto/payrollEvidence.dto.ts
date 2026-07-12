@@ -1,4 +1,4 @@
-export type AttendanceStatus = "present" | "absent" | "leave" | "late";
+export type AttendanceStatus = "present" | "absent" | "leave" | "late" | "holiday";
 
 export interface AttendanceDTO {
   id: number;
@@ -10,6 +10,7 @@ export interface AttendanceDTO {
 }
 
 export interface PayrollEvidenceDTO {
+  lineId?: number | null;
   run: { id: number; run_no: string; status: "draft" | "posted" };
   period: { id: number; start_date: string; end_date: string };
   employee: { id: number; full_name: string;  base_salary: number;

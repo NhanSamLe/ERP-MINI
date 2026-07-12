@@ -51,6 +51,14 @@ const PayrollConfigPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [values, setValues] = useState<Record<string, string>>({});
 
+  const getConfigType = (key: string) => {
+    for (const group of CONFIG_GROUPS) {
+      const found = group.keys.find((k) => k.key === key);
+      if (found) return found.type;
+    }
+    return "number";
+  };
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -59,7 +67,13 @@ const PayrollConfigPage: React.FC = () => {
 
       const valMap: Record<string, string> = {};
       res.data.forEach((c) => {
-        valMap[c.config_key] = c.config_value;
+        const type = getConfigType(c.config_key);
+        if (type === "percentage" && c.config_value) {
+          // Nhân với 100 để hiển thị số phần trăm chuẩn trên giao diện (e.g. 0.08 -> 8)
+          valMap[c.config_key] = String(parseFloat(c.config_value) * 100);
+        } else {
+          valMap[c.config_key] = c.config_value;
+        }
       });
       setValues(valMap);
     } catch (e: any) {
@@ -129,14 +143,9 @@ const PayrollConfigPage: React.FC = () => {
     }
   };
 
-  // Helper to get raw UI value (handles formatting decimals to percentages)
+  // Helper to get raw UI value
   const getUiValue = (key: string, type: string) => {
-    const raw = values[key] ?? "";
-    if (type === "percentage" && raw) {
-      // Multiply decimal by 100 (e.g. 0.08 -> 8)
-      return String(parseFloat(raw) * 100);
-    }
-    return raw;
+    return values[key] ?? "";
   };
 
   return (

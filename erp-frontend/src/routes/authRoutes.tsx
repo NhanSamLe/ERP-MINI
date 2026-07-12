@@ -6,6 +6,7 @@ import ResetPasswordPage from "../features/auth/page/ResetPasswordPage";
 import UserProfile from "../features/auth/page/UserProfilePage";
 import SettingsPage from "../features/auth/page/SettingsPage";
 import ReportsPage from "../features/reports/pages/ReportsPage";
+import BranchAnalysisReportPage from "../features/reports/pages/BranchAnalysisReportPage";
 import Layout from "../components/layout/Layout";
 
 // Redirect /activate?token=... → /reset-password?token=...
@@ -71,6 +72,10 @@ const authRoutes: RouteObject[] = [
       {
         path: "",
         element: <ReportsPage />,
+      },
+      {
+        path: "branch-analysis",
+        element: <BranchAnalysisReportPage />,
       },
     ],
   }

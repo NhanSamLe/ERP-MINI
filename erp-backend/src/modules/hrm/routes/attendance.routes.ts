@@ -13,6 +13,7 @@ router.get("/employee/:employeeId", authMiddleware([]), ctrl.getByEmployee);
 
 // 👉 HR_STAFF: tạo / sửa / xóa
 router.post("/", authMiddleware(["HR_STAFF", "HRMANAGER"]), ctrl.create); 
+router.post("/holiday", authMiddleware(["HR_STAFF", "HRMANAGER"]), ctrl.createHolidayBulk);
 router.put("/:id", authMiddleware(["HR_STAFF", "HRMANAGER"]), ctrl.update); 
 router.delete("/:id", authMiddleware(["HR_STAFF", "HRMANAGER"]), ctrl.remove); 
 
