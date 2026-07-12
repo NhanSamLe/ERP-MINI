@@ -401,6 +401,19 @@ export async function postPayrollRun(id: number, transaction?: any) {
       }
     }
 
+    // 6. Xóa bút toán cũ nếu đã tồn tại để tránh lỗi trùng khóa (Duplicate entry_no) khi duyệt lại
+    const existingEntry = await model.GlEntry.findOne({
+      where: { entry_no: `GL-HRM-PAY-RUN-${row.id}` },
+      transaction: t,
+    });
+    if (existingEntry) {
+      await model.GlEntryLine.destroy({
+        where: { entry_id: existingEntry.id },
+        transaction: t,
+      });
+      await existingEntry.destroy({ transaction: t });
+    }
+
     // 6. Tạo bút toán GL Entry
     const entry = await model.GlEntry.create({
       journal_id: journal.id,
