@@ -119,9 +119,9 @@ export default function StockReportPage() {
   });
 
   const tabs: { key: TabType; label: string }[] = [
-    { key: "summary", label: "Stock Summary" },
-    { key: "valuation", label: "Valuation" },
-    { key: "movement", label: "Movement" },
+    { key: "summary", label: "Tổng quan kho" },
+    { key: "valuation", label: "Định giá tồn kho" },
+    { key: "movement", label: "Biến động kho" },
   ];
 
   return (
@@ -129,10 +129,10 @@ export default function StockReportPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">
-            Stock Reports
+            Báo cáo kho
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Inventory analytics and reporting
+            Phân tích và báo cáo tồn kho
           </p>
         </div>
         <Button
@@ -154,7 +154,7 @@ export default function StockReportPage() {
           }}
           disabled={recalculating}
         >
-          {recalculating ? "Recalculating..." : "Recalculate Costs"}
+          {recalculating ? "Đang tính toán..." : "Tính lại giá vốn"}
         </Button>
       </div>
 
@@ -334,7 +334,7 @@ export default function StockReportPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
                 <h3 className="text-base font-semibold text-gray-800 mb-1">
-                  Total Stock Value
+                  Tổng giá trị tồn kho
                 </h3>
                 <p className="text-3xl font-bold text-indigo-700 mt-2">
                   {formatMoney(valuation.grand_total_value)}
@@ -356,7 +356,7 @@ export default function StockReportPage() {
 
               <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
                 <h3 className="text-base font-semibold text-gray-800 mb-4">
-                  By Category
+                  Theo danh mục
                 </h3>
                 {valuation.by_category.length === 0 ? (
                   <p className="text-gray-400 italic text-sm">Không có dữ liệu</p>
@@ -421,7 +421,7 @@ export default function StockReportPage() {
                         </td>
                         <td className="p-3">
                           <span
-                            className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${line.move?.type === "receipt"
+                            className={`px-2 py-0.5 rounded-full text-xs font-medium ${line.move?.type === "receipt"
                               ? "bg-green-100 text-green-700"
                               : line.move?.type === "issue"
                                 ? "bg-red-100 text-red-700"
@@ -430,7 +430,13 @@ export default function StockReportPage() {
                                   : "bg-orange-100 text-orange-700"
                               }`}
                           >
-                            {line.move?.type}
+                            {line.move?.type === "receipt"
+                              ? "Nhập kho"
+                              : line.move?.type === "issue"
+                                ? "Xuất kho"
+                                : line.move?.type === "transfer"
+                                  ? "Điều chuyển"
+                                  : "Kiểm kê"}
                           </span>
                         </td>
                         <td className="p-3 font-medium text-gray-800">
