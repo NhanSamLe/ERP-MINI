@@ -24,7 +24,7 @@ const HolidayModal: React.FC<HolidayModalProps> = ({ open, onClose, onSuccess })
       setHolidayName("");
       setBranchId("");
       // Fetch branches list
-      apiClient.get("/company/branches")
+      apiClient.get("/branch")
         .then(res => setBranches(res.data || []))
         .catch(err => console.error("Error fetching branches:", err));
     }

@@ -221,7 +221,7 @@ const PayrollRunPage: React.FC = () => {
     if (showLinesModal) {
       setLineBranchFilter("");
       setLineDeptFilter("");
-      apiClient.get("/company/branches")
+      apiClient.get("/branch")
         .then(res => setBranches(res.data || []))
         .catch(err => console.error("Error fetching branches:", err));
 
