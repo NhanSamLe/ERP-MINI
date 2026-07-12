@@ -156,31 +156,34 @@ export async function updateStatus(
       const noteText = `${leaveTypeText}${halfDayText}${row.reason ? ` - Reason: ${row.reason}` : ""}`;
 
       while (current.isBefore(end) || current.isSame(end, "day")) {
-        const dateStr = current.format("YYYY-MM-DD");
+        // Chỉ ghi nhận ngày nghỉ phép vào các ngày làm việc (bỏ qua Chủ Nhật)
+        if (current.day() !== 0) {
+          const dateStr = current.format("YYYY-MM-DD");
 
-        const [attendance, created] = await model.Attendance.findOrCreate({
-          where: {
-            employee_id: row.employee_id,
-            work_date: dateStr as any,
-          },
-          defaults: {
-            branch_id: row.branch_id,
-            employee_id: row.employee_id,
-            work_date: dateStr as any,
-            status: "leave",
-            note: noteText,
-          },
-          transaction: t,
-        });
-
-        if (!created) {
-          await attendance.update(
-            {
+          const [attendance, created] = await model.Attendance.findOrCreate({
+            where: {
+              employee_id: row.employee_id,
+              work_date: dateStr as any,
+            },
+            defaults: {
+              branch_id: row.branch_id,
+              employee_id: row.employee_id,
+              work_date: dateStr as any,
               status: "leave",
               note: noteText,
             },
-            { transaction: t }
-          );
+            transaction: t,
+          });
+
+          if (!created) {
+            await attendance.update(
+              {
+                status: "leave",
+                note: noteText,
+              },
+              { transaction: t }
+            );
+          }
         }
 
         current = current.add(1, "day");

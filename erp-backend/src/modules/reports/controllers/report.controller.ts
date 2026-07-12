@@ -3,6 +3,7 @@ import { Op, Sequelize } from "sequelize";
 import { SaleOrder } from "../../sales/models/saleOrder.model";
 import { PurchaseOrder } from "../../purchase/models/purchaseOrder.model";
 import { sequelize } from "../../../config/db";
+import * as model from "../../../models";
 
 export class ReportController {
     // ============================================
@@ -122,6 +123,66 @@ export class ReportController {
         } catch (error) {
             console.error("Error generating purchase report:", error);
             res.status(500).json({ message: "Failed to generate purchase report" });
+        }
+    }
+
+    static async getBranchAnalysis(req: Request, res: Response) {
+        try {
+            const branches = await model.Branch.findAll();
+            const result = [];
+            
+            for (const branch of branches) {
+                // 1) Sales Revenue: Sum of total_after_tax
+                const sales = await model.SaleOrder.sum('total_after_tax', {
+                    where: {
+                        branch_id: branch.id,
+                        status: { [Op.not]: 'cancelled' }
+                    }
+                }) || 0;
+                
+                // 2) Purchase Amount: Sum of total_after_tax
+                const purchases = await model.PurchaseOrder.sum('total_after_tax', {
+                    where: {
+                        branch_id: branch.id,
+                        status: { [Op.not]: 'cancelled' }
+                    }
+                }) || 0;
+                
+                // 3) Headcount: Active employees count
+                const headcount = await model.Employee.count({
+                    where: {
+                        branch_id: branch.id,
+                        status: 'active'
+                    }
+                });
+                
+                // 4) Payroll expense: Sum of net_amount
+                const payrollLines = await model.PayrollRunLine.findAll({
+                    include: [
+                        {
+                            model: model.Employee,
+                            as: 'employee',
+                            where: { branch_id: branch.id }
+                        }
+                    ]
+                });
+                const payrollExpense = payrollLines.reduce((acc, line) => acc + Number((line as any).net_amount || (line as any).amount || 0), 0);
+
+                result.push({
+                    branchId: branch.id,
+                    branchCode: branch.code,
+                    branchName: branch.name,
+                    salesRevenue: sales,
+                    purchaseAmount: purchases,
+                    payrollExpense: payrollExpense,
+                    headcount: headcount
+                });
+            }
+            
+            return res.json(result);
+        } catch (error: any) {
+            console.error("Error generating branch analysis report:", error);
+            return res.status(500).json({ error: error.message || "Failed to generate report" });
         }
     }
 }

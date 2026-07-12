@@ -14,7 +14,7 @@ export async function getConfigs(req: Request, res: Response) {
 export async function updateConfigs(req: Request, res: Response) {
   try {
     const user = (req as any).user;
-    if (user.role !== "HR" && user.role !== "CHACC" && user.role !== "ADMIN") {
+    if (user.role !== "HR" && user.role !== "HRMANAGER" && user.role !== "HR_STAFF" && user.role !== "CHACC" && user.role !== "ADMIN") {
       return res.status(403).json({ message: "Bạn không có quyền cập nhật cấu hình lương." });
     }
 

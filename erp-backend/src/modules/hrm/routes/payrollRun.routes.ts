@@ -15,13 +15,19 @@ import {
   getPayrollEvidence,
   submitPayrollRun,
   approvePayrollRun,
-  rejectPayrollRun
+  rejectPayrollRun,
+  getPayslipPdf,
+  sendPayslipsEmail,
+  getPayrollRunPdf
 } from "../controllers/payrollRun.controller";
 
 const router = Router();
 
 router.get("/me/payslips", authMiddleware([]), getMyPayslips);
 router.get("/:id/my-payslip", authMiddleware([]), getMyPayslipInRun);
+router.get("/lines/:id/pdf", authMiddleware([]), getPayslipPdf);
+router.get("/:id/pdf", authMiddleware(["HR_STAFF", "HRMANAGER", "ACCOUNT", "CHACC", "CEO", "ADMIN"]), getPayrollRunPdf);
+router.post("/:id/send-emails", authMiddleware(["HR_STAFF", "HRMANAGER", "ADMIN"]), sendPayslipsEmail);
 
 // HR Staff + Accountant: xem bảng lương
 router.get(
@@ -52,7 +58,7 @@ router.post("/:id/reject", authMiddleware(["CHACC", "CEO"]), rejectPayrollRun);
 
 router.get(
   "/:runId/evidence/:employeeId",
-  authMiddleware(["HR_STAFF", "ACCOUNT", "CHACC", "CEO","HRMANAGER"]),
+  authMiddleware([]),
   getPayrollEvidence
 );
 

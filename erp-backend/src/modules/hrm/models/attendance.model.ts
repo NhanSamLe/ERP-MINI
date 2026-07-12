@@ -9,7 +9,7 @@ export interface AttendanceAttrs {
   check_in?: Date;
   check_out?: Date;
   working_hours?: number;
-  status: "present" | "absent" | "leave" | "late";
+  status: "present" | "absent" | "leave" | "late" | "holiday";
   note?: string;
 }
 
@@ -26,7 +26,7 @@ export class Attendance
   check_in?: Date;
   check_out?: Date;
   working_hours?: number;
-  status!: "present" | "absent" | "leave" | "late";
+  status!: "present" | "absent" | "leave" | "late" | "holiday";
   note?: string;
 }
 
@@ -40,7 +40,7 @@ Attendance.init(
     check_out: { type: DataTypes.DATE },
     working_hours: { type: DataTypes.DECIMAL(5, 2) },
     status: {
-      type: DataTypes.ENUM("present", "absent", "leave", "late"),
+      type: DataTypes.ENUM("present", "absent", "leave", "late", "holiday"),
       defaultValue: "present",
     },
     note: { type: DataTypes.STRING(255) },
