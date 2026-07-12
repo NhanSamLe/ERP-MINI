@@ -213,8 +213,8 @@ export default function OpportunityUpdatePage() {
                     {currentStageProbabilityLabel && (
                       <span className="text-xs text-gray-400">({currentStageProbabilityLabel})</span>
                     )}
-                    {currentStage.is_won && <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">THẮNG</span>}
-                    {currentStage.is_lost && <span className="text-[10px] font-semibold bg-red-100 text-red-600 px-2 py-0.5 rounded-full">THUA</span>}
+                    {!!currentStage.is_won && <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">THẮNG</span>}
+                    {!!currentStage.is_lost && <span className="text-[10px] font-semibold bg-red-100 text-red-600 px-2 py-0.5 rounded-full">THUA</span>}
                   </div>
                 )}
               </div>

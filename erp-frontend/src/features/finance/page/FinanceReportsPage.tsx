@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { Calendar, Search, RefreshCcw, Download, FileText, TrendingUp, DollarSign, Lock, Unlock, Zap } from "lucide-react";
+import { Calendar, Search, RefreshCcw, Download, FileText, TrendingUp, DollarSign, Lock, Unlock, Zap, Users } from "lucide-react";
 import { glEntryApi } from "../api/glEntry.api";
 import { toast } from "react-toastify";
 import { exportExcelReport } from "../../../utils/excel/exportExcelReport";
 import { financeConfigApi, FiscalPeriodDTO } from "../api/finance.api";
 import { useSelector } from "react-redux";
 import { RootState } from "../../../store/store";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 type TrialBalanceRow = {
   id: number;
@@ -33,7 +34,7 @@ type ProfitLossData = {
 };
 
 export default function FinanceReportsPage() {
-  const [activeTab, setActiveTab] = useState<"trial-balance" | "profit-loss" | "period-close">("trial-balance");
+  const [activeTab, setActiveTab] = useState<"trial-balance" | "profit-loss" | "payroll-by-department" | "period-close">("trial-balance");
   const [loading, setLoading] = useState(false);
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
@@ -46,6 +47,7 @@ export default function FinanceReportsPage() {
 
   const [trialBalance, setTrialBalance] = useState<TrialBalanceRow[]>([]);
   const [profitLoss, setProfitLoss] = useState<ProfitLossData | null>(null);
+  const [payrollData, setPayrollData] = useState<any[]>([]);
 
   const { user } = useSelector((s: RootState) => s.auth);
   const [fiscalPeriods, setFiscalPeriods] = useState<FiscalPeriodDTO[]>([]);
@@ -119,13 +121,15 @@ export default function FinanceReportsPage() {
       setLoading(true);
       const params = { from: startDate, to: endDate };
       
-      const [tbRes, plRes] = await Promise.all([
+      const [tbRes, plRes, payRes] = await Promise.all([
         glEntryApi.getTrialBalance(params),
-        glEntryApi.getProfitLoss(params)
+        glEntryApi.getProfitLoss(params),
+        glEntryApi.getPayrollByDepartment(params).catch(() => ({ data: { data: [] } }))
       ]);
 
       setTrialBalance(tbRes.data.data || []);
       setProfitLoss(plRes.data.data || null);
+      setPayrollData(payRes.data.data || []);
     } catch (err: any) {
       console.error(err);
       toast.error(err.response?.data?.message || err.message || "Lỗi khi tải báo cáo tài chính");
@@ -137,7 +141,7 @@ export default function FinanceReportsPage() {
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [startDate, endDate]);
 
   // Calculate Trial Balance Totals
   const tbTotals = useMemo(() => {
@@ -214,6 +218,31 @@ export default function FinanceReportsPage() {
           { item: "8. Lợi nhuận thuần từ hoạt động kinh doanh (30 = 20 - 21 - 22)", code: "30", amount: profitLoss.netOperatingProfit || 0 },
         ],
         fileName: `BaoCaoKetQuaKinhDoanh_${startDate}_to_${endDate}.xlsx`,
+      });
+    } else if (activeTab === "payroll-by-department" && payrollData) {
+      exportExcelReport<any>({
+        title: "BÁO CÁO CHI PHÍ LƯƠNG THEO BỘ PHẬN",
+        subtitle: `Từ ngày ${startDate} đến ngày ${endDate}`,
+        meta: {
+          "Tổng quỹ lương (Gross)": payrollData.reduce((sum, item) => sum + Number(item.gross || 0), 0).toLocaleString("vi-VN") + "đ",
+          "Tổng thực lĩnh (Net)": payrollData.reduce((sum, item) => sum + Number(item.net || 0), 0).toLocaleString("vi-VN") + "đ",
+          "Tổng nhân sự chi lương": payrollData.reduce((sum, item) => sum + Number(item.employeeCount || 0), 0) + " người",
+        },
+        columns: [
+          { header: "Mã bộ phận", key: "code", width: 15 },
+          { header: "Tên bộ phận", key: "name", width: 35 },
+          { header: "Số lượng nhân sự", key: "employeeCount", width: 20, align: "center" },
+          { header: "Tổng lương Gross", key: "gross", width: 25, align: "right" },
+          { header: "Tổng thực lĩnh Net", key: "net", width: 25, align: "right" },
+        ],
+        data: payrollData.map(row => ({
+          code: row.code,
+          name: row.name,
+          employeeCount: row.employeeCount,
+          gross: row.gross,
+          net: row.net,
+        })),
+        fileName: `BaoCaoLuongTheoBoPhan_${startDate}_to_${endDate}.xlsx`,
       });
     }
   };
@@ -305,6 +334,14 @@ export default function FinanceReportsPage() {
             }`}
           >
             Báo cáo kết quả hoạt động kinh doanh (P&L)
+          </button>
+          <button
+            onClick={() => setActiveTab("payroll-by-department")}
+            className={`pb-4 text-base font-bold transition-all relative ${
+              activeTab === "payroll-by-department" ? "text-blue-600 border-b-2 border-blue-600" : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            Báo cáo lương theo bộ phận
           </button>
           <button
             onClick={() => setActiveTab("period-close")}
@@ -505,6 +542,130 @@ export default function FinanceReportsPage() {
                 Không thể tải báo cáo kết quả hoạt động kinh doanh.
               </div>
             )}
+          </div>
+        )}
+
+        {!loading && activeTab === "payroll-by-department" && (
+          <div className="space-y-6 animate-in fade-in duration-250">
+            {/* Stats Cards Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-slate-500 uppercase mb-1">Tổng quỹ lương (Gross)</p>
+                  <h3 className="text-2xl font-bold text-blue-600 font-mono">
+                    {payrollData.reduce((sum, item) => sum + Number(item.gross || 0), 0).toLocaleString("vi-VN")}đ
+                  </h3>
+                </div>
+                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
+                  <DollarSign className="w-6 h-6" />
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-slate-500 uppercase mb-1">Tổng thực lĩnh (Net)</p>
+                  <h3 className="text-2xl font-bold text-emerald-600 font-mono">
+                    {payrollData.reduce((sum, item) => sum + Number(item.net || 0), 0).toLocaleString("vi-VN")}đ
+                  </h3>
+                </div>
+                <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
+                  <TrendingUp className="w-6 h-6" />
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-slate-500 uppercase mb-1">Tổng nhân sự chi lương</p>
+                  <h3 className="text-2xl font-bold text-purple-600 font-mono">
+                    {payrollData.reduce((sum, item) => sum + Number(item.employeeCount || 0), 0)} người
+                  </h3>
+                </div>
+                <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center">
+                  <Users className="w-6 h-6" />
+                </div>
+              </div>
+            </div>
+
+            {/* Chart Block */}
+            {payrollData.length > 0 && (
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <h3 className="font-bold text-slate-900 mb-6 text-sm uppercase tracking-wider">So sánh quỹ lương Gross vs Net theo bộ phận</h3>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={payrollData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 11, fill: "#64748b" }} tickFormatter={(v) => `${(v / 1000000).toFixed(0)}M`} axisLine={false} tickLine={false} />
+                      <Tooltip 
+                        formatter={(v: any) => [`${Number(v).toLocaleString("vi-VN")}đ`, ""]} 
+                        contentStyle={{ borderRadius: "12px", border: "1px solid #e2e8f0" }}
+                      />
+                      <Bar dataKey="gross" name="Lương Gross" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={20} />
+                      <Bar dataKey="net" name="Thực lĩnh Net" fill="#10b981" radius={[4, 4, 0, 0]} barSize={20} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
+
+            {/* Table Block */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+                <h3 className="font-bold text-slate-950 uppercase tracking-wide text-sm">Chi tiết quỹ lương theo phòng ban</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200">
+                      <th className="px-6 py-4 text-left font-semibold text-slate-700 uppercase tracking-wider">Mã bộ phận</th>
+                      <th className="px-6 py-4 text-left font-semibold text-slate-700 uppercase tracking-wider">Tên bộ phận</th>
+                      <th className="px-6 py-4 text-center font-semibold text-slate-700 uppercase tracking-wider w-36">Số lượng nhân sự</th>
+                      <th className="px-6 py-4 text-right font-semibold text-slate-700 uppercase tracking-wider w-44">Tổng lương Gross</th>
+                      <th className="px-6 py-4 text-right font-semibold text-slate-700 uppercase tracking-wider w-44">Tổng thực lĩnh Net</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {payrollData.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-12 text-center text-slate-500 font-medium">
+                          Chưa có dữ liệu tính lương nào được chốt trong khoảng thời gian này.
+                        </td>
+                      </tr>
+                    ) : (
+                      payrollData.map((row, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="px-6 py-4 font-bold text-slate-900 font-mono">{row.code}</td>
+                          <td className="px-6 py-4 text-slate-700 font-medium">{row.name}</td>
+                          <td className="px-6 py-4 text-center text-slate-600 font-semibold">{row.employeeCount}</td>
+                          <td className="px-6 py-4 text-right font-mono font-medium text-blue-700">
+                            {Number(row.gross || 0).toLocaleString("vi-VN")}đ
+                          </td>
+                          <td className="px-6 py-4 text-right font-mono font-medium text-emerald-700">
+                            {Number(row.net || 0).toLocaleString("vi-VN")}đ
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                  {payrollData.length > 0 && (
+                    <tfoot>
+                      <tr className="bg-gradient-to-r from-slate-100 to-slate-50 border-t-2 border-slate-300 font-bold text-slate-900">
+                        <td colSpan={2} className="px-6 py-4 text-left">TỔNG CỘNG</td>
+                        <td className="px-6 py-4 text-center">
+                          {payrollData.reduce((sum, item) => sum + Number(item.employeeCount || 0), 0)}
+                        </td>
+                        <td className="px-6 py-4 text-right font-mono text-blue-800">
+                          {payrollData.reduce((sum, item) => sum + Number(item.gross || 0), 0).toLocaleString("vi-VN")}đ
+                        </td>
+                        <td className="px-6 py-4 text-right font-mono text-emerald-800">
+                          {payrollData.reduce((sum, item) => sum + Number(item.net || 0), 0).toLocaleString("vi-VN")}đ
+                        </td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
+            </div>
           </div>
         )}
 

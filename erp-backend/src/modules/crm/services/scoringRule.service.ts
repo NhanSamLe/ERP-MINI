@@ -3,6 +3,7 @@ import { Lead } from "../models/lead.model";
 import { Activity } from "../models/activity.model";
 import { CallActivity } from "../models/callActivity.model";
 import { EmailActivity } from "../models/emailActivity.model";
+import { LeadSource } from "../models/leadSource.model";
 
 type ScoreGrade = "cold" | "warm" | "hot";
 type SignalType = "text" | "number" | "boolean" | "select" | "multi_select";
@@ -56,7 +57,7 @@ const SCORING_SIGNALS: ScoringSignal[] = [
   { key: "phone", label: "Số điện thoại", category: "data_quality", type: "text", operators: ["not_empty", "empty"], valueRequired: false },
   { key: "email", label: "Email", category: "data_quality", type: "text", operators: ["not_empty", "empty"], valueRequired: false },
   { key: "source", label: "Nguồn dạng văn bản", category: "fit", type: "text", operators: TEXT_OPERATORS, valueRequired: true },
-  { key: "source_id", label: "Nguồn khách hàng tiềm năng", category: "fit", type: "multi_select", operators: SELECT_OPERATORS, valueRequired: true, helpText: "Nhập ID nguồn; nhiều giá trị phân tách bằng dấu phẩy." },
+  { key: "source_id", label: "Nguồn khách hàng tiềm năng", category: "fit", type: "multi_select", operators: SELECT_OPERATORS, valueRequired: true, helpText: "Chọn nguồn; có thể chọn nhiều giá trị." },
   { key: "industry", label: "Ngành nghề", category: "fit", type: "text", operators: TEXT_OPERATORS, valueRequired: true },
   { key: "company_size", label: "Quy mô công ty", category: "fit", type: "select", operators: SELECT_OPERATORS, valueRequired: true, options: [
     { value: "1-10", label: "1-10" },
@@ -327,15 +328,24 @@ export const recalculateLeadsForRule = async () => {
   return leads.length;
 };
 
-export const getScoringSignals = async () => ({
-  signals: SCORING_SIGNALS,
-  operators: Object.entries(OPERATOR_LABELS).map(([value, label]) => ({ value, label })),
-  grades: [
-    { grade: "hot", min: 75, max: 100, label: "Hot", recommendation: "Ưu tiên liên hệ ngay và cân nhắc tạo Cơ hội hoặc Báo giá." },
-    { grade: "warm", min: 40, max: 74, label: "Warm", recommendation: "Tiếp tục chăm sóc và bổ sung thông tin BANT." },
-    { grade: "cold", min: 0, max: 39, label: "Cold", recommendation: "Bổ sung dữ liệu liên hệ hoặc nuôi dưỡng thêm trước khi ưu tiên." },
-  ],
-});
+export const getScoringSignals = async () => {
+  const leadSources = await LeadSource.findAll({ where: { is_active: true }, order: [["name", "ASC"]] });
+  const signals = SCORING_SIGNALS.map((signal) =>
+    signal.key === "source_id"
+      ? { ...signal, options: leadSources.map((s) => ({ value: String(s.id), label: s.name })) }
+      : signal
+  );
+
+  return {
+    signals,
+    operators: Object.entries(OPERATOR_LABELS).map(([value, label]) => ({ value, label })),
+    grades: [
+      { grade: "hot", min: 75, max: 100, label: "Hot", recommendation: "Ưu tiên liên hệ ngay và cân nhắc tạo Cơ hội hoặc Báo giá." },
+      { grade: "warm", min: 40, max: 74, label: "Warm", recommendation: "Tiếp tục chăm sóc và bổ sung thông tin BANT." },
+      { grade: "cold", min: 0, max: 39, label: "Cold", recommendation: "Bổ sung dữ liệu liên hệ hoặc nuôi dưỡng thêm trước khi ưu tiên." },
+    ],
+  };
+};
 
 export const previewScoringRule = async (leadId: number, data: any) => {
   const payload = normalizeRulePayload(data);

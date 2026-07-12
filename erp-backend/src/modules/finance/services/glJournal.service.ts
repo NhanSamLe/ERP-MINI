@@ -222,7 +222,10 @@ export async function getTrialBalance(filter: { from: string; to: string; branch
     status: "posted"
   };
   if (filter.excludeClosing) {
-    entryWhere.reference_type = { [Op.ne]: "period_closing" };
+    entryWhere[Op.or] = [
+      { reference_type: { [Op.ne]: "period_closing" } },
+      { reference_type: null }
+    ];
   }
   if (filter.branch_id) {
     entryWhere.branch_id = filter.branch_id;
@@ -525,4 +528,71 @@ export async function closeBranchPeriod(periodId: number, branchId: number, user
     await model.GlEntryLine.bulkCreate(linesToInsert, { transaction: t });
     return entry;
   });
+}
+
+export async function getPayrollByDepartment(filter: { from: string; to: string; branch_id?: number; company_id?: number }) {
+  const periodWhere: any = {
+    start_date: { [Op.lte]: new Date(filter.to + " 23:59:59") },
+    end_date: { [Op.gte]: new Date(filter.from + " 00:00:00") },
+  };
+  if (filter.branch_id) {
+    periodWhere.branch_id = filter.branch_id;
+  }
+
+  const lines = await model.PayrollRunLine.findAll({
+    include: [
+      {
+        model: model.PayrollRun,
+        as: "run",
+        required: true,
+        include: [
+          {
+            model: model.PayrollPeriod,
+            as: "period",
+            required: true,
+            where: periodWhere,
+          }
+        ]
+      },
+      {
+        model: model.Employee,
+        as: "employee",
+        required: true,
+        include: [
+          {
+            model: model.Department,
+            as: "department",
+            required: true,
+          }
+        ]
+      }
+    ]
+  });
+
+  const deptMap = new Map<number, { department_id: number; code: string; name: string; gross: number; net: number; employeeCount: number }>();
+
+  for (const line of lines as any[]) {
+    const emp = line.employee;
+    const dept = emp?.department;
+    if (!dept) continue;
+
+    const deptId = dept.id;
+    if (!deptMap.has(deptId)) {
+      deptMap.set(deptId, {
+        department_id: deptId,
+        code: dept.code,
+        name: dept.name,
+        gross: 0,
+        net: 0,
+        employeeCount: 0,
+      });
+    }
+
+    const deptData = deptMap.get(deptId)!;
+    deptData.gross += Number(line.gross_amount || line.amount || 0);
+    deptData.net += Number(line.net_amount || line.amount || 0);
+    deptData.employeeCount += 1;
+  }
+
+  return Array.from(deptMap.values());
 }

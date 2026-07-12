@@ -504,17 +504,7 @@ export default function QuotationForm({
         >
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <colgroup>
-                <col style={{ width: "36px" }} />   {/* # */}
-                <col style={{ width: "220px" }} />  {/* Sản phẩm */}
-                <col style={{ width: "130px" }} />  {/* ĐVT */}
-                <col style={{ width: "130px" }} />  {/* SL */}
-                <col style={{ width: "170px" }} />  {/* Đơn giá */}
-                <col style={{ width: "90px" }} />   {/* CK% */}
-                <col style={{ width: "80px" }} />   {/* Thuế */}
-                <col />                              {/* Thành tiền — flex */}
-                <col style={{ width: "40px" }} />   {/* Xoá */}
-              </colgroup>
+              <colgroup><col style={{ width: "36px" }} /><col style={{ width: "220px" }} /><col style={{ width: "130px" }} /><col style={{ width: "130px" }} /><col style={{ width: "170px" }} /><col style={{ width: "90px" }} /><col style={{ width: "80px" }} /><col /><col style={{ width: "40px" }} /></colgroup>
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50/80">
                   {["#", "Sản phẩm", "ĐVT", "SL", `Đơn giá (${currencyCode})`, "CK%", "Thuế", `Thành tiền (${currencyCode})`, ""].map((h) => (

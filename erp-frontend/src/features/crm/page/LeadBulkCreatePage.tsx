@@ -577,11 +577,7 @@ export default function LeadBulkCreatePage() {
       {/* ── Table ── */}
       <div className="flex-1 overflow-auto">
         <table className="border-collapse min-w-full text-xs" style={{ tableLayout: "fixed" }}>
-          <colgroup>
-            <col style={{ width: 44 }} />
-            {COLUMNS.map((c) => <col key={c.key} style={{ width: c.width }} />)}
-            <col style={{ width: 36 }} />
-          </colgroup>
+          <colgroup><col style={{ width: 44 }} />{COLUMNS.map((c) => <col key={c.key} style={{ width: c.width }} />)}<col style={{ width: 36 }} /></colgroup>
 
           {/* Sticky header */}
           <thead className="sticky top-0 z-10 bg-gray-100">

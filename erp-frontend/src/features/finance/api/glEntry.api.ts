@@ -19,6 +19,9 @@ export const glEntryApi = {
   getProfitLoss: (params: { from: string; to: string }) =>
     apiClient.get("/finance/gl-journals/reports/profit-loss", { params }),
 
+  getPayrollByDepartment: (params: { from: string; to: string }) =>
+    apiClient.get("/finance/gl-journals/reports/payroll-by-department", { params }),
+
   getArInvoices: () =>
     apiClient.get("/ar/invoices"),
 

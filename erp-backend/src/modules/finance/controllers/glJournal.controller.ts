@@ -131,3 +131,25 @@ export const getProfitLoss = async (req: Request, res: Response) => {
     return res.status(400).json({ message: e.message || "Loi tai bao cao ket qua kinh doanh" });
   }
 };
+
+export const getPayrollByDepartment = async (req: Request, res: Response) => {
+  try {
+    const { from, to } = req.query;
+    const user = getUser(req);
+
+    if (typeof from !== "string" || typeof to !== "string") {
+      return res.status(400).json({ message: "Tu ngay va den ngay la bat buoc." });
+    }
+
+    const filter: { from: string; to: string; branch_id?: number; company_id?: number } = {
+      from,
+      to,
+      company_id: await getCompanyId(req),
+    };
+    if (user?.branch_id) filter.branch_id = user.branch_id;
+    const data = await glJournalService.getPayrollByDepartment(filter);
+    return res.json({ data });
+  } catch (e: any) {
+    return res.status(400).json({ message: e.message || "Loi tai bao cao luong theo bo phan" });
+  }
+};

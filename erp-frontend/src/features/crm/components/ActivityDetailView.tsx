@@ -295,6 +295,51 @@ export function ActivityDetailView({ type }: { type: ActivityType }) {
                 </div>
               </section>
 
+              {type === "email" && detail.email && (
+                <section className="space-y-3 border-t border-gray-100 pt-5">
+                  <h2 className="text-sm font-semibold text-gray-900">Nội dung Email</h2>
+                  <div className="rounded-md border border-gray-200 bg-white p-4 space-y-3">
+                    {detail.email.subject && (
+                      <div>
+                        <span className="text-xs text-gray-500 block">Tiêu đề</span>
+                        <span className="text-sm font-medium text-gray-900">{detail.email.subject}</span>
+                      </div>
+                    )}
+                    {(detail.email.cc || detail.email.bcc) && (
+                      <div className="grid grid-cols-2 gap-4">
+                        {detail.email.cc && (
+                          <div>
+                            <span className="text-xs text-gray-500 block">CC</span>
+                            <span className="text-sm text-gray-700">{detail.email.cc}</span>
+                          </div>
+                        )}
+                        {detail.email.bcc && (
+                          <div>
+                            <span className="text-xs text-gray-500 block">BCC</span>
+                            <span className="text-sm text-gray-700">{detail.email.bcc}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <div>
+                      <span className="text-xs text-gray-500 block mb-1">Nội dung</span>
+                      <div 
+                        className="rounded-md border border-gray-100 bg-gray-50 p-4 text-sm text-gray-800 overflow-auto max-h-[400px]"
+                        style={{ minHeight: "120px" }}
+                      >
+                        {detail.email.html_body ? (
+                          <div dangerouslySetInnerHTML={{ __html: detail.email.html_body }} />
+                        ) : detail.email.text_body ? (
+                          <div className="whitespace-pre-wrap">{detail.email.text_body}</div>
+                        ) : (
+                          <span className="text-gray-400 italic">Không có nội dung email.</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              )}
+
               <section className="space-y-2 border-t border-gray-100 pt-5">
                 <h2 className="text-sm font-semibold text-gray-900">Ghi chú</h2>
                 <div className="min-h-24 rounded-md border border-gray-100 bg-gray-50 p-3 text-sm text-gray-700 whitespace-pre-line">
