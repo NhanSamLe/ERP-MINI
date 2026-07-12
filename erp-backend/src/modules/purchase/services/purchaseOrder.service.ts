@@ -116,6 +116,11 @@ export const purchaseOrderService = {
       include: [
         { model: PurchaseOrderLine, as: "lines" },
         {
+          model: Partner,
+          as: "supplier",
+          attributes: ["id", "name", "code"],
+        },
+        {
           model: User,
           as: "creator",
           attributes: ["id", "username", "full_name"],
@@ -170,6 +175,11 @@ export const purchaseOrderService = {
       include: [
         { model: PurchaseOrderLine, as: "lines" },
         {
+          model: Partner,
+          as: "supplier",
+          attributes: ["id", "name", "code"],
+        },
+        {
           model: User,
           as: "creator",
           attributes: ["id", "username", "full_name"],
@@ -186,7 +196,14 @@ export const purchaseOrderService = {
 
   async getByStatus(statusList: string[], user: any) {
     return PurchaseOrder.findAll({
-      include: [{ model: PurchaseOrderLine, as: "lines" }],
+      include: [
+        { model: PurchaseOrderLine, as: "lines" },
+        {
+          model: Partner,
+          as: "supplier",
+          attributes: ["id", "name", "code"],
+        },
+      ],
       where: { status: { [Op.in]: statusList }, branch_id: user.branch_id },
     });
   },
@@ -201,6 +218,11 @@ export const purchaseOrderService = {
             { model: Product, as: "product" },
             { model: Uom, as: "uom", attributes: ["id", "name"] },
           ],
+        },
+        {
+          model: Partner,
+          as: "supplier",
+          attributes: ["id", "name", "code", "tax_code", "email", "phone", "address"],
         },
         {
           model: User,
