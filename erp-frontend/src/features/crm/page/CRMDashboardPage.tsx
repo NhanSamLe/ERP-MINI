@@ -461,7 +461,7 @@ export default function CRMDashboardPage() {
               : recent.opportunities.slice(0, 5).map((item) => ({
                   id: item.id,
                   title: item.name,
-                  subtitle: formatVND(item.expected_value),
+                  subtitle: formatVND(Number(item.expected_value)),
                   badge: STAGE_LABELS[item.stage] || item.stage,
                 }))}
           />
