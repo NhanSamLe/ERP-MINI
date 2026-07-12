@@ -95,5 +95,7 @@ export interface ITool {
   name: string;
   description: string;
   parameters: ToolParameters;
+  allowedRoles?: string[];
   execute(args: any, context: ToolContext): Promise<ToolResult>;
 }
+
