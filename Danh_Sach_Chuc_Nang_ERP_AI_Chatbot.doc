@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Bản Đặc Tả ERP & Kịch Bản Trình Bày Demo Chuyên Sâu Chatbot AI</title>
+<style>
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    line-height: 1.6;
+    color: #333333;
+    margin: 40px;
+  }
+  h1 {
+    color: #d35400;
+    border-bottom: 2px solid #d35400;
+    padding-bottom: 10px;
+    font-size: 24px;
+    text-transform: uppercase;
+  }
+  h2 {
+    color: #2c3e50;
+    margin-top: 30px;
+    font-size: 18px;
+    border-left: 4px solid #d35400;
+    padding-left: 10px;
+    background-color: #fcf3cf;
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+  h3 {
+    color: #2980b9;
+    font-size: 15px;
+    margin-top: 20px;
+    font-weight: bold;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+  }
+  th {
+    background-color: #e67e22;
+    color: white;
+    font-weight: bold;
+    border: 1px solid #bdc3c7;
+    padding: 10px;
+    text-align: center;
+    font-size: 12px;
+  }
+  td {
+    border: 1px solid #bdc3c7;
+    padding: 10px;
+    font-size: 12px;
+  }
+  tr:nth-child(even) {
+    background-color: #f9f9f9;
+  }
+  ul {
+    margin-top: 5px;
+    margin-bottom: 15px;
+    padding-left: 20px;
+  }
+  li {
+    margin-bottom: 8px;
+    font-size: 13px;
+    text-align: justify;
+  }
+  .check {
+    color: #27ae60;
+    font-weight: bold;
+    text-align: center;
+    font-size: 14px;
+  }
+  .highlight {
+    background-color: #fdf2e9;
+    border: 1px solid #eaf2f8;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+  }
+  .highlight-blue {
+    background-color: #ebf5fb;
+    border: 1px solid #a9dfbf;
+    padding: 18px;
+    border-radius: 8px;
+    margin: 20px 0;
+  }
+</style>
+</head>
+<body>
+
+  <h1>Bản Đặc Tả Danh Sách Chức Năng Theo Từng Role - Hệ Thống ERP Mini</h1>
+  <p><strong>Dự án:</strong> ERP Mini (Tích hợp AI Agentic Chatbot RAG)</p>
+  <p><strong>Tác giả:</strong> Học viên trình bày báo cáo</p>
+
+  <h2>I. Ma Trận Phân Quyền Vai Trò (Role Permission Matrix)</h2>
+  
+  <table>
+    <thead>
+      <tr>
+        <th>Phân hệ / Chức năng chính thực tế</th>
+        <th style="width: 80px;">Admin</th>
+        <th style="width: 80px;">Purchase Staff</th>
+        <th style="width: 80px;">Purchase Manager</th>
+        <th style="width: 80px;">Warehouse Staff</th>
+        <th style="width: 80px;">Warehouse Manager</th>
+        <th style="width: 80px;">Accountant</th>
+        <th style="width: 80px;">Chief Accountant</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Quản lý Người dùng & Chi nhánh</strong></td>
+        <td class="check">✔</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>Cấu hình Thuế suất, Tiền tệ, Đơn vị tính (UOM)</strong></td>
+        <td class="check">✔</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>Lập Yêu cầu báo giá (RFQ) & So sánh báo giá nhà cung cấp</strong></td>
+        <td></td>
+        <td class="check">✔</td>
+        <td class="check">✔</td>
+        <td></td>
+        <td></td>
+        <td class="check">✔</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>Quản lý Bảng giá mua hàng (Price List)</strong></td>
+        <td></td>
+        <td class="check">✔</td>
+        <td class="check">✔</td>
+        <td></td>
+        <td></td>
+        <td class="check">✔</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>Quản lý Đơn mua hàng (PO)</strong></td>
+        <td></td>
+        <td class="check">✔</td>
+        <td class="check">✔</td>
+        <td></td>
+        <td></td>
+        <td class="check">✔</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>Phê duyệt & Ký số Đơn mua hàng (PO)</strong></td>
+        <td></td>
+        <td></td>
+        <td class="check">✔</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>Quản lý Yêu cầu trả hàng (PRA) & Phiếu trả hàng NCC (Purchase Return)</strong></td>
+        <td></td>
+        <td class="check">✔</td>
+        <td class="check">✔</td>
+        <td></td>
+        <td></td>
+        <td class="check">✔</td>
+        <td class="check">✔</td>
+      </tr>
+      <tr>
+        <td><strong>Trò chuyện & Truy vấn dữ liệu tức thời qua Chatbot AI (Tất cả Roles)</strong></td>
+        <td class="check">✔</td>
+        <td class="check">✔</td>
+        <td class="check">✔</td>
+        <td class="check">✔</td>
+        <td class="check">✔</td>
+        <td class="check">✔</td>
+        <td class="check">✔</td>
+      </tr>
+      <tr>
+        <td><strong>Quản lý Giảm trừ công nợ (Debit Note) & Hoàn tiền (Vendor Refund)</strong></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="check">✔</td>
+        <td class="check">✔</td>
+      </tr>
+      <tr>
+        <td><strong>Lập Hóa đơn mua hàng (AP Invoice) & Đối chiếu 3 bên (3-Way Matching)</strong></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="check">✔</td>
+        <td class="check">✔</td>
+      </tr>
+      <tr>
+        <td><strong>Lập phiếu Nhập/Xuất/Điều chuyển/Kiểm kê kho</strong></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="check">✔</td>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>Quản lý Số lô (Lot) & Theo dõi Hạn sử dụng hàng hóa</strong></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="check">✔</td>
+        <td class="check">✔</td>
+        <td></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>Phê duyệt & Ký số Phiếu dịch chuyển kho (Stock Move)</strong></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="check">✔</td>
+        <td></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>Lập Phiếu chi thanh toán Phải trả (AP Payment)</strong></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="check">✔</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>Phê duyệt & Ký số Phiếu chi (AP Payment)</strong></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="check">✔</td>
+      </tr>
+      <tr>
+        <td><strong>Quản lý Hệ thống tài khoản (CoA) & đóng/mở kỳ kế toán</strong></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="check">✔</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>II. Danh Sách Các Chức Năng Nghiệp Vụ Theo Từng Vai Trò</h2>
+
+  <h3>1. Vai trò: Admin (Quản trị hệ thống)</h3>
+  <ul>
+    <li><strong>Quản lý nhân viên & chi nhánh:</strong> Thực hiện thêm mới nhân sự, gán vai trò và phân bổ vào chi nhánh cụ thể.</li>
+    <li><strong>Cài đặt dữ liệu nền hệ thống:</strong> Cấu hình danh mục ngoại tệ giao dịch, cập nhật tỷ giá hối đoái và thuế suất.</li>
+    <li><strong>Thiết lập Đơn vị tính (UOM Config):</strong> Khai báo hệ thống các đơn vị tính và cấu hình quy tắc quy đổi UOM.</li>
+  </ul>
+
+  <h3>2. Vai trò: Purchase Staff (Nhân viên mua hàng)</h3>
+  <ul>
+    <li><strong>Quản lý Yêu cầu báo giá (RFQ):</strong> Lập phiếu RFQ, chọn nhà cung cấp gửi yêu cầu báo giá và ghi nhận báo giá phản hồi.</li>
+    <li><strong>So sánh báo giá nhà cung cấp (RFQ Comparison):</strong> Sử dụng chức năng so sánh đơn giá giữa các nhà cung cấp để chọn báo giá tối ưu.</li>
+    <li><strong>Quản lý Bảng giá mua hàng (Price List):</strong> Xem và theo dõi danh sách bảng giá sản phẩm áp dụng cho các nhà cung cấp.</li>
+    <li><strong>Quản lý Đơn mua hàng (PO):</strong> Tạo đơn mua hàng PO mới (độc lập hoặc kế thừa từ RFQ), theo dõi trạng thái đơn hàng.</li>
+    <li><strong>Lập Yêu cầu trả hàng nhà cung cấp (PRA):</strong> Tạo yêu cầu trả hàng lỗi/hỏng (Purchase Return Authorization) gửi nhà cung cấp phê duyệt.</li>
+    <li><strong>Lập Phiếu trả hàng (Purchase Return):</strong> Khởi tạo chứng từ trả hàng vật lý dựa trên PRA đã duyệt.</li>
+  </ul>
+
+  <h3>3. Vai trò: Purchase Manager (Trưởng phòng mua hàng)</h3>
+  <ul>
+    <li><strong>Quản lý Bảng giá mua hàng (Price List):</strong> Tạo mới, chỉnh sửa bảng giá sản phẩm và thời gian hiệu lực áp dụng cho từng nhà cung cấp.</li>
+    <li><strong>Phê duyệt đơn hàng (PO approval):</strong> Phê duyệt đơn lẻ hoặc phê duyệt hàng loạt các đơn hàng PO chờ duyệt, từ chối PO sai sót kèm lý do.</li>
+    <li><strong>Quản lý Chữ ký điện tử & Ký duyệt PO:</strong> Thiết lập mã PIN 6 số và chữ ký mẫu; thực hiện ký duyệt điện tử bảo mật (SHA-256) trên PO.</li>
+    <li><strong>Phê duyệt yêu cầu trả hàng (PRA & Purchase Return):</strong> Xem xét và phê duyệt các chứng từ trả hàng nhà cung cấp.</li>
+  </ul>
+
+  <h3>4. Vai trò: Warehouse Staff (Nhân viên kho)</h3>
+  <ul>
+    <li><strong>Quản lý nhập kho (Goods Receipt):</strong> Tạo phiếu nhập kho theo PO đã duyệt, phân phối sản phẩm vào vị trí kệ kho, khai báo số lô và ngày hết hạn.</li>
+    <li><strong>Quản lý xuất kho (Goods Issue):</strong> Khởi tạo phiếu xuất kho bán hàng (theo SO) hoặc phiếu xuất kho trả hàng về nhà cung cấp (dựa trên phiếu Purchase Return).</li>
+    <li><strong>Quản lý điều chuyển kho (Stock Transfer):</strong> Khởi tạo yêu cầu dịch chuyển hàng hóa nội bộ giữa các kho hoặc giữa các khu vực kệ trong kho.</li>
+    <li><strong>Quản lý kiểm kê kho (Physical Inventory):</strong> Tạo phiếu kiểm kê kho định kỳ, ghi nhận chênh lệch số đếm thực tế và chạy phiếu điều chỉnh tồn kho tự động.</li>
+  </ul>
+
+  <h3>5. Vai trò: Warehouse Manager (Trưởng kho)</h3>
+  <ul>
+    <li><strong>Phê duyệt chứng từ kho:</strong> Duyệt các phiếu nhập, xuất, điều chuyển, kiểm kê kho thông qua ký số điện tử.</li>
+    <li><strong>Giám sát hạn sử dụng lô hàng (Lot expiration monitoring):</strong> Theo dõi hạn dùng của các lô sản phẩm và nhận cảnh báo sớm về các lô hàng sắp hết hạn.</li>
+    <li><strong>Xuất báo cáo kho:</strong> Trích xuất dữ liệu thẻ kho, báo cáo dịch chuyển kho chi tiết ra file Excel.</li>
+  </ul>
+
+  <h3>6. Vai trò: Accountant (Kế toán viên)</h3>
+  <ul>
+    <li><strong>Lập Hóa đơn mua hàng (AP Invoice):</strong> Lập hóa đơn mua hàng phải trả nhà cung cấp dựa trên PO và phiếu nhập kho đã xác nhận.</li>
+    <li><strong>Thực hiện đối chiếu hóa đơn 3 bên (3-Way Matching):</strong> So khớp chênh lệch số lượng và đơn giá giữa PO - Goods Receipt - AP Invoice để kiểm soát tính hợp lệ của thanh toán.</li>
+    <li><strong>Quản lý Giảm trừ công nợ (Debit Note):</strong> Lập phiếu ghi giảm nợ phải trả đối với hàng hóa trả lại nhà cung cấp dựa trên phiếu trả hàng.</li>
+    <li><strong>Quản lý Hoàn tiền nhà cung cấp (Vendor Refund):</strong> Ghi nhận chứng từ tiền hoàn lại từ nhà cung cấp cho các giao dịch trả hàng/thừa tiền.</li>
+    <li><strong>Quản lý đề nghị thanh toán (AP Payment request):</strong> Lập phiếu chi/đề xuất thanh toán cho các hóa đơn mua hàng đã đối chiếu khớp đúng.</li>
+    <li><strong>Quản lý Sổ nhật ký chung (GL Journal):</strong> Tạo mới và hạch toán thủ công các bút toán nhật ký điều chỉnh kế toán hoặc phân bổ chi phí.</li>
+  </ul>
+
+  <h3>7. Vai trò: Chief Accountant (Kế toán trưởng)</h3>
+  <ul>
+    <li><strong>Phê duyệt & Ký số kế toán:</strong> Duyệt ký số đối với Hóa đơn mua hàng (AP Invoice), chứng từ giảm nợ (Debit Note), hoàn tiền (Vendor Refund) và các phiếu chi thanh toán (AP Payment).</li>
+    <li><strong>Quản trị Hệ thống tài khoản (CoA):</strong> Thiết lập và cập nhật danh mục hệ thống tài khoản kế toán doanh nghiệp.</li>
+    <li><strong>Cấu hình quy tắc định khoản tự động (Account Mappings):</strong> Thiết lập ánh xạ tài khoản ghi sổ tự động cho các sự kiện mua hàng, kho hàng, thuế và công nợ.</li>
+    <li><strong>Quản lý Kỳ kế toán (Fiscal Period management):</strong> Mở/Đóng kỳ kế toán và thực hiện khóa sổ kỳ cũ để đóng băng dữ liệu tài chính lịch sử.</li>
+  </ul>
+
+  <h2>III. Chức Năng Đặc Biệt Độc Đáo Được Chọn Để Demo</h2>
+  
+  <div class="highlight-blue">
+    <p><strong>Tên chức năng:</strong> Hệ Thống AI Agentic Chatbot RAG Hỗ Trợ Truy Vấn Dữ Liệu Tức Thời (AI Chatbot with Function Calling & RAG)</p>
+    <p><strong>Điểm độc đáo:</strong> 
+      Chatbot không đơn giản là trả lời các câu hỏi lý thuyết, mà hoạt động như một **AI Agent** thực thụ trong ERP.
+      Hệ thống tích hợp mô hình ngôn ngữ lớn (OpenAI gpt-4o-mini) với cơ chế **Function Calling (14 công cụ nghiệp vụ)**. Khi nhận được câu hỏi ngôn ngữ tự nhiên từ nhân viên (ví dụ: truy vấn kho, tìm đơn mua hàng, xem công nợ), AI tự động quyết định gọi API/Sequelize model trực tiếp dưới database chi nhánh đó để xử lý dữ liệu và vẽ biểu đồ phân tích thời gian thực trong khung chat.
+    </p>
+  </div>
+
+  <h3>Các đặc tính công nghệ nổi bật của AI Chatbot:</h3>
+  <ol>
+    <li><strong>Cơ chế RAG & Function Calling (Gọi hàm nghiệp vụ):</strong> 
+      Chatbot sở hữu **14 tools** chuyên biệt chia theo các phân hệ (Inventory, Sales, Purchase, CRM, HRM, Finance) để truy xuất dữ liệu Sequelize trực tiếp. AI tự phân tích câu hỏi của user và lập kế hoạch gọi các hàm phù hợp, lặp tối đa 5 bước (iterations) để thu thập đủ dữ liệu.
+    </li>
+    <li><strong>Bảo mật phân vùng dữ liệu người dùng (Tenant Isolation):</strong> 
+      Khi AI gọi các hàm nghiệp vụ, hệ thống bắt buộc gửi kèm mã JWT của user. Các hàm query DB luôn kèm điều kiện chi nhánh (`branchId` trong Token) đảm bảo nhân viên chi nhánh này không bao giờ xem lén được dữ liệu của chi nhánh khác thông qua chatbot.
+    </li>
+    <li><strong>Cơ chế Context Window (Quản lý ngữ cảnh thông minh):</strong> 
+      Để tối ưu hóa chi phí token và tránh quá tải giới hạn ngữ cảnh, Chatbot tự động quản lý một cửa sổ lịch sử gồm **20 tin nhắn gần nhất** theo đúng trình tự thời gian chronological để duy trì mạch hội thoại.
+    </li>
+    <li><strong>Cơ chế Bảo vệ Rate Limiting:</strong> 
+      Tích hợp hệ thống giới hạn tần suất gửi tin nhắn (`chatRateLimit`) tối đa **20 requests/phút per user** (dựa theo địa chỉ IP và ID tài khoản) để ngăn chặn tấn công spam hoặc lạm dụng API tốn kém.
+    </li>
+  </ol>
+
+  <h3>Kịch Bản Trình Bày Demo Chuyên Sâu 5 Phút:</h3>
+  <ul>
+    <li><strong>Bước 1 - Slide & Tổng quan (1.5 phút):</strong> Giới thiệu bài toán khó khi các cấp quản lý muốn lấy báo cáo nhanh nhưng giao diện ERP quá nhiều menu. Giới thiệu kiến trúc AI Chatbot RAG (OpenAI API + Sequelize Tools + Tenant Isolation).</li>
+    <li><strong>Bước 2 - Demo truy vấn Kho hàng (1.5 phút):</strong> 
+      Đăng nhập tài khoản Nhân viên kho, gõ chat: *"Kho của tôi hiện có những sản phẩm nào sắp hết hạn sử dụng không?"* 
+      -> Chatbot tự nhận diện gọi tool `get_expiring_lots` kết nối DB chi nhánh và trả về danh sách các số lô, mã sản phẩm kèm hạn dùng chi tiết dạng bảng sạch đẹp.
+    </li>
+    <li><strong>Bước 3 - Demo truy vấn Tài chính / Mua hàng (1 phút):</strong> 
+      Gõ chat tiếp: *"Thống kê đơn mua hàng PO lớn nhất trong tháng này"* 
+      -> Chatbot nhận diện, gọi tool mua hàng để tìm kiếm PO có tổng tiền lớn nhất, trả về mã PO, tên nhà cung cấp và tổng số tiền trực quan.
+    </li>
+    <li><strong>Bước 4 - Tóm tắt & Trả lời câu hỏi (1 phút):</strong> Nhấn mạnh tính bảo mật chống leak dữ liệu giữa các chi nhánh khi dùng Chatbot AI và chốt buổi thuyết trình.</li>
+  </ul>
+
+</body>
+</html>

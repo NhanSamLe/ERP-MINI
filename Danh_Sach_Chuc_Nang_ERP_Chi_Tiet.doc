@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Bảng Tóm Tắt Chức Năng Theo Từng Role - ERP Mini</title>
+<style>
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    line-height: 1.6;
+    color: #333333;
+    margin: 40px;
+  }
+  h1 {
+    color: #d35400;
+    border-bottom: 2px solid #d35400;
+    padding-bottom: 10px;
+    font-size: 24px;
+    text-transform: uppercase;
+  }
+  h2 {
+    color: #2c3e50;
+    margin-top: 30px;
+    font-size: 18px;
+    border-left: 4px solid #d35400;
+    padding-left: 10px;
+    background-color: #fcf3cf;
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+  h3 {
+    color: #2980b9;
+    font-size: 15px;
+    margin-top: 20px;
+    font-weight: bold;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+  }
+  th {
+    background-color: #e67e22;
+    color: white;
+    font-weight: bold;
+    border: 1px solid #bdc3c7;
+    padding: 10px;
+    text-align: center;
+    font-size: 12px;
+  }
+  td {
+    border: 1px solid #bdc3c7;
+    padding: 10px;
+    font-size: 12px;
+  }
+  tr:nth-child(even) {
+    background-color: #f9f9f9;
+  }
+  ul {
+    margin-top: 5px;
+    margin-bottom: 15px;
+    padding-left: 20px;
+  }
+  li {
+    margin-bottom: 8px;
+    font-size: 13px;
+    text-align: justify;
+  }
+  .check {
+    color: #27ae60;
+    font-weight: bold;
+    text-align: center;
+    font-size: 14px;
+  }
+  .highlight {
+    background-color: #fdf2e9;
+    border: 1px solid #fadbd8;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+  }
+</style>
+</head>
+<body>
+
+  <h1>Bản Đặc Tả Chi Tiết Chức Năng Theo Từng Role - Hệ Thống ERP Mini</h1>
+  <p><strong>Dự án:</strong> ERP Mini (Phân hệ Mua hàng, Kho hàng, Kế toán Tài chính)</p>
+  <p><strong>Tác giả:</strong> Học viên trình bày báo cáo</p>
+
+  <h2>I. Ma Trận Phân Quyền Vai Trò (Role Permission Matrix)</h2>
+  
+  <table>
+    <thead>
+      <tr>
+        <th>Nhiệm vụ / Chức năng chi tiết</th>
+        <th style="width: 80px;">Admin</th>
+        <th style="width: 80px;">Purchase Staff</th>
+        <th style="width: 80px;">Purchase Manager</th>
+        <th style="width: 80px;">Warehouse Staff</th>
+        <th style="width: 80px;">Warehouse Manager</th>
+        <th style="width: 80px;">Accountant</th>
+        <th style="width: 80px;">Chief Accountant</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Quản lý Người dùng & Chi nhánh</strong></td>
+        <td class="check">✔</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>Cấu hình Thuế suất, Tiền tệ, Đơn vị tính (UOM)</strong></td>
+        <td class="check">✔</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>Lập Yêu cầu báo giá (RFQ) & chọn nhà cung cấp</strong></td>
+        <td></td>
+        <td class="check">✔</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>Lập Đơn mua hàng (PO) & quy đổi UOM, phân bổ chiết khấu</strong></td>
+        <td></td>
+        <td class="check">✔</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>Phê duyệt & Ký số Đơn mua hàng (PO)</strong></td>
+        <td></td>
+        <td></td>
+        <td class="check">✔</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>Lập Hóa đơn mua hàng (AP Invoice) từ PO</strong></td>
+        <td></td>
+        <td class="check">✔</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="check">✔</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>Lập phiếu Nhập/Xuất/Điều chuyển/Kiểm kê kho</strong></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="check">✔</td>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>Quản lý Số lô (Lot) & Theo dõi Hạn sử dụng hàng hóa</strong></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="check">✔</td>
+        <td class="check">✔</td>
+        <td></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>Phê duyệt & Ký số Phiếu dịch chuyển kho (Stock Move)</strong></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="check">✔</td>
+        <td></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>Thực hiện đối chiếu hóa đơn 3 bên (3-Way Matching)</strong></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="check">✔</td>
+        <td class="check">✔</td>
+      </tr>
+      <tr>
+        <td><strong>Lập Phiếu chi thanh toán Phải trả (AP Payment)</strong></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="check">✔</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td><strong>Phê duyệt & Ký số Phiếu chi (AP Payment)</strong></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="check">✔</td>
+      </tr>
+      <tr>
+        <td><strong>Quản lý Hệ thống tài khoản (CoA) & đóng/mở kỳ kế toán</strong></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="check">✔</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>II. Danh Sách Chức Năng Chi Tiết Theo Từng Vai Trò</h2>
+
+  <h3>1. Vai trò: Admin (Quản trị hệ thống)</h3>
+  <ul>
+    <li><strong>Quản lý tài khoản người dùng:</strong> Thực hiện thêm mới nhân sự, chỉnh sửa thông tin liên lạc, thiết lập họ tên và quản lý mật khẩu tài khoản hệ thống.</li>
+    <li><strong>Kích hoạt & vô hiệu hóa tài khoản:</strong> Đóng băng tài khoản của nhân viên đã nghỉ việc để bảo mật thông tin và kích hoạt tài khoản cho nhân viên mới.</li>
+    <li><strong>Gán vai trò và phân quyền (Roles Assignment):</strong> Cấp quyền truy cập hệ thống theo đúng vai trò nghiệp vụ thực tế như Admin, Purchase Staff, Purchase Manager, Warehouse Staff, Warehouse Manager, Accountant, Chief Accountant.</li>
+    <li><strong>Phân bổ chi nhánh làm việc (Branch Assignment):</strong> Phân bổ nhân sự vào các chi nhánh/văn phòng cụ thể để phục vụ việc phân vùng dữ liệu và hiển thị chứng từ đúng thẩm quyền chi nhánh đó.</li>
+    <li><strong>Cấu hình danh mục Tiền tệ (Currency Settings):</strong> Quản lý các loại tiền tệ dùng trong giao dịch thương mại (VND, USD, EUR...) và thiết lập tỷ giá quy đổi tiền tệ liên tục.</li>
+    <li><strong>Cấu hình danh mục Thuế suất (Tax Rates):</strong> Cài đặt các mức thuế VAT đầu vào/đầu ra và các loại thuế nhập khẩu phục vụ tính toán tự động trên đơn hàng.</li>
+    <li><strong>Cấu hình Đơn vị tính (UOM - Unit of Measure):</strong> Khai báo hệ thống các đơn vị tính cơ bản sử dụng trong doanh nghiệp như Cái, Hộp, Thùng, Gói, Kilogram, Mét, Lít, Bộ.</li>
+    <li><strong>Thiết lập bảng quy đổi đơn vị tính (UOM Conversions):</strong> Thiết lập tỷ lệ quy đổi giữa các đơn vị tính cho từng mã sản phẩm cụ thể (ví dụ: 1 thùng = 24 lon) hoặc quy đổi chung toàn hệ thống.</li>
+    <li><strong>Cấu hình ca làm việc & Quy định chấm công:</strong> Thiết lập các khung giờ chuẩn chấm công, ca kíp và quy chế đi trễ/về sớm của nhân viên.</li>
+  </ul>
+
+  <h3>2. Vai trò: Purchase Staff (Nhân viên mua hàng)</h3>
+  <ul>
+    <li><strong>Khởi tạo yêu cầu báo giá (Create RFQ):</strong> Lập các phiếu RFQ gửi đến nhà cung cấp dựa trên nhu cầu mua sắm bổ sung nguyên vật liệu/hàng hóa từ các bộ phận gửi lên.</li>
+    <li><strong>Chọn nhà cung cấp gửi báo giá:</strong> Tìm kiếm, lọc và chọn lựa danh sách nhà cung cấp uy tín từ danh bạ đối tác để gửi yêu cầu báo giá hàng loạt hoặc đơn lẻ.</li>
+    <li><strong>Cập nhật giá phản hồi từ nhà cung cấp:</strong> Ghi nhận đơn giá chào hàng, mức chiết khấu đề xuất và thời gian dự kiến giao hàng mà nhà cung cấp phản hồi.</li>
+    <li><strong>So sánh và chọn lựa báo giá tối ưu:</strong> Thực hiện so sánh giá giữa các nhà cung cấp trên hệ thống để chọn ra đơn vị cung cấp tối ưu nhất về chi phí và thời gian.</li>
+    <li><strong>Kết chuyển RFQ sang Đơn mua hàng (PO):</strong> Chuyển trạng thái RFQ được chọn thành đơn đặt hàng PO nháp, kế thừa toàn bộ thông tin sản phẩm và đơn giá chào hàng giúp loại bỏ thao tác nhập liệu lại.</li>
+    <li><strong>Tạo mới Đơn mua hàng (PO) độc lập:</strong> Chủ động soạn thảo và khởi tạo các đơn mua hàng độc lập ngoài luồng RFQ khi có yêu cầu mua sắm đột xuất từ các bộ phận.</li>
+    <li><strong>Quy đổi Đơn vị tính tự động trên PO:</strong> Chọn lựa đơn vị mua hàng khác với đơn vị lưu kho của sản phẩm, hệ thống tự động tính toán số lượng lượng tồn kho tương ứng.</li>
+    <li><strong>Áp dụng nguồn giá tự động (Price Source Selection):</strong> Hệ thống tự động truy vấn giá mua từ Bảng giá mua hiện hành, Bảng giá đối tác hoặc Giá vốn để gợi ý đơn giá mua tối ưu nhất.</li>
+    <li><strong>Phân bổ chiết khấu tổng đơn hàng (Header Discount):</strong> Nhập mức chiết khấu cố định hoặc phần trăm trên tổng đơn hàng, hệ thống tự động tính toán và phân bổ tỷ trọng chiết khấu chi tiết xuống từng dòng sản phẩm.</li>
+    <li><strong>Lập Hóa đơn mua hàng (AP Invoice) từ PO:</strong> Khởi tạo hóa đơn AP nháp từ các PO đã duyệt giao hàng, ghi nhận số hóa đơn tài chính của nhà cung cấp phục vụ đối chiếu công nợ.</li>
+  </ul>
+
+  <h3>3. Vai trò: Purchase Manager (Trưởng phòng mua hàng)</h3>
+  <ul>
+    <li><strong>Xem xét chi tiết Đơn mua hàng (PO):</strong> Kiểm tra kỹ lưỡng các thông tin liên quan đến đối tác, danh sách sản phẩm đặt mua, đơn giá và tổng giá trị đơn hàng chờ duyệt.</li>
+    <li><strong>Phê duyệt đơn lẻ Đơn mua hàng (PO):</strong> Tiến hành phê duyệt và cấp phép thực hiện đối với từng đơn mua hàng riêng biệt.</li>
+    <li><strong>Phê duyệt hàng loạt Đơn mua hàng (Bulk PO Approval):</strong> Tích chọn nhiều đơn hàng PO cùng lúc để tiến hành duyệt nhanh, giúp tối ưu hóa thời gian xử lý hồ sơ hàng ngày.</li>
+    <li><strong>Từ chối Đơn mua hàng (Reject PO):</strong> Từ chối duyệt các đơn hàng có sai sót về giá hoặc số lượng, đồng thời nhập lý do từ chối cụ thể để nhân viên nắm thông tin sửa lại.</li>
+    <li><strong>Phê duyệt Hóa đơn mua hàng (AP Invoice):</strong> Xem xét và phê duyệt hóa đơn mua hàng trước khi chuyển tiếp thông tin sang phòng kế toán thực hiện thanh toán.</li>
+    <li><strong>Đăng ký chữ ký điện tử mẫu:</strong> Thiết lập và lưu trữ hình ảnh chữ ký mẫu cá nhân trực tiếp trên tài khoản hệ thống để phục vụ ký duyệt.</li>
+    <li><strong>Thiết lập Mã PIN ký duyệt bảo mật:</strong> Cài đặt mã PIN xác thực 6 số bảo mật dùng riêng cho mỗi lần phê duyệt tài liệu.</li>
+    <li><strong>Ký duyệt điện tử bằng mã PIN (Digital Approval):</strong> Thực hiện ký duyệt điện tử lên PO và hóa đơn, tự động gắn chữ ký mẫu và mã băm SHA-256 khóa dữ liệu giao dịch chống giả mạo.</li>
+  </ul>
+
+  <h3>4. Vai trò: Warehouse Staff (Nhân viên kho)</h3>
+  <ul>
+    <li><strong>Lập phiếu Nhập kho (Goods Receipt):</strong> Soạn và khởi tạo các phiếu nhập kho dựa trên dữ liệu từ các Đơn mua hàng (PO) đã được phê duyệt giao hàng từ nhà cung cấp.</li>
+    <li><strong>Khai báo Số lô (Lot Number):</strong> Thiết lập số lô sản xuất cho từng dòng hàng khi nhập kho để phục vụ công tác truy xuất nguồn gốc sản phẩm về sau.</li>
+    <li><strong>Khai báo Hạn sử dụng (Expiration Date):</strong> Nhập thông tin ngày hết hạn đối với các mặt hàng có hạn dùng cụ thể để hệ thống quản lý xuất kho theo cơ chế FIFO/FEFO.</li>
+    <li><strong>Phân bổ vị trí lưu kho (Stock Locations):</strong> Khai báo vị trí kệ hàng, sơ đồ kho chứa sản phẩm để dễ dàng tìm kiếm và kiểm kê.</li>
+    <li><strong>Lập phiếu Xuất kho bán hàng (Goods Issue):</strong> Khởi tạo phiếu xuất kho giao hàng dựa trên thông tin Đơn bán hàng (SO) đã được bộ phận kinh doanh duyệt.</li>
+    <li><strong>Lập phiếu Xuất kho trả hàng (Purchase Return Issue):</strong> Lập phiếu xuất trả hàng hỏng, lỗi hoặc không đạt tiêu chuẩn về cho nhà cung cấp theo biên bản trả hàng.</li>
+    <li><strong>Lập phiếu Điều chuyển kho nội bộ (Stock Transfer):</strong> Khởi tạo phiếu yêu cầu dịch chuyển hàng hóa giữa các kho vật lý khác nhau hoặc giữa các vị trí kệ hàng trong cùng một kho.</li>
+    <li><strong>Lập phiếu Kiểm kê kho (Physical Inventory):</strong> Tạo phiếu ghi nhận số lượng thực tế kiểm đếm của từng mã sản phẩm tại kho tại thời điểm kiểm kê.</li>
+    <li><strong>Thực hiện phiếu Điều chỉnh tồn kho (Stock Adjustment):</strong> Tự động điều chỉnh tăng hoặc giảm số lượng tồn kho trên phần mềm để khớp đúng với chênh lệch số lượng kiểm kê thực tế.</li>
+    <li><strong>Xem lịch sử dịch chuyển kho:</strong> Tra cứu báo cáo Thẻ kho chi tiết hiển thị toàn bộ luồng xuất, nhập của từng sản phẩm cụ thể.</li>
+  </ul>
+
+  <h3>5. Vai trò: Warehouse Manager (Trưởng kho)</h3>
+  <ul>
+    <li><strong>Xem xét chi tiết phiếu kho:</strong> Kiểm tra chênh lệch số lượng, mã sản phẩm, số lô và vị trí lưu trữ được đề xuất trên các phiếu kho chờ duyệt.</li>
+    <li><strong>Ký duyệt điện tử Phiếu nhập/xuất kho:</strong> Sử dụng mã PIN và chữ ký điện tử phê duyệt chính thức giao dịch kho, cập nhật số lượng tồn kho tức thời (Real-time Inventory).</li>
+    <li><strong>Ký duyệt Phiếu điều chuyển kho:</strong> Duyệt các yêu cầu dịch chuyển hàng liên chi nhánh hoặc liên kho, đồng thời theo dõi trạng thái hàng đang đi đường (In Transit).</li>
+    <li><strong>Ký duyệt Phiếu kiểm kê & điều chỉnh:</strong> Xác nhận nguyên nhân chênh lệch kiểm kê và phê duyệt phiếu điều chỉnh để cân bằng lại sổ sách kho.</li>
+    <li><strong>Theo dõi và Giám sát hạn dùng của lô hàng:</strong> Kiểm soát danh sách hàng tồn kho sắp hết hạn dùng (Expiring Lots) thông qua dashboard trực quan để ưu tiên giải phóng hàng sớm.</li>
+    <li><strong>Theo dõi biểu đồ trực quan kho:</strong> Theo dõi biến động lượng hàng nhập, xuất và tỷ trọng dịch chuyển của các kho theo thời gian thực.</li>
+    <li><strong>Xuất báo cáo kho ra Excel:</strong> Trích xuất nhanh dữ liệu tồn kho, báo cáo thẻ kho, báo cáo dịch chuyển kho chi tiết sang định dạng Excel.</li>
+  </ul>
+
+  <h3>6. Vai trò: Accountant (Kế toán viên)</h3>
+  <ul>
+    <li><strong>Thực hiện đối chiếu hóa đơn 3 bên (3-Way Matching):</strong> So khớp chênh lệch số lượng và đơn giá giữa 3 tài liệu: Đơn đặt hàng (PO) - Phiếu thực tế nhập kho (Goods Receipt) - Hóa đơn mua hàng (AP Invoice).</li>
+    <li><strong>Kiểm tra Biên độ dung sai (Matching Tolerance):</strong> Đánh giá mức độ lệch giá/số lượng có nằm trong khoảng dung sai cho phép để quyết định duyệt tiếp hay chặn thanh toán.</li>
+    <li><strong>Lập Phiếu đề nghị thanh toán (AP Payment request):</strong> Khởi tạo phiếu chi đề xuất thanh toán cho các hóa đơn mua hàng đã vượt qua bài kiểm tra đối chiếu 3 bên thành công.</li>
+    <li><strong>Hạch toán tự động (Automatic Posting):</strong> Khi hóa đơn AP được duyệt, hệ thống tự động định khoản: Ghi Nợ TK Chi phí/Hàng hóa và Ghi Có TK Phải trả người bán (331).</li>
+    <li><strong>Hạch toán Phiếu chi thanh toán:</strong> Tự động định khoản: Ghi Nợ TK Phải trả người bán (331) và Ghi Có TK Tiền mặt (111)/Tiền gửi ngân hàng (112) sau khi phiếu chi được phê duyệt thanh toán.</li>
+    <li><strong>Tạo bút toán Nhật ký thủ công (Manual Journal Entry):</strong> Soạn thảo và định khoản trực tiếp các bút toán điều chỉnh kế toán hoặc phân bổ chi phí phát sinh thủ công.</li>
+  </ul>
+
+  <h3>7. Vai trò: Chief Accountant (Kế toán trưởng)</h3>
+  <ul>
+    <li><strong>Phê duyệt Hóa đơn mua hàng (AP Invoice Approval):</strong> Kiểm duyệt các hóa đơn mua hàng và thực hiện ký số duyệt ghi nhận công nợ chính thức.</li>
+    <li><strong>Phê duyệt Phiếu chi (AP Payment Approval):</strong> Phê duyệt ký số chi tiền thanh toán cho nhà cung cấp bằng mã PIN bảo mật.</li>
+    <li><strong>Quản trị Hệ thống tài khoản kế toán (Chart of Accounts):</strong> Xây dựng, cập nhật cấu trúc hệ thống tài khoản kế toán của doanh nghiệp theo đúng chuẩn chế độ kế toán.</li>
+    <li><strong>Thiết lập Ánh xạ tài khoản tự động (Account Mappings):</strong> Cấu hình tài khoản ghi sổ tự động cho các sự kiện mua hàng, xuất nhập kho, thuế đầu vào/đầu ra và các đối tượng công nợ.</li>
+    <li><strong>Quản lý Kỳ kế toán (Fiscal Periods):</strong> Thiết lập các kỳ kế toán theo tháng/năm trên hệ thống tài chính.</li>
+    <li><strong>Thực hiện khóa kỳ kế toán (Lock Period):</strong> Khóa sổ kỳ kế toán cũ để đóng băng dữ liệu, ngăn ngừa hoàn toàn các trường hợp nhân viên sửa đổi số liệu tài chính của kỳ trước đã báo cáo thuế.</li>
+    <li><strong>Trích xuất báo cáo tài chính:</strong> Xem và xuất dữ liệu Sổ cái chi tiết, Bảng cân đối phát sinh tài khoản, Báo cáo công nợ phải trả ra Excel/PDF phục vụ thanh kiểm tra.</li>
+  </ul>
+
+  <h2>III. Đề Xuất Kịch Bản Trình Bày Demo Chức Năng Tâm Huyết</h2>
+  
+  <div class="highlight">
+    <p><strong>Tên chức năng:</strong> Quy trình Ký Duyệt Điện Tử & Bảo Mật Chống Giả Mạo Chứng Từ (Digital Approval & Cryptographic Signature Flow)</p>
+    <p><strong>Lý do lựa chọn:</strong> Đây là tính năng thể hiện sự liên kết nghiệp vụ chặt chẽ giữa các vai trò (từ nhân viên đề xuất đến cấp quản lý ký duyệt), đồng thời mang tính bảo mật kỹ thuật cao, đáp ứng chuẩn kiểm toán doanh nghiệp thực tế.</p>
+  </div>
+
+  <h3>Các bước trình bày trong buổi Demo:</h3>
+  <ol>
+    <li><strong>Bước 1 - Khởi động kịch bản:</strong> Giả lập tài khoản Nhân viên kho tạo mới một Phiếu dịch chuyển kho (Stock Move) trạng thái nháp và nhấn gửi phê duyệt lên hệ thống.</li>
+    <li><strong>Bước 2 - Kiểm tra ràng buộc an toàn (Security Constraint):</strong>
+      <ul>
+        <li>Đăng nhập tài khoản Trưởng kho chưa cấu hình chữ ký mẫu. Nhấp vào "Ký duyệt".</li>
+        <li>Hệ thống ngay lập tức hiển thị thông báo lỗi chặn hành vi vẽ chữ ký tay tùy tiện, đồng thời dẫn hướng thông minh sang trang Hồ sơ cá nhân.</li>
+      </ul>
+    </li>
+    <li><strong>Bước 3 - Cấu hình chữ ký mẫu:</strong> Thực hiện đăng ký Mã PIN bảo mật 6 số và vẽ Chữ ký điện tử mẫu cố định trên màn hình Profile của Trưởng kho.</li>
+    <li><strong>Bước 4 - Ký số điện tử thành công:</strong>
+      <ul>
+        <li>Quay lại phiếu kho ban nãy, nhấn "Ký duyệt". Hệ thống tự động tải chữ ký mẫu đã cấu hình lên canvas.</li>
+        <li>Nhập chính xác mã PIN 6 số. Hệ thống thực hiện mã hóa chữ ký, đối chiếu mã PIN bằng cơ chế bcrypt ở Backend.</li>
+        <li>Tạo mã băm bảo mật SHA-256 từ thông tin cốt lõi của phiếu kho để ghi nhận lịch sử ký duyệt vĩnh viễn, ngăn chặn mọi nỗ lực can thiệp thay đổi dữ liệu từ database.</li>
+      </ul>
+    </li>
+  </ol>
+
+</body>
+</html>
