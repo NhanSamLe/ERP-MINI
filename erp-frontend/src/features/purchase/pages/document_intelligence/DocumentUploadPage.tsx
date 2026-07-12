@@ -37,6 +37,7 @@ import {
 import { documentIntelligenceApi } from "../../api/documentIntelligence.api";
 import { OcrStatus } from "../../constants/purchaseStatus.enum";
 import { translateUomName } from "../../../inventory/components/UomSelect";
+import { NumberField } from "@/components/ui/NumberField";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const ACCEPTED_TYPES = ["application/pdf", "image/jpeg", "image/png"];
@@ -1116,44 +1117,40 @@ export default function DocumentUploadPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Cộng tiền hàng
                   </label>
-                  <input
-                    type="number"
+                  <NumberField
                     value={editSubtotal}
-                    onChange={(e) => setEditSubtotal(Number(e.target.value))}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm"
+                    onChange={(v) => setEditSubtotal(v ?? 0)}
+                    className="h-10 rounded-lg text-left"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Chiết khấu tổng đơn
                   </label>
-                  <input
-                    type="number"
+                  <NumberField
                     value={editDiscountAmount}
-                    onChange={(e) => setEditDiscountAmount(Number(e.target.value))}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm"
+                    onChange={(v) => setEditDiscountAmount(v ?? 0)}
+                    className="h-10 rounded-lg text-left"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Tiền thuế
                   </label>
-                  <input
-                    type="number"
+                  <NumberField
                     value={editTaxAmount}
-                    onChange={(e) => setEditTaxAmount(Number(e.target.value))}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm"
+                    onChange={(v) => setEditTaxAmount(v ?? 0)}
+                    className="h-10 rounded-lg text-left"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Tổng tiền
                   </label>
-                  <input
-                    type="number"
+                  <NumberField
                     value={editTotal}
-                    onChange={(e) => setEditTotal(Number(e.target.value))}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm"
+                    onChange={(v) => setEditTotal(v ?? 0)}
+                    className="h-10 rounded-lg text-left"
                   />
                 </div>
                 <div>
@@ -1337,27 +1334,17 @@ export default function DocumentUploadPage() {
                           />
                         </td>
                         <td className="px-4 py-3 text-right w-28 min-w-[90px]">
-                          <input
-                            type="number"
+                          <NumberField
                             value={item.qty}
-                            onChange={(e) =>
-                              updateItem(idx, "qty", Number(e.target.value))
-                            }
-                            className="w-full px-2 py-1 border rounded focus:ring-1 focus:ring-orange-500 outline-none text-sm text-right"
+                            onChange={(v) => updateItem(idx, "qty", v ?? 0)}
+                            className="h-8 rounded"
                           />
                         </td>
                         <td className="px-4 py-3 text-right w-40 min-w-[130px]">
-                          <input
-                            type="number"
+                          <NumberField
                             value={item.unit_price}
-                            onChange={(e) =>
-                              updateItem(
-                                idx,
-                                "unit_price",
-                                Number(e.target.value),
-                              )
-                            }
-                            className="w-full px-2 py-1 border rounded focus:ring-1 focus:ring-orange-500 outline-none text-sm text-right"
+                            onChange={(v) => updateItem(idx, "unit_price", v ?? 0)}
+                            className="h-8 rounded"
                           />
                         </td>
                         <td className="px-4 py-3 text-right font-medium whitespace-nowrap">
