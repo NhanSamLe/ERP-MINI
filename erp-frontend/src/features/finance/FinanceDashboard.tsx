@@ -4,6 +4,7 @@ import { glEntryApi } from "./api/glEntry.api";
 import { financeConfigApi, FiscalPeriodDTO } from "./api/finance.api";
 import { formatMoney } from "@/utils/currency.helper";
 import { toast } from "react-toastify";
+import { BranchAPI } from "../company/api/branch.api";
 import {
   DollarSign,
   TrendingUp,
@@ -93,27 +94,45 @@ function StatCard({
 export default function FinanceDashboard() {
   const navigate = useNavigate();
 
+  const d = new Date();
+  const defaultFrom = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().substring(0, 10);
+  const defaultTo = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().substring(0, 10);
+
   const [loading, setLoading] = useState(true);
   const [trialBalance, setTrialBalance] = useState<TrialBalanceRow[]>([]);
   const [recentEntries, setRecentEntries] = useState<GlEntryDTO[]>([]);
   const [fiscalPeriods, setFiscalPeriods] = useState<FiscalPeriodDTO[]>([]);
 
-  const loadData = async () => {
+  const [fromDate, setFromDate] = useState(defaultFrom);
+  const [toDate, setToDate] = useState(defaultTo);
+
+  // Thêm bộ lọc chi nhánh
+  const [branches, setBranches] = useState<any[]>([]);
+  const [selectedBranch, setSelectedBranch] = useState<number | "">("");
+
+  const loadData = async (fromVal?: string, toVal?: string, branchVal?: number | "") => {
     try {
       setLoading(true);
-      const d = new Date();
-      const from = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().substring(0, 10);
-      const to = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().substring(0, 10);
+      const from = fromVal || fromDate;
+      const to = toVal || toDate;
+      const branchId = branchVal !== undefined ? branchVal : selectedBranch;
 
-      const [tbRes, entriesRes, periodRes] = await Promise.all([
-        glEntryApi.getTrialBalance({ from, to }),
+      const tbParams: any = { from, to };
+      if (branchId) {
+        tbParams.branch_id = branchId;
+      }
+
+      const [tbRes, entriesRes, periodRes, branchRes] = await Promise.all([
+        glEntryApi.getTrialBalance(tbParams),
         glEntryApi.listByJournal(1, { limit: 5 }),
         financeConfigApi.getFiscalPeriods(),
+        BranchAPI.list().catch(() => null),
       ]);
 
       setTrialBalance(tbRes.data?.data || tbRes.data || []);
       setRecentEntries(entriesRes.data || []);
       setFiscalPeriods(periodRes.data || []);
+      setBranches((branchRes as any)?.data || []);
     } catch (e: any) {
       console.error(e);
       toast.error("Lỗi khi tải dữ liệu báo cáo tài chính");
@@ -152,6 +171,7 @@ export default function FinanceDashboard() {
       return sum + balance;
     }, 0);
 
+  const filterMonth = new Date(fromDate).getMonth() + 1;
   const chartData = [
     { name: "Tháng 1", "Doanh thu": 185000000, "Chi phí": 124000000, "Lợi nhuận ròng": 61000000 },
     { name: "Tháng 2", "Doanh thu": 210000000, "Chi phí": 145000000, "Lợi nhuận ròng": 65000000 },
@@ -159,7 +179,7 @@ export default function FinanceDashboard() {
     { name: "Tháng 4", "Doanh thu": 240000000, "Chi phí": 172000000, "Lợi nhuận ròng": 68000000 },
     { name: "Tháng 5", "Doanh thu": 285000000, "Chi phí": 198000000, "Lợi nhuận ròng": 87000000 },
     {
-      name: "Tháng 6",
+      name: `Tháng ${filterMonth}`,
       "Doanh thu": revenue,
       "Chi phí": expenses,
       "Lợi nhuận ròng": revenue - expenses,
@@ -191,7 +211,7 @@ export default function FinanceDashboard() {
   return (
     <div className="page-container">
       {/* Standard ERP Page Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 bg-white rounded-lg shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-5 py-4 border-b border-gray-200 bg-white rounded-lg shadow-sm">
         <div className="flex items-center gap-2.5">
           <span className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
             <TrendingUp className="w-4 h-4 text-orange-500" />
@@ -205,15 +225,67 @@ export default function FinanceDashboard() {
             </p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
-          onClick={loadData}
-          loading={loading}
-        >
-          Tải lại dữ liệu
-        </Button>
+
+        {/* Bộ lọc ngày và chi nhánh */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-gray-500">Chi nhánh:</span>
+            <select
+              className="text-xs border rounded-md px-2 py-1.5 bg-white text-gray-700 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              value={selectedBranch}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSelectedBranch(val ? Number(val) : "");
+                loadData(fromDate, toDate, val ? Number(val) : "");
+              }}
+            >
+              <option value="">Tất cả chi nhánh</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-gray-500">Từ ngày:</span>
+            <input
+              type="date"
+              className="text-xs border rounded-md px-2 py-1 bg-white text-gray-700 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              value={fromDate}
+              onChange={(e) => {
+                const val = e.target.value;
+                setFromDate(val);
+                loadData(val, toDate);
+              }}
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-gray-500">Đến ngày:</span>
+            <input
+              type="date"
+              className="text-xs border rounded-md px-2 py-1 bg-white text-gray-700 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              value={toDate}
+              onChange={(e) => {
+                const val = e.target.value;
+                setToDate(val);
+                loadData(fromDate, val);
+              }}
+            />
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
+            onClick={() => loadData(fromDate, toDate)}
+            loading={loading}
+          >
+            Tải lại
+          </Button>
+        </div>
       </div>
 
       {/* Stats row with staggered entry animation */}
