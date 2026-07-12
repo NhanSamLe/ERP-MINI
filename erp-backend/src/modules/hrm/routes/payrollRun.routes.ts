@@ -35,18 +35,18 @@ router.get(
   getPayrollRunDetail
 );
 
-// HR Staff: lập / hủy bảng lương
-router.post("/", authMiddleware(["HR_STAFF"]), createPayrollRun);
-router.delete("/:id", authMiddleware(["HR_STAFF"]), cancelPayrollRun);
+// HR Staff + Accountant: lập / hủy bảng lương
+router.post("/", authMiddleware(["HR_STAFF", "ACCOUNT", "CHACC"]), createPayrollRun);
+router.delete("/:id", authMiddleware(["HR_STAFF", "ACCOUNT", "CHACC"]), cancelPayrollRun);
 
 // ✅ calculate
-router.post("/:id/calculate", authMiddleware(["HR_STAFF"]), calculateRun);
+router.post("/:id/calculate", authMiddleware(["HR_STAFF", "ACCOUNT", "CHACC"]), calculateRun);
 
 // Accountant: post bảng lương (legacy direct post)
 router.post("/:id/post", authMiddleware(["ACCOUNT", "CHACC"]), postPayrollRun);
 
 // Multi-level approvals
-router.post("/:id/submit", authMiddleware(["HR_STAFF"]), submitPayrollRun);
+router.post("/:id/submit", authMiddleware(["HR_STAFF", "ACCOUNT", "CHACC"]), submitPayrollRun);
 router.post("/:id/approve", authMiddleware(["CHACC", "CEO"]), approvePayrollRun);
 router.post("/:id/reject", authMiddleware(["CHACC", "CEO"]), rejectPayrollRun);
 
@@ -56,16 +56,16 @@ router.get(
   getPayrollEvidence
 );
 
-// HR Staff: quản lý dòng lương
-router.post("/:id/lines", authMiddleware(["HR_STAFF"]), createPayrollRunLine);
+// HR Staff + Accountant: quản lý dòng lương
+router.post("/:id/lines", authMiddleware(["HR_STAFF", "ACCOUNT", "CHACC"]), createPayrollRunLine);
 router.put(
   "/lines/:lineId",
-  authMiddleware(["HR_STAFF"]),
+  authMiddleware(["HR_STAFF", "ACCOUNT", "CHACC"]),
   updatePayrollRunLine
 );
 router.delete(
   "/lines/:lineId",
-  authMiddleware(["HR_STAFF"]),
+  authMiddleware(["HR_STAFF", "ACCOUNT", "CHACC"]),
   deletePayrollRunLine
 );
 

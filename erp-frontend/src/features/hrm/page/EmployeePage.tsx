@@ -209,7 +209,7 @@ export default function EmployeePage() {
     }
   };
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6">
+    <div className="w-full px-6 py-6">
       {/* Header */}
       <div className="mb-8 flex justify-between items-center">
         <h1 className="text-3xl font-bold flex items-center gap-3">
@@ -246,19 +246,19 @@ export default function EmployeePage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b">
-                <th className="px-4 py-3 text-left">Mã NV</th>
-                <th className="px-4 py-3 text-left">Họ và tên</th>
-                <th className="px-4 py-3">Giới tính</th>
-                <th className="px-4 py-3">Phòng ban</th>
-                <th className="px-4 py-3">Chức vụ</th>
-                <th className="px-4 py-3">Chi nhánh</th>
-                <th className="px-4 py-3">Loại HĐ</th>
-                <th className="px-4 py-3">Số TK</th>
-                <th className="px-4 py-3">Ngân hàng</th>
-                <th className="px-4 py-3">Mức lương</th>
-                <th className="px-4 py-3">Trạng thái</th>
-                <th className="px-4 py-3 text-center">Face AI</th>
-                <th className="px-4 py-3 text-center">Thao tác</th>
+                <th className="px-4 py-3 text-left whitespace-nowrap">Mã NV</th>
+                <th className="px-4 py-3 text-left whitespace-nowrap">Họ và tên</th>
+                <th className="px-4 py-3 text-center whitespace-nowrap">Giới tính</th>
+                <th className="px-4 py-3 text-left whitespace-nowrap">Phòng ban</th>
+                <th className="px-4 py-3 text-left whitespace-nowrap">Chức vụ</th>
+                <th className="px-4 py-3 text-left whitespace-nowrap">Chi nhánh</th>
+                <th className="px-4 py-3 text-left whitespace-nowrap">Loại HĐ</th>
+                <th className="px-4 py-3 text-left whitespace-nowrap">Số TK</th>
+                <th className="px-4 py-3 text-left whitespace-nowrap">Ngân hàng</th>
+                <th className="px-4 py-3 text-right whitespace-nowrap">Mức lương</th>
+                <th className="px-4 py-3 text-left whitespace-nowrap">Trạng thái</th>
+                <th className="px-4 py-3 text-center whitespace-nowrap">Face AI</th>
+                <th className="px-4 py-3 text-center whitespace-nowrap">Thao tác</th>
               </tr>
             </thead>
 
@@ -278,17 +278,19 @@ export default function EmployeePage() {
               ) : (
                 pageItems.map((e) => (
                   <tr key={e.id} className="border-b hover:bg-gray-50">
-                    <td className="px-4 py-3">{e.emp_code}</td>
-                    <td className="px-4 py-3">{e.full_name}</td>
-                    <td className="px-4 py-3 text-center">{e.gender === "male" ? "Nam" : e.gender === "female" ? "Nữ" : e.gender}</td>
-                    <td className="px-4 py-3">{(e as any).department?.name || "-"}</td>
-                    <td className="px-4 py-3">{(e as any).position?.name || "-"}</td>
-                    <td className="px-4 py-3">{(e as any).branch?.name || "-"}</td>
-                    <td className="px-4 py-3">{e.contract_type === "official" ? "Chính thức" : e.contract_type === "trial" ? "Thử việc" : e.contract_type === "seasonal" ? "Thời vụ" : e.contract_type}</td>
-                    <td className="px-4 py-3">{e.bank_account || "-"}</td>
-                    <td className="px-4 py-3">{e.bank_name || "-"}</td>
-                    <td className="px-4 py-3">{e.base_salary.toLocaleString()} ₫</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 whitespace-nowrap">{e.emp_code}</td>
+                    <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900">{e.full_name}</td>
+                    <td className="px-4 py-3 text-center whitespace-nowrap">{e.gender === "male" ? "Nam" : e.gender === "female" ? "Nữ" : e.gender}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{(e as any).department?.name || "-"}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{(e as any).position?.name || "-"}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{(e as any).branch?.name || "-"}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{e.contract_type === "official" ? "Chính thức" : e.contract_type === "trial" ? "Thử việc" : e.contract_type === "seasonal" ? "Thời vụ" : e.contract_type}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{e.bank_account || "-"}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{e.bank_name || "-"}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-blue-600 text-[14px] whitespace-nowrap">
+                      {Number(e.base_salary || 0).toLocaleString("vi-VN")} VND
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
                       {
                         e.status === "active"
                           ? "Đang làm việc"
@@ -297,13 +299,13 @@ export default function EmployeePage() {
                             : "Đã thôi việc"
                       }
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
                       {e.faces && e.faces.length > 0 ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800 whitespace-nowrap">
                           Đã đăng ký
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-rose-100 text-rose-800">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-rose-100 text-rose-800 whitespace-nowrap">
                           Chưa đăng ký
                         </span>
                       )}

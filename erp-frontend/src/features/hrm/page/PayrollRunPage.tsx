@@ -163,7 +163,7 @@ const PayrollRunPage: React.FC = () => {
 
   const roleCode =
     (authUser as any)?.role?.code ?? (authUser as any)?.role ?? "UNKNOWN";
-  const isHRStaff = roleCode === "HR_STAFF" || roleCode === "HRMANAGER" || roleCode === "ADMIN";
+  const isHRStaff = roleCode === "HR_STAFF" || roleCode === "HRMANAGER" || roleCode === "ADMIN" || roleCode === "ACCOUNT" || roleCode === "CHACC";
   const isChiefAcc = roleCode === "CHACC" || roleCode === "CHIEF_ACCOUNTANT" || roleCode === "ADMIN";
   const isCEO = roleCode === "CEO" || roleCode === "ADMIN";
   const isAccountant = roleCode === "ACCOUNT" || isChiefAcc;

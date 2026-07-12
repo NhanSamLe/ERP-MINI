@@ -341,7 +341,8 @@ export async function postPayrollRun(id: number, transaction?: any) {
       let empIns = 0;
       let compIns = 0;
 
-      if (emp && emp.contract_type === "official") {
+      const totalWorkDays = Number(line.present_days || 0) + Number(line.late_days || 0) + Number(line.leave_days || 0);
+      if (emp && emp.contract_type === "official" && totalWorkDays >= 14) {
         const insuranceBase = Math.min(baseSalary, insBaseMax);
         const insuranceBaseBhtn = Math.min(baseSalary, insBaseBhtnMax);
         empIns = insuranceBase * (insEmpSocial + insEmpHealth) + insuranceBaseBhtn * insEmpUnemp;
@@ -693,8 +694,10 @@ export async function calculatePayrollRun(runId: number, user: any) {
       const gross = basePay + allowance;
 
       // Tính bảo hiểm bắt buộc trích từ lương NLĐ đóng (10.5%)
+      // Theo luật Lao động Việt Nam: làm dưới 14 ngày thực tế không đóng BH bắt buộc
+      const totalWorkDays = presentDays + lateDays + leaveDays;
       let insuranceEmp = 0;
-      if (emp.contract_type === "official") {
+      if (emp.contract_type === "official" && totalWorkDays >= 14) {
         const insuranceBase = Math.min(Number(emp.base_salary || 0), insBaseMax);
         const insuranceBaseBhtn = Math.min(Number(emp.base_salary || 0), insBaseBhtnMax);
         insuranceEmp = insuranceBase * (insEmpSocial + insEmpHealth) + insuranceBaseBhtn * insEmpUnemp;
@@ -712,6 +715,7 @@ export async function calculatePayrollRun(runId: number, user: any) {
       );
 
       let net = gross - totalDeductionBeforeTax - insuranceEmp - pit;
+      if (net < 0) net = 0;
 
       // làm tròn tiền nếu muốn
       net = Math.round(net);
@@ -849,8 +853,10 @@ export async function getPayrollEvidence(runId: number, employeeId: number) {
   const grossRaw = basePayRaw + allowanceRaw;
 
   // Tính bảo hiểm bắt buộc trích từ lương NLĐ đóng (10.5%)
+  // Theo luật Lao động Việt Nam: làm dưới 14 ngày thực tế không đóng BH bắt buộc
+  const totalWorkDays = presentDays + lateDays + leaveDays;
   let insuranceEmpRaw = 0;
-  if ((employee as any).contract_type === "official") {
+  if ((employee as any).contract_type === "official" && totalWorkDays >= 14) {
     const insuranceBase = Math.min(baseSalary, insBaseMax);
     const insuranceBaseBhtn = Math.min(baseSalary, insBaseBhtnMax);
     insuranceEmpRaw = insuranceBase * (insEmpSocial + insEmpHealth) + insuranceBaseBhtn * insEmpUnemp;
@@ -866,6 +872,7 @@ export async function getPayrollEvidence(runId: number, employeeId: number) {
   );
 
   let netRaw = grossRaw - lateDeductionRaw - insuranceEmpRaw - pitRaw;
+  if (netRaw < 0) netRaw = 0;
 
   // làm tròn theo kiểu bạn đang dùng ở calculatePayrollRun
   const dailyRate = Math.round(dailyRateRaw);

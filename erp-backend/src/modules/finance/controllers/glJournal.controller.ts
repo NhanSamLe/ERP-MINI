@@ -102,7 +102,11 @@ export const getTrialBalance = async (req: Request, res: Response) => {
       to,
       company_id: await getCompanyId(req),
     };
-    if (user?.branch_id) filter.branch_id = user.branch_id;
+    if (req.query.branch_id) {
+      filter.branch_id = Number(req.query.branch_id);
+    } else if (user?.branch_id) {
+      filter.branch_id = user.branch_id;
+    }
     const data = await glJournalService.getTrialBalance(filter);
     return res.json({ data });
   } catch (e: any) {
@@ -124,7 +128,11 @@ export const getProfitLoss = async (req: Request, res: Response) => {
       to,
       company_id: await getCompanyId(req),
     };
-    if (user?.branch_id) filter.branch_id = user.branch_id;
+    if (req.query.branch_id) {
+      filter.branch_id = Number(req.query.branch_id);
+    } else if (user?.branch_id) {
+      filter.branch_id = user.branch_id;
+    }
     const data = await glJournalService.getProfitLoss(filter);
     return res.json({ data });
   } catch (e: any) {

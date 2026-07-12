@@ -5,6 +5,7 @@ import { departmentApi } from "../api/department.api";
 import { leaveRequestApi } from "../api/leaveRequest.api";
 import { attendanceApi } from "../api/attendance.api";
 import { positionApi } from "../api/position.api";
+import { BranchAPI } from "../../company/api/branch.api";
 import { EmployeeDTO } from "../dto/employee.dto";
 import { Department } from "../store/department/department.type";
 import { LeaveRequestDTO } from "../dto/leaveRequest.dto";
@@ -85,17 +86,23 @@ export default function HrmDashboard() {
   const [, setAttendanceToday] = useState<AttendanceDTO[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Bộ lọc
+  const [branches, setBranches] = useState<any[]>([]);
+  const [selectedBranch, setSelectedBranch] = useState<number | "">("");
+  const [selectedDept, setSelectedDept] = useState<number | "">("");
+
   const loadData = async () => {
     try {
       setLoading(true);
       const todayStr = new Date().toISOString().substring(0, 10);
       
-      const [empRes, deptRes, posRes, leaveRes, attRes] = await Promise.all([
+      const [empRes, deptRes, posRes, leaveRes, attRes, branchRes] = await Promise.all([
         employeeApi.getAll(),
         departmentApi.getAll(),
         positionApi.getAll(),
         leaveRequestApi.getAll(),
         attendanceApi.getAll({ work_date: todayStr }),
+        BranchAPI.list().catch(() => null),
       ]);
 
       setEmployees(empRes.data || []);
@@ -103,6 +110,7 @@ export default function HrmDashboard() {
       setPositions(posRes || []);
       setLeaveRequests(leaveRes.data || []);
       setAttendanceToday(attRes.data || []);
+      setBranches((branchRes as any)?.data || []);
     } catch (e: any) {
       console.error(e);
       toast.error("Lỗi khi tải dữ liệu HRM Dashboard");
@@ -148,22 +156,46 @@ export default function HrmDashboard() {
   };
 
   const currentMonth = new Date().getMonth() + 1;
-  const birthdayEmployees = employees.filter((emp) => {
+
+  // Lọc danh sách nhân viên theo Chi nhánh & Phòng ban
+  const filteredEmployees = employees.filter((emp) => {
+    const matchBranch = !selectedBranch || emp.branch_id === Number(selectedBranch);
+    const matchDept = !selectedDept || emp.department_id === Number(selectedDept);
+    return matchBranch && matchDept;
+  });
+
+  // Lọc danh sách phòng ban theo Chi nhánh chọn
+  const filteredDepartments = departments.filter((dept) => {
+    return !selectedBranch || dept.branch_id === Number(selectedBranch);
+  });
+
+  // Lọc yêu cầu nghỉ phép theo Chi nhánh & Phòng ban của nhân viên
+  const filteredLeaveRequests = leaveRequests.filter((req) => {
+    const empId = req.employee_id || req.employee?.id;
+    if (!empId) return true;
+    const empDetail = employees.find((e) => e.id === empId);
+    if (!empDetail) return true;
+    const matchBranch = !selectedBranch || empDetail.branch_id === Number(selectedBranch);
+    const matchDept = !selectedDept || empDetail.department_id === Number(selectedDept);
+    return matchBranch && matchDept;
+  });
+
+  const birthdayEmployees = filteredEmployees.filter((emp) => {
     if (!emp.birth_date) return false;
     const bMonth = new Date(emp.birth_date).getMonth() + 1;
     return bMonth === currentMonth;
   });
 
-  const deptChartData = departments.map((dept) => {
-    const count = employees.filter((emp) => emp.department_id === dept.id).length;
+  const deptChartData = filteredDepartments.map((dept) => {
+    const count = filteredEmployees.filter((emp) => emp.department_id === dept.id).length;
     return {
       name: dept.name,
       value: count,
     };
   }).filter((item) => item.value > 0);
 
-  const activeEmployees = employees.filter((emp) => emp.status === "active").length;
-  const pendingLeaves = leaveRequests.filter((req) => req.status === "pending").length;
+  const activeEmployees = filteredEmployees.filter((emp) => emp.status === "active").length;
+  const pendingLeaves = filteredLeaveRequests.filter((req) => req.status === "pending").length;
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -195,7 +227,7 @@ export default function HrmDashboard() {
   return (
     <div className="page-container">
       {/* Standard ERP Page Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 bg-white rounded-lg shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-5 py-4 border-b border-gray-200 bg-white rounded-lg shadow-sm">
         <div className="flex items-center gap-2.5">
           <span className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
             <Users className="w-4 h-4 text-orange-500" />
@@ -209,15 +241,58 @@ export default function HrmDashboard() {
             </p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
-          onClick={loadData}
-          loading={loading}
-        >
-          Tải lại dữ liệu
-        </Button>
+
+        {/* Bộ lọc */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-gray-500">Chi nhánh:</span>
+            <select
+              className="text-xs border rounded-md px-2 py-1.5 bg-white text-gray-700 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+              value={selectedBranch}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSelectedBranch(val ? Number(val) : "");
+                setSelectedDept(""); // Reset bộ lọc phòng ban khi đổi chi nhánh
+              }}
+            >
+              <option value="">Tất cả chi nhánh</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-gray-500">Phòng ban:</span>
+            <select
+              className="text-xs border rounded-md px-2 py-1.5 bg-white text-gray-700 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+              value={selectedDept}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSelectedDept(val ? Number(val) : "");
+              }}
+            >
+              <option value="">Tất cả phòng ban</option>
+              {filteredDepartments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
+            onClick={loadData}
+            loading={loading}
+          >
+            Tải lại dữ liệu
+          </Button>
+        </div>
       </div>
 
       {/* Stats row with staggered entry animation */}
@@ -465,7 +540,7 @@ export default function HrmDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {leaveRequests.filter((r) => r.status === "pending").length === 0 ? (
+                {filteredLeaveRequests.filter((r) => r.status === "pending").length === 0 ? (
                   <tr>
                     <td
                       colSpan={6}
@@ -475,7 +550,7 @@ export default function HrmDashboard() {
                     </td>
                   </tr>
                 ) : (
-                  leaveRequests
+                  filteredLeaveRequests
                     .filter((r) => r.status === "pending")
                     .slice(0, 5)
                     .map((req) => (
