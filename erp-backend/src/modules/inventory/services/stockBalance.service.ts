@@ -232,14 +232,30 @@ export const stockBalanceService = {
    * Lấy unit_price từ receipt stock move gần nhất của từng product.
    */
   async recalculateCosts() {
-    // Lấy tất cả balance có unit_cost = 0 hoặc null
+    // 1. Cập nhật total_value cho các balance đã có unit_cost nhưng total_value bị sai hoặc bằng 0/null
+    const incorrectValues = await StockBalance.findAll({
+      where: {
+        unit_cost: { [Op.gt]: 0 },
+        [Op.or]: [{ total_value: null }, { total_value: 0 }],
+      },
+    });
+
+    for (const bal of incorrectValues) {
+      const qty = parseFloat(String(bal.quantity || 0));
+      const cost = parseFloat(String(bal.unit_cost || 0));
+      await bal.update({
+        total_value: qty * cost,
+      });
+    }
+
+    // 2. Lấy tất cả balance có unit_cost = 0 hoặc null
     const balances = await StockBalance.findAll({
       where: {
         [Op.or]: [{ unit_cost: null }, { unit_cost: 0 }],
       },
     });
 
-    let updated = 0;
+    let updated = incorrectValues.length;
 
     for (const balance of balances) {
       // Tìm receipt move line gần nhất cho product này tại warehouse này
