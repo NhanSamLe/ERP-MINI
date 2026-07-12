@@ -69,6 +69,7 @@ export const chatController = {
         user.branch_id,
         userToken,
         content.trim(),
+        user.role,
       );
 
       res.json({ message });

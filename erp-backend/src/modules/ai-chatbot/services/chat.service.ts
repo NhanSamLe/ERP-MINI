@@ -13,7 +13,7 @@ import { Op } from "sequelize";
 const CONTEXT_WINDOW = Number(process.env.CHATBOT_CONTEXT_WINDOW ?? 20);
 const BASE_URL = process.env.APP_BASE_URL ?? "http://localhost:3000/api";
 
-const SYSTEM_PROMPT = `Bạn là trợ lý AI của hệ thống ERP. Nhiệm vụ của bạn là giúp người dùng tra cứu dữ liệu kinh doanh bằng ngôn ngữ tự nhiên, và thực hiện các thao tác như tạo đơn hàng khi được yêu cầu.
+const SYSTEM_PROMPT = `Bạn là trợ lý AI của hệ thống ERP. Nhiệm vụ của bạn là giúp người dùng tra cứu dữ liệu kinh doanh bằng ngôn ngữ tự nhiên. Bạn chỉ được phép thực hiện các thao tác thay đổi dữ liệu (như tạo đơn hàng) khi được cấp công cụ (tool) tương ứng trong phiên làm việc của người dùng.
 
 Nguyên tắc:
 1. Luôn phản hồi bằng cùng ngôn ngữ với câu hỏi của người dùng (tiếng Việt hoặc tiếng Anh).
@@ -28,6 +28,7 @@ Nguyên tắc:
 
 Quy tắc quan trọng khi tạo đơn hàng:
 - Người dùng KHÔNG biết ID của nhà cung cấp hay sản phẩm. Họ chỉ biết TÊN.
+- Tuyệt đối KHÔNG hiển thị hay tiết lộ các ID từ cơ sở dữ liệu (như ID nhà cung cấp, ID sản phẩm, ID đơn vị tính, ID thuế...) cho người dùng trong câu trả lời. Các ID này chỉ dùng cho mục đích gọi công cụ nội bộ.
 - Khi tạo PO/RFQ: BẮT BUỘC dùng tool tìm kiếm để resolve tên → ID trước.
   + Dùng get_partners để tìm supplier_id từ tên nhà cung cấp.
   + Dùng get_products để tìm product_id từ tên sản phẩm.
@@ -96,6 +97,7 @@ export const chatService = {
     branchId: number,
     userToken: string,
     content: string,
+    userRole?: string,
   ) {
     // Kiểm tra ownership
     const conv = await Conversation.findOne({
@@ -116,7 +118,7 @@ export const chatService = {
 
     // Cập nhật title nếu chưa có — async, không block main flow
     if (!conv.title) {
-      conv.update({ title: content.slice(0, 80) }).catch(() => {});
+      conv.update({ title: content.slice(0, 80) }).catch(() => { });
     }
 
     // ── Kiểm tra confirmation flow ────────────────────────────────────────
@@ -152,7 +154,8 @@ export const chatService = {
     let finalContent: string;
     try {
       llm = LLMFactory.create();
-      const tools = getToolDefinitions();
+      const tools = getToolDefinitions(userRole);
+      logger.info(`[ChatService] userRole: "${userRole}", tools count: ${tools.length}, contains create_purchase_order: ${tools.some(t => t.name === "create_purchase_order")}`);
       finalContent = await this._runToolCallingLoop(
         contextMessages,
         tools,
@@ -337,7 +340,7 @@ export const chatService = {
           for (const tc of toolCalls) {
             availableToolCallIds.add(tc.id);
           }
-        } catch (e) {}
+        } catch (e) { }
       }
     }
 
@@ -367,7 +370,7 @@ export const chatService = {
             const toolCalls = JSON.parse(m.tool_calls_json) as ToolCall[];
             // Chỉ giữ lại các tool calls mà có tin nhắn phản hồi (tool response) nằm trong cửa sổ này
             const validToolCalls = toolCalls.filter((tc) => respondedToolCallIds.has(tc.id));
-            
+
             if (validToolCalls.length > 0) {
               result.push({
                 role: "assistant",
@@ -408,7 +411,6 @@ export const chatService = {
     return result;
   },
 
-  /** Vòng lặp tool calling cho đến khi LLM trả về text thuần */
   async _runToolCallingLoop(
     messages: LLMMessage[],
     tools: any[],
@@ -417,6 +419,18 @@ export const chatService = {
   ): Promise<string> {
     let currentMessages = [...messages];
     const MAX_ITERATIONS = 5;
+
+    // Tạo Dynamic System Prompt dựa trên quyền hạn (các tools) mà user được dùng
+    const allowedToolNames = tools.map((t) => t.name);
+    const dynamicSystemPrompt = `QUYỀN HẠN CỦA NGƯỜI DÙNG TRONG PHIÊN NÀY:
+- Bạn chỉ được phép sử dụng các công cụ (tools) có trong danh sách sau: [${allowedToolNames.join(", ")}].
+- Khi người dùng yêu cầu thực hiện một hành động (ví dụ: tạo đơn mua hàng, tạo RFQ, tra cứu thông tin...):
+  * BƯỚC 1: Kiểm tra xem công cụ thực thi trực tiếp hành động đó (ví dụ: 'create_purchase_order', 'create_rfq'...) có trong danh sách công cụ được phép ở trên hay không.
+  * BƯỚC 2:
+    - Nếu KHÔNG CÓ công cụ đó: Hãy lập tức từ chối lịch sự: "Tài khoản của bạn không có quyền thực hiện thao tác này." (Tuyệt đối không được hỏi thêm thông tin và không được gọi các công cụ tra cứu trung gian khác).
+    - Nếu CÓ công cụ đó: Bạn được phép xử lý yêu cầu bình thường (nếu thiếu thông tin như tên nhà cung cấp, số lượng... để chạy tool, hãy yêu cầu người dùng cung cấp hoặc tự gọi các công cụ tra cứu trung gian).
+
+` + SYSTEM_PROMPT;
 
     for (let i = 0; i < MAX_ITERATIONS; i++) {
       // Trim context nếu vượt token limit trước mỗi lần gọi LLM
@@ -430,7 +444,7 @@ export const chatService = {
       const response = await llm.chat({
         messages: trimmed,
         tools,
-        systemPrompt: SYSTEM_PROMPT,
+        systemPrompt: dynamicSystemPrompt,
       });
 
       logger.info("[ChatService] LLM response", {
@@ -670,11 +684,11 @@ export const chatService = {
           .map((l) => {
             const uom = l.uomName ? ` ${l.uomName}` : "";
             const price = l.unitPrice.toLocaleString("vi-VN");
-            
+
             let discountInfo = "";
             if (l.lineDiscountAmount > 0) {
-              const dkStr = l.lineDiscountPercent > 0 
-                ? `${l.lineDiscountPercent}%` 
+              const dkStr = l.lineDiscountPercent > 0
+                ? `${l.lineDiscountPercent}%`
                 : `${l.lineDiscountAmount.toLocaleString("vi-VN")}đ`;
               discountInfo = ` (CK: -${dkStr})`;
             }
@@ -692,8 +706,8 @@ export const chatService = {
           discountLines += `• Chiết khấu dòng: -${grandLineDiscount.toLocaleString("vi-VN")} VND\n`;
         }
         if (headerDiscountAmount > 0) {
-          const globalDkStr = headerDiscountPercent > 0 
-            ? ` (${headerDiscountPercent}%)` 
+          const globalDkStr = headerDiscountPercent > 0
+            ? ` (${headerDiscountPercent}%)`
             : "";
           discountLines += `• Chiết khấu tổng đơn${globalDkStr}: -${headerDiscountAmount.toLocaleString("vi-VN")} VND\n`;
         }
