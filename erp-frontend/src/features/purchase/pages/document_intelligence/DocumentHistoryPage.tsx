@@ -211,6 +211,12 @@ export default function DocumentHistoryPage() {
                 <th className="px-6 py-4 text-left font-semibold text-gray-700">
                   Độ tin cậy
                 </th>
+                <th className="px-6 py-4 text-right font-semibold text-gray-700">
+                  Số lượng
+                </th>
+                <th className="px-6 py-4 text-right font-semibold text-gray-700">
+                  Tổng tiền
+                </th>
                 <th className="px-6 py-4 text-left font-semibold text-gray-700">
                   Ngày tạo
                 </th>
@@ -222,7 +228,7 @@ export default function DocumentHistoryPage() {
             <tbody className="divide-y">
               {loading && (
                 <tr>
-                  <td colSpan={5} className="py-16 text-center">
+                  <td colSpan={7} className="py-16 text-center">
                     <div className="flex flex-col items-center gap-2 text-gray-500">
                       <FileText className="w-8 h-8 animate-pulse" />
                       Đang tải...
@@ -233,75 +239,99 @@ export default function DocumentHistoryPage() {
 
               {!loading && history.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="py-16 text-center text-gray-400">
+                  <td colSpan={7} className="py-16 text-center text-gray-400">
                     Không có dữ liệu
                   </td>
                 </tr>
               )}
 
               {!loading &&
-                history.map((item) => (
-                  <tr key={item.id} className="hover:bg-orange-50/40 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-gray-400 shrink-0" />
-                        <span className="font-medium text-gray-800 truncate max-w-xs">
-                          {item.original_filename}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          STATUS_BADGE[item.ocr_status] ??
-                          "bg-gray-100 text-gray-700"
-                        }`}
-                      >
-                        {STATUS_LABELS[item.ocr_status] ?? item.ocr_status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      {item.ocr_confidence != null ? (
+                history.map((item) => {
+                  const totalQty =
+                    item.ocr_result?.items?.reduce(
+                      (sum, it) => sum + Number(it.qty || 0),
+                      0,
+                    ) ?? 0;
+                  const formattedQty =
+                    totalQty > 0 ? parseFloat(totalQty.toFixed(4)) : null;
+                  const formattedTotal = item.ocr_result?.total;
+
+                  return (
+                    <tr
+                      key={item.id}
+                      className="hover:bg-orange-50/40 transition-colors"
+                    >
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-gray-400 shrink-0" />
+                          <span className="font-medium text-gray-800 truncate max-w-xs">
+                            {item.original_filename}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
                         <span
-                          className={`font-medium ${
-                            item.ocr_confidence >= 0.8
-                              ? "text-green-600"
-                              : item.ocr_confidence >= 0.6
-                                ? "text-yellow-600"
-                                : "text-red-600"
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                            STATUS_BADGE[item.ocr_status] ??
+                            "bg-gray-100 text-gray-700"
                           }`}
                         >
-                          {Math.round(item.ocr_confidence * 100)}%
+                          {STATUS_LABELS[item.ocr_status] ?? item.ocr_status}
                         </span>
-                      ) : (
-                        <span className="text-gray-400">—</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-gray-600">
-                      {formatDate(item.created_at)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex justify-center">
-                        <button
-                          onClick={() => handleViewResult(item.id)}
-                          disabled={
-                            loadingResult === item.id ||
-                            item.ocr_status !== OcrStatus.DONE
-                          }
-                          title={
-                            item.ocr_status !== OcrStatus.DONE
-                              ? "Chỉ xem được kết quả khi OCR hoàn thành"
-                              : "Xem kết quả"
-                          }
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-orange-600 hover:text-orange-700 hover:bg-orange-50 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                          <Eye className="w-4 h-4" />
-                          Xem kết quả
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-6 py-4">
+                        {item.ocr_confidence != null ? (
+                          <span
+                            className={`font-medium ${
+                              item.ocr_confidence >= 0.8
+                                ? "text-green-600"
+                                : item.ocr_confidence >= 0.6
+                                  ? "text-yellow-600"
+                                  : "text-red-600"
+                            }`}
+                          >
+                            {Math.round(item.ocr_confidence * 100)}%
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-right text-gray-800 font-medium">
+                        {formattedQty !== null ? formattedQty : <span className="text-gray-400">—</span>}
+                      </td>
+                      <td className="px-6 py-4 text-right text-orange-600 font-semibold">
+                        {formattedTotal != null ? (
+                          `${formattedTotal.toLocaleString("vi-VN")} VND`
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-gray-600">
+                        {formatDate(item.created_at)}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex justify-center">
+                          <button
+                            onClick={() => handleViewResult(item.id)}
+                            disabled={
+                              loadingResult === item.id ||
+                              item.ocr_status !== OcrStatus.DONE
+                            }
+                            title={
+                              item.ocr_status !== OcrStatus.DONE
+                                ? "Chỉ xem được kết quả khi OCR hoàn thành"
+                                : "Xem kết quả"
+                            }
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-orange-600 hover:text-orange-700 hover:bg-orange-50 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            <Eye className="w-4 h-4" />
+                            Xem kết quả
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
 

@@ -597,6 +597,7 @@ export class DocumentService {
         "purchase_invoice_id",
         "created_at",
         "processing_time_ms",
+        "ocr_result",
       ],
     });
 

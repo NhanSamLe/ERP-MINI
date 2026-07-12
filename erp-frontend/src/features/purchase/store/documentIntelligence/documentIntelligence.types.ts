@@ -236,6 +236,7 @@ export interface HistoryItem {
   ocr_status: OcrStatus;
   ocr_confidence: number | null;
   created_at: string;
+  ocr_result?: OcrInvoiceData | null;
 }
 
 export interface HistoryParams {

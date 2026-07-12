@@ -87,7 +87,7 @@ export function NumberField({
   };
 
   return (
-    <div className="relative">
+    <div className="relative w-full">
       <input
         type="text"
         inputMode="decimal"
@@ -101,7 +101,7 @@ export function NumberField({
           "w-full h-9 px-3 text-sm border border-gray-300 rounded-md bg-white",
           "focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500",
           "disabled:bg-gray-50 disabled:text-gray-500 read-only:bg-gray-50",
-          isPercent ? "pr-7 text-right" : "text-right",
+          isPercent ? "pr-7 text-left" : "text-left",
           className ?? "",
         ].join(" ")}
       />
