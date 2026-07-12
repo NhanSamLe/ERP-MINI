@@ -316,8 +316,18 @@ export default function StockMovePages() {
         ],
         data: filteredData,
         fileName: `Bao_Cao_Kho_${new Date().getTime()}.xlsx`,
+        companyInfo: user?.branch ? {
+          name: user.branch.name,
+          address: user.branch.address,
+          taxId: "N/A",
+          phone: "N/A",
+          email: "N/A"
+        } : undefined,
         footer: {
           creator: user?.full_name || "Admin",
+          creatorLabel: "Thủ kho (Người lập)",
+          approverLabel: "Trưởng bộ phận kho",
+          hideAccountant: true,
         },
       });
     } catch (err) {

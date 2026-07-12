@@ -17,8 +17,12 @@ export interface CompanyInfo {
 
 export interface ReportFooter {
   creator?: string;
+  creatorLabel?: string;
   approver?: string;
+  approverLabel?: string;
   accountant?: string;
+  accountantLabel?: string;
+  hideAccountant?: boolean;
 }
 
 export interface ExcelReportOptions<T> {
