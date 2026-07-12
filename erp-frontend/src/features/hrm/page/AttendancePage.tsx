@@ -21,7 +21,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { fetchEmployees } from "../store/employee/employee.thunks";
-import {fetchAllBranchesThunk  } from "../../company/store/branch.thunks";
+import { fetchAllBranchesThunk } from "../../company/store/branch.thunks";
 
 const AttendancePage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -34,6 +34,7 @@ const AttendancePage: React.FC = () => {
   const [selectedEmployee, setSelectedEmployee] = useState<string>("all");
   const [selectedDate, setSelectedDate] = useState<string>("");
 
+
   // Phân trang
   const [page, setPage] = useState(1);
   const pageSize = 10;
@@ -41,10 +42,10 @@ const AttendancePage: React.FC = () => {
   useEffect(() => {
     dispatch(fetchAttendances({}));
     // ⭐ load thêm danh sách nhân viên & chi nhánh cho combobox
-  dispatch(fetchEmployees({} as any));   // hoặc {} as EmployeeFilter
-  dispatch(fetchAllBranchesThunk());  
+    dispatch(fetchEmployees({} as any));   // hoặc {} as EmployeeFilter
+    dispatch(fetchAllBranchesThunk());
   }, [dispatch]);
-  
+
 
   // Reset về trang 1 khi search hoặc filter thay đổi
   useEffect(() => {
@@ -69,17 +70,17 @@ const AttendancePage: React.FC = () => {
   };
 
   const handleSubmit = async (values: AttendanceDTO | Partial<AttendanceDTO>) => {
-  if (editing?.id) {
-    await dispatch(updateAttendance({ id: editing.id, data: values }));
-  } else {
-    await dispatch(createAttendance(values as AttendanceDTO));
-  }
+    if (editing?.id) {
+      await dispatch(updateAttendance({ id: editing.id, data: values }));
+    } else {
+      await dispatch(createAttendance(values as AttendanceDTO));
+    }
 
-  // ⭐ Tải lại danh sách để lấy record có đầy đủ branch + employee
-  await dispatch(fetchAttendances({}));
+    // ⭐ Tải lại danh sách để lấy record có đầy đủ branch + employee
+    await dispatch(fetchAttendances({}));
 
-  setModalOpen(false);
-};
+    setModalOpen(false);
+  };
 
 
   // Lọc dữ liệu theo search, employee và date
@@ -334,8 +335,8 @@ const AttendancePage: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-gray-700">
-  {item.branch?.name || item.branch_id}
-</td>
+                      {item.branch?.name || item.branch_id}
+                    </td>
 
                     <td className="px-4 py-3 font-medium text-gray-900">
                       {(item as any).employee?.full_name || item.employee_id}
@@ -346,17 +347,17 @@ const AttendancePage: React.FC = () => {
                     <td className="px-4 py-3 text-gray-700">
                       {item.check_in
                         ? new Date(item.check_in).toLocaleTimeString("vi-VN", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
                         : "-"}
                     </td>
                     <td className="px-4 py-3 text-gray-700">
                       {item.check_out
                         ? new Date(item.check_out).toLocaleTimeString("vi-VN", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
                         : "-"}
                     </td>
                     <td className="px-4 py-3 text-center">
@@ -366,27 +367,26 @@ const AttendancePage: React.FC = () => {
                     </td>
                     <td className="px-4 py-3 text-center">
                       <span
-                        className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ${
-                          item.status === "present"
+                        className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ${item.status === "present"
                             ? "bg-green-100 text-green-700"
                             : item.status === "absent"
-                            ? "bg-red-100 text-red-700"
-                            : item.status === "late"
-                            ? "bg-yellow-100 text-yellow-700"
-                            : item.status === "holiday"
-                            ? "bg-purple-100 text-purple-700"
-                            : "bg-gray-100 text-gray-700"
-                        }`}
+                              ? "bg-red-100 text-red-700"
+                              : item.status === "late"
+                                ? "bg-yellow-100 text-yellow-700"
+                                : item.status === "holiday"
+                                  ? "bg-purple-100 text-purple-700"
+                                  : "bg-gray-100 text-gray-700"
+                          }`}
                       >
                         {item.status === "present"
                           ? "Có mặt"
                           : item.status === "absent"
-                          ? "Vắng mặt"
-                          : item.status === "late"
-                          ? "Đi muộn"
-                          : item.status === "holiday"
-                          ? "Nghỉ lễ"
-                          : item.status}
+                            ? "Vắng mặt"
+                            : item.status === "late"
+                              ? "Đi muộn"
+                              : item.status === "holiday"
+                                ? "Nghỉ lễ"
+                                : item.status}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-gray-600 text-xs max-w-xs truncate">
@@ -456,11 +456,10 @@ const AttendancePage: React.FC = () => {
                     <button
                       key={pNum}
                       onClick={() => goToPage(pNum)}
-                      className={`min-w-[36px] h-9 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        pNum === currentPage
+                      className={`min-w-[36px] h-9 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${pNum === currentPage
                           ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/30"
                           : "bg-white text-gray-700 border border-gray-200 hover:border-orange-300 hover:bg-orange-50"
-                      }`}
+                        }`}
                     >
                       {pNum}
                     </button>
