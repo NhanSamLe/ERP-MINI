@@ -37,7 +37,7 @@ import {
   RefreshCw,
   CheckCircle2,
   Clock,
-  Building2,
+  Building,
   ClipboardList,
   Info,
   XCircle,
@@ -224,7 +224,7 @@ const PayrollRunPage: React.FC = () => {
       apiClient.get("/company/branches")
         .then(res => setBranches(res.data || []))
         .catch(err => console.error("Error fetching branches:", err));
-      
+
       apiClient.get("/hrm/departments")
         .then(res => setDepartments(res.data || []))
         .catch(err => console.error("Error fetching departments:", err));
@@ -277,9 +277,9 @@ const PayrollRunPage: React.FC = () => {
         `/hrm/payroll-runs/${currentRun.id}/evidence/${employeeId}`
       );
       const raw = res.data as any;
-setEvidence(normalizeEvidence(raw));
-console.log("EVIDENCE RAW:", res.data);
-console.log("attendance keys:", Object.keys(res.data || {}));
+      setEvidence(normalizeEvidence(raw));
+      console.log("EVIDENCE RAW:", res.data);
+      console.log("attendance keys:", Object.keys(res.data || {}));
 
 
     } catch (e: any) {
@@ -324,7 +324,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
   const handleSendEmails = async () => {
     if (!currentRun?.id) return;
     if (!window.confirm("Bạn có chắc chắn muốn gửi email phiếu lương đính kèm PDF cho tất cả nhân viên không?")) return;
-    
+
     try {
       setSendingEmails(true);
       const res = await apiClient.post(`/hrm/payroll-runs/${currentRun.id}/send-emails`);
@@ -868,8 +868,8 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                           <span className="text-sm">
                             {row.period
                               ? `${row.period.period_code} (${d10(
-                                  row.period.start_date
-                                )} - ${d10(row.period.end_date)})`
+                                row.period.start_date
+                              )} - ${d10(row.period.end_date)})`
                               : row.period_id}
                           </span>
                         </div>
@@ -877,7 +877,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
 
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2 text-gray-700">
-                          <Building2 className="w-4 h-4 text-gray-400" />
+                          <Building className="w-4 h-4 text-gray-400" />
                           <span className="text-sm">
                             {row.period?.branch?.name ?? "—"}
                           </span>
@@ -1026,8 +1026,8 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                       Kỳ lương:{" "}
                       {currentRun.period
                         ? `${currentRun.period.period_code} (${d10(
-                            currentRun.period.start_date
-                          )} - ${d10(currentRun.period.end_date)})`
+                          currentRun.period.start_date
+                        )} - ${d10(currentRun.period.end_date)})`
                         : currentRun.period_id}
                     </span>
                   </div>
@@ -1258,84 +1258,83 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                         }
 
                         return filteredLines.map((line: PayrollRunLineDTO, index: number) => (
-                            <tr
-                              key={line.id}
-                              className={`hover:bg-gray-50 transition-colors ${
-                                editingLineId === line.id ? "bg-blue-50" : ""
+                          <tr
+                            key={line.id}
+                            className={`hover:bg-gray-50 transition-colors ${editingLineId === line.id ? "bg-blue-50" : ""
                               }`}
-                            >
-                              <td className="px-5 py-4">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xs">
-                                    {index + 1}
-                                  </div>
+                          >
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xs">
+                                  {index + 1}
+                                </div>
 
-                                  <div className="min-w-0">
-                                    <button
-                                      type="button"
-                                      onClick={() => openEvidence(line.employee_id)}
-                                      className="text-left group"
-                                      title="Xem chứng từ chấm công"
-                                    >
-                                      <p className="text-sm font-semibold text-gray-900 group-hover:underline flex items-center gap-2">
-                                        {line.employee?.full_name ||
-                                          `Nhân viên #${line.employee_id}`}
-                                        <span className="inline-flex items-center gap-1 text-xs text-blue-600">
-                                          <ClipboardList className="w-3.5 h-3.5" />
-                                          Chứng từ
-                                        </span>
+                                <div className="min-w-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => openEvidence(line.employee_id)}
+                                    className="text-left group"
+                                    title="Xem chứng từ chấm công"
+                                  >
+                                    <p className="text-sm font-semibold text-gray-900 group-hover:underline flex items-center gap-2">
+                                      {line.employee?.full_name ||
+                                        `Nhân viên #${line.employee_id}`}
+                                      <span className="inline-flex items-center gap-1 text-xs text-blue-600">
+                                        <ClipboardList className="w-3.5 h-3.5" />
+                                        Chứng từ
+                                      </span>
+                                    </p>
+                                    {line.employee?.code && (
+                                      <p className="text-xs text-gray-500">
+                                        Mã nhân viên: {line.employee.code}
                                       </p>
-                                      {line.employee?.code && (
-                                        <p className="text-xs text-gray-500">
-                                          Mã nhân viên: {line.employee.code}
-                                        </p>
-                                      )}
+                                    )}
+                                  </button>
+                                </div>
+                              </div>
+                            </td>
+
+                            <td className="px-5 py-4 text-right">
+                              <div className="flex flex-col items-end">
+                                <span className="text-sm font-bold text-gray-900">
+                                  {money(line.amount)}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  VND
+                                </span>
+                              </div>
+                            </td>
+
+                            <td className="px-5 py-4">
+                              <div className="flex items-center justify-center gap-2">
+                                {isEditable ? (
+                                  <>
+                                    <button
+                                      onClick={() => handleEditLine(line)}
+                                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all hover:scale-110"
+                                      title="Sửa"
+                                    >
+                                      <Pencil className="w-4 h-4" />
                                     </button>
-                                  </div>
-                                </div>
-                              </td>
-
-                              <td className="px-5 py-4 text-right">
-                                <div className="flex flex-col items-end">
-                                  <span className="text-sm font-bold text-gray-900">
-                                    {money(line.amount)}
+                                    <button
+                                      onClick={() => handleDeleteLine(line)}
+                                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all hover:scale-110"
+                                      title="Xóa"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </>
+                                ) : (
+                                  <span className="text-xs text-gray-400 italic px-2 py-1 bg-gray-50 rounded">
+                                    Chỉ đọc
                                   </span>
-                                  <span className="text-xs text-gray-500">
-                                    VND
-                                  </span>
-                                </div>
-                              </td>
-
-                              <td className="px-5 py-4">
-                                <div className="flex items-center justify-center gap-2">
-                                  {isEditable ? (
-                                    <>
-                                      <button
-                                        onClick={() => handleEditLine(line)}
-                                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all hover:scale-110"
-                                        title="Sửa"
-                                      >
-                                        <Pencil className="w-4 h-4" />
-                                      </button>
-                                      <button
-                                        onClick={() => handleDeleteLine(line)}
-                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all hover:scale-110"
-                                        title="Xóa"
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                      </button>
-                                    </>
-                                  ) : (
-                                    <span className="text-xs text-gray-400 italic px-2 py-1 bg-gray-50 rounded">
-                                      Chỉ đọc
-                                    </span>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          )
-                          );
-                        })()}
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                        );
+                      })()}
                     </tbody>
                   </table>
                 </div>
@@ -1481,8 +1480,8 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                       <p className="text-sm text-slate-200">
                         {evidence?.employee?.full_name
                           ? `${evidence.employee.full_name} • ${d10(
-                              evidence.period?.start_date
-                            )} → ${d10(evidence.period?.end_date)}`
+                            evidence.period?.start_date
+                          )} → ${d10(evidence.period?.end_date)}`
                           : "Đang tải..."}
                       </p>
                     </div>
@@ -1593,11 +1592,11 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                               </span>
                             </div>
                             <div className="flex justify-between">
-  <span className="text-gray-600">Tổng thu nhập</span>
-  <span className="font-semibold text-emerald-700">
-    {money(evidence.breakdown.gross)} VND
-  </span>
-</div>
+                              <span className="text-gray-600">Tổng thu nhập</span>
+                              <span className="font-semibold text-emerald-700">
+                                {money(evidence.breakdown.gross)} VND
+                              </span>
+                            </div>
                             <div className="flex justify-between">
                               <span className="text-gray-600">Khấu trừ vắng mặt</span>
                               <span className="font-semibold text-red-600">
@@ -1630,21 +1629,21 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                             <p className="text-xs font-semibold text-gray-600 mb-2">
                               Kết quả
                             </p>
-                          <div className="mt-3 pt-3 border-t border-gray-200 space-y-2 text-sm">
-  <div className="flex justify-between">
-    <span className="text-gray-600">Loại hợp đồng</span>
-    <span className="font-semibold capitalize">
-      {evidence.employee.contract_type}
-    </span>
-  </div>
+                            <div className="mt-3 pt-3 border-t border-gray-200 space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Loại hợp đồng</span>
+                                <span className="font-semibold capitalize">
+                                  {evidence.employee.contract_type}
+                                </span>
+                              </div>
 
-  <div className="flex justify-between">
-    <span className="text-gray-600">Người phụ thuộc</span>
-    <span className="font-semibold">
-      {evidence.employee.dependent || 0}
-    </span>
-  </div>
-</div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Người phụ thuộc</span>
+                                <span className="font-semibold">
+                                  {evidence.employee.dependent || 0}
+                                </span>
+                              </div>
+                            </div>
                             <div className="flex justify-between items-end">
                               <span className="text-sm text-gray-600">
                                 Thực nhận (Tính toán lại)
@@ -1663,19 +1662,18 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                                   {evidence.breakdown.storedAmount == null
                                     ? "—"
                                     : `${money(
-                                        evidence.breakdown.storedAmount
-                                      )} VND`}
+                                      evidence.breakdown.storedAmount
+                                    )} VND`}
                                 </span>
                               </div>
 
                               <div className="flex justify-between">
                                 <span className="text-gray-600">Chênh lệch</span>
                                 <span
-                                  className={`font-semibold ${
-                                    (evidence.breakdown.diff || 0) === 0
+                                  className={`font-semibold ${(evidence.breakdown.diff || 0) === 0
                                       ? "text-emerald-700"
                                       : "text-amber-700"
-                                  }`}
+                                    }`}
                                 >
                                   {evidence.breakdown.diff == null
                                     ? "—"
@@ -1687,11 +1685,11 @@ console.log("attendance keys:", Object.keys(res.data || {}));
                                 <Info className="w-4 h-4 text-gray-500 mt-0.5" />
                                 <p className="text-xs text-gray-600 leading-5">
                                   Thực nhận (Tính toán lại) được tính dựa trên:
-• Dữ liệu chấm công thực tế
-• Các khoản phụ cấp được nhận
-• Khấu trừ nghỉ không phép / đi muộn
-• Thuế TNCN dựa theo loại hợp đồng
-• Giảm trừ gia cảnh cho người phụ thuộc
+                                  • Dữ liệu chấm công thực tế
+                                  • Các khoản phụ cấp được nhận
+                                  • Khấu trừ nghỉ không phép / đi muộn
+                                  • Thuế TNCN dựa theo loại hợp đồng
+                                  • Giảm trừ gia cảnh cho người phụ thuộc
                                 </p>
                               </div>
                             </div>
@@ -1749,7 +1747,7 @@ console.log("attendance keys:", Object.keys(res.data || {}));
 
                             <tbody className="divide-y divide-gray-200">
                               {!evidence.attendance ||
-                              evidence.attendance.length === 0 ? (
+                                evidence.attendance.length === 0 ? (
                                 <tr>
                                   <td colSpan={5} className="px-5 py-10">
                                     <div className="flex flex-col items-center gap-2 text-center">
