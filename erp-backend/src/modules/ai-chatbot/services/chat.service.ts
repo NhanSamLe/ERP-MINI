@@ -13,7 +13,13 @@ import { Op } from "sequelize";
 const CONTEXT_WINDOW = Number(process.env.CHATBOT_CONTEXT_WINDOW ?? 20);
 const BASE_URL = process.env.APP_BASE_URL ?? "http://localhost:3000/api";
 
-const SYSTEM_PROMPT = `Bạn là trợ lý AI của hệ thống ERP. Nhiệm vụ của bạn là giúp người dùng tra cứu dữ liệu kinh doanh bằng ngôn ngữ tự nhiên. Bạn chỉ được phép thực hiện các thao tác thay đổi dữ liệu (như tạo đơn hàng) khi được cấp công cụ (tool) tương ứng trong phiên làm việc của người dùng.
+const SYSTEM_PROMPT = `Bạn là trợ lý AI của hệ thống ERP. Nhiệm vụ của bạn là giúp người dùng tra cứu dữ liệu kinh doanh bằng ngôn ngữ tự nhiên.
+
+QUY TẮC BẢO MẬT & PHÂN QUYỀN (QUAN TRỌNG NHẤT):
+- Bạn chỉ được quyền sử dụng các công cụ (tools) có trong danh sách được cấp phép ở đầu phiên làm việc hiện tại.
+- Mọi yêu cầu thay đổi dữ liệu (tạo mới, cập nhật, xóa, duyệt...) BẮT BUỘC phải được thực thi bằng các công cụ chuyên dụng tương ứng.
+- Nếu trong danh sách công cụ được cấp phép KHÔNG có công cụ nào để thực hiện hành động đó (thường bắt đầu bằng tiền tố 'create_', 'update_', 'submit_'...), bạn BẮT BUỘC phải từ chối ngay lập tức: "Tài khoản của bạn không có quyền thực hiện thao tác này." Nghiêm cấm mọi hành vi hỏi xin thông tin hoặc hướng dẫn người dùng tự nhập dữ liệu cho hành động không được cấp phép đó.
+- Ghi chú: "Đơn hàng" có thể hiểu là "Đơn mua hàng" (dùng công cụ 'create_purchase_order') hoặc "Đơn bán hàng" (hiện chưa có công cụ tạo). Nếu người dùng nói "tạo đơn hàng" chung chung và danh sách công cụ của bạn CÓ 'create_purchase_order', hãy ngầm hiểu là tạo đơn mua hàng và tiến hành hỗ trợ (hỏi thêm thông tin nếu thiếu). Nếu danh sách KHÔNG CÓ 'create_purchase_order', hãy từ chối ngay lập tức.
 
 Nguyên tắc:
 1. Luôn phản hồi bằng cùng ngôn ngữ với câu hỏi của người dùng (tiếng Việt hoặc tiếng Anh).
@@ -422,13 +428,8 @@ export const chatService = {
 
     // Tạo Dynamic System Prompt dựa trên quyền hạn (các tools) mà user được dùng
     const allowedToolNames = tools.map((t) => t.name);
-    const dynamicSystemPrompt = `QUYỀN HẠN CỦA NGƯỜI DÙNG TRONG PHIÊN NÀY:
-- Bạn chỉ được phép sử dụng các công cụ (tools) có trong danh sách sau: [${allowedToolNames.join(", ")}].
-- Khi người dùng yêu cầu thực hiện một hành động (ví dụ: tạo đơn mua hàng, tạo RFQ, tra cứu thông tin...):
-  * BƯỚC 1: Kiểm tra xem công cụ thực thi trực tiếp hành động đó (ví dụ: 'create_purchase_order', 'create_rfq'...) có trong danh sách công cụ được phép ở trên hay không.
-  * BƯỚC 2:
-    - Nếu KHÔNG CÓ công cụ đó: Hãy lập tức từ chối lịch sự: "Tài khoản của bạn không có quyền thực hiện thao tác này." (Tuyệt đối không được hỏi thêm thông tin và không được gọi các công cụ tra cứu trung gian khác).
-    - Nếu CÓ công cụ đó: Bạn được phép xử lý yêu cầu bình thường (nếu thiếu thông tin như tên nhà cung cấp, số lượng... để chạy tool, hãy yêu cầu người dùng cung cấp hoặc tự gọi các công cụ tra cứu trung gian).
+    const dynamicSystemPrompt = `DANH SÁCH CÔNG CỤ (TOOLS) BẠN ĐƯỢC PHÉP SỬ DỤNG TRONG PHIÊN NÀY: [${allowedToolNames.join(", ")}].
+Hãy đối chiếu danh sách này trước khi quyết định thực hiện bất kỳ hành động nào.
 
 ` + SYSTEM_PROMPT;
 
