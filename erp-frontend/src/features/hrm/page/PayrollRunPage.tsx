@@ -310,7 +310,10 @@ const PayrollRunPage: React.FC = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", `phieu-luong-${evidence.employee.full_name}-${evidence.period.period_code}.pdf`);
+      link.setAttribute(
+        "download",
+        `phieu-luong-${evidence.employee.full_name}-${currentRun?.period?.period_code || evidence.run.run_no}.pdf`
+      );
       document.body.appendChild(link);
       link.click();
       link.remove();
