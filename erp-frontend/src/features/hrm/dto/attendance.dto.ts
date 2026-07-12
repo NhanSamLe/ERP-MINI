@@ -9,7 +9,7 @@ export interface AttendanceDTO {
   check_out?: string | null;
 
   working_hours: number;
-  status: "present" | "absent" | "leave" | "late";
+  status: "present" | "absent" | "leave" | "late" | "holiday";
   note?: string | null;
 
   // nếu có join:
