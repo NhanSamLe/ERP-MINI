@@ -22,7 +22,10 @@ export const purchaseTools: ITool[] = [
             "draft",
             "waiting_approval",
             "confirmed",
+            "sent",
+            "supplier_accepted",
             "partially_received",
+            "received",
             "completed",
             "cancelled",
           ],
@@ -436,7 +439,6 @@ const writePurchaseTools: ITool[] = [
             where: {
               product_id: productId,
               price_list_id: { [Op.in]: plIds },
-              min_quantity: { [Op.lte]: quantity },
               [Op.and]: [
                 {
                   [Op.or]: [
