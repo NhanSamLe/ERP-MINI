@@ -143,18 +143,19 @@ export async function exportExcelReport<T extends object>(
     const leftCol = 1;
     const rightCol = columns.length;
     const centerCol = Math.floor(columns.length / 2) + 1;
+    const showMiddle = columns.length > 3 && !footer?.hideAccountant;
 
-    sheet.getCell(rowIndex, leftCol).value = "Người lập phiếu";
+    sheet.getCell(rowIndex, leftCol).value = footer?.creatorLabel || "Người lập phiếu";
     sheet.getCell(rowIndex, leftCol).font = { bold: true };
     sheet.getCell(rowIndex, leftCol).alignment = { horizontal: "center" };
 
-    if (columns.length > 3) {
-      sheet.getCell(rowIndex, centerCol).value = "Kế toán trưởng";
+    if (showMiddle) {
+      sheet.getCell(rowIndex, centerCol).value = footer?.accountantLabel || "Kế toán trưởng";
       sheet.getCell(rowIndex, centerCol).font = { bold: true };
       sheet.getCell(rowIndex, centerCol).alignment = { horizontal: "center" };
     }
 
-    sheet.getCell(rowIndex, rightCol).value = "Thủ trưởng đơn vị";
+    sheet.getCell(rowIndex, rightCol).value = footer?.approverLabel || "Thủ trưởng đơn vị";
     sheet.getCell(rowIndex, rightCol).font = { bold: true };
     sheet.getCell(rowIndex, rightCol).alignment = { horizontal: "center" };
 
@@ -165,7 +166,7 @@ export async function exportExcelReport<T extends object>(
     sheet.getCell(rowIndex, leftCol).font = { italic: true };
     sheet.getCell(rowIndex, leftCol).alignment = { horizontal: "center" };
 
-    if (columns.length > 3) {
+    if (showMiddle) {
       sheet.getCell(rowIndex, centerCol).value = "(Ký, họ tên)";
       sheet.getCell(rowIndex, centerCol).font = { italic: true };
       sheet.getCell(rowIndex, centerCol).alignment = { horizontal: "center" };
@@ -182,6 +183,11 @@ export async function exportExcelReport<T extends object>(
       sheet.getCell(rowIndex, leftCol).value = footer.creator;
       sheet.getCell(rowIndex, leftCol).font = { bold: true };
       sheet.getCell(rowIndex, leftCol).alignment = { horizontal: "center" };
+    }
+    if (showMiddle && footer?.accountant) {
+      sheet.getCell(rowIndex, centerCol).value = footer.accountant;
+      sheet.getCell(rowIndex, centerCol).font = { bold: true };
+      sheet.getCell(rowIndex, centerCol).alignment = { horizontal: "center" };
     }
     if (footer?.approver) {
       sheet.getCell(rowIndex, rightCol).value = footer.approver;

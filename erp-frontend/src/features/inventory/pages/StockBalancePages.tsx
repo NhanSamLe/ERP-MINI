@@ -134,7 +134,19 @@ export default function StockBalancePages() {
         ],
         data,
         fileName: `Bao_Cao_Ton_Kho_${new Date().getTime()}.xlsx`,
-        footer: { creator: user?.full_name || "Admin" },
+        companyInfo: user?.branch ? {
+          name: user.branch.name,
+          address: user.branch.address,
+          taxId: "N/A",
+          phone: "N/A",
+          email: "N/A"
+        } : undefined,
+        footer: {
+          creator: user?.full_name || "Admin",
+          creatorLabel: "Người lập biểu",
+          approverLabel: "Trưởng bộ phận kho",
+          hideAccountant: true,
+        },
       });
     } catch (err) {
       console.error(err);
