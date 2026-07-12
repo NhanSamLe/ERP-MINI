@@ -207,9 +207,9 @@ export async function generatePayslipPdf(runLineId: number): Promise<Buffer> {
     const doc = new PDFDocument({ margin: 50, size: "A4" });
     const chunks: Buffer[] = [];
 
-    doc.on("data", (chunk) => chunks.push(chunk));
+    doc.on("data", (chunk: any) => chunks.push(chunk));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
-    doc.on("error", (err) => reject(err));
+    doc.on("error", (err: any) => reject(err));
 
     if (useArial) {
       doc.registerFont("Arial", fonts.regular);
@@ -297,9 +297,9 @@ export async function generatePayrollRunPdf(
     const doc = new PDFDocument({ margin: 50, size: "A4" });
     const chunks: Buffer[] = [];
 
-    doc.on("data", (chunk) => chunks.push(chunk));
+    doc.on("data", (chunk: any) => chunks.push(chunk));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
-    doc.on("error", (err) => reject(err));
+    doc.on("error", (err: any) => reject(err));
 
     if (useArial) {
       doc.registerFont("Arial", fonts.regular);
