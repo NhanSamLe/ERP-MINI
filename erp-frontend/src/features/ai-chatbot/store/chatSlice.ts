@@ -136,6 +136,10 @@ const chatSlice = createSlice({
       .addCase(sendMessageThunk.rejected, (s, a) => {
         s.isLoading = false;
         s.error = a.payload as string;
+      })
+      // Clear chat state on logout
+      .addCase("auth/clearAuth", () => {
+        return initialState;
       });
   },
 });
